@@ -13,7 +13,7 @@ use crate::body::BodyTreeRef;
 use crate::body::body_tree_components::*;
 use crate::body::body_sampler::body_sampler_resources::*;
 use crate::being_interaction_zone_helper::build_being_interaction_zones_with_fallback;
-use crate::pack::pack_components::PackInitialSize;
+use crate::pack::pack_components::PackInitialSizeSampler;
 use crate::{sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use ::being_shared::*;
@@ -174,7 +174,7 @@ pub fn init_races(
         entity_cmds.insert(race_seri.tags_with_my_id());
         let entity = entity_cmds.id();
         if !race_seri.spawn_pack_size_normal_dist.is_sentinel() {
-            cmd.entity(entity).insert(PackInitialSize(CappedNormalDist::from_seri(
+            cmd.entity(entity).insert(PackInitialSizeSampler(CappedNormalDist::from_seri(
                 race_seri.spawn_pack_size_normal_dist.clone(),
             )));
         }
@@ -199,8 +199,13 @@ pub fn init_races(
         if !race_seri.whitelisted_spawn_tile_tags.is_empty() {
             cmd.entity(entity).insert(WhitelistedSpawnTileTags::new(&race_seri.whitelisted_spawn_tile_tags));
         }
-        if !race_seri.blacklisted_spawn_tile_tags.is_empty() {
-            cmd.entity(entity).insert(BlacklistedSpawnTileTags::new(&race_seri.blacklisted_spawn_tile_tags));
+        if !race_seri.blacklisted_spawn_tile_tags.is_empty() || !race_seri.blacklisted_tiles_for_spawning.is_empty() {
+            cmd.entity(entity).insert(BlacklistedSpawnTileTags::new(
+                race_seri
+                    .blacklisted_spawn_tile_tags
+                    .iter()
+                    .chain(race_seri.blacklisted_tiles_for_spawning.iter()),
+            ));
         }
 
         let body_tree_sexes = body_tree_ent

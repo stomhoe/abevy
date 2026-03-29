@@ -5,57 +5,14 @@ use ::tilemap_shared::*;
 use serde::{Deserialize, Serialize};
 
 const PACK_CLUSTER_RADIUS_CHUNKS: i32 = 1;
-const PACK_CENTER_MIN_SEPARATION_CHUNKS: i32 = 2;
-const PACK_CENTER_SAMPLE_ATTEMPTS: usize = 16;
 
 #[derive(Component, serde::Serialize, serde::Deserialize, Clone)]
 #[require(Replicated, Prefix::trunc("Pack"), AssetScoped, HotReload)]
 pub struct Pack;
 impl Pack {
-    pub fn sample_pack_center_chunk(
-        macro_chunk_pos: MacroChunkPos,
-        preferred_center_chunk: Option<ChunkPos>,
-        allow_adjacent_preferred_center: bool,
-        existing_centers: &[ChunkPos],
-        rng: &mut impl rand::Rng,
-    ) -> Option<ChunkPos> {
-        if let Some(candidate) = preferred_center_chunk
-            .filter(|candidate| macro_chunk_pos.contains_chunkpos(*candidate))
-        {
-            let has_required_separation = existing_centers.iter().all(|center| {
-                (center.0 - candidate.0)
-                    .abs()
-                    .max_element()
-                    >= PACK_CENTER_MIN_SEPARATION_CHUNKS
-            });
-            if has_required_separation {
-                return Some(candidate);
-            }
-            if allow_adjacent_preferred_center && !existing_centers.contains(&candidate) {
-                return Some(candidate);
-            }
-        }
-        let min_chunk = macro_chunk_pos.to_chunkpos().0;
-        let max_chunk_excl = min_chunk + MacroChunkPos::SIZE_IN_CHUNKS.0;
-        for _ in 0..PACK_CENTER_SAMPLE_ATTEMPTS {
-            let candidate = ChunkPos(IVec2::new(
-                rng.random_range(min_chunk.x..max_chunk_excl.x),
-                rng.random_range(min_chunk.y..max_chunk_excl.y),
-            ));
-            if existing_centers.iter().all(|center| {
-                (center.0 - candidate.0)
-                    .abs()
-                    .max_element()
-                    >= PACK_CENTER_MIN_SEPARATION_CHUNKS
-            }) {
-                return Some(candidate);
-            }
-        }
-        None
-    }
 
-    pub fn sample_pack_member_chunks(
-        macro_chunk_pos: MacroChunkPos,
+    pub fn select_chunk_positions_around_anchor_cpos(
+        macro_chunk_pos: MacrochunkPos,
         center_chunk: ChunkPos,
         pack_size: usize,
         rng: &mut impl rand::Rng,
@@ -67,7 +24,7 @@ impl Pack {
         out.push(center_chunk);
 
         let min_chunk = macro_chunk_pos.to_chunkpos().0;
-        let max_chunk = min_chunk + MacroChunkPos::SIZE_IN_CHUNKS.0 - IVec2::ONE;
+        let max_chunk = min_chunk + MacrochunkPos::SIZE_IN_CHUNKS.0 - IVec2::ONE;
         while out.len() < pack_size {
             let offset = IVec2::new(
                 rng.random_range(-PACK_CLUSTER_RADIUS_CHUNKS..=PACK_CLUSTER_RADIUS_CHUNKS),
@@ -85,19 +42,19 @@ impl Pack {
 
 #[derive(Component, Debug, Clone, MapEntities, Default)]
 #[component(map_entities)]
-pub struct PackBeingSampler(#[entities] pub EntityWeightedSampler);
+pub struct BeingTemplateSampler(#[entities] pub EntityWeightedSampler);
 
 #[derive(Component, Debug, Clone, Default)]
 pub struct PackMemberRankSampler(pub EntityHashMap<CappedNormalDist>);
 
 #[derive(Component, Debug, Clone, Default)]
-pub struct CenterRankMultipliers(pub EntityHashMap<f32>);
+pub struct CenterWeightRankBasedMultiplier(pub EntityHashMap<f32>);
 
 #[derive(Component, Debug, Copy, Clone)]
 pub struct GlobalCenterRankWeightMultiplier(pub f32);
 
 #[derive(Component, Debug, Clone, Default)]
-pub struct PackOnAttackBehavior(pub StrId);
+pub struct PackOnPreyedOnBehavior(pub StrId);
 
 #[derive(Component, Debug, Copy, Clone)]
 pub struct PackAttackAlertEffectivenessFalloff(pub f32);
@@ -106,8 +63,8 @@ pub struct PackAttackAlertEffectivenessFalloff(pub f32);
 pub struct PackCounterRegroupTightness(pub f32);
 
 #[derive(Component, Debug, Clone, Default)]
-pub struct PackMinDistsToPacksOrRaces(pub EntityHashMap<u8>);
-impl PackMinDistsToPacksOrRaces {
+pub struct PackMinSepToPacksOrRaces(pub EntityHashMap<u8>);
+impl PackMinSepToPacksOrRaces {
     pub fn insert(&mut self, entity: Entity, min_inbetween_chunks: u8) {
         self.0.insert(entity, min_inbetween_chunks);
     }
@@ -126,15 +83,15 @@ impl PackMinDistsToPacksOrRaces {
 }
 
 #[derive(Component, Debug, Clone)]
-pub struct PackInitialSize(pub CappedNormalDist);
-impl PackInitialSize {
+pub struct PackInitialSizeSampler(pub CappedNormalDist);
+impl PackInitialSizeSampler {
     pub fn sample_count(&self, rng: &mut impl rand::Rng) -> usize {
         self.0.sample(rng).round().max(1.0) as usize
     }
 }
 
 #[derive(Component, Debug, Clone, Default, Deserialize, Serialize)]
-pub struct PackCenterPerDim(pub HashMap<DimensionRef, GlobalTilePos>);
+pub struct SquadAvgCenterPerDim(pub HashMap<DimensionRef, GlobalTilePos>);
 
 /*
 */

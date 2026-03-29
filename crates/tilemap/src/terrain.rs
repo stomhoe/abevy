@@ -38,7 +38,8 @@ pub struct TerrainSystems;
 pub fn plugin(app: &mut App) {
     app
         .add_systems(Update, ((
-            request_macrochunk_biome_sampling,
+            request_macrochunk_biome_sampling
+                .run_if(on_message::<NewMacrochunkLoaded>),
             launch_terrain_operations,
             process_pending_ops_and_collect_tiles.before(process_tiles_pre),//DON'T TOUCH THIS LINE
             ).in_set(TerrainGenSystems),
@@ -80,7 +81,6 @@ pub fn plugin(app: &mut App) {
 
         .add_message::<PendingOp>()
         .add_message::<ChunkTerrainBuilt>()
-        .add_message::<RequestMacroChunkBiomeSampling>()
 
 
         ;

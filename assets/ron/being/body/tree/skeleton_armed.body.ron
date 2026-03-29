@@ -2,7 +2,6 @@
     id: "skeleton_armed",
     name: "Skeleton Armed Body",
     tags: ["humanoid"],
-    mass_kg: 20.0,
     distributed_totals: {
         "mass_kg": 20.0,
         "hp_capacity": 491.0,

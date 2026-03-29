@@ -9,6 +9,7 @@ use std::ops::{Deref, DerefMut};
 
 use ::being_shared::*;
 use game_common::game_common_components::*;
+use ::tilemap_shared::{BlacklistedSpawnTileTagsRef, WhitelistedSpawnTileTagsRef};
 use tilemap::chunking::*;
 use tilemap::tile::*;
 
@@ -104,6 +105,23 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         whitelisted_tags: &WhitelistedTags,
         blacklisted_tags: &BlacklistedTags,
     ) -> Option<GlobalTilePos> {
+        self.find_nearest_unblocked_gpos_in_chunk_refs(
+            dim_ref,
+            anchor,
+            being,
+            &WhitelistedSpawnTileTagsRef(whitelisted_tags),
+            &BlacklistedSpawnTileTagsRef(blacklisted_tags),
+        )
+    }
+
+    pub fn find_nearest_unblocked_gpos_in_chunk_refs(
+        &mut self,
+        dim_ref: DimensionRef,
+        anchor: GlobalTilePos,
+        being: Entity,
+        whitelisted_tags: &WhitelistedSpawnTileTagsRef<'_>,
+        blacklisted_tags: &BlacklistedSpawnTileTagsRef<'_>,
+    ) -> Option<GlobalTilePos> {
         let chunk_pos = anchor.to_chunkpos();
         let min_tile = chunk_pos.to_tilepos().0;
         let clamped_anchor = chunk_pos.clamp_gpos_to_chunk(anchor);
@@ -127,12 +145,12 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                         continue;
                     }
                     let candidate = GlobalTilePos(min_tile + IVec2::new(local_x, local_y));
-                    if !self.allowed_at(
+                    if !self.allowed_at_refs(
                         dim_ref,
                         candidate,
                         being,
-                        &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
-                        &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
+                        whitelisted_tags,
+                        blacklisted_tags,
                     ) {
                         continue;
                     }
@@ -151,6 +169,23 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         entity: Entity,
         whitelisted_tags: &WhitelistedSpawnTileTags,
         blacklisted_tags: &BlacklistedSpawnTileTags,
+    ) -> bool {
+        self.allowed_at_refs(
+            dim_ref,
+            gpos,
+            entity,
+            &whitelisted_tags.as_ref(),
+            &blacklisted_tags.as_ref(),
+        )
+    }
+
+    pub fn allowed_at_refs(
+        &mut self,
+        dim_ref: DimensionRef,
+        gpos: GlobalTilePos,
+        entity: Entity,
+        whitelisted_tags: &WhitelistedSpawnTileTagsRef<'_>,
+        blacklisted_tags: &BlacklistedSpawnTileTagsRef<'_>,
     ) -> bool {
         let moving_anchor = gpos.to_pixelpos();
         self.occupied_gposes.clear();
@@ -356,7 +391,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         false
     }
 
-    fn gather_tile_templs_at<'a>(
+    fn gather_tile_templs_via_idxs<'a>(
         &self,
         dim_ref: DimensionRef,
         gpos: GlobalTilePos,
@@ -424,8 +459,11 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             }
             self.tile_gathering_params.to_drain.clear();
         } else {
-            let mut fallback_templs = Vec::new();
-            let templ_ents = self.gather_tile_templs_at(dim_ref, occupied_gpos, &mut fallback_templs);
+            let this = std::ptr::addr_of!(*self);
+            let to_drain = std::ptr::addr_of_mut!(self.tile_gathering_params.to_drain);
+            let templ_ents = unsafe {
+                (*this).gather_tile_templs_via_idxs(dim_ref, occupied_gpos, &mut *to_drain)
+            };
             let templ_ents_len = templ_ents.len();
             let templ_ents_ptr = templ_ents.as_ptr();
             self.collision_tile_samples.reserve(templ_ents_len);
@@ -449,12 +487,29 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         whitelisted_tags: &WhitelistedTags,
         blacklisted_tags: &BlacklistedTags,
     ) -> Option<GlobalTilePos> {
-        if self.allowed_at(
+        self.find_closest_allowed_gpos_refs(
             dim_ref,
             target_gpos,
             being,
-            &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
-            &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
+            &WhitelistedSpawnTileTagsRef(whitelisted_tags),
+            &BlacklistedSpawnTileTagsRef(blacklisted_tags),
+        )
+    }
+
+    pub fn find_closest_allowed_gpos_refs(
+        &mut self,
+        dim_ref: DimensionRef,
+        target_gpos: GlobalTilePos,
+        being: Entity,
+        whitelisted_tags: &WhitelistedSpawnTileTagsRef<'_>,
+        blacklisted_tags: &BlacklistedSpawnTileTagsRef<'_>,
+    ) -> Option<GlobalTilePos> {
+        if self.allowed_at_refs(
+            dim_ref,
+            target_gpos,
+            being,
+            whitelisted_tags,
+            blacklisted_tags,
         ) {
             return Some(target_gpos);
         }
@@ -465,48 +520,48 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             let max = radius;
             for x in min..=max {
                 let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(x, min));
-                if self.allowed_at(
+                if self.allowed_at_refs(
                     dim_ref,
                     candidate,
                     being,
-                    &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
-                    &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
+                    whitelisted_tags,
+                    blacklisted_tags,
                 ) {
                     return Some(candidate);
                 }
             }
             for y in (min + 1)..=max {
                 let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(max, y));
-                if self.allowed_at(
+                if self.allowed_at_refs(
                     dim_ref,
                     candidate,
                     being,
-                    &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
-                    &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
+                    whitelisted_tags,
+                    blacklisted_tags,
                 ) {
                     return Some(candidate);
                 }
             }
             for x in (min..max).rev() {
                 let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(x, max));
-                if self.allowed_at(
+                if self.allowed_at_refs(
                     dim_ref,
                     candidate,
                     being,
-                    &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
-                    &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
+                    whitelisted_tags,
+                    blacklisted_tags,
                 ) {
                     return Some(candidate);
                 }
             }
             for y in ((min + 1)..max).rev() {
                 let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(min, y));
-                if self.allowed_at(
+                if self.allowed_at_refs(
                     dim_ref,
                     candidate,
                     being,
-                    &WhitelistedSpawnTileTags(whitelisted_tags.clone()),
-                    &BlacklistedSpawnTileTags(blacklisted_tags.clone()),
+                    whitelisted_tags,
+                    blacklisted_tags,
                 ) {
                     return Some(candidate);
                 }

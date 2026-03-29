@@ -1,6 +1,7 @@
 
 use std::{mem::take};
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy::platform::collections::HashMap;
 use common::{common_components::{HashId, Prefix}, common_tag_components::TagSet, log_targets::SGC_CHUNK_CLAIM};
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_timers::*;
@@ -415,21 +416,29 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
     cmd.try_insert_batch(regions_which_started_building);
 }
 
-#[allow(unused_parens)]
+#[allow(unused_parens, )]
 pub fn add_planned_tiles_to_region(mut cmd: Commands,
     mut reader: MessageMutator<StructureBuildCompliance>,
     loaded_regions: Res<LoadedRegions>,
-    mut region_query: Query<(&mut RegionPlannedTiles, &RegionState), ()>,
+    mut region_query: Query<(&mut RegionPlannedTiles, &RegionState, ), ()>,
+    macro_chunk_key_query: Query<(Entity, &DimensionRef, &MacrochunkPos, ), (With<MacroChunk>, )>,
+    mut macro_chunk_biome_distributions: Query<(&mut BiomeDistribution, ), ()>,
 ) {
+    let mut macrochunks_by_key = HashMap::new();
+    for (macro_chunk_ent, &dimension_ref, &macro_chunk_pos, ) in macro_chunk_key_query.iter() {
+        macrochunks_by_key.insert((dimension_ref, macro_chunk_pos), macro_chunk_ent);
+    }
     for build in reader.read() {
         let order_i = build.i;
         let region_pos = build
             .chunks
             .first()
             .map(|(chunk_pos, _)| chunk_pos.to_region_pos())
-            .or_else(|| build.terrgen_disabled_gpos_for_chunks.first_chunk_pos().map(|chunk_pos| chunk_pos.to_region_pos()));
+            .or_else(|| build.terrgen_disabled_gpos_for_chunks.first_chunk_pos().map(|chunk_pos| chunk_pos.to_region_pos()))
+            .or_else(|| build.forced_chunk_biomes.first().map(|forced| forced.chunk_pos.to_region_pos()));
         let chunks = take(&mut build.chunks);
         let terrgen_disabled_gpos_for_chunks = take(&mut build.terrgen_disabled_gpos_for_chunks);
+        let forced_chunk_biomes = take(&mut build.forced_chunk_biomes);
         let Some(region_pos) = region_pos else {
             continue;
         };
@@ -455,6 +464,16 @@ pub fn add_planned_tiles_to_region(mut cmd: Commands,
             error!(target: "structure_spawn", "Failed to add planned tiles for structure build compliance in region entity {:?} for build order {}, skipping", region_ent, order_i);
             continue;
         };
+        for forced_chunk_biome in forced_chunk_biomes {
+            let macro_chunk_pos = forced_chunk_biome.chunk_pos.to_macrochunk_pos();
+            let Some(&macro_chunk_ent) = macrochunks_by_key.get(&(build.dimension_ref, macro_chunk_pos)) else {
+                continue;
+            };
+            let Ok((mut biome_distribution, )) = macro_chunk_biome_distributions.get_mut(macro_chunk_ent) else {
+                continue;
+            };
+            biome_distribution.add_tag_weights_in_chunk(forced_chunk_biome.chunk_pos, forced_chunk_biome.biome_tags);
+        }
 
         if finished {
             debug!(target: "structure_spawn", "Region entity {:?} has finished planning all structure tiles, marking as RegionPlanningFinished", region_ent);

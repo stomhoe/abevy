@@ -2,7 +2,6 @@
     id: "yeti",
     name: "Yeti Body",
     tags: ["humanoid"],
-    mass_kg: 260.0,
     distributed_totals: {
         "mass_kg": 260.0,
         "hp_capacity": 650.0,

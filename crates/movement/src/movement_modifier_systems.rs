@@ -195,9 +195,8 @@ pub fn process_speed_modifiers(
         }
         speed_sum += speed_substractors_sum + slowdown_mitigators_sum;
         let total_weight_newtons = body_weight_sum
-            .map(|sum| sum.0)
-            .unwrap_or_default()
-            .max(1.0);
+            .map(|sum| sum.0.max(1.0))
+            .unwrap_or(1.0);
         let mut final_speed = (speed_sum * speed_scale)
             .max(speed_min)
             .min(speed_max)

@@ -2,7 +2,6 @@
     id: "ogre",
     name: "Ogre Body",
     tags: ["humanoid"],
-    mass_kg: 220.0,
     distributed_totals: {
         "mass_kg": 220.0,
         "hp_capacity": 491.0,

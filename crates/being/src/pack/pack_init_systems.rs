@@ -30,10 +30,10 @@ pub fn init_packs(
     };
     let pack_seris = load_pack_seri_defs();
     let mut pack_by_id: HashMap<StrId, Entity> = HashMap::default();
-    let mut being_samplers_by_pack: EntityHashMap<PackBeingSampler> = EntityHashMap::default();
+    let mut being_samplers_by_pack: EntityHashMap<BeingTemplateSampler> = EntityHashMap::default();
     let mut rank_sampler_by_pack: EntityHashMap<PackMemberRankSampler> = EntityHashMap::default();
-    let mut center_rank_multipliers_by_pack: EntityHashMap<CenterRankMultipliers> = EntityHashMap::default();
-    let mut min_dists_by_pack: EntityHashMap<PackMinDistsToPacksOrRaces> = EntityHashMap::default();
+    let mut center_rank_multipliers_by_pack: EntityHashMap<CenterWeightRankBasedMultiplier> = EntityHashMap::default();
+    let mut min_dists_by_pack: EntityHashMap<PackMinSepToPacksOrRaces> = EntityHashMap::default();
 
     for pack_seri in &pack_seris {
         let str_id = StrId::trunc(&pack_seri.id);
@@ -115,7 +115,7 @@ pub fn init_packs(
 
         if !pack_seri.behavior_on_member_attack.trim().is_empty() {
             cmd.entity(pack_entity)
-                .insert(PackOnAttackBehavior(StrId::trunc(&pack_seri.behavior_on_member_attack)));
+                .insert(PackOnPreyedOnBehavior(StrId::trunc(&pack_seri.behavior_on_member_attack)));
         }
         cmd.entity(pack_entity).insert((
             PackAttackAlertEffectivenessFalloff(pack_seri.attack_alert_effectiveness_falloff.max(0.0)),
@@ -124,7 +124,7 @@ pub fn init_packs(
 
         if !pack_seri.spawn_being_count_normal_dist.is_sentinel() {
             cmd.entity(pack_entity)
-                .insert(PackInitialSize(CappedNormalDist::from_seri(
+                .insert(PackInitialSizeSampler(CappedNormalDist::from_seri(
                     pack_seri.spawn_being_count_normal_dist.clone(),
                 )));
         }

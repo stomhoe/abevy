@@ -2,7 +2,6 @@
     id: "dragon",
     name: "Dragon Body",
     tags: ["humanoid"],
-    mass_kg: 15000.0,
     distributed_totals: {
         "mass_kg": 15000.0,
         "hp_capacity": 491.0,

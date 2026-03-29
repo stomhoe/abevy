@@ -21,8 +21,9 @@ pub struct BodypartChildOfBodypart {#[relationship] #[entities] pub parent_bodyp
 #[relationship_target(relationship = BodypartChildOfBodypart)]
 pub struct BodypartChildrenBodyparts(Vec<Entity>);
 
-
-pub type BodypartSlots = SlottedItemHolder;
+//dont use
+#[allow(unused, )]
+type BodypartSlots = SlottedItemHolder;
 
 #[derive(Component, Debug, Default, Copy, Clone, )]
 pub struct BodypartCoverageWeight(pub u16);

@@ -6,7 +6,7 @@ use bevy::{ecs::entity::EntityHashMap, prelude::*};
 use common::{common_components::{ StrId}, common_tag_components::TagSet};
 
 use crate::{
-    chunking::macro_chunk_components::BiomeTagWeightAtMacroChunk,
+    chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk,
     terrain::{
         biome::biome_resources::BiomeEntityMap,
         operation_list::operation_list_components::{Bifurcation, CompiledBranch, CompiledBranchNode, OperationList},
@@ -161,7 +161,7 @@ pub fn init_oplists_from_assets(
                         error!(target: "oplist_init", "Biome '{}' not found in BiomeEntityMap", bt.tag.trim());
                         return None;
                     };
-                    Some(BiomeTagWeightAtMacroChunk {
+                    Some(BiomeTagWeightAtMacrochunk {
                         biome: biome_ent,
                         weight: bt.weight,
                         pack_count_multiplier_mean: bt.pack_count_multiplier_mean.max(0.0),

@@ -3,7 +3,7 @@ use common::{common_components::{HashId, HashIdMap, StrId}, common_tag_component
 use debug_unwraps::DebugUnwrapExt;
 
 use crate::{
-    chunking::macro_chunk_components::BiomeTagWeightAtMacroChunk,
+    chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk,
     terrain::{
         operation_list::operation_list_components::*,
         terrprobe::{opfilter::opfilter_components::OpFilter, terrprobe_messages::*},
@@ -517,7 +517,7 @@ fn collect_branch_outputs(
     gpos: GlobalTilePos,
     oplist_size: OplistSize,
     dimension_hash: HashId,
-    biome_tags: &[BiomeTagWeightAtMacroChunk],
+    biome_tags: &[BiomeTagWeightAtMacrochunk],
     tiles: &[Entity],
 ) {
     if !source_ev.filtered_op_is_placeholder() {

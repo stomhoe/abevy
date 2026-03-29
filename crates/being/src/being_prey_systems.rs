@@ -4,7 +4,7 @@ use crate::pack::pack_components::{
     Pack,
     PackAttackAlertEffectivenessFalloff,
     PackCounterRegroupTightness,
-    PackOnAttackBehavior,
+    PackOnPreyedOnBehavior,
 };
 use ::being_shared::*;
 use bevy::prelude::*;
@@ -92,7 +92,7 @@ pub fn update_prey_nav_states_from_predator_detection(
     >,
     pack_query: Query<
         (
-            Option<&PackOnAttackBehavior>,
+            Option<&PackOnPreyedOnBehavior>,
             Option<&PackAttackAlertEffectivenessFalloff>,
             Option<&PackCounterRegroupTightness>,
             Option<&SquadMembers>,

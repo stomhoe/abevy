@@ -2,7 +2,6 @@
     id: "tiger",
     name: "Tiger Body",
     tags: ["quadruped"],
-    mass_kg: 90.0,
     distributed_totals: {
         "mass_kg": 90.0,
         "hp_capacity": 516.0,

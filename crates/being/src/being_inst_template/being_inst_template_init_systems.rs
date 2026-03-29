@@ -8,7 +8,7 @@ use ::sprite_shared::*;
 use tilemap_shared::tilemap_shared_samplers::*;
 
 
-use crate::pack::pack_components::PackInitialSize;
+use crate::pack::pack_components::PackInitialSizeSampler;
 use crate::being_interaction_zone_helper::build_being_interaction_zones_with_fallback;
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionStrIdRef};
@@ -88,7 +88,7 @@ pub fn init_being_templates(
             cmd.entity(bit_entity).insert(SpriteVertNormalDist::new(vert_variation));
         }
         if let Some(spawn_pack_size_normal_dist) = template_seri.spawn_pack_size_normal_dist.filter(|v| !v.is_sentinel()) {
-            cmd.entity(bit_entity).insert(PackInitialSize(CappedNormalDist::from_seri(
+            cmd.entity(bit_entity).insert(PackInitialSizeSampler(CappedNormalDist::from_seri(
                 spawn_pack_size_normal_dist,
             )));
         }
@@ -101,8 +101,13 @@ pub fn init_being_templates(
         if !template_seri.whitelisted_spawn_tile_tags.is_empty() {
             cmd.entity(bit_entity).insert(WhitelistedSpawnTileTags(tilemap_shared::being_components::WhitelistedTags(TagSet::new(&template_seri.whitelisted_spawn_tile_tags))));
         }
-        if !template_seri.blacklisted_spawn_tile_tags.is_empty() {
-            cmd.entity(bit_entity).insert(BlacklistedSpawnTileTags(tilemap_shared::being_components::BlacklistedTags(TagSet::new(&template_seri.blacklisted_spawn_tile_tags))));
+        if !template_seri.blacklisted_spawn_tile_tags.is_empty() || !template_seri.blacklisted_tiles_for_spawning.is_empty() {
+            cmd.entity(bit_entity).insert(BlacklistedSpawnTileTags(tilemap_shared::being_components::BlacklistedTags(TagSet::new(
+                template_seri
+                    .blacklisted_spawn_tile_tags
+                    .iter()
+                    .chain(template_seri.blacklisted_tiles_for_spawning.iter()),
+            ))));
         }
         if let Some(predator_cfg) = PredatorCfg::from_seri(&template_seri.predator) {
             cmd.entity(bit_entity).insert(predator_cfg);

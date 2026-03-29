@@ -2,7 +2,6 @@
     id: "golem_infernal",
     name: "Golem Infernal Body",
     tags: ["humanoid"],
-    mass_kg: 20000.0,
     distributed_totals: {
         "mass_kg": 20000.0,
         "hp_capacity": 491.0,

@@ -2,7 +2,6 @@
     id: "goblin_axe",
     name: "Goblin Axe Body",
     tags: ["humanoid"],
-    mass_kg: 35.0,
     distributed_totals: {
         "mass_kg": 35.0,
         "hp_capacity": 491.0,

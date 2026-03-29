@@ -2,7 +2,6 @@
     id: "cobra_red",
     name: "Cobra Red Body",
     tags: ["serpent"],
-    mass_kg: 12.0,
     distributed_totals: {
         "mass_kg": 12.0,
         "hp_capacity": 155.0,

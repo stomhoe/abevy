@@ -2,7 +2,6 @@
     id: "boar",
     name: "Boar Body",
     tags: ["quadruped"],
-    mass_kg: 140.0,
     distributed_totals: {
         "mass_kg": 140.0,
         "hp_capacity": 508.0,

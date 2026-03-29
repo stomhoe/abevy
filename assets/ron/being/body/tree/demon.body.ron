@@ -2,7 +2,6 @@
     id: "demon",
     name: "Demon Body",
     tags: ["humanoid"],
-    mass_kg: 120.0,
     distributed_totals: {
         "mass_kg": 120.0,
         "hp_capacity": 491.0,

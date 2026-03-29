@@ -1,8 +1,7 @@
 (
-    id: "ghost_bo",
-    name: "Ghost Body ",
+    id: "ghost",
+    name: "Ghost Body",
     tags: ["humanoid"],
-    mass_kg: 0.0,
     distributed_totals: {
         "mass_kg": 0.0,
         "hp_capacity": 491.0,

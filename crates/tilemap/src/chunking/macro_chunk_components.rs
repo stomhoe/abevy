@@ -7,8 +7,8 @@ use serde::{Serialize, Deserialize};
 pub use ::tilemap_shared::{
 	BiomeDistribution,
 	BiomePackCountAvgedNormDists,
-	BiomeTagWeightAtMacroChunk,
-	MacroChunkBiomePendingSampleState,
+	BiomeTagWeightAtMacrochunk,
+	MacrochunkPendingBiomeSamples,
 };
 
 #[derive(Component, Debug, Clone, Serialize, Deserialize)]
@@ -28,8 +28,8 @@ impl Default for MacroChunkTileIndices {
 impl MacroChunkTileIndices {
 	pub type Cell = SmallVec<[TileIndex; Self::INLINE_CAP]>;
 	const INLINE_CAP: usize = 4;//min 4(pointer size)
-	const WIDTH: usize = (MacroChunkPos::SIZE_IN_CHUNKS.0.x * ChunkPos::CHUNK_SIZE.x as i32) as usize;
-	const HEIGHT: usize = (MacroChunkPos::SIZE_IN_CHUNKS.0.y * ChunkPos::CHUNK_SIZE.y as i32) as usize;
+	const WIDTH: usize = (MacrochunkPos::SIZE_IN_CHUNKS.0.x * ChunkPos::CHUNK_SIZE.x as i32) as usize;
+	const HEIGHT: usize = (MacrochunkPos::SIZE_IN_CHUNKS.0.y * ChunkPos::CHUNK_SIZE.y as i32) as usize;
 	const CELL_COUNT: usize = Self::WIDTH * Self::HEIGHT;
 
 	fn flat_index_from_gpos(&self, anchor_gpos: GlobalTilePos, gpos: GlobalTilePos) -> Option<usize> {

@@ -53,8 +53,8 @@ impl BiomePackCountAvgedNormDists {
 		if sampled_multiplier <= 0.0 {
 			return 0;
 		}
-		let guaranteed_packs = sampled_multiplier.floor() as usize;
-		let extra_pack_probability = sampled_multiplier.fract();
+		let guaranteed_packs: usize = sampled_multiplier.floor() as usize;
+		let extra_pack_probability: f32 = sampled_multiplier.fract();
 		guaranteed_packs + usize::from(rng.random::<f32>() < extra_pack_probability)
 	}
 }
@@ -64,21 +64,21 @@ impl BiomePackCountAvgedNormDists {
 pub struct BiomeDistribution {
 	pub produced_biome_sampler: EntityWeightedSampler,
 	pub pack_count_multiplier_avged_norm_dists_per_biome: EntityHashMap<BiomePackCountAvgedNormDists>,
-	pub predominant_chunk_for_biome: EntityHashMap<ChunkPos>,
-	pub accumulated_chunk_weights_for_biome: EntityHashMap<HashMap<ChunkPos, f32>>,
+	pub accumulated_chunk_weights_per_biome: EntityHashMap<HashMap<ChunkPos, f32>>,
+}
+impl BiomeDistribution {
+    pub fn sample_biome_ent(&self, rng: &mut impl rand::Rng) -> Option<Entity> {
+        self.produced_biome_sampler.sample_with_rng(rng)
+    }
 }
 
 #[derive(Component, Debug, Clone, Copy, Default)]
-pub enum MacroChunkBiomePendingSampleState {
-	#[default]
-	Unsampled,
-	Sampling { remaining_samples: u32 },
-}
+pub struct MacrochunkPendingBiomeSamples(pub u32);
 
 impl BiomeDistribution {
 	pub fn add_tag_weights_in_chunk<I>(&mut self, chunk_pos: ChunkPos, tag_weights: I)
 	where
-		I: IntoIterator<Item = BiomeTagWeightAtMacroChunk>,
+		I: IntoIterator<Item = BiomeTagWeightAtMacrochunk>,
 	{
 		for tag_weight in tag_weights {
 			let tag = tag_weight.biome;
@@ -95,35 +95,20 @@ impl BiomeDistribution {
 					tag_weight.pack_count_multiplier_std_dev,
 				);
 			self.produced_biome_sampler.add_or_accumulate_weight(tag, weight);
-			let accumulated_weight = {
-				let chunk_weights = self
-					.accumulated_chunk_weights_for_biome
-					.entry(tag)
-					.or_default();
-				let entry = chunk_weights.entry(chunk_pos).or_default();
-				*entry += weight;
-				*entry
-			};
-			let should_replace = self
-				.predominant_chunk_for_biome
-				.get(&tag)
-				.and_then(|best_chunk| {
-					self.accumulated_chunk_weights_for_biome
-						.get(&tag)
-						.and_then(|chunk_weights| chunk_weights.get(best_chunk))
-				})
-				.is_none_or(|best_weight| accumulated_weight > *best_weight);
-			if should_replace {
-				self.predominant_chunk_for_biome.insert(tag, chunk_pos);
-			}
+			let chunk_weights = self
+				.accumulated_chunk_weights_per_biome
+				.entry(tag)
+				.or_default();
+			let entry = chunk_weights.entry(chunk_pos).or_default();
+			*entry += weight;
 		}
 	}
 
-	pub fn sorted_chunk_candidates_for_biome(&self, biome: Entity) -> Vec<ChunkPos> {
-		let Some(chunk_weights) = self.accumulated_chunk_weights_for_biome.get(&biome) else {
+	pub fn sorted_chunk_candidates_for_biome(&self, biome_ent: Entity) -> Vec<ChunkPos> {
+		let Some(cpos_weight_list) = self.accumulated_chunk_weights_per_biome.get(&biome_ent) else {
 			return Vec::new();
 		};
-		let mut sorted = chunk_weights
+		let mut sorted = cpos_weight_list
 			.iter()
 			.map(|(chunk_pos, weight)| (*chunk_pos, *weight))
 			.collect::<Vec<_>>();
@@ -142,7 +127,7 @@ impl BiomeDistribution {
 
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-pub struct BiomeTagWeightAtMacroChunk {
+pub struct BiomeTagWeightAtMacrochunk {
 	pub biome: Entity,
 	pub weight: f32,
 	pub pack_count_multiplier_mean: f32,

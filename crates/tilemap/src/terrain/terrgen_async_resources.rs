@@ -3,7 +3,7 @@ use bitvec::prelude::*;
 use common::common_components::HashId;
 
 use crate::{
-    chunking::macro_chunk_components::BiomeTagWeightAtMacroChunk,
+    chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk,
     terrain::{
         terrprobe::terrprobe_messages::{SampledValuesCollected, SuitablePosFound, TerrProbeJob},
         terrgen_messages::PendingOp,
@@ -66,7 +66,7 @@ pub struct TerrGenTileRequest {
 pub struct TerrGenBiomeTagSample {
     pub macro_chunk_ent: Entity,
     pub sample_chunk_pos: ChunkPos,
-    pub biome_tags: Vec<BiomeTagWeightAtMacroChunk>,
+    pub biome_tags: Vec<BiomeTagWeightAtMacrochunk>,
 }
 
 #[derive(Debug, Default)]

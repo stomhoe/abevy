@@ -29,11 +29,6 @@ pub struct ChunkTerrainBuilt {
 }
 
 #[derive(Message, Debug, Clone, Copy)]
-pub struct RequestMacroChunkBiomeSampling {
-    pub macro_chunk_ent: Entity,
-}
-
-#[derive(Message, Debug, Clone, Copy)]
 pub struct MacroChunkBiomeSampled {
     pub macro_chunk_ent: Entity,
 }

@@ -2,7 +2,6 @@
     id: "astaroth",
     name: "Astaroth Body",
     tags: ["humanoid"],
-    mass_kg: 78.0,
     distributed_totals: {
         "mass_kg": 78.0,
         "hp_capacity": 491.0,

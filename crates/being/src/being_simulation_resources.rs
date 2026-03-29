@@ -1,10 +1,10 @@
 use bevy::prelude::*;
-use tilemap_shared::{DimensionRef, GlobalTilePos, MacroChunkPos};
+use tilemap_shared::{DimensionRef, GlobalTilePos, MacrochunkPos};
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NavIslandRef {
     pub dim_ref: DimensionRef,
-    pub macrochunk_pos: MacroChunkPos,
+    pub macrochunk_pos: MacrochunkPos,
     pub island_ix: u32,
 }
 

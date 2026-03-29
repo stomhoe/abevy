@@ -6,6 +6,7 @@
     },
     bit_ids: {},
     biome_affinity: {
+        "ocean": -2.5,
         "temp": 1.0,
         "elf": 0.6,
     },

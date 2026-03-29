@@ -2,7 +2,6 @@
     id: "kraken",
     name: "Kraken Body",
     tags: ["tentacled"],
-    mass_kg: 5000.0,
     distributed_totals: {
         "mass_kg": 5000.0,
         "hp_capacity": 128.0,

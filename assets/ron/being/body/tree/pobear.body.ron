@@ -2,7 +2,6 @@
     id: "pobear",
     name: "Polar Bear Body",
     tags: ["quadruped"],
-    mass_kg: 500.0,
     distributed_totals: {
         "mass_kg": 500.0,
         "hp_capacity": 516.0,

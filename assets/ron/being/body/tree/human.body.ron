@@ -2,7 +2,6 @@
     id: "human",
     name: "Human Body",
     tags: ["humanoid"],
-    mass_kg: 70.0,
     distributed_totals: {
         "mass_kg": 70.0,
         "hp_capacity": 390.0,

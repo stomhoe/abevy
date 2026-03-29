@@ -2,7 +2,6 @@
     id: "tiama",
     name: "Tiama Body",
     tags: ["humanoid"],
-    mass_kg: 72.0,
     distributed_totals: {
         "mass_kg": 72.0,
         "hp_capacity": 491.0,

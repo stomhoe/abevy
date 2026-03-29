@@ -2,7 +2,6 @@
     id: "evil_tree",
     name: "Evil Tree Body",
     tags: ["humanoid"],
-    mass_kg: 700.0,
     distributed_totals: {
         "mass_kg": 700.0,
         "hp_capacity": 491.0,

@@ -3,6 +3,7 @@ use crate::being_messages::NavOrder;
 use ::being_shared::*;
 use bevy_northstar::{CardinalGrid, grid::GridSettingsBuilder, nav::Nav};
 use ::tilemap_shared::{BlacklistedTags, ChunkPos, GlobalTilePos, LoadedChunks, LoadChunksAround};
+use ::tilemap_shared::{BlacklistedSpawnTileTagsRef, WhitelistedSpawnTileTagsRef, WhitelistedTags};
 use bevy::{
     ecs::entity::{EntityHashMap, EntityHashSet},
     ecs::system::SystemParam,
@@ -75,25 +76,30 @@ fn choose_flee_target_pos(
     flee_from_gpos: GlobalTilePos,
     avoid_tile_tags: &BlacklistedTags,
 ) -> Option<(GlobalTilePos, i32, u8)> {
+    let empty_whitelist = WhitelistedTags::default();
+    let empty_whitelist = WhitelistedSpawnTileTagsRef(&empty_whitelist);
+    let avoid_tile_tags = BlacklistedSpawnTileTagsRef(avoid_tile_tags);
+
     fn tile_is_valid_flee_step(
         blocking_tiles: &mut BlockingTileParamSet,
         being_ent: Entity,
         being_dim: ::tilemap_shared::DimensionRef,
         candidate: GlobalTilePos,
-        avoid_tile_tags: &BlacklistedTags,
+        avoid_tile_tags: &BlacklistedSpawnTileTagsRef<'_>,
+        empty_whitelist: &WhitelistedSpawnTileTagsRef<'_>,
     ) -> bool {
         if blocking_tiles.is_blocked_at(being_dim, candidate, being_ent, ) {
             return false;
         }
-        if avoid_tile_tags.is_empty() {
+        if avoid_tile_tags.0.is_empty() {
             return true;
         }
-        blocking_tiles.allowed_at(
+        blocking_tiles.allowed_at_refs(
             being_dim,
             candidate,
             being_ent,
-            &::tilemap_shared::WhitelistedSpawnTileTags::default(),
-            &::tilemap_shared::BlacklistedSpawnTileTags(avoid_tile_tags.clone()),
+            empty_whitelist,
+            avoid_tile_tags,
         )
     }
 
@@ -105,14 +111,16 @@ fn choose_flee_target_pos(
         flee_from_gpos: GlobalTilePos,
         candidate: GlobalTilePos,
         step_dir: IVec2,
-        avoid_tile_tags: &BlacklistedTags,
+        avoid_tile_tags: &BlacklistedSpawnTileTagsRef<'_>,
+        empty_whitelist: &WhitelistedSpawnTileTagsRef<'_>,
     ) -> Option<(i32, u8)> {
         if !tile_is_valid_flee_step(
             blocking_tiles,
             being_ent,
             being_dim,
-            candidate,
-            avoid_tile_tags,
+                candidate,
+                avoid_tile_tags,
+                empty_whitelist,
         ) {
             return None;
         }
@@ -133,6 +141,7 @@ fn choose_flee_target_pos(
                 being_dim,
                 neighbor,
                 avoid_tile_tags,
+                empty_whitelist,
             ) {
                 open_exits += 1;
             }
@@ -148,6 +157,7 @@ fn choose_flee_target_pos(
                     being_dim,
                     forward,
                     avoid_tile_tags,
+                    empty_whitelist,
                 ) {
                     forward_run += 1;
                 } else {
@@ -199,7 +209,8 @@ fn choose_flee_target_pos(
                 flee_from_gpos,
                 candidate,
                 step,
-                avoid_tile_tags,
+                &avoid_tile_tags,
+                &empty_whitelist,
             ) else {
                 continue;
             };
@@ -240,18 +251,46 @@ fn resolve_flee_wander_cfg(
     WanderConfig::default()
 }
 
+fn resolve_flee_avoid_tile_tags(
+    cfg: &WanderConfig,
+    has_avoid_blacklisted_spawn_tiles: bool,
+    bit_ref: Option<&BitRef>,
+    race_ref: Option<&RaceRef>,
+    blacklisted_spawn_tile_tags_query: &Query<&::tilemap_shared::BlacklistedSpawnTileTags>,
+) -> BlacklistedTags {
+    let mut avoid_tile_tags = BlacklistedTags::new(&cfg.avoid_tile_tags);
+    if !has_avoid_blacklisted_spawn_tiles {
+        return avoid_tile_tags;
+    }
+    if let Some(bit_ref) = bit_ref {
+        if let Ok(bit_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(bit_ref.0) {
+            if !bit_blacklisted_spawn_tile_tags.0.is_empty() {
+                avoid_tile_tags.extend_from(&bit_blacklisted_spawn_tile_tags.0);
+                return avoid_tile_tags;
+            }
+        }
+    }
+    if let Some(race_ref) = race_ref {
+        if let Ok(race_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(race_ref.0) {
+            avoid_tile_tags.extend_from(&race_blacklisted_spawn_tile_tags.0);
+        }
+    }
+    avoid_tile_tags
+}
+
 #[allow(unused_parens, )]
 pub fn update_goto_from_fleeing(
     mut cmd: Commands,
     mut writer: MessageWriter<NavOrder>,
     mut blocking_tiles: BlockingTileParamSet,
-    flee_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, ), (With<Being>, LocalAiControlled, )>,
+    flee_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, Has<AvoidBlacklistedSpawnTilesForWander>, ), (With<Being>, LocalAiControlled, )>,
     flee_from_query: Query<(&::tilemap_shared::DimensionRef, ), (With<Being>, )>,
     wander_cfg_query: Query<&WanderConfig>,
+    blacklisted_spawn_tile_tags_query: Query<&::tilemap_shared::BlacklistedSpawnTileTags>,
     mut messages: Local<Vec<NavOrder>>,
 ) {
     const FLEE_STOP_DISTANCE_TILES: i32 = 20;
-    for (being_ent, &being_dim, fleeing, member_of, ) in flee_query.iter() {
+    for (being_ent, &being_dim, fleeing, member_of, has_avoid_blacklisted_spawn_tiles, ) in flee_query.iter() {
         let Ok(&being_gpos) = blocking_tiles.gpos_query.get(being_ent) else {
             continue;
         };
@@ -299,7 +338,13 @@ pub fn update_goto_from_fleeing(
         let bit_ref = blocking_tiles.get_being_bit_ref(being_ent);
         let race_ref = blocking_tiles.get_being_race_ref(being_ent);
         let cfg = resolve_flee_wander_cfg(member_of, bit_ref, race_ref, &wander_cfg_query);
-        let avoid_tile_tags = BlacklistedTags::new(&cfg.avoid_tile_tags);
+        let avoid_tile_tags = resolve_flee_avoid_tile_tags(
+            &cfg,
+            has_avoid_blacklisted_spawn_tiles,
+            bit_ref,
+            race_ref,
+            &blacklisted_spawn_tile_tags_query,
+        );
         let Some((target_pos, score, open_exits)) = choose_flee_target_pos(
             &mut blocking_tiles,
             being_ent,

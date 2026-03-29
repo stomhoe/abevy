@@ -6,14 +6,14 @@ use common::common_tag_components::AddSameHashedTags;
 
 use {common::common_components::*, };
 use serde::{Deserialize, Serialize};
-use crate::chunking::macro_chunk_components::BiomeTagWeightAtMacroChunk;
+use crate::chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk;
 
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Bifurcation{
     pub oplist: Option<Entity>,
     pub tiles: Vec<Entity>,
-    pub biome_tags: Vec<BiomeTagWeightAtMacroChunk>,
+    pub biome_tags: Vec<BiomeTagWeightAtMacrochunk>,
 }
 #[derive(Component, Debug, Clone, Serialize, Deserialize)]
 #[require(Prefix::trunc("OpList"), Replicated, AssetScoped, HotReload, AddSameHashedTags)]
@@ -69,7 +69,7 @@ pub struct CompiledBranchNode {
 #[derive(Debug, Clone)]
 pub struct CompiledBranch {
     pub tiles: Vec<Entity>,
-    pub biome_tags: Vec<BiomeTagWeightAtMacroChunk>,
+    pub biome_tags: Vec<BiomeTagWeightAtMacrochunk>,
     pub child_size: Option<tilemap_shared::OplistSize>,
     pub child: Option<Box<CompiledBranchNode>>,
 }

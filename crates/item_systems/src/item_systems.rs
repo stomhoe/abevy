@@ -195,7 +195,7 @@ pub fn execute_item_operations(
                     continue;
                 };
                 let item_instance = clone_item_from_templ(&mut cmd, templ_ref, dim_ref);
-                cmd.entity(item_instance).insert((ItemHeldIn { holder: target }, ChildOf(target)));
+                cmd.entity(item_instance).try_insert((ItemHeldIn { holder: target }, ChildOf(target)));
             }
             ItemOperation::FromTempl(templ_ref, KnownItemDest::Ground(dim_ref, gpos)) => {
                 materialize_params.materialize_item_on_ground_from_templ(&mut cmd, None, templ_ref, dim_ref, gpos);
@@ -228,7 +228,7 @@ pub fn execute_item_operations(
                             );
                             continue;
                         };
-                        cmd.entity(item).insert((dim_ref, ItemHeldIn { holder: target }, ChildOf(target)));
+                        cmd.entity(item).try_insert((dim_ref, ItemHeldIn { holder: target }, ChildOf(target)));
                     }
                     Some(KnownItemDest::Ground(dim_ref, gpos)) => {
                         cmd.entity(item).insert((dim_ref, gpos));

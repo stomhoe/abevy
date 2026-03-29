@@ -32,6 +32,8 @@ pub struct WanderSeri {
     pub avoid_entity_radius: HashMap<String, f32>,
     #[serde(default)]
     pub avoid_entity_strength: HashMap<String, f32>,
+    #[serde(default)]
+    pub avoid_blacklisted_spawn_tiles: bool,
 }
 impl WanderSeri {
     pub fn is_disabled(&self) -> bool {
@@ -54,6 +56,7 @@ impl WanderSeri {
             && self.pack_orbit_retarget_secs_min == 0.0
             && self.pack_orbit_retarget_secs_max == 0.0
             && !self.wander_around_leader
+            && !self.avoid_blacklisted_spawn_tiles
     }
 }
 

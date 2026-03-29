@@ -2,7 +2,6 @@
     id: "bigfoot_1",
     name: "Bigfoot 1 Body",
     tags: ["humanoid"],
-    mass_kg: 180.0,
     distributed_totals: {
         "mass_kg": 180.0,
         "hp_capacity": 491.0,

@@ -2,7 +2,6 @@
     id: "orc_shaman",
     name: "Orc Shaman Body",
     tags: ["humanoid"],
-    mass_kg: 90.0,
     distributed_totals: {
         "mass_kg": 90.0,
         "hp_capacity": 491.0,

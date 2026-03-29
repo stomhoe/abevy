@@ -49,3 +49,5 @@ antes de freezear beings hacer registrar hasta donde pueden llegar con su pathfi
 hacer q el sprite o sampler se ponga por body
 
 hacer q el damage sea como los damagedefs de rimworld
+
+hacer q bichos spawneen en dungeons

@@ -2,7 +2,6 @@
     id: "penguin",
     name: "Penguin Body",
     tags: ["bird"],
-    mass_kg: 25.0,
     distributed_totals: {
         "mass_kg": 25.0,
         "hp_capacity": 180.0,

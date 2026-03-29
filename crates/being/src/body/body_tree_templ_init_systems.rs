@@ -85,7 +85,8 @@ pub fn init_templ_body_trees(
             totals.overwrite(BodypartStat::STAT_WALK_SPEED, 300.);
         }
         if !totals.contains_key(BodypartStat::STAT_MASS_KG) {
-            totals.overwrite(BodypartStat::STAT_MASS_KG, seri.mass_kg.max(0.0));
+            error!(target: BODY_BUILD, "BodyTree '{}' is missing distributed_totals.mass_kg; skipping", body_id);
+            continue;
         }
         let totals_to_distribute = StatBudgetsToDistributeAmongBodyPartsOfTemplBodyTree(totals.clone());
         cmd.entity(body_tree_ent).insert((
@@ -115,8 +116,6 @@ pub fn init_templ_body_trees(
     }
 }
 
-
-//dont alter this
 fn rec_build_templ_body_tree(
     cmd: &mut Commands,
     part_map: &Res<BodypartEntityMap>,
@@ -385,7 +384,7 @@ fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
         if spawned_modifiers == 0 {
             error!(target: BODY_BUILD, "BodyTree {} source part {:?} produced no modifiers; forced and weighted distributions may be empty", body_id, source_part);
         } else {
-            info!(target: BODY_BUILD, "BodyTree {} source part {:?} spawned {} modifiers", body_id, source_part, spawned_modifiers);
+            trace!(target: BODY_BUILD, "BodyTree {} source part {:?} spawned {} modifiers", body_id, source_part, spawned_modifiers);
         }
     }
 }

@@ -419,6 +419,7 @@ pub fn river_structure_building_system(
             chunks: Vec::new(),
             terrgen_disabled_gpos_for_chunks: TerrGenDisabledGposForChunks::default(),
             terrgen_disabled_for_chunks: Vec::new(),
+            forced_chunk_biomes: Vec::new(),
         };
 
         let Ok(&dimension_hash) = dimension_hash_q.get(order.dimension_ref.0) else {

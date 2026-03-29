@@ -2,7 +2,6 @@
     id: "cyclops",
     name: "Cyclops Body",
     tags: ["humanoid"],
-    mass_kg: 350.0,
     distributed_totals: {
         "mass_kg": 350.0,
         "hp_capacity": 491.0,

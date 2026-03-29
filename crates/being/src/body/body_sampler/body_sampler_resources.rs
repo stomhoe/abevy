@@ -7,5 +7,3 @@ common::define_entity_map_systems!(
     BodyWeightedSampler,
     BodyWeightedSamplerSeri, "seri.being.body.sampler", "bosampler.ron",
 );
-
-pub type BodyWeightedSamplerHandles = BodyWeightedSamplerSerisHandles;

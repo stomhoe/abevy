@@ -1,8 +1,12 @@
 pub mod wildlife;
-pub mod wildlife_resources;
+pub mod wildlife_cleanup_systems;
+pub mod wildlife_seeding_systems;
+pub mod wildlife_spawning_helpers;
 pub mod wildlife_spawning_systems;
 pub use wildlife::*;
-pub use wildlife_resources::*;
+pub use wildlife_cleanup_systems::*;
+pub use wildlife_seeding_systems::*;
+pub use wildlife_spawning_helpers::*;
 pub use wildlife_spawning_systems::*;
 
 
@@ -11,7 +15,9 @@ pub use wildlife_spawning_systems::*;
 pub mod prelude {
     pub use crate::{
         wildlife::*,
-        wildlife_resources::*,
+        wildlife_cleanup_systems::*,
+        wildlife_seeding_systems::*,
+        wildlife_spawning_helpers::*,
         wildlife_spawning_systems::*,
     };
 }

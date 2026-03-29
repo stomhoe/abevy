@@ -19,8 +19,6 @@ pub struct BodyTreeSeri {
     #[serde(default)]
     pub tags: Vec<String>,
     #[serde(default)]
-    pub mass_kg: f32,
-    #[serde(default)]
     pub distributed_totals: HashMap<String, f32>,
     #[serde(default)]
     pub sexes: HashMap<String, being_shared::RaceSexEntrySeri>,

@@ -15,7 +15,7 @@ pub struct UpdateActivatedChunkPos {
 }
 
 #[derive(Message, Debug, Clone, Copy)]
-pub struct MacroChunkLoaded {
+pub struct NewMacrochunkLoaded {
     pub macro_chunk_ent: Entity,
 }
 

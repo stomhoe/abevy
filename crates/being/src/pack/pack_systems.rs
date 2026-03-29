@@ -22,7 +22,7 @@ pub fn despawn_empty_squads(
 #[allow(unused_parens, )]
 pub fn update_pack_center_pos(
     mut cmd: Commands,
-    mut pack_query: Query<(Entity, &SquadMembers, &MemberRanks, Option<&GlobalCenterRankWeightMultiplier>, Option<&CenterRankMultipliers>, Option<&mut PackCenterPerDim>, ), (Without<Templ>, )>,
+    mut pack_query: Query<(Entity, &SquadMembers, &MemberRanks, Option<&GlobalCenterRankWeightMultiplier>, Option<&CenterWeightRankBasedMultiplier>, Option<&mut SquadAvgCenterPerDim>, ), (Without<Templ>, )>,
     member_pos_query: Query<(&DimensionRef, &GlobalTilePos, Option<&BitRef>, Option<&RaceRef>, ), (Without<Templ>, ),>,
     mut centers: Local<HashMap<DimensionRef, (Vec2, f32)>>,
 ) {
@@ -58,7 +58,7 @@ pub fn update_pack_center_pos(
             entry.1 += rank_weight;
         }
 
-        let mut pack_center_pos_new: PackCenterPerDim = Default::default();
+        let mut pack_center_pos_new: SquadAvgCenterPerDim = Default::default();
         for (&dim_ref, &(sum, weight_sum)) in centers.iter() {
             if weight_sum <= 0.0 {
                 continue;
@@ -68,7 +68,7 @@ pub fn update_pack_center_pos(
                 .insert(dim_ref, GlobalTilePos(((sum / weight_sum).round().as_ivec2())));
         }
         if pack_center_pos_new.0.is_empty() {
-            cmd.entity(pack_ent).try_remove::<PackCenterPerDim>();
+            cmd.entity(pack_ent).try_remove::<SquadAvgCenterPerDim>();
             continue;
         }
         if let Some(mut pack_center_pos) = pack_center_pos {

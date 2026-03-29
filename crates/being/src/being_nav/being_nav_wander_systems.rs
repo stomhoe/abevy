@@ -1,6 +1,6 @@
 
 
-use crate::pack::pack_components::PackCenterPerDim;
+use crate::pack::pack_components::SquadAvgCenterPerDim;
 use crate::being_messages::NavOrder;
 use ::being_shared::*;
 use bevy::{
@@ -205,6 +205,33 @@ fn resolve_wander_cfg(
     WanderConfig::default()
 }
 
+fn resolve_wander_avoid_tile_tags(
+    cfg: &WanderConfig,
+    has_avoid_blacklisted_spawn_tiles: bool,
+    bit_ref: Option<&BitRef>,
+    race_ref: Option<&RaceRef>,
+    blacklisted_spawn_tile_tags_query: &Query<&BlacklistedSpawnTileTags>,
+) -> BlacklistedTags {
+    let mut avoid_tile_tags = BlacklistedTags::new(&cfg.avoid_tile_tags);
+    if !has_avoid_blacklisted_spawn_tiles {
+        return avoid_tile_tags;
+    }
+    if let Some(bit_ref) = bit_ref {
+        if let Ok(bit_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(bit_ref.0) {
+            if !bit_blacklisted_spawn_tile_tags.0.is_empty() {
+                avoid_tile_tags.extend_from(&bit_blacklisted_spawn_tile_tags.0);
+                return avoid_tile_tags;
+            }
+        }
+    }
+    if let Some(race_ref) = race_ref {
+        if let Ok(race_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(race_ref.0) {
+            avoid_tile_tags.extend_from(&race_blacklisted_spawn_tile_tags.0);
+        }
+    }
+    avoid_tile_tags
+}
+
 fn strongest_entity_avoidance(
     cfg: &WanderConfig,
     avoid_tags: &HashSet<String>,
@@ -360,10 +387,12 @@ pub fn wander_behavior(
             Entity,
             &DimensionRef,
             Option<&SquadMemberOf>,
+            Has<AvoidBlacklistedSpawnTilesForWander>,
         ),
         (With<Being>, With<Wandering>, Without<Fleeing>, LocalAiControlled),
     >,
     wander_cfg_query: Query<&WanderConfig>,
+    blacklisted_spawn_tile_tags_query: Query<&BlacklistedSpawnTileTags>,
     threat_query: Query<
         (
             Entity,
@@ -375,7 +404,7 @@ pub fn wander_behavior(
     activators_query: Query<(Entity, &DimensionRef), (With<LoadChunksAround>, )>,
     beings_at_gpos: Res<BeingsAtGpos>,
     tag_query: Query<&TagSet>,
-    pack_center_query: Query<&PackCenterPerDim>,
+    pack_center_query: Query<&SquadAvgCenterPerDim>,
     mut wander_states: Local<EntityHashMap<WanderState>>,
     mut nearby_threats: Local<EntityHashSet>,
     mut activator_positions_by_dim: Local<EntityHashMap<Vec<GlobalTilePos>>>,
@@ -397,7 +426,7 @@ pub fn wander_behavior(
             .or_default()
             .push(activator_gpos);
     }
-    for (pred_ent, &dim_ref, member_of, ) in beings.iter_mut() {
+    for (pred_ent, &dim_ref, member_of, has_avoid_blacklisted_spawn_tiles, ) in beings.iter_mut() {
         evaluated_wanderers += 1;
         let Ok(&gpos) = blocking_tiles.gpos_query.get(pred_ent) else {
             continue;
@@ -405,8 +434,13 @@ pub fn wander_behavior(
         let bit_ref = blocking_tiles.get_being_bit_ref(pred_ent);
         let race_ref = blocking_tiles.get_being_race_ref(pred_ent);
         let cfg = resolve_wander_cfg(member_of, bit_ref, race_ref, &wander_cfg_query);
-        let avoid_tile_tags = BlacklistedTags::new(&cfg.avoid_tile_tags);
-        let avoid_spawn_tile_tags = BlacklistedSpawnTileTags(avoid_tile_tags.clone());
+        let avoid_tile_tags = resolve_wander_avoid_tile_tags(
+            &cfg,
+            has_avoid_blacklisted_spawn_tiles,
+            bit_ref,
+            race_ref,
+            &blacklisted_spawn_tile_tags_query,
+        );
         let state = wander_states
             .entry(pred_ent)
             .or_insert_with(|| WanderState::new(&mut rng, &cfg));
@@ -476,21 +510,25 @@ pub fn wander_behavior(
             &mut nearby_threats,
         );
 
+        let empty_whitelist = WhitelistedTags::default();
+        let empty_whitelist = WhitelistedSpawnTileTagsRef(&empty_whitelist);
+        let avoid_spawn_tile_tags = BlacklistedSpawnTileTagsRef(&avoid_tile_tags);
+
         // Check if currently in an undesirable tile, and if so, scan for nearby desirable tile
         if !avoid_tile_tags.is_empty() {
-            if !blocking_tiles.allowed_at(
+            if !blocking_tiles.allowed_at_refs(
                 dim_ref,
                 gpos,
                 pred_ent,
-                &WhitelistedSpawnTileTags::default(),
+                &empty_whitelist,
                 &avoid_spawn_tile_tags,
             ) {
-                if let Some(target_pos) = blocking_tiles.find_closest_allowed_gpos(
+                if let Some(target_pos) = blocking_tiles.find_closest_allowed_gpos_refs(
                     dim_ref,
                     gpos,
                     pred_ent,
-                    &WhitelistedTags::default(),
-                    &avoid_tile_tags,
+                    &empty_whitelist,
+                    &avoid_spawn_tile_tags,
                 ) {
                     let delta = target_pos.0 - gpos.0;
                     input_dir = delta.as_vec2().normalize_or_zero() * (state.speed_mult * 2.0);
@@ -505,11 +543,11 @@ pub fn wander_behavior(
                     IVec2::new(0, input_dir.y.signum() as i32)
                 };
                 let next = GlobalTilePos(gpos.0 + step);
-                if !blocking_tiles.allowed_at(
+                if !blocking_tiles.allowed_at_refs(
                     dim_ref,
                     next,
                     pred_ent,
-                    &WhitelistedSpawnTileTags::default(),
+                    &empty_whitelist,
                     &avoid_spawn_tile_tags,
                 ) {
                     input_dir = Vec2::ZERO;

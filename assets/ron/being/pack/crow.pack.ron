@@ -6,6 +6,7 @@
     },
     bit_ids: {},
     biome_affinity: {
+        "ocean": -2.5,
         "temp": 1.1,
     },
     behavior_on_member_attack: "",

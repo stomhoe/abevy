@@ -3,6 +3,7 @@
 use bevy::ecs::entity::EntityHashMap;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
+use tilemap_shared::*;
 
 #[derive(Component, Debug, Default, Copy, Clone, Deserialize, Serialize)]
 #[require(AssetScoped, Replicated, Prefix::trunc("Biome"), HotReload)]
@@ -17,5 +18,20 @@ impl CreatureSampler {
             return;
         }
         *self.0.entry(biome_ent).or_insert(0.0) += weight;
+    }
+
+    pub fn sample_pack_or_race_or_bit_entity(
+        &self,
+        rng: &mut impl rand::Rng,
+    ) -> Option<Entity> {
+        let pack_scores = self
+            .0
+            .iter()
+            .filter_map(|(pack_ent, affinity)| (*affinity > 0.0).then_some((*pack_ent, *affinity)))
+            .collect::<Vec<_>>();
+        if pack_scores.is_empty() {
+            return None;
+        }
+        EntityWeightedSampler::new(&pack_scores).sample_with_rng(rng)
     }
 }

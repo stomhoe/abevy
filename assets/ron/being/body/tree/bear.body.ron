@@ -2,7 +2,6 @@
     id: "bear",
     name: "Bear Body",
     tags: ["quadruped"],
-    mass_kg: 280.0,
     distributed_totals: {
         "mass_kg": 280.0,
         "hp_capacity": 360.0,

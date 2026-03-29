@@ -6,6 +6,7 @@ use bevy::{
 #[allow(unused_imports, )]
 use common::{AnyDisabling, common_components::{SampleSpriteEnts, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
 use faction::faction_resources::FactionRef;
+use game_common::game_common_components::TemplEntiRef;
 use game_common::game_common_timers::Templ;
 use ::sprite_shared::*;
 use ::tilemap_shared::*;
@@ -17,8 +18,10 @@ use crate::{
 
 #[derive(SystemParam)]
 pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
-    changed_beings: Query<'w, 's, Entity, (Or<(Changed<BitRef>, Changed<RaceRef>)>, Without<Templ>, Without<BeingInstTemplate>, AnyDisabling)>,
+    changed_beings: Query<'w, 's, Entity, (Or<(Changed<BitRef>, Changed<RaceRef>, Changed<TemplEntiRef>)>, Without<Templ>, Without<BeingInstTemplate>, AnyDisabling)>,
+    templ_ref_query: Query<'w, 's, &'static TemplEntiRef>,
     bit_query: Query<'w, 's, (&'static BeingInstTemplate,)>,
+    race_query: Query<'w, 's, (), With<Race>>,
     scs_to_build_query: Query<'w, 's, (), With<ScsToBuild>>,
     mapped_sprites_to_sample_query: Query<'w, 's, &'static SexMappedSpritesToSample>,
     sexes_sampler_query: Query<'w, 's, &'static SexesSampler>,
@@ -29,6 +32,8 @@ pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
     bit_ref_query: Query<'w, 's, &'static BitRef>,
     faction_ref_query: Query<'w, 's, &'static FactionRef>,
     predator_cfg_query: Query<'w, 's, (), With<PredatorCfg>>,
+    wander_cfg_query: Query<'w, 's, &'static WanderConfig>,
+    avoid_blacklisted_spawn_tiles_query: Query<'w, 's, (), With<AvoidBlacklistedSpawnTilesForWander>>,
 }
 
 #[derive(SystemParam)]
@@ -44,7 +49,7 @@ pub struct BuildBeingsFromRefsLocalParams<'s> {
     beings_to_process: Local<'s, EntityHashSet>,
 }
 
-#[allow(unused_parens)]
+#[allow(unused_parens, )]
 pub fn build_beings_from_refs(
     mut cmd: Commands,
     queries: BuildBeingsFromRefsQueryParams,
@@ -52,6 +57,7 @@ pub fn build_beings_from_refs(
     mut locals: BuildBeingsFromRefsLocalParams,
 ) {
     let mut sample_sprites_to_ins = Vec::new();
+    let mut bit_refs_to_ins = Vec::new();
     let mut race_refs_to_ins = Vec::new();
     let mut body_sampler_to_ins = Vec::new();
     let mut body_tree_refs_to_ins = Vec::new();
@@ -68,8 +74,28 @@ pub fn build_beings_from_refs(
     for being_ent in locals.beings_to_process.drain() {
         cmd.entity(being_ent).try_insert_if_new(Being);
 
-        let current_bit_ref = queries.bit_ref_query.get(being_ent).ok().copied();
-        let being_race_ref = queries.race_ref_query.get(being_ent).ok().copied();
+        let mut templ_bit_ref = None;
+        let mut templ_race_ref = None;
+        if let Ok(&TemplEntiRef(templ_ent)) = queries.templ_ref_query.get(being_ent) {
+            if queries.bit_query.get(templ_ent).is_ok() {
+                let bit_ref = BitRef(templ_ent);
+                templ_bit_ref = Some(bit_ref);
+                if queries.bit_ref_query.get(being_ent).is_err() {
+                    bit_refs_to_ins.push((being_ent, bit_ref));
+                    debug!(target: BEING_TEMPLATE_BUILD, "Resolved TemplEntiRef {:?} for being {:?} as BitRef", templ_ent, being_ent);
+                }
+            } else if queries.race_query.get(templ_ent).is_ok() {
+                let race_ref = RaceRef(templ_ent);
+                templ_race_ref = Some(race_ref);
+                if queries.race_ref_query.get(being_ent).is_err() {
+                    race_refs_to_ins.push((being_ent, race_ref));
+                    debug!(target: BEING_TEMPLATE_BUILD, "Resolved TemplEntiRef {:?} for being {:?} as RaceRef", templ_ent, being_ent);
+                }
+            }
+        }
+
+        let current_bit_ref = queries.bit_ref_query.get(being_ent).ok().copied().or(templ_bit_ref);
+        let being_race_ref = queries.race_ref_query.get(being_ent).ok().copied().or(templ_race_ref);
         let bit_race_ref = current_bit_ref.and_then(|bit_ref| queries.race_ref_query.get(bit_ref.0).ok().copied());
         let prioritized_race_ref = bit_race_ref.or(being_race_ref);
         let current_refs = (current_bit_ref, prioritized_race_ref);
@@ -79,6 +105,38 @@ pub fn build_beings_from_refs(
             cmd.entity(being_ent).try_insert_if_new(Predator);
         } else {
             cmd.entity(being_ent).try_remove::<Predator>();
+        }
+        let has_avoid_blacklisted_spawn_tiles = if let Some(bit_ref) = current_bit_ref {
+            if let Ok(bit_wander_cfg) = queries.wander_cfg_query.get(bit_ref.0) {
+                bit_wander_cfg.avoid_blacklisted_spawn_tiles
+            } else {
+                prioritized_race_ref
+                    .and_then(|race_ref| queries.wander_cfg_query.get(race_ref.0).ok())
+                    .map(|cfg| cfg.avoid_blacklisted_spawn_tiles)
+                    .unwrap_or(false)
+            }
+        } else {
+            prioritized_race_ref
+                .and_then(|race_ref| queries.wander_cfg_query.get(race_ref.0).ok())
+                .map(|cfg| cfg.avoid_blacklisted_spawn_tiles)
+                .unwrap_or(false)
+        };
+        let had_avoid_blacklisted_spawn_tiles = queries
+            .avoid_blacklisted_spawn_tiles_query
+            .get(being_ent)
+            .is_ok();
+        if has_avoid_blacklisted_spawn_tiles {
+            cmd.entity(being_ent).try_insert_if_new(AvoidBlacklistedSpawnTilesForWander);
+        } else {
+            cmd.entity(being_ent).try_remove::<AvoidBlacklistedSpawnTilesForWander>();
+        }
+        if had_avoid_blacklisted_spawn_tiles != has_avoid_blacklisted_spawn_tiles {
+            debug!(
+                target: BEING_TEMPLATE_BUILD,
+                "Being {:?} avoid_blacklisted_spawn_tiles={}",
+                being_ent,
+                has_avoid_blacklisted_spawn_tiles,
+            );
         }
         match locals.prev_refs_by_ent.get(&being_ent).copied() {
             Some(prev_refs) if prev_refs == current_refs => continue,
@@ -173,6 +231,7 @@ pub fn build_beings_from_refs(
         }
 
     }
+    cmd.try_insert_batch(bit_refs_to_ins);
     cmd.try_insert_batch(sample_sprites_to_ins);
     cmd.try_insert_batch(race_refs_to_ins);
     cmd.try_insert_batch(body_sampler_to_ins);

@@ -31,9 +31,5 @@
     ),
     body_or_sampler: "tiger",
     size_variation: (min_dev: 0.2, max_dev: 0.2, mean: 1.2, std_dev: 0.1),
-    spawn_pack_size_normal_dist: (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0),
-    biome_affinity: {
-        "temp": 1.0,
-        "elf": 0.6,
-    },
+    spawn_pack_entity: false,
 )

@@ -2,7 +2,6 @@
     id: "seagull",
     name: "Seagull Body",
     tags: ["bird"],
-    mass_kg: 8.0,
     distributed_totals: {
         "mass_kg": 8.0,
         "hp_capacity": 402.0,

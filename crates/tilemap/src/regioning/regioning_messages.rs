@@ -3,6 +3,7 @@ use bevy::platform::collections::HashMap;
 use game_common::game_common_components::TemplEntiRef;
 use tilemap_shared::DimensionRef;
 use tilemap_shared::{ChunkPos, GlobalTilePos, RegionPos};
+use crate::chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk;
 
 use ::tilemap_shared::DeleteOtherTilesInSamePos;
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
@@ -83,6 +84,13 @@ pub struct StructureBuildCompliance {
     pub chunks: Vec<(ChunkPos, StructureTilesForChunk)>,
     pub terrgen_disabled_gpos_for_chunks: TerrGenDisabledGposForChunks,
     pub terrgen_disabled_for_chunks: Vec<ChunkPos>,
+    pub forced_chunk_biomes: Vec<ForcedChunkBiomeConfig>,
+}
+
+#[derive(Debug, Clone, )]
+pub struct ForcedChunkBiomeConfig {
+    pub chunk_pos: ChunkPos,
+    pub biome_tags: Vec<BiomeTagWeightAtMacrochunk>,
 }
 
 

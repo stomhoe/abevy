@@ -18,7 +18,7 @@ use crate::being_messages::{MakeChunkSnapshotForChaser, NavOrder, PredatorSpotte
 use crate::being_on_chunk_despawn_systems::{cull_loaded_beings_far_from_humans, faithful_sim_being, on_chunk_with_beings_attempt_unload, unfreeze_beings_on_chunk_load};
 use crate::being_nav::{AiNavGrids, ChaserNavPlans, SharedChaseFlowFields};
 use crate::being_simulation_systems::insert_macrochunk_nav_islands;
-use tilemap_shared::MacroChunkLoaded;
+use tilemap_shared::NewMacrochunkLoaded;
 
 use crate::{
     being_hunt_systems::*,
@@ -69,7 +69,7 @@ pub fn plugin(app: &mut App) {
             cull_loaded_beings_far_from_humans.run_if(on_timer(Duration::from_secs(10))),
             faithful_sim_being.run_if(on_message::<FaithfulSimBeing>),
             unfreeze_beings_on_chunk_load.run_if(on_message::<ChunkLoaded>).after(faithful_sim_being),
-            insert_macrochunk_nav_islands.run_if(on_message::<MacroChunkLoaded>),
+            insert_macrochunk_nav_islands.run_if(on_message::<NewMacrochunkLoaded>),
             on_chunk_with_beings_attempt_unload
                 .in_set(tilemap_shared::PreChunkDespawnSystems)
                 .run_if(on_message::<ChunkWithBeingsWantsDespawn>),
@@ -115,6 +115,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<Chasing>()
     .replicate::<Wandering>()
     .replicate::<Fleeing>()
+    .replicate::<AvoidBlacklistedSpawnTilesForWander>()
     .replicate::<GoTo>()
     .replicate_filtered::<GlobalTilePos, Without<Being>>()
     .replicate::<being_shared::BgSimulatedIn>()
@@ -133,7 +134,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<JoinedGroups>()
     .replicate::<FactionRef>()
     .replicate::<SquadMemberOf>()
-    .replicate::<crate::pack::pack_components::PackCenterPerDim>()
+    .replicate::<crate::pack::pack_components::SquadAvgCenterPerDim>()
 
 
 

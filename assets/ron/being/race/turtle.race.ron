@@ -31,4 +31,5 @@
     biome_affinity: {
         "beach": 1.0,
     },
+    spawn_pack_entity: false,
 )

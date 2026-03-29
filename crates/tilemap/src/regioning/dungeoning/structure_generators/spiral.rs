@@ -471,6 +471,7 @@ pub fn spiral_dungeon_building_system(
             chunks: chunk_tiles,
             terrgen_disabled_gpos_for_chunks,
             terrgen_disabled_for_chunks: Vec::new(),
+            forced_chunk_biomes: Vec::new(),
         });
     }
     writer.write_batch(compliances_to_emit.drain(..));

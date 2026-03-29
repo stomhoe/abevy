@@ -2,7 +2,6 @@
     id: "spider",
     name: "Spider Body",
     tags: ["arachnid"],
-    mass_kg: 150.0,
     distributed_totals: {
         "mass_kg": 150.0,
         "hp_capacity": 259.0,

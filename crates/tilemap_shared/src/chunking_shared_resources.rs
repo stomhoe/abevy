@@ -10,7 +10,7 @@ use crate::*;
 pub struct LoadedChunks(pub HashMap<(DimensionRef, ChunkPos), Entity>,);
 
 #[derive(Resource, Clone, Default)]
-pub struct LoadedMacroChunks(pub HashMap<(DimensionRef, MacroChunkPos), Entity>,);
+pub struct LoadedMacroChunks(pub HashMap<(DimensionRef, MacrochunkPos), Entity>,);
 
 pub type SmallEntiArr = SmallVec<[Entity; 16]>;
 

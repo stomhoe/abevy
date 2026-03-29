@@ -775,7 +775,7 @@ pub fn ensure_pain_slowdown_modifiers(
             continue;
         }
         base_value.0 = *pain_multiplier;
-        cmd.entity(mod_ent).insert(ChildOf(target.0));
+        cmd.entity(mod_ent).try_insert(ChildOf(target.0));
     }
 
     for (being_ent, (_, pain_multiplier)) in slowdown_by_being.iter() {

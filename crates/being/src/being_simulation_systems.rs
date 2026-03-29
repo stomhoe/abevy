@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use being_shared::SimulatedBeingsWithin;
 use common::log_targets::BEING_SYSTEM;
-use tilemap_shared::MacroChunkLoaded;
+use tilemap_shared::NewMacrochunkLoaded;
 
 use crate::being_simulation_resources::MacroChunkNavIslands;
 
@@ -18,7 +18,7 @@ pub fn iterate_simulated_beings_within_macrochunks(
 #[allow(unused_parens, )]
 pub fn insert_macrochunk_nav_islands(
     mut cmd: Commands,
-    mut reader: MessageReader<MacroChunkLoaded>,
+    mut reader: MessageReader<NewMacrochunkLoaded>,
 ) {
     for msg in reader.read() {
         debug!(

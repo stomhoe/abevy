@@ -2,7 +2,6 @@
     id: "croc0",
     name: "Croc0 Body",
     tags: ["quadruped"],
-    mass_kg: 180.0,
     distributed_totals: {
         "mass_kg": 180.0,
         "hp_capacity": 508.0,

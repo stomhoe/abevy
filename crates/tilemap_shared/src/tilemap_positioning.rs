@@ -114,15 +114,15 @@ impl Into<Vec2> for GlobalTilePos {
 
 
 #[derive(Component, Default, Clone, Deserialize, Serialize, Copy, Hash, PartialEq, Eq, )]
-pub struct MacroChunkPos(pub IVec2);
-impl_basic_funcs!(MacroChunkPos);
-impl_hashed_position!(MacroChunkPos);
-impl_display_debug!(MacroChunkPos, "Macrochunk pos", "Mpos");
-impl_position_ops!(MacroChunkPos);
-impl_position_conversions!(MacroChunkPos);
+pub struct MacrochunkPos(pub IVec2);
+impl_basic_funcs!(MacrochunkPos);
+impl_hashed_position!(MacrochunkPos);
+impl_display_debug!(MacrochunkPos, "Macrochunk pos", "Mpos");
+impl_position_ops!(MacrochunkPos);
+impl_position_conversions!(MacrochunkPos);
 
 
-impl MacroChunkPos {
+impl MacrochunkPos {
     pub const SIZE_IN_CHUNKS: ChunkPos = ChunkPos::splat(8);
     pub fn chunk_bounds(&self) -> (ChunkPos, ChunkPos) {
         let min = ChunkPos(self.0 * Self::SIZE_IN_CHUNKS.0);
@@ -171,8 +171,8 @@ impl ChunkPos {
     pub fn to_region_pos(&self) -> RegionPos {
         RegionPos(self.0.div_euclid(REGION_SIZE_IN_CHUNKS.0))
     }
-    pub fn to_macrochunk_pos(&self) -> MacroChunkPos {
-        MacroChunkPos(self.0.div_euclid(MacroChunkPos::SIZE_IN_CHUNKS.0))
+    pub fn to_macrochunk_pos(&self) -> MacrochunkPos {
+        MacrochunkPos(self.0.div_euclid(MacrochunkPos::SIZE_IN_CHUNKS.0))
     }
     pub fn bit_index_in_chunk(&self, gpos: GlobalTilePos) -> Option<usize> {
         let local = gpos.0 - self.to_tilepos().0;

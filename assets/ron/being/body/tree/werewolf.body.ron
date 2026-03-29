@@ -2,7 +2,6 @@
     id: "werewolf",
     name: "Werewolf Body",
     tags: ["humanoid"],
-    mass_kg: 95.0,
     distributed_totals: {
         "mass_kg": 95.0,
         "hp_capacity": 491.0,

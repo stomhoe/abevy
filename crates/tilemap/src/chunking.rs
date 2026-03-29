@@ -66,7 +66,7 @@ pub fn plugin(app: &mut App) {
 
     .add_message::<CheckIfChunkShouldDespawn>()
     .add_message::<UpdateActivatedChunkPos>()
-    .add_message::<MacroChunkLoaded>()
+    .add_message::<NewMacrochunkLoaded>()
     .add_message::<RecheckChunksVisibility>()
     .add_message::<MakeChunkDespawn>()
     .add_message::<ForceAllChunksDespawn>()

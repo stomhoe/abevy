@@ -2,7 +2,6 @@
     id: "gold_golem",
     name: "Gold Golem Body",
     tags: ["humanoid"],
-    mass_kg: 20000.0,
     distributed_totals: {
         "mass_kg": 20000.0,
         "hp_capacity": 1300.0,

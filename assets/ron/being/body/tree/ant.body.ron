@@ -2,7 +2,6 @@
     id: "ant",
     name: "Ant Body",
     tags: ["arachnid"],
-    mass_kg: 2.0,
     distributed_totals: {
         "mass_kg": 2.0,
         "hp_capacity": 259.0,

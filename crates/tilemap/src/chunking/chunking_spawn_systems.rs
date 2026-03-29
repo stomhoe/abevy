@@ -6,7 +6,7 @@ use common::log_targets::CHUNK_ACTIVATION;
 use tilemap_shared::*;
 use being_shared::{Being, Unloaded};
 
-use super::macro_chunk_components::{BiomeDistribution, MacroChunkBiomePendingSampleState};
+use super::macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples};
 use crate::{chunking::MacroChunkTileIndices, regioning::{regioning_components::Region, regioning_resources::LoadedRegions}};
 
 
@@ -82,8 +82,8 @@ pub fn spawn_activated_chunks(
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut loaded_macro_chunks: ResMut<LoadedMacroChunks>,
     mut loaded_regions: ResMut<LoadedRegions>,
-    mut macro_chunk_loaded_writer: MessageWriter<MacroChunkLoaded>,
-    mut macro_chunk_loaded_msgs: Local<Vec<MacroChunkLoaded>>,
+    mut macro_chunk_loaded_writer: MessageWriter<NewMacrochunkLoaded>,
+    mut macro_chunk_loaded_msgs: Local<Vec<NewMacrochunkLoaded>>,
     mut chunk_loaded_writer: MessageWriter<ChunkLoaded>,
     mut chunk_loaded_msgs: Local<Vec<ChunkLoaded>>,
 ) {
@@ -111,14 +111,14 @@ pub fn spawn_activated_chunks(
                             MacroChunk,
                             MacroChunkTileIndices::default(),
                             BiomeDistribution::default(),
-                            MacroChunkBiomePendingSampleState::default(),
+                            MacrochunkPendingBiomeSamples::default(),
                             macro_chunk_pos,
                             Name::new(format!("{:?}", macro_chunk_pos)),
                             ChildOf(macro_chunk_holder_ref.0),
                             dimension_ref,
                         )));
                         loaded_macro_chunks.0.insert(macro_chunk_key, macro_chunk_ent);
-                        macro_chunk_loaded_msgs.push(MacroChunkLoaded {
+                        macro_chunk_loaded_msgs.push(NewMacrochunkLoaded {
                             macro_chunk_ent,
                         });
                         macro_chunk_ent

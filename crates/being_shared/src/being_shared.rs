@@ -7,7 +7,7 @@ use game_common::Dead;
 use serde::{Deserialize, Serialize};
 use bevy::ecs::entity::MapEntities;
 use faction_shared::BelongsToAPlayerFaction;
-use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
+use tilemap_shared::*;
 use crate::being_shared_seris::{DEFAULT_AVOID_ENTITY_RADIUS, DEFAULT_AVOID_ENTITY_STRENGTH, WanderSeri};
 
 #[derive(Component, Debug, Default, Clone)]
@@ -376,6 +376,8 @@ pub struct WanderConfig {
     pub avoid_entity_radius: HashMap<String, f32>,
     #[serde(default)]
     pub avoid_entity_strength: HashMap<String, f32>,
+    #[serde(default)]
+    pub avoid_blacklisted_spawn_tiles: bool,
 }
 impl Default for WanderConfig {
     fn default() -> Self {
@@ -399,6 +401,7 @@ impl Default for WanderConfig {
             wander_around_leader: false,
             avoid_entity_radius: HashMap::default(),
             avoid_entity_strength: HashMap::default(),
+            avoid_blacklisted_spawn_tiles: false,
         }
     }
 }
@@ -433,6 +436,7 @@ impl WanderConfig {
                 .iter()
                 .map(|(tag, strength)| (tag.clone(), strength.max(0.0)))
                 .collect(),
+            avoid_blacklisted_spawn_tiles: seri.avoid_blacklisted_spawn_tiles,
         }
         .sanitized()
     }
@@ -484,6 +488,7 @@ impl WanderConfig {
             && !self.wander_around_leader
             && self.avoid_entity_radius.is_empty()
             && self.avoid_entity_strength.is_empty()
+            && !self.avoid_blacklisted_spawn_tiles
     }
 
     pub fn avoid_entity_radius_for(&self, tag: &str) -> f32 {
@@ -507,6 +512,9 @@ impl WanderConfig {
             .fold(DEFAULT_AVOID_ENTITY_RADIUS, f32::max)
     }
 }
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct AvoidBlacklistedSpawnTilesForWander;
 
 
 
