@@ -3,7 +3,6 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 use being::being_bundles::BeingBundle;
 use being::pack::pack_components::*;
 use ::being_shared::*;
-use common::file_logging::file_log;
 use common::log_targets::WILDLIFE_SYSTEM;
 use ::game_common::*;
 use tilemap::terrain::biome::biome_components::CreatureSampler;

@@ -8467,6 +8467,7 @@ dependencies = [
  "bevy_common_assets",
  "bevy_ecs_tilemap",
  "bevy_replicon",
+ "bitvec",
  "common",
  "paste",
  "rand 0.9.2",

@@ -64,7 +64,7 @@ pub fn extend_occupied_gpos(
 ) {
     for y in anchor_gpos.0.y..(anchor_gpos.0.y + size.y as i32) {
         for x in anchor_gpos.0.x..(anchor_gpos.0.x + size.x as i32) {
-            blocked_gpos.set_blocked_gpos(chunk_pos, GlobalTilePos::new(x, y));
+            blocked_gpos.set_gpos(chunk_pos, GlobalTilePos::new(x, y));
         }
     }
 }

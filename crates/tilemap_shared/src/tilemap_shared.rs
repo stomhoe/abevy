@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bitvec::prelude::*;
 use common::common_components::HashId;
 use serde::{Deserialize, Serialize};
 
@@ -50,3 +51,36 @@ impl std::hash::Hash for AcZ {
 pub struct CardinalDirAtGpos (
     pub HashMap<(HashId, GlobalTilePos), CardinalDirection>,
 );
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChunkGposMask(pub BitArr!(for ChunkPos::CHUNK_AREA));
+impl ChunkGposMask {
+    pub fn is_empty(&self) -> bool {
+        self.0.as_bitslice().count_ones() == 0
+    }
+
+    pub fn count_set(&self) -> usize {
+        self.0.as_bitslice().count_ones()
+    }
+
+    pub fn is_set(&self, bit_idx: usize) -> bool {
+        self.0.as_bitslice().get(bit_idx).is_some_and(|bit| *bit)
+    }
+
+    pub fn set_bit(&mut self, bit_idx: usize) {
+        self.0.as_mut_bitslice().set(bit_idx, true);
+    }
+
+    pub fn set_gpos(&mut self, chunk_pos: ChunkPos, gpos: GlobalTilePos) {
+        let Some(bit_idx) = chunk_pos.bit_index_in_chunk(gpos) else {
+            return;
+        };
+        self.set_bit(bit_idx);
+    }
+}
+
+impl Default for ChunkGposMask {
+    fn default() -> Self {
+        Self(BitArray::ZERO)
+    }
+}

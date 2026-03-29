@@ -133,7 +133,7 @@ impl RegionPlannedTiles {
         let mut dropped_out_of_bounds = 0usize;
         for (chunk_pos, blocked_gpos) in terrgen_disabled_gpos_for_chunks.0 {
             if !selected_chunks.contains(&chunk_pos) {
-                dropped_out_of_bounds += blocked_gpos.count_blocked();
+                dropped_out_of_bounds += blocked_gpos.count_set();
                 continue;
             }
             self.terrgen_disabled_gpos_on_chunk_load.insert(chunk_pos, blocked_gpos);

@@ -1,4 +1,4 @@
-use bevy::{ecs::entity::EntityHashMap, platform::collections::HashSet, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use bevy::{ecs::entity::EntityHashMap, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use camera::camera_components::CameraTarget;
 use common::{common_components::{HashId, StrId}, common_tag_components::HashedTagsVec};
 use common::log_targets::TERRGEN_SYSTEM;
@@ -59,7 +59,7 @@ pub struct TerrgenLocalBuffers<'s> {
     pub pending_ops_batch: Local<'s, Vec<PendingOp>>,
     pub tile_requests: Local<'s, Vec<TerrGenTileRequest>>,
     pub expected_root_gpos_by_chunk: Local<'s, EntityHashMap<usize>>,
-    pub completed_root_gpos_by_chunk: Local<'s, EntityHashMap<HashSet<GlobalTilePos>>>,
+    pub completed_root_gpos_by_chunk: Local<'s, EntityHashMap<ChunkGposMask>>,
     pub chunk_built_msgs: Local<'s, Vec<ChunkTerrainBuilt>>,
     pub sampled_value_events: Local<'s, Vec<SuitablePosFound>>,
     pub sampled_value_matrix_events: Local<'s, Vec<SampledValuesCollected>>,
@@ -148,7 +148,7 @@ pub fn launch_terrain_operations(
         };
         let blocked_gpos = blocked_terrgen_gpos.get_for_chunk(dim_ref, chunk_pos);
         if !blocked_gpos.is_empty() {
-            debug!(target: TERRGEN_SYSTEM, "launch_terrain_operations chunk {:?} dim {:?} blocked_gpos={}", chunk_pos, dim_ref, blocked_gpos.count_blocked());
+            debug!(target: TERRGEN_SYSTEM, "launch_terrain_operations chunk {:?} dim {:?} blocked_gpos={}", chunk_pos, dim_ref, blocked_gpos.count_set());
         }
 
         launch_queue.0.push(TerrGenLaunchWork {
@@ -368,10 +368,7 @@ pub fn process_pending_ops_and_collect_tiles(
                 continue;
             }
             local_buffers.expected_root_gpos_by_chunk.insert(work.chunk_ent, expected_count);
-            local_buffers.completed_root_gpos_by_chunk
-                .entry(work.chunk_ent)
-                .or_default()
-                .clear();
+            *local_buffers.completed_root_gpos_by_chunk.entry(work.chunk_ent).or_default() = ChunkGposMask::default();
         }
         local_buffers
             .chunk_built_msgs
@@ -424,7 +421,7 @@ fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<Pendi
                 let Some(bit_idx) = work.chunk_pos.bit_index_in_chunk(gpos) else {
                     continue;
                 };
-                if work.blocked_gpos.is_blocked(bit_idx) {
+                if work.blocked_gpos.is_set(bit_idx) {
                     continue;
                 }
                 trace!(

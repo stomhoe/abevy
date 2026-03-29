@@ -18,7 +18,7 @@ use crate::{
 
 #[derive(SystemParam)]
 pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
-    changed_beings: Query<'w, 's, Entity, (Or<(Changed<BitRef>, Changed<RaceRef>, Changed<TemplEntiRef>)>, Without<Templ>, Without<BeingInstTemplate>, AnyDisabling)>,
+    changed_beings: Query<'w, 's, Entity, (Or<(Changed<BitRef>, Changed<RaceRef>, Changed<TemplEntiRef>)>, With<Being>, Without<Templ>, Without<BeingInstTemplate>, AnyDisabling)>,
     templ_ref_query: Query<'w, 's, &'static TemplEntiRef>,
     bit_query: Query<'w, 's, (&'static BeingInstTemplate,)>,
     race_query: Query<'w, 's, (), With<Race>>,
@@ -57,8 +57,6 @@ pub fn build_beings_from_refs(
     mut locals: BuildBeingsFromRefsLocalParams,
 ) {
     let mut sample_sprites_to_ins = Vec::new();
-    let mut bit_refs_to_ins = Vec::new();
-    let mut race_refs_to_ins = Vec::new();
     let mut body_sampler_to_ins = Vec::new();
     let mut body_tree_refs_to_ins = Vec::new();
     let mut faction_refs_to_ins = Vec::new();
@@ -74,49 +72,50 @@ pub fn build_beings_from_refs(
     for being_ent in locals.beings_to_process.drain() {
         cmd.entity(being_ent).try_insert_if_new(Being);
 
-        let mut templ_bit_ref = None;
-        let mut templ_race_ref = None;
+        let mut bit_ref = queries.bit_ref_query.get(being_ent).ok().copied();
+        let mut race_ref = queries.race_ref_query.get(being_ent).ok().copied();
         if let Ok(&TemplEntiRef(templ_ent)) = queries.templ_ref_query.get(being_ent) {
             if queries.bit_query.get(templ_ent).is_ok() {
-                let bit_ref = BitRef(templ_ent);
-                templ_bit_ref = Some(bit_ref);
-                if queries.bit_ref_query.get(being_ent).is_err() {
-                    bit_refs_to_ins.push((being_ent, bit_ref));
+                let templ_bit_ref = BitRef(templ_ent);
+                if bit_ref != Some(templ_bit_ref) {
+                    cmd.entity(being_ent).insert(templ_bit_ref);
                     debug!(target: BEING_TEMPLATE_BUILD, "Resolved TemplEntiRef {:?} for being {:?} as BitRef", templ_ent, being_ent);
                 }
+                bit_ref = Some(templ_bit_ref);
             } else if queries.race_query.get(templ_ent).is_ok() {
-                let race_ref = RaceRef(templ_ent);
-                templ_race_ref = Some(race_ref);
-                if queries.race_ref_query.get(being_ent).is_err() {
-                    race_refs_to_ins.push((being_ent, race_ref));
+                let templ_race_ref = RaceRef(templ_ent);
+                if race_ref != Some(templ_race_ref) {
+                    cmd.entity(being_ent).insert(templ_race_ref);
                     debug!(target: BEING_TEMPLATE_BUILD, "Resolved TemplEntiRef {:?} for being {:?} as RaceRef", templ_ent, being_ent);
                 }
+                race_ref = Some(templ_race_ref);
             }
         }
 
-        let current_bit_ref = queries.bit_ref_query.get(being_ent).ok().copied().or(templ_bit_ref);
-        let being_race_ref = queries.race_ref_query.get(being_ent).ok().copied().or(templ_race_ref);
-        let bit_race_ref = current_bit_ref.and_then(|bit_ref| queries.race_ref_query.get(bit_ref.0).ok().copied());
-        let prioritized_race_ref = bit_race_ref.or(being_race_ref);
-        let current_refs = (current_bit_ref, prioritized_race_ref);
-        let is_predator_now = current_bit_ref.is_some_and(|bit_ref| queries.predator_cfg_query.get(bit_ref.0).is_ok())
-            || prioritized_race_ref.is_some_and(|race_ref| queries.predator_cfg_query.get(race_ref.0).is_ok());
+        let mut race_ref = bit_ref
+            .and_then(|bit_ref| queries.race_ref_query.get(bit_ref.0).ok().copied())
+            .or(race_ref);
+        let current_refs = (bit_ref, race_ref);
+
+        let is_predator_now = bit_ref.is_some_and(|bit_ref| queries.predator_cfg_query.get(bit_ref.0).is_ok())
+            || race_ref.is_some_and(|race_ref| queries.predator_cfg_query.get(race_ref.0).is_ok());
+
         if is_predator_now {
             cmd.entity(being_ent).try_insert_if_new(Predator);
         } else {
             cmd.entity(being_ent).try_remove::<Predator>();
         }
-        let has_avoid_blacklisted_spawn_tiles = if let Some(bit_ref) = current_bit_ref {
+        let has_avoid_blacklisted_spawn_tiles = if let Some(bit_ref) = bit_ref {
             if let Ok(bit_wander_cfg) = queries.wander_cfg_query.get(bit_ref.0) {
                 bit_wander_cfg.avoid_blacklisted_spawn_tiles
             } else {
-                prioritized_race_ref
+                race_ref
                     .and_then(|race_ref| queries.wander_cfg_query.get(race_ref.0).ok())
                     .map(|cfg| cfg.avoid_blacklisted_spawn_tiles)
                     .unwrap_or(false)
             }
         } else {
-            prioritized_race_ref
+            race_ref
                 .and_then(|race_ref| queries.wander_cfg_query.get(race_ref.0).ok())
                 .map(|cfg| cfg.avoid_blacklisted_spawn_tiles)
                 .unwrap_or(false)
@@ -151,9 +150,9 @@ pub fn build_beings_from_refs(
                     "Rebuilding being {:?}: bit_ref {:?}->{:?} race_ref {:?}->{:?}",
                     being_ent,
                     prev_refs.0,
-                    current_bit_ref,
+                    bit_ref,
                     prev_refs.1,
-                    prioritized_race_ref,
+                    race_ref,
                 );
             }
             None => {
@@ -168,7 +167,7 @@ pub fn build_beings_from_refs(
         let mut has_sample_sprites_now = queries.sample_sprite_ents_query.get(being_ent).is_ok() || queries.scs_to_build_query.get(being_ent).is_ok();
         let mut has_body_tree_ref_now = queries.body_weighted_sampler_query.get(being_ent).is_ok() || queries.body_tree_ref_query.get(being_ent).is_ok();
 
-        if let Some(bit_ref) = current_bit_ref {
+        if let Some(bit_ref) = bit_ref {
             let Ok((template, )) = queries.bit_query.get(bit_ref.0) else {
                 warn!(target: BEING_TEMPLATE_BUILD, "BitRef entity {:?} could not be resolved to BeingInstTemplate", bit_ref.0);
                 continue;
@@ -190,15 +189,19 @@ pub fn build_beings_from_refs(
                 faction_refs_to_ins.push((being_ent, faction_ref));
             }
 
-            if let Ok(&race_ref) = queries.race_ref_query.get(bit_ref.0) {
-                race_refs_to_ins.push((being_ent, race_ref));
+            if let Ok(&race_ref_from_bit) = queries.race_ref_query.get(bit_ref.0) {
+                if race_ref != Some(race_ref_from_bit) {
+                    cmd.entity(being_ent).insert(race_ref_from_bit);
+                    debug!(target: BEING_TEMPLATE_BUILD, "Resolved bit {:?} for being {:?} to RaceRef {:?}", bit_ref.0, being_ent, race_ref_from_bit.0);
+                }
+                race_ref = Some(race_ref_from_bit);
             }
             if template.extra_health_multiplier != 1.0 {
                 // add in a modifier
             }
         }
 
-        if let Some(race_ref) = prioritized_race_ref {
+        if let Some(race_ref) = race_ref {
             if !has_body_tree_ref_now {
                 if let Ok(&sample_body_body_tree) = queries.body_weighted_sampler_query.get(race_ref.0) {
                     body_sampler_to_ins.push((being_ent, sample_body_body_tree));
@@ -231,9 +234,7 @@ pub fn build_beings_from_refs(
         }
 
     }
-    cmd.try_insert_batch(bit_refs_to_ins);
     cmd.try_insert_batch(sample_sprites_to_ins);
-    cmd.try_insert_batch(race_refs_to_ins);
     cmd.try_insert_batch(body_sampler_to_ins);
     cmd.try_insert_batch(body_tree_refs_to_ins);
     cmd.try_insert_batch_if_new(faction_refs_to_ins);

@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 common = { path = "../acommon" }
+bitvec = { workspace = true }
 
 bevy = { workspace = true }
 serde = { workspace = true }

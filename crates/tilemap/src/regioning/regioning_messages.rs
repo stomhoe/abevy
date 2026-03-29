@@ -1,6 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
 use game_common::game_common_components::TemplEntiRef;
+use tilemap_shared::ChunkGposMask;
 use tilemap_shared::DimensionRef;
 use tilemap_shared::{ChunkPos, GlobalTilePos, RegionPos};
 use crate::chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk;
@@ -57,7 +58,7 @@ impl TerrGenDisabledGposForChunks {
     }
 
     pub fn count_blocked(&self) -> usize {
-        self.0.values().map(TerrGenBlockedGposMask::count_blocked).sum()
+        self.0.values().map(ChunkGposMask::count_set).sum()
     }
 
     pub fn insert_for_chunk(&mut self, chunk_pos: ChunkPos, blocked_gpos: TerrGenBlockedGposMask) {

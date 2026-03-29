@@ -1,4 +1,4 @@
-use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, platform::collections::HashSet, prelude::*};
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
 use common::{common_components::{HashId, HashIdMap, StrId}, common_tag_components::HashedTagsVec};
 use debug_unwraps::DebugUnwrapExt;
 
@@ -296,7 +296,7 @@ pub(crate) fn pending_root_gpos_count_for_chunk(work: &TerrGenLaunchWork) -> usi
             let Some(bit_idx) = work.chunk_pos.bit_index_in_chunk(gpos) else {
                 continue;
             };
-            if work.blocked_gpos.is_blocked(bit_idx) {
+            if work.blocked_gpos.is_set(bit_idx) {
                 continue;
             }
             count += 1;
@@ -308,7 +308,7 @@ pub(crate) fn pending_root_gpos_count_for_chunk(work: &TerrGenLaunchWork) -> usi
 pub(crate) fn register_completed_chunk_gpos(
     completed_chunk_gpos: &[(Entity, GlobalTilePos)],
     expected_root_gpos_by_chunk: &mut EntityHashMap<usize>,
-    completed_root_gpos_by_chunk: &mut EntityHashMap<HashSet<GlobalTilePos>>,
+    completed_root_gpos_by_chunk: &mut EntityHashMap<ChunkGposMask>,
     chunk_built_msgs: &mut Vec<ChunkTerrainBuilt>,
 ) {
     let mut chunks_built = Vec::new();
@@ -317,8 +317,8 @@ pub(crate) fn register_completed_chunk_gpos(
             continue;
         };
         let completed_gpos = completed_root_gpos_by_chunk.entry(chunk_ent).or_default();
-        completed_gpos.insert(gpos);
-        if completed_gpos.len() < expected_count {
+        completed_gpos.set_gpos(ChunkPos::from(gpos), gpos);
+        if completed_gpos.count_set() < expected_count {
             continue;
         }
         chunks_built.push(chunk_ent);

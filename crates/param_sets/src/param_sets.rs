@@ -44,9 +44,9 @@ fn resolve_tile_direction(
 #[derive(SystemParam)]
 pub struct BlockingTileParamSet<'w, 's> {
     tile_gathering_params: TileGatheringParamSet<'w, 's>,
-    wallphaser_query: Query<'w, 's, (), With<WallPhaser>>,
+    wallphaser_query: Query<'w, 's, (), (With<WallPhaser>, common::AnyDisabling)>,
     will_despawn_query: Query<'w, 's, (), (With<Dead>, With<DespawnOnDeath>, common::AnyDisabling)>,
-    templ_ref_query: Query<'w, 's, &'static TemplEntiRef, ()>,
+    templ_ref_query: Query<'w, 's, &'static TemplEntiRef, common::AnyDisabling>,
     pub gpos_query: Query<'w, 's, &'static mut GlobalTilePos, common::AnyDisabling>,
     walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, common::AnyDisabling>,
     race_ref_query: Query<'w, 's, &'static RaceRef, common::AnyDisabling>,

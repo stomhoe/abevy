@@ -1,5 +1,4 @@
 use bevy::{prelude::*, tasks::Task};
-use bitvec::prelude::*;
 use common::common_components::HashId;
 
 use crate::{
@@ -13,33 +12,7 @@ use crate::{
 
 use ::tilemap_shared::*;
 
-#[derive(Debug, Clone, )]
-pub struct TerrGenBlockedGposMask(pub BitArr!(for ChunkPos::CHUNK_AREA));
-impl TerrGenBlockedGposMask {
-    pub fn is_empty(&self) -> bool {
-        self.0.as_bitslice().count_ones() == 0
-    }
-    pub fn count_blocked(&self) -> usize {
-        self.0.as_bitslice().count_ones()
-    }
-    pub fn is_blocked(&self, bit_idx: usize) -> bool {
-        self.0.as_bitslice().get(bit_idx).map_or(false, |bit| *bit)
-    }
-    pub fn set_blocked(&mut self, bit_idx: usize) {
-        self.0.as_mut_bitslice().set(bit_idx, true);
-    }
-    pub fn set_blocked_gpos(&mut self, chunk_pos: ChunkPos, gpos: GlobalTilePos) {
-        let Some(bit_idx) = chunk_pos.bit_index_in_chunk(gpos) else {
-            return;
-        };
-        self.set_blocked(bit_idx);
-    }
-}
-impl Default for TerrGenBlockedGposMask {
-    fn default() -> Self {
-        Self(BitArray::ZERO)
-    }
-}
+pub type TerrGenBlockedGposMask = ChunkGposMask;
 
 #[derive(Debug, Clone)]
 pub struct TerrGenLaunchWork {
