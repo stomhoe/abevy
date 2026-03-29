@@ -5,6 +5,7 @@ use bevy::time::common_conditions::on_timer;
 use bevy_replicon::prelude::*;
 use ::being_shared::*;
 use faction::faction_resources::FactionRef;
+use tilemap::terrain::terrgen_messages::ChunkTerrainBuilt;
 use tilemap_shared::{BeingsAtGpos, ChunkLoaded, ChunkWithBeingsWantsDespawn, GlobalTilePos};
 
 use common::common_states::AssetLoading;
@@ -15,7 +16,9 @@ use game_common::{
 use sprite_systems::AcSpriteSystems;
 use crate::being_melee_systems::apply_melee_attack;
 use crate::being_messages::{MakeChunkSnapshotForChaser, NavOrder, PredatorSpottedByPrey};
-use crate::being_on_chunk_despawn_systems::{cull_loaded_beings_far_from_humans, faithful_sim_being, on_chunk_with_beings_attempt_unload, unfreeze_beings_on_chunk_load};
+use crate::being_cleanup_systems::cull_loaded_beings_far_from_humans;
+use crate::being_on_chunk_despawn_systems::{faithful_sim_being, on_chunk_with_beings_attempt_unload};
+use crate::being_enable_systems::unfreeze_beings_on_chunk_load;
 use crate::being_nav::{AiNavGrids, ChaserNavPlans, SharedChaseFlowFields};
 use crate::being_simulation_systems::insert_macrochunk_nav_islands;
 use tilemap_shared::NewMacrochunkLoaded;
@@ -24,6 +27,7 @@ use crate::{
     being_hunt_systems::*,
     being_prey_systems::*,
     being_build_systems::*,
+    being_enable_systems::*,
     being_control_systems::*,
     being_inst_template::BeingInstTemplateSystems,
     being_portal_resources::*,
@@ -52,6 +56,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<ChaserNavPlans>()
     .init_resource::<FrozenBgSimulatedBeingsMap>()
     .init_resource::<PortalCrossingIndex>()
+    .init_resource::<BeingsToEnableOnChunkLoad>()
 
     .add_systems(Update, (
         (
@@ -60,6 +65,7 @@ pub fn plugin(app: &mut App) {
         ).chain().in_set(HostSystems),
         (
             add_activates_chunks,
+            activate_beings_in_first_time_loaded_chunks.run_if(on_message::<ChunkTerrainBuilt>),
             sync_player_being_chunk_ranges,
             assign_uncomputed_beings_to_host,
             sync_group_members_from_member_of,
@@ -68,7 +74,7 @@ pub fn plugin(app: &mut App) {
             cross_portal,
             cull_loaded_beings_far_from_humans.run_if(on_timer(Duration::from_secs(10))),
             faithful_sim_being.run_if(on_message::<FaithfulSimBeing>),
-            unfreeze_beings_on_chunk_load.run_if(on_message::<ChunkLoaded>).after(faithful_sim_being),
+            unfreeze_beings_on_chunk_load.run_if(on_message::<ChunkLoaded>),
             insert_macrochunk_nav_islands.run_if(on_message::<NewMacrochunkLoaded>),
             on_chunk_with_beings_attempt_unload
                 .in_set(tilemap_shared::PreChunkDespawnSystems)

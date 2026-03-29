@@ -4,6 +4,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use common::common_components::HashId;
 use common::common_tag_components::TagSet;
+use common::log_targets::POSITION_SEARCH;
 use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
@@ -504,6 +505,8 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         whitelisted_tags: &WhitelistedSpawnTileTagsRef<'_>,
         blacklisted_tags: &BlacklistedSpawnTileTagsRef<'_>,
     ) -> Option<GlobalTilePos> {
+        const MAX_TRIES: usize = 1024;
+        let mut tries = 0usize;
         if self.allowed_at_refs(
             dim_ref,
             target_gpos,
@@ -513,13 +516,19 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         ) {
             return Some(target_gpos);
         }
+        tries += 1;
 
         const MAX_SPIRAL_RADIUS: i32 = 256;
         for radius in 1..=MAX_SPIRAL_RADIUS {
             let min = -radius;
             let max = radius;
             for x in min..=max {
+                if tries >= MAX_TRIES {
+                    error!(target: POSITION_SEARCH, "Failed to find allowed gpos for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, MAX_TRIES);
+                    return None;
+                }
                 let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(x, min));
+                tries += 1;
                 if self.allowed_at_refs(
                     dim_ref,
                     candidate,
@@ -531,7 +540,12 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 }
             }
             for y in (min + 1)..=max {
+                if tries >= MAX_TRIES {
+                    error!(target: POSITION_SEARCH, "Failed to find allowed gpos for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, MAX_TRIES);
+                    return None;
+                }
                 let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(max, y));
+                tries += 1;
                 if self.allowed_at_refs(
                     dim_ref,
                     candidate,
@@ -543,7 +557,12 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 }
             }
             for x in (min..max).rev() {
+                if tries >= MAX_TRIES {
+                    error!(target: POSITION_SEARCH, "Failed to find allowed gpos for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, MAX_TRIES);
+                    return None;
+                }
                 let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(x, max));
+                tries += 1;
                 if self.allowed_at_refs(
                     dim_ref,
                     candidate,
@@ -555,7 +574,12 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 }
             }
             for y in ((min + 1)..max).rev() {
+                if tries >= MAX_TRIES {
+                    error!(target: POSITION_SEARCH, "Failed to find allowed gpos for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, MAX_TRIES);
+                    return None;
+                }
                 let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(min, y));
+                tries += 1;
                 if self.allowed_at_refs(
                     dim_ref,
                     candidate,
@@ -567,7 +591,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 }
             }
         }
-        error!(target: "asd", "No valid tile found for {:?} in {:?} around {}", being, dim_ref, target_gpos);
+        error!(target: POSITION_SEARCH, "No valid tile found for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, tries);
         None
     }
 }

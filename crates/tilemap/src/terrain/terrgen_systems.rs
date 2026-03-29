@@ -3,7 +3,6 @@ use camera::camera_components::CameraTarget;
 use common::{common_components::{HashId, StrId}, common_tag_components::HashedTagsVec};
 use common::log_targets::TERRGEN_SYSTEM;
 use std::mem::take;
-use tilemap_shared::NewMacrochunkLoaded;
 
 use crate::{
     chunking::{macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples}},
@@ -19,7 +18,7 @@ use crate::{
             process_pending_ops_batch,
             register_completed_chunk_gpos,
         },
-        terrgen_messages::{ChunkTerrainBuilt, PendingOp, PendingOpInput, PendingOpPurpose},
+        terrgen_messages::*,
         terrgen_resources::*,
     },
     tilemap_resources::{CloneSpawnParamSet, MassCollectedTiles},
@@ -64,92 +63,31 @@ pub struct TerrgenLocalBuffers<'s> {
     pub sampled_value_events: Local<'s, Vec<SuitablePosFound>>,
     pub sampled_value_matrix_events: Local<'s, Vec<SampledValuesCollected>>,
     pub finished_macro_chunk_biome_samples: Local<'s, Vec<(Vec<TerrGenBiomeTagSample>, Vec<Entity>)>>,
-    pub pending_ops: Local<'s, Vec<PendingOp>>,
 }
 
 #[allow(unused_parens, )]
-pub fn request_macrochunk_biome_sampling(
-    mut cmd: Commands,
-    mut loaded_macrochunks: MessageReader<NewMacrochunkLoaded>,
-    mut macro_chunk_query: Query<(&DimensionRef, &MacrochunkPos, &mut MacrochunkPendingBiomeSamples, ), (With<MacroChunk>, )>,
-    dimension_query: Query<&DimensionRootOplist>,
-    oplists: Query<&OplistSize, With<OperationList>>,
-    mut pending_ops_writer: MessageWriter<PendingOp>,
-    mut local_buffers: TerrgenLocalBuffers,
-    mut sample_positions: Local<Vec<GlobalTilePos>>,
-) {
-    local_buffers.pending_ops.clear();
-    for msg in loaded_macrochunks.read() {
-        let macro_chunk_ent = msg.macro_chunk_ent;
-        let Ok((&dim_ref, &macro_chunk_pos, mut biome_state)) = macro_chunk_query.get_mut(macro_chunk_ent) else {
-            continue;
-        };
-        if biome_state.0 != 0 {
-            continue;
-        }
-        let Ok(&root_oplist) = dimension_query.get(dim_ref.0) else {
-            error!(target: TERRGEN_SYSTEM, "No root operation list for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
-            continue;
-        };
-        let Ok(_) = oplists.get(root_oplist.0) else {
-            error!(target: TERRGEN_SYSTEM, "No oplist size for root operation list {:?}", root_oplist);
-            continue;
-        };
-        sample_positions.clear();
-        let sample_positions = macro_chunk_pos.sample_macro_chunk_positions(3, &mut sample_positions);
-        let expected_samples = sample_positions.len() as u32;
-        if expected_samples == 0 {
-            cmd.entity(macro_chunk_ent).try_remove::<MacrochunkPendingBiomeSamples>();
-            debug!(target: TERRGEN_SYSTEM, "Completed biome sampling for macrochunk {} in {:?} without pending samples", macro_chunk_pos, dim_ref);
-            continue;
-        }
-        biome_state.0 = expected_samples;
-        for &gpos in sample_positions {
-            local_buffers.pending_ops.push(PendingOp {
-                oplist: root_oplist,
-                input: PendingOpInput {
-                    dimension_ref: dim_ref,
-                    gpos,
-                },
-                purpose: PendingOpPurpose::MacroChunkBiomeSampling {
-                    macro_chunk_ent,
-                },
-            });
-        }
-        trace!(target: TERRGEN_SYSTEM, "Queued {} biome samples for macrochunk {} in {:?}", expected_samples, macro_chunk_pos, dim_ref);
-    }
-    pending_ops_writer.write_batch(local_buffers.pending_ops.drain(..));
-}
-
-#[allow(unused_parens, )]
-pub fn launch_terrain_operations(
-    mut commands: Commands,
-    chunks_query: Query<(Entity, &ChunkPos, &DimensionRef, &TerrGenState), (With<Chunk>, Changed<TerrGenState>)>,
+pub fn launch_terrain_based_tile_generation_operations(
+    mut chunks_query: Query<(Entity, &ChunkPos, &DimensionRef, &mut TerrGenState), (With<Chunk>, Changed<TerrGenState>)>,
     dimension_query: Query<(&DimensionRootOplist), ()>,
-    oplists: Query<(&OplistSize), (With<OperationList>,)>,
+    oplist_size_query: Query<(&OplistSize), (With<OperationList>,)>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
     blocked_terrgen_gpos: Res<TerrGenDisabledGposByChunk>,
 ) {
     if chunks_query.is_empty() { return; }
 
-    let chunk_count = chunks_query.iter().size_hint().0;
-    let mut terr_gen_ops = Vec::with_capacity(chunk_count);
-    for (chunk_ent, &chunk_pos, &dim_ref, terrgen_state) in chunks_query.iter() {
+    for (chunk_ent, &chunk_pos, &dim_ref, mut terrgen_state) in chunks_query.iter_mut() {
         if *terrgen_state != TerrGenState::Ready {
             continue;
         }
         let Ok(&dim_root_op_list) = dimension_query.get(dim_ref.0) else {
-            error_once!(target: TERRGEN_SYSTEM, "No root operation list for chunk {:?} in dimension {:?}", chunk_pos, dim_ref);
+            error_once!(target: TERRGEN_SYSTEM, "No root operation list for dimension {:?}", dim_ref);
             continue;
         };
-        let Ok(&oplist_size) = oplists.get(dim_root_op_list.0) else {
+        let Ok(&oplist_size) = oplist_size_query.get(dim_root_op_list.0) else {
             error_once!(target: TERRGEN_SYSTEM, "Dimension references non-existent root operation list {:?}", dim_root_op_list);
             continue;
         };
         let blocked_gpos = blocked_terrgen_gpos.get_for_chunk(dim_ref, chunk_pos);
-        if !blocked_gpos.is_empty() {
-            debug!(target: TERRGEN_SYSTEM, "launch_terrain_operations chunk {:?} dim {:?} blocked_gpos={}", chunk_pos, dim_ref, blocked_gpos.count_set());
-        }
 
         launch_queue.0.push(TerrGenLaunchWork {
             chunk_ent,
@@ -159,9 +97,8 @@ pub fn launch_terrain_operations(
             oplist_size: oplist_size,
             blocked_gpos,
         });
-        terr_gen_ops.push((chunk_ent, TerrGenState::OpsLaunched));
+        *terrgen_state = TerrGenState::OpsLaunched;
     }
-    commands.try_insert_batch(terr_gen_ops);
 }
 
 #[allow(unused_parens, )]

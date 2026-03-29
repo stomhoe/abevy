@@ -55,3 +55,16 @@ impl BeingMembers {
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone,)]
 //#[component(map_entities)]
 pub struct MemberRanks(pub EntityHashMap<f32>);
+
+
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, bevy::ecs::entity::MapEntities, )]
+#[relationship(relationship_target = SquadMembers)]
+pub struct SquadMemberOf(#[relationship]#[entities]pub Entity);
+
+// current physically close distance group of beings we belong to and are currently operating with
+#[derive(Component, Debug, )]
+#[relationship_target(relationship = SquadMemberOf)]
+pub struct SquadMembers(Vec<Entity>);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct NoSpawnSquadEntity;

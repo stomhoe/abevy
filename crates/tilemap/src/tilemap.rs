@@ -61,6 +61,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate_once::<CardinalDirection>()
     .replicate_once::<DiagonalCardinalDirection>()
+    .replicate::<InteractionZones>()
     .init_resource::<SpriteTilesAtGpos>()
     .replicate::<PoissonDisk>()
 

@@ -19,11 +19,12 @@ pub struct ClientStepRateState {
     step_credit: f32,
 }
 
+#[allow(unused_parens, )]
 pub fn receive_step_request_from_client(
     time_fixed: Res<Time<Fixed>>,
     mut events: MessageReader<FromClient<SendStepRequest>>,
     mut blocking_tiles: BlockingTileParamSet,
-    controlled_beings: Query<&ComputedBy>,
+    controlled_beings: Query<(&ComputedBy, ), ()>,
     mut beings: Query<(
         Entity,
         &DimensionRef,
@@ -40,23 +41,32 @@ pub fn receive_step_request_from_client(
     for from_client in events.read() {
         let SendStepRequest { being_ent, dir: step_dir, steps } = from_client.message.clone();
         let client_id = from_client.client_id;
-        let Some(client_ent) = from_client.client_id.entity() else { continue; };
-        let Ok(controlled_by) = controlled_beings.get(being_ent) else {
-            warn!(
+        let Ok((controlled_by, )) = controlled_beings.get(being_ent) else {
+            error!(
                 target: MOVEMENT_SYSTEM,
                 "Dropped step request for uncontrolled/missing being {:?} from {:?}",
                 being_ent,
-                client_ent
+                client_id
             );
             continue;
         };
-        if controlled_by.client_ent != client_ent {
-            warn!(
+        if let Some(client_ent) = from_client.client_id.entity() {
+            if controlled_by.client_ent != client_ent {
+                error!(
+                    target: MOVEMENT_SYSTEM,
+                    "Dropped spoofed step request for {:?}: owner {:?}, sender {:?}",
+                    being_ent,
+                    controlled_by.client_ent,
+                    client_ent
+                );
+                continue;
+            }
+        } else if client_id != ClientId::Server {
+            error!(
                 target: MOVEMENT_SYSTEM,
-                "Dropped spoofed step request for {:?}: owner {:?}, sender {:?}",
-                being_ent,
-                controlled_by.client_ent,
-                client_ent
+                "Dropped step request from unmapped non-server sender {:?} for {:?}",
+                client_id,
+                being_ent
             );
             continue;
         }
@@ -70,6 +80,22 @@ pub fn receive_step_request_from_client(
         let Some(facing_dir) = blocking_tiles.get_being_direction(being_ent) else {
             continue;
         };
+        if steps == 0 {
+            if facing_dir != step_dir {
+                let _ = blocking_tiles.set_being_direction(being_ent, step_dir);
+                move_state_msgs.push(MirrorHolderStateForSprite(being_ent));
+                messages.push(ToClients {
+                    mode: SendMode::Broadcast,
+                    message: SyncGpos {
+                        being_ent,
+                        gpos: curr_tile_pos,
+                        dir: step_dir,
+                        force_resync: false,
+                    },
+                });
+            }
+            continue;
+        }
         let dir_vec = step_dir.to_dir_vec();
         let secs_per_step = secs_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec);
         if secs_per_step <= 0.0 {
@@ -184,6 +210,10 @@ pub fn receive_step_request_from_client(
             steps_taken
         };
         state.step_credit = (state.step_credit - steps_taken as f32).max(0.0);
+        let Ok(mut being_gpos) = blocking_tiles.gpos_query.get_mut(entity) else {
+            continue;
+        };
+        *being_gpos = curr_tile_pos;
         messages.push(ToClients {
             mode: SendMode::Broadcast,
             message: SyncGpos {
@@ -193,7 +223,7 @@ pub fn receive_step_request_from_client(
                 force_resync: false,
             },
         });
-        trace!(
+        info!(
             target: MOVEMENT_SYSTEM,
             "Accepted step request for {:?}: dir {:?}, steps={}, target {:?}, credit {:.2}, expected {:.3}s",
             being_ent,

@@ -25,7 +25,6 @@ impl MacroChunkChunkStats {
         next.total_chunks += 1;
         match terrgen_state {
             TerrGenState::Finished => next.finished_chunks += 1,
-            TerrGenState::Disabled => next.disabled_chunks += 1,
             TerrGenState::Pending | TerrGenState::Ready | TerrGenState::OpsLaunched => {}
         }
         next
@@ -81,7 +80,6 @@ fn chunk_state_color(terrgen_state: TerrGenState) -> egui::Color32 {
         TerrGenState::Ready => egui::Color32::from_rgb(90, 140, 225),
         TerrGenState::OpsLaunched => egui::Color32::from_rgb(215, 155, 60),
         TerrGenState::Finished => egui::Color32::from_rgb(70, 160, 95),
-        TerrGenState::Disabled => egui::Color32::from_rgb(135, 65, 65),
     }
 }
 
@@ -91,7 +89,6 @@ fn chunk_state_name(terrgen_state: TerrGenState) -> &'static str {
         TerrGenState::Ready => "Ready",
         TerrGenState::OpsLaunched => "OpsLaunched",
         TerrGenState::Finished => "Finished",
-        TerrGenState::Disabled => "Disabled",
     }
 }
 
@@ -443,7 +440,6 @@ fn show_macrochunk_details(
                 ui.colored_label(chunk_state_color(TerrGenState::Ready), "Ready");
                 ui.colored_label(chunk_state_color(TerrGenState::OpsLaunched), "OpsLaunched");
                 ui.colored_label(chunk_state_color(TerrGenState::Finished), "Finished");
-                ui.colored_label(chunk_state_color(TerrGenState::Disabled), "Disabled");
                 ui.colored_label(egui::Color32::from_gray(18), "Missing");
                 ui.colored_label(egui::Color32::YELLOW, "Current chunk");
                 ui.colored_label(egui::Color32::from_rgb(110, 255, 160), "NaturalSpawnOrigin present");

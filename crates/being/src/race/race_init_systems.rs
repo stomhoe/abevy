@@ -179,7 +179,7 @@ pub fn init_races(
             )));
         }
         if !race_seri.spawn_pack_entity {
-            cmd.entity(entity).insert(NoSpawnGroup);
+            cmd.entity(entity).insert(NoSpawnSquadEntity);
         }
         if let Some(predator_cfg) = PredatorCfg::from_seri(&race_seri.predator) {
             cmd.entity(entity).insert(predator_cfg);

@@ -93,7 +93,7 @@ pub fn init_being_templates(
             )));
         }
         if !template_seri.spawn_pack_entity {
-            cmd.entity(bit_entity).insert(NoSpawnGroup);
+            cmd.entity(bit_entity).insert(NoSpawnSquadEntity);
         }
         if !template_seri.wander.is_disabled() {
             cmd.entity(bit_entity).insert(WanderConfig::from_seri(&template_seri.wander));
@@ -108,6 +108,18 @@ pub fn init_being_templates(
                     .iter()
                     .chain(template_seri.blacklisted_tiles_for_spawning.iter()),
             ))));
+        }
+        if template_seri.dont_extend_from_bit_spawn_whitelist {
+            cmd.entity(bit_entity).insert(DontExtendBitSpawnWhitelist);
+        }
+        if template_seri.dont_extend_from_bit_spawn_blacklist {
+            cmd.entity(bit_entity).insert(DontExtendBitSpawnBlacklist);
+        }
+        if template_seri.dont_extend_from_race_spawn_whitelist {
+            cmd.entity(bit_entity).insert(DontExtendRaceSpawnWhitelist);
+        }
+        if template_seri.dont_extend_from_race_spawn_blacklist {
+            cmd.entity(bit_entity).insert(DontExtendRaceSpawnBlacklist);
         }
         if let Some(predator_cfg) = PredatorCfg::from_seri(&template_seri.predator) {
             cmd.entity(bit_entity).insert(predator_cfg);

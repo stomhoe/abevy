@@ -71,6 +71,7 @@ pub fn plugin(app: &mut App) {
         .add_mapped_client_message::<SendStepRequest>(Channel::Ordered)
         .add_mapped_server_message::<SyncGpos>(Channel::Ordered)
         .replicate_once::<GridLockedMovement>()
+        .replicate_once::<GridLockedMovementVisual>()
         .replicate::<SpeedMagnitude>()
         .replicate_filtered::<CardinalDirection, (Without<FinalNormMoveDir>,)>();
 }

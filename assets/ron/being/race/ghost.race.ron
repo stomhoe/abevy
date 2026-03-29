@@ -8,7 +8,7 @@
     singular: "ghost body",
     plural: "ghost bodys",
     sentient: false,
-    fallback_sprites_to_sample: ["ghost"],
+    fallback_sprites_to_sample: ["ghost_he", "ghost_bo"],
     sets_of_choosable_sprites: [],
     can_walk_on: [],
     walk_speeds_on_tiles: {},

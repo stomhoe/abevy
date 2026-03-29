@@ -30,6 +30,10 @@ pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
     body_tree_ref_query: Query<'w, 's, &'static BodyTreeRef>,
     race_ref_query: Query<'w, 's, &'static RaceRef>,
     bit_ref_query: Query<'w, 's, &'static BitRef>,
+    dont_extend_from_bit_spawn_whitelist_query: Query<'w, 's, (), With<DontExtendBitSpawnWhitelist>>,
+    dont_extend_from_bit_spawn_blacklist_query: Query<'w, 's, (), With<DontExtendBitSpawnBlacklist>>,
+    dont_extend_from_race_spawn_whitelist_query: Query<'w, 's, (), With<DontExtendRaceSpawnWhitelist>>,
+    dont_extend_from_race_spawn_blacklist_query: Query<'w, 's, (), With<DontExtendRaceSpawnBlacklist>>,
     faction_ref_query: Query<'w, 's, &'static FactionRef>,
     predator_cfg_query: Query<'w, 's, (), With<PredatorCfg>>,
     wander_cfg_query: Query<'w, 's, &'static WanderConfig>,
@@ -96,6 +100,32 @@ pub fn build_beings_from_refs(
             .and_then(|bit_ref| queries.race_ref_query.get(bit_ref.0).ok().copied())
             .or(race_ref);
         let current_refs = (bit_ref, race_ref);
+
+        let dont_extend_from_bit_spawn_whitelist = bit_ref.is_some_and(|bit_ref| queries.dont_extend_from_bit_spawn_whitelist_query.get(bit_ref.0).is_ok());
+        let dont_extend_from_bit_spawn_blacklist = bit_ref.is_some_and(|bit_ref| queries.dont_extend_from_bit_spawn_blacklist_query.get(bit_ref.0).is_ok());
+        if dont_extend_from_bit_spawn_whitelist {
+            cmd.entity(being_ent).try_insert_if_new(DontExtendBitSpawnWhitelist);
+        } else {
+            cmd.entity(being_ent).try_remove::<DontExtendBitSpawnWhitelist>();
+        }
+        if dont_extend_from_bit_spawn_blacklist {
+            cmd.entity(being_ent).try_insert_if_new(DontExtendBitSpawnBlacklist);
+        } else {
+            cmd.entity(being_ent).try_remove::<DontExtendBitSpawnBlacklist>();
+        }
+
+        let dont_extend_from_race_spawn_whitelist = bit_ref.is_some_and(|bit_ref| queries.dont_extend_from_race_spawn_whitelist_query.get(bit_ref.0).is_ok());
+        let dont_extend_from_race_spawn_blacklist = bit_ref.is_some_and(|bit_ref| queries.dont_extend_from_race_spawn_blacklist_query.get(bit_ref.0).is_ok());
+        if dont_extend_from_race_spawn_whitelist {
+            cmd.entity(being_ent).try_insert_if_new(DontExtendRaceSpawnWhitelist);
+        } else {
+            cmd.entity(being_ent).try_remove::<DontExtendRaceSpawnWhitelist>();
+        }
+        if dont_extend_from_race_spawn_blacklist {
+            cmd.entity(being_ent).try_insert_if_new(DontExtendRaceSpawnBlacklist);
+        } else {
+            cmd.entity(being_ent).try_remove::<DontExtendRaceSpawnBlacklist>();
+        }
 
         let is_predator_now = bit_ref.is_some_and(|bit_ref| queries.predator_cfg_query.get(bit_ref.0).is_ok())
             || race_ref.is_some_and(|race_ref| queries.predator_cfg_query.get(race_ref.0).is_ok());

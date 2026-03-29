@@ -47,7 +47,7 @@ pub fn init_packs(
             continue;
         };
         if !pack_seri.spawn_pack_entity {
-            cmd.entity(pack_entity).insert(NoSpawnGroup);
+            cmd.entity(pack_entity).insert(NoSpawnSquadEntity);
         }
         cmd.entity(pack_entity).insert(pack_seri.tags_with_id());
         if !pack_seri.wander_config.is_disabled() {

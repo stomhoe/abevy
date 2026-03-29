@@ -231,7 +231,7 @@ pub fn start_grid_locked_steps(
                     if blocking_tiles.get_being_direction(being_ent).is_some_and(|facing_dir| facing_dir == next_dir) {
                         false
                     } else {
-                        steps_to_request = 1;
+                        steps_to_request = 0;
                         true
                     }
                 }
@@ -261,7 +261,7 @@ pub fn start_grid_locked_steps(
             } else if dir != IVec2::ZERO
                 && blocking_tiles.get_being_direction(being_ent).is_some_and(|facing_dir| facing_dir != next_dir)
             {
-                steps_to_request = 1;
+                steps_to_request = 0;
                 true
             } else {
                 false
@@ -286,7 +286,7 @@ pub fn start_grid_locked_steps(
             req_step_msgs.push(SendStepRequest {
                 being_ent,
                 dir: next_dir,
-                steps: steps_to_request.max(1),
+                steps: steps_to_request,
             });
         } else if !connected.is_empty() {
             let message = SyncGpos {

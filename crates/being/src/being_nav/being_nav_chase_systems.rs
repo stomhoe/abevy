@@ -1264,7 +1264,7 @@ pub fn make_chunk_snapshot_for_hunter(
             Option<&RetainedChasePathSnapshot>,
         ),
     >,
-    player_targets: Query<&ChunkPos, (PlayerBeing)>,
+    player_targets: Query<&ChunkPos, (BeingOfPlayerFaction)>,
     mut desired_chunks: Local<Vec<ChunkPos>>,
     mut corridor_chunks: Local<Vec<ChunkPos>>,
     mut seen_chunks: Local<HashSet<ChunkPos>>,

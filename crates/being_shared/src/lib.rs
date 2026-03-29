@@ -5,6 +5,8 @@ pub use being_shared_resources::*;
 pub use common::common_components::Grounding;
 
 pub mod being_shared;
+pub mod predator;
+pub mod wander;
 pub mod being_shared_seris;
 pub mod body_tree_shared;
 pub mod bodyparts_shared;
@@ -19,6 +21,8 @@ pub use body_tree_shared::*;
 pub use bodyparts_shared::*;
 pub use being_shared_audio::*;
 pub use being_shared_seris::*;
+pub use predator::*;
+pub use wander::*;
 pub use race_shared::*;
 pub use being_shared_group::*;
 pub use being_shared_nav_states::*;

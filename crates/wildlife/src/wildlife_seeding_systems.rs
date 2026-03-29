@@ -6,8 +6,10 @@ use ::being_shared::*;
 use common::log_targets::WILDLIFE_SYSTEM;
 use ::game_common::*;
 use tilemap::terrain::biome::biome_components::CreatureSampler;
+use tilemap::terrain::operation_list::operation_list_components::OperationList;
 use tilemap::chunking::macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples};
 use ::tilemap_shared::*;
+use tilemap::terrain::terrgen_messages::*;
 
 use crate::wildlife_spawning_helpers::*;
 
@@ -20,7 +22,7 @@ pub struct SeedQueries<'w, 's> {
     pack_query: Query<'w, 's, (), (With<Pack>, With<Templ>)>,
     race_query: Query<'w, 's, (), (With<Race>, With<Templ>)>,
     bit_query: Query<'w, 's, (), (With<BeingInstTemplate>, With<Templ>)>,
-    no_spawn_group_query: Query<'w, 's, (), With<NoSpawnGroup>>,
+    no_spawn_group_query: Query<'w, 's, (), With<NoSpawnSquadEntity>>,
     spawn_pack_size_query: Query<'w, 's, &'static PackInitialSizeSampler>,
 }
 
@@ -36,7 +38,61 @@ pub struct SeedRes<'w> {
 }
 
 #[allow(unused_parens, )]
-pub fn seed_natural_wildlife_for_new_macro_chunks(
+pub fn request_macrochunk_biome_sampling(
+    mut cmd: Commands,
+    mut loaded_macrochunks: MessageReader<NewMacrochunkLoaded>,
+    mut macro_chunk_query: Query<(&DimensionRef, &MacrochunkPos, &mut MacrochunkPendingBiomeSamples, ), (With<MacroChunk>, )>,
+    dimension_query: Query<&DimensionRootOplist>,
+    oplists: Query<&OplistSize, With<OperationList>>,
+    mut pending_ops_writer: MessageWriter<PendingOp>,
+    mut pending_ops: Local<Vec<PendingOp>>,
+    mut sample_positions: Local<Vec<GlobalTilePos>>,
+) {
+    pending_ops.clear();
+    for msg in loaded_macrochunks.read() {
+        let macro_chunk_ent = msg.macro_chunk_ent;
+        let Ok((&dim_ref, &macro_chunk_pos, mut biome_state)) = macro_chunk_query.get_mut(macro_chunk_ent) else {
+            continue;
+        };
+        if biome_state.0 != 0 {
+            continue;
+        }
+        let Ok(&root_oplist) = dimension_query.get(dim_ref.0) else {
+            error!(target: WILDLIFE_SYSTEM, "No root operation list for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
+            continue;
+        };
+        let Ok(_) = oplists.get(root_oplist.0) else {
+            error!(target: WILDLIFE_SYSTEM, "No oplist size for root operation list {:?}", root_oplist);
+            continue;
+        };
+        sample_positions.clear();
+        let sample_positions = macro_chunk_pos.sample_macro_chunk_positions(3, &mut sample_positions);
+        let expected_samples = sample_positions.len() as u32;
+        if expected_samples == 0 {
+            cmd.entity(macro_chunk_ent).try_remove::<MacrochunkPendingBiomeSamples>();
+            debug!(target: WILDLIFE_SYSTEM, "Completed biome sampling for macrochunk {} in {:?} without pending samples", macro_chunk_pos, dim_ref);
+            continue;
+        }
+        biome_state.0 = expected_samples;
+        for &gpos in sample_positions {
+            pending_ops.push(PendingOp {
+                oplist: root_oplist,
+                input: PendingOpInput {
+                    dimension_ref: dim_ref,
+                    gpos,
+                },
+                purpose: PendingOpPurpose::MacroChunkBiomeSampling {
+                    macro_chunk_ent,
+                },
+            });
+        }
+        trace!(target: WILDLIFE_SYSTEM, "Queued {} biome samples for macrochunk {} in {:?}", expected_samples, macro_chunk_pos, dim_ref);
+    }
+    pending_ops_writer.write_batch(pending_ops.drain(..));
+}
+
+#[allow(unused_parens, )]
+pub fn seed_natural_wildlife_for_biomesampled_macrochunks(
     mut cmd: Commands,
     mut macrochunk_finished_biomesampling: RemovedComponents<MacrochunkPendingBiomeSamples>,
     queries: SeedQueries,

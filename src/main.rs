@@ -123,7 +123,7 @@ fn build_filter() -> String {
 
         log_targets::DEBUG, DEBUG,
 
-        log_targets::MOVEMENT_SYSTEM, INFO,
+        log_targets::MOVEMENT_SYSTEM, TRACE,
         log_targets::SPRITE_SAMPLER_SYSTEM, TRACE,
         log_targets::SPRITE_INIT, WARN,
         log_targets::SPRITE_BUILD, INFO,

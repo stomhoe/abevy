@@ -1,8 +1,30 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
+use bevy_replicon::prelude::Replicated;
 use tilemap_shared::tilemap_shared_samplers::NormalDistSeri;
+use common::common_components::*;
 use common::common_tag_components::TagSet;
-use crate::{BeingInstTemplate, WanderSeri};
+use serde::{Deserialize, Serialize};
+use crate::WanderSeri;
 use tilemap_shared::InteractionZoneSeri;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
+#[require(Replicated, Prefix::trunc("BeingInstTemplate"), AssetScoped, HotReload)]
+pub struct BeingInstTemplate{
+    pub points: u32,
+    pub extra_health_multiplier: f32,
+}
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct DontExtendBitSpawnWhitelist;
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct DontExtendBitSpawnBlacklist;
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct DontExtendRaceSpawnWhitelist;
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct DontExtendRaceSpawnBlacklist;
 
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 pub struct BitSeri {
@@ -51,6 +73,14 @@ pub struct BitSeri {
     pub whitelisted_spawn_tile_tags: HashSet<String>,
     #[serde(default)]
     pub blacklisted_spawn_tile_tags: HashSet<String>,
+    #[serde(default)]
+    pub dont_extend_from_bit_spawn_whitelist: bool,
+    #[serde(default)]
+    pub dont_extend_from_bit_spawn_blacklist: bool,
+    #[serde(default)]
+    pub dont_extend_from_race_spawn_whitelist: bool,
+    #[serde(default)]
+    pub dont_extend_from_race_spawn_blacklist: bool,
     #[serde(default = "default_true")]
     pub spawn_pack_entity: bool,
     #[serde(default)]
@@ -66,7 +96,6 @@ impl BitSeri {
 fn default_multiplier() -> f32 { 1.0 }
 fn default_detection_vision_cone_sentinel() -> f32 { crate::DetectionVisionCone::SERI_SENTINEL }
 fn default_true() -> bool { true }
-
 common::define_entity_map_systems!(
     BeingInstTemplate,
     (),

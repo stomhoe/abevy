@@ -28,8 +28,7 @@
             (part_id: "neck", label_override: "Neck", children: [(
                 part_id: "head", label_override: "Head", children: [
                     (part_id: "brain", label_override: "Brain", children: []),
-                    (part_id: "eye", label_override: "Left Eye", children: []),
-                    (part_id: "eye", label_override: "Right Eye", children: []),
+                    (part_id: "eye", label_override: "Eye", children: []),
                     (part_id: "ear", label_override: "Left Ear", children: []),
                     (part_id: "ear", label_override: "Right Ear", children: []),
                     (part_id: "nose", label_override: "Nose", children: []),

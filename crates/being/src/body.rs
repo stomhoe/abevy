@@ -72,6 +72,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<BodyTree>()
     .replicate::<BodyOf>()
     .replicate_filtered::<ChildOf, With<BodyOf>>()
+    .replicate_filtered::<ChildOf, With<BodypartChildOfBodypart>>()
     .replicate::<BodySums>()
     .init_resource::<BodypartMaxHpMap>()
     .init_resource::<BodypartTemplateByPart>()

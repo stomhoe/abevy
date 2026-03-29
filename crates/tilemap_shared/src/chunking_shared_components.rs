@@ -42,7 +42,6 @@ pub enum TerrGenState {
     Ready,
     OpsLaunched,
     Finished,
-    Disabled,
 }
 
 #[derive(SystemParam)]

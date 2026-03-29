@@ -129,6 +129,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<RotateTransform>()
     .replicate::<OffsetForTerrgenPlacement>()
     .replicate::<TileStepSfx>()
+    .replicate::<TileIndex>()
 
 
     .replicate_once::<GlobalTilePos>()
