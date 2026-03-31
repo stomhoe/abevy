@@ -7,10 +7,6 @@ use tilemap_shared::{DimensionRef, GlobalTilePos};
 #[require(SuperstateInfo<BehavorialNavState>, )]//you need to add a plugin look at superstate crate i git cloned for example
 pub struct BehavorialNavState;
 
-#[derive(Component, Debug, Default, Clone, Deserialize, Serialize)]
-#[require(BehavorialNavState, )]//refactor this to only be behavorial intent and updatting goto accordingly in a non nav system, not used for nav systems. nav system should only understand GoTo(gpos: GlobalTilePos, stop_distance: f32)
-pub struct Wandering;
-
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, MapEntities)]
 #[relationship(relationship_target = Chasers)]
 #[require(BehavorialNavState, )]

@@ -5,6 +5,8 @@ use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disab
 use common::common_components::StrId;
 use common::log_targets::BEING_SYSTEM;
 use faction::faction_resources::FactionRef;
+use game_common::Templ;
+use game_common::game_common_components::TemplEntiRef;
 
 #[allow(unused_parens, )]
 pub fn validate_added_beings_have_gpos(
@@ -202,5 +204,50 @@ pub fn refresh_leader_on_member_rank_change(
             cmd.entity(group_ent).try_insert(LedBy { leader: leader_ent });
         }
         debug!(target: BEING_SYSTEM, "Selected pack leader {:?} for pack {:?} with rank {}", leader_ent, group_ent, leader_rank);
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn assign_member_ranks_on_joined_squad(
+    mut cmd: Commands,
+    joined_members: Query<
+        (Entity, &SquadMemberOf, Option<&BitRef>, Option<&RaceRef>, ),
+        (Added<SquadMemberOf>, With<Being>, ),
+    >,
+    mut squads_query: Query<
+        (
+            Option<&PackMemberRankSampler>,
+            Option<&TemplEntiRef>,
+            Option<&mut MemberRanks>,
+        ),
+        (Without<Templ>, ),
+    >,
+    templ_rank_sampler_query: Query<&PackMemberRankSampler, (With<Templ>, )>,
+) {
+    let mut rng = rand::rng();
+    for (being_ent, squad_member_of, bit_ref, race_ref, ) in joined_members.iter() {
+        let squad_ent = squad_member_of.0;
+        let Ok((rank_sampler_on_squad, templ_ref, member_ranks, )) = squads_query.get_mut(squad_ent) else {
+            continue;
+        };
+        let rank_sampler_from_templ = templ_ref
+            .and_then(|templ_ref| templ_rank_sampler_query.get(templ_ref.0).ok());
+        let rank_sampler = rank_sampler_on_squad.or(rank_sampler_from_templ);
+        let rank_dist = rank_sampler.and_then(|rank_sampler| {
+            bit_ref
+                .and_then(|bit_ref| rank_sampler.0.get(&bit_ref.0))
+                .or_else(|| race_ref.and_then(|race_ref| rank_sampler.0.get(&race_ref.0)))
+        });
+        let sampled_rank = rank_dist
+            .map(|rank_dist| rank_dist.sample(&mut rng))
+            .unwrap_or(0.0);
+        if let Some(mut member_ranks) = member_ranks {
+            member_ranks.0.insert(being_ent, sampled_rank);
+        } else {
+            let mut new_member_ranks = EntityHashMap::default();
+            new_member_ranks.insert(being_ent, sampled_rank);
+            cmd.entity(squad_ent).try_insert(MemberRanks(new_member_ranks));
+        }
+        trace!(target: BEING_SYSTEM, "assign_member_ranks_on_joined_squad: squad={:?} member={:?} rank={}", squad_ent, being_ent, sampled_rank);
     }
 }

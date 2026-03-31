@@ -495,7 +495,12 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 });
             }
             self.tile_gathering_params.to_drain.clear();
-        } else {
+        }
+        if !self.collision_tile_samples.is_empty() {
+            return;
+        }
+
+        {
             let this = std::ptr::addr_of!(*self);
             let to_drain = std::ptr::addr_of_mut!(self.tile_gathering_params.to_drain);
             let templ_ents = unsafe {
@@ -544,7 +549,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         whitelisted_tags: &WhitelistedSpawnTileTagsRef<'_>,
         blacklisted_tags: &BlacklistedSpawnTileTagsRef<'_>,
     ) -> Option<GlobalTilePos> {
-        const MAX_TRIES: usize = 1024;
+        const MAX_TRIES: usize = 10000;
         let mut tries = 0usize;
         if self.allowed_at_refs(
             dim_ref,
@@ -557,11 +562,11 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         }
         tries += 1;
 
-        const MAX_SPIRAL_RADIUS: i32 = 256;
+        const MAX_RINGS: i32 = 256;
         use std::f32::consts::PI;
         self.gposes_set.clear();
         let start_ring_ix = search_config.start_ring_ix.max(1);
-        let max_ring_ix = search_config.max_ring_ix.min(MAX_SPIRAL_RADIUS as u16);
+        let max_ring_ix = search_config.max_ring_ix.min(MAX_RINGS as u16);
         if start_ring_ix > max_ring_ix {
             error!(target: POSITION_SEARCH, "No valid tile found for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, tries);
             return None;

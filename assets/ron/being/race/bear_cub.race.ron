@@ -32,5 +32,5 @@
         "temp": 0.7,
         "artic": 0.4,
     },
-    pack_radius: 4,
+    pack_spawn_radius: 7,
 )

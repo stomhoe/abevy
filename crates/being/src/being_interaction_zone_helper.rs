@@ -13,7 +13,7 @@ pub fn default_interaction_zone(zone_id: HashId) -> InteractionZone {
     if zone_id == InteractionZones::COLLISION {
         return InteractionZone::collision_default_zone();
     }
-    InteractionZone::from_seri(InteractionZoneSeri::default())
+    InteractionZone::new(Vec::new(), Vec::new())
 }
 
 pub fn interaction_zone_from_seri_or_default(

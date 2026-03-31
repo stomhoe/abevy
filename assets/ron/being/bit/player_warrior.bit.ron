@@ -11,5 +11,5 @@
     whitelisted_tiles_for_spawning: [],
     blacklisted_tiles_for_spawning: [],
 
-    pack_radius: 4,
+    pack_spawn_radius: 7,
 )

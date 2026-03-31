@@ -6,11 +6,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{CardinalDirection, GlobalTilePos, SizeInTiles};
 
-#[derive(Component, Deserialize, TypePath, Clone, Debug, Default)]
+#[derive(Component, Deserialize, TypePath, Clone, Debug)]
+#[serde(default)]
 pub struct InteractionZoneSeri {
-    #[serde(default)]
     pub offset_positions: Vec<(i8, i8)>,
-    #[serde(default)]
     pub radius_offset: Vec<(f32, (f32, f32))>,
 }
 impl InteractionZoneSeri {
@@ -43,11 +42,10 @@ impl InteractionZoneSeri {
     }
 }
 
-pub fn sentinel_melee_interaction_zone() -> InteractionZoneSeri {
-    InteractionZoneSeri::sentinel_melee_interaction_zone()
-}
-pub fn sentinel_collision_zone() -> InteractionZoneSeri {
-    InteractionZoneSeri::sentinel_collision_zone()
+impl Default for InteractionZoneSeri {
+    fn default() -> Self {
+        Self::sentinel()
+    }
 }
 
 #[derive(Component, Clone, Deserialize, Serialize, Debug)]

@@ -32,9 +32,9 @@ pub struct SyncAiNavGridsScratch<'s> {
 #[allow(unused_parens, )]
 pub fn ensure_loaded_beings_have_nav_state(
     mut cmd: Commands,
-    beings: Query<(Entity, ), (With<Being>, Without<Wandering>, Without<Chasing>, Without<Fleeing>, )>,
+    beings: Query<(Entity, ), (With<Being>, Without<WanderState>, Without<Chasing>, Without<Fleeing>, )>,
 ) {
-    for (being_ent, ) in beings { cmd.entity(being_ent).try_insert(Wandering); }
+    for (being_ent, ) in beings { cmd.entity(being_ent).try_insert(WanderState::default()); }
 }
 
 #[allow(unused_parens, )]
@@ -231,8 +231,8 @@ fn resolve_flee_wander_cfg(
     member_of: Option<&SquadMemberOf>,
     bit_ref: Option<&BitRef>,
     race_ref: Option<&RaceRef>,
-    wander_cfg_query: &Query<&WanderConfig>,
-) -> WanderConfig {
+    wander_cfg_query: &Query<&WanderSeri>,
+) -> WanderSeri {
     if let Some(member_of) = member_of {
         if let Ok(cfg) = wander_cfg_query.get(member_of.0) {
             return cfg.clone();
@@ -248,11 +248,11 @@ fn resolve_flee_wander_cfg(
             return cfg.clone();
         }
     }
-    WanderConfig::default()
+    WanderSeri::default()
 }
 
 fn resolve_flee_avoid_tile_tags(
-    cfg: &WanderConfig,
+    cfg: &WanderSeri,
     has_avoid_blacklisted_spawn_tiles: bool,
     bit_ref: Option<&BitRef>,
     race_ref: Option<&RaceRef>,
@@ -283,9 +283,9 @@ pub fn update_goto_from_fleeing(
     mut cmd: Commands,
     mut writer: MessageWriter<NavOrder>,
     mut blocking_tiles: BlockingTileParamSet,
-    flee_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, Has<AvoidBlacklistedSpawnTilesForWander>, ), (With<Being>, LocalAiControlled, )>,
+    flee_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, Has<DoAvoidBlacklistedSpawnTilesForWander>, ), (With<Being>, LocalAiControlled, )>,
     flee_from_query: Query<(&::tilemap_shared::DimensionRef, ), (With<Being>, )>,
-    wander_cfg_query: Query<&WanderConfig>,
+    wander_cfg_query: Query<&WanderSeri>,
     blacklisted_spawn_tile_tags_query: Query<&::tilemap_shared::BlacklistedSpawnTileTags>,
     mut messages: Local<Vec<NavOrder>>,
 ) {
@@ -440,7 +440,7 @@ pub fn apply_nav_orders(
 
 #[allow(unused_parens, )]
 pub fn clear_nav_outputs_for_beings_without_nav_state(
-    mut query: Query<(Entity, Has<Wandering>, Has<Chasing>, Has<Fleeing>, Option<&mut GoTo>, ), (With<Being>, LocalAiControlled, )>,
+    mut query: Query<(Entity, Has<WanderState>, Has<Chasing>, Has<Fleeing>, Option<&mut GoTo>, ), (With<Being>, LocalAiControlled, )>,
     mut input_speed_query: Query<(&mut InputSpeedThrottleMult, &mut InputMaxSpeed, ), (), >,
 ) {
     for (being_ent, has_wandering, has_chasing, has_fleeing, go_to, ) in query.iter_mut() {

@@ -31,5 +31,5 @@
     biome_affinity: {
         "temp": 1.2,
     },
-    pack_radius: 4,
+    pack_spawn_radius: 7,
 )

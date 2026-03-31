@@ -52,10 +52,12 @@ fn resolve_predator_cfg(
     race_ref: Option<&RaceRef>,
     bit_cfg_query: &Query<&PredatorCfg>,
 ) -> Option<PredatorCfg> {
-    bit_ref
-        .and_then(|bit_ref| bit_cfg_query.get(bit_ref.0).ok())
-        .or_else(|| race_ref.and_then(|race_ref| bit_cfg_query.get(race_ref.0).ok()))
-        .cloned()
+    common::query_fallback_get!(
+        bit_cfg_query,
+        bit_ref.map(|bit_ref| bit_ref.0),
+        race_ref.map(|race_ref| race_ref.0),
+    )
+    .cloned()
 }
 
 fn euclidean_dist(a: GlobalTilePos, b: GlobalTilePos) -> f32 {

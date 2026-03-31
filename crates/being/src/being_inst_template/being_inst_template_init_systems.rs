@@ -93,12 +93,12 @@ pub fn init_being_templates(
                 spawn_pack_size_normal_dist,
             )));
         }
-        cmd.entity(bit_entity).insert(PackSpawnRadius(template_seri.pack_radius));
+        cmd.entity(bit_entity).insert(PackSpawnRadius(template_seri.pack_spawn_radius));
         if !template_seri.spawn_pack_entity {
             cmd.entity(bit_entity).insert(NoSpawnSquadEntity);
         }
         if !template_seri.wander.is_disabled() {
-            cmd.entity(bit_entity).insert(WanderConfig::from_seri(&template_seri.wander));
+            cmd.entity(bit_entity).insert(template_seri.wander.clone().sanitized());
         }
         if !template_seri.whitelisted_spawn_tile_tags.is_empty() {
             cmd.entity(bit_entity).insert(WhitelistedSpawnTileTags(tilemap_shared::being_components::WhitelistedTags(TagSet::new(&template_seri.whitelisted_spawn_tile_tags))));

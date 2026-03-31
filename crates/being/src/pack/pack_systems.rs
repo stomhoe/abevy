@@ -20,7 +20,7 @@ pub fn despawn_empty_squads(
 #[allow(unused_parens, )]
 pub fn update_pack_center_pos(
     mut cmd: Commands,
-    mut pack_query: Query<(Entity, &SquadMembers, &MemberRanks, Option<&GlobalCenterRankWeightMultiplier>, Option<&CenterWeightRankBasedMultiplier>, Option<&mut SquadAvgCenterPerDim>, ), (Without<Templ>, )>,
+    mut pack_query: Query<(Entity, &SquadMembers, Option<&MemberRanks>, Option<&GlobalCenterRankWeightMultiplier>, Option<&CenterWeightRankBasedMultiplier>, Option<&mut SquadAvgCenterPerDim>, ), (Without<Templ>, )>,
     member_pos_query: Query<(&DimensionRef, &GlobalTilePos, Option<&BitRef>, Option<&RaceRef>, ), (Without<Templ>, ),>,
     mut centers: Local<HashMap<DimensionRef, (Vec2, f32)>>,
 ) {
@@ -30,9 +30,9 @@ pub fn update_pack_center_pos(
             let Ok((member_dim_ref, member_gpos, member_bit_ref, member_race_ref, )) = member_pos_query.get(member_ent) else {
                 continue;
             };
-            let Some(&member_rank) = member_ranks.0.get(&member_ent) else {
-                continue;
-            };
+            let member_rank = member_ranks
+                .and_then(|member_ranks| member_ranks.0.get(&member_ent).copied())
+                .unwrap_or(0.0);
             let member_multiplier = member_bit_ref
                 .and_then(|bit_ref| {
                     center_rank_multipliers

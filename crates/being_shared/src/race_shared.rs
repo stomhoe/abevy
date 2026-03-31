@@ -51,73 +51,43 @@ pub struct RaceFootstepSfxConfig {
     pub disable_tile_step_sfx: bool,
 }
 
-#[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
+#[derive(serde::Deserialize, Asset, TypePath, Debug)]
+#[serde(default)]
 pub struct RaceSeri {
     pub id: String,
-    #[serde(default)]
     pub tags: HashSet<String>,
     pub name: String,
     pub body_or_sampler: String,
     pub name_generator: Option<String>,
-    #[serde(default)]
     pub icon_path: String,
-    #[serde(default)]
     pub description: String,
-    #[serde(default)]
     pub demonym: String,
-    #[serde(default)]
     pub singular: String,
-    #[serde(default)]
     pub plural: String,
-    #[serde(default)]
     pub sentient: bool,
     pub fallback_sprites_to_sample: Vec<String>,
-    #[serde(default = "default_true")]
     pub scale_hp_and_strength_with_size: bool,
-    #[serde(default)]
     pub size_variation: NormalDistSeri,
-    #[serde(default)]
     pub hori_variation: NormalDistSeri,
-    #[serde(default)]
     pub vert_variation: NormalDistSeri,
-    #[serde(default)]
     pub sets_of_choosable_sprites: Vec<(String, HashSet<String>)>,
-    #[serde(default)]
     pub can_walk_on: HashSet<String>,
-    #[serde(default = "default_true")]
     pub produces_step_sfx: bool,
-    #[serde(default)]
     pub footstep_sfx: RaceFootstepSfxSeri,
-    #[serde(default)]
     pub walk_speeds_on_tiles: HashMap<String, f32>,
-    #[serde(default)]
     pub whitelisted_tiles_for_spawning: HashSet<String>,
-    #[serde(default)]
     pub blacklisted_tiles_for_spawning: HashSet<String>,
-
-    #[serde(default)]
     pub predator: crate::PredatorSeri,
-    #[serde(default)]
     pub wander: WanderSeri,
-    #[serde(default = "tilemap_shared::sentinel_melee_interaction_zone")]
     pub melee_interaction_zone: InteractionZoneSeri,
-    #[serde(default = "tilemap_shared::sentinel_collision_zone")]
     pub collision_zone: InteractionZoneSeri,
-    #[serde(default)]//targets for already-spawned packs
     pub pack_size_min_max: (u32, u32),
-    #[serde(default)]//if this race wins sampling, it will spawn with a pack size drawn from this distribution
     pub spawn_pack_size_normal_dist: NormalDistSeri,
-    #[serde(default = "default_pack_radius")]
-    pub pack_radius: u8,
-    #[serde(default)]//additive membership into already-defined packs
+    pub pack_spawn_radius: u8,
     pub belongs_to_packs: Vec<String>,
-    #[serde(default)]
     pub biome_affinity: HashMap<String, f32>,
-    #[serde(default)]
     pub whitelisted_spawn_tile_tags: HashSet<String>,
-    #[serde(default)]
     pub blacklisted_spawn_tile_tags: HashSet<String>,
-    #[serde(default = "default_true")]
     pub spawn_pack_entity: bool,
 }
 
@@ -144,8 +114,47 @@ pub struct RaceSexEntrySeri {//TODO fix usage
     pub size_variation: Option<NormalDistSeri>,
 }
 
-fn default_true() -> bool { true }
-fn default_pack_radius() -> u8 { crate::PackSpawnRadius::default().0 }
+impl Default for RaceSeri {
+    fn default() -> Self {
+        Self {
+            id: String::default(),
+            tags: HashSet::default(),
+            name: String::default(),
+            body_or_sampler: String::default(),
+            name_generator: None,
+            icon_path: String::default(),
+            description: String::default(),
+            demonym: String::default(),
+            singular: String::default(),
+            plural: String::default(),
+            sentient: false,
+            fallback_sprites_to_sample: Vec::default(),
+            scale_hp_and_strength_with_size: true,
+            size_variation: NormalDistSeri::default(),
+            hori_variation: NormalDistSeri::default(),
+            vert_variation: NormalDistSeri::default(),
+            sets_of_choosable_sprites: Vec::default(),
+            can_walk_on: HashSet::default(),
+            produces_step_sfx: true,
+            footstep_sfx: RaceFootstepSfxSeri::default(),
+            walk_speeds_on_tiles: HashMap::default(),
+            whitelisted_tiles_for_spawning: HashSet::default(),
+            blacklisted_tiles_for_spawning: HashSet::default(),
+            predator: crate::PredatorSeri::default(),
+            wander: WanderSeri::default(),
+            melee_interaction_zone: InteractionZoneSeri::default(),
+            collision_zone: InteractionZoneSeri::default(),
+            pack_size_min_max: (0, 0),
+            spawn_pack_size_normal_dist: NormalDistSeri::default(),
+            pack_spawn_radius: crate::PackSpawnRadius::default().0,
+            belongs_to_packs: Vec::default(),
+            biome_affinity: HashMap::default(),
+            whitelisted_spawn_tile_tags: HashSet::default(),
+            blacklisted_spawn_tile_tags: HashSet::default(),
+            spawn_pack_entity: true,
+        }
+    }
+}
 
 common::define_entity_map_systems!(
     Race,

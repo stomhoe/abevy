@@ -30,6 +30,14 @@ impl CardinalDirection {
             CardinalDirection::East => CardinalDirection::South,
         }
     }
+    pub fn opposite_dir(&self) -> CardinalDirection {
+        match self {
+            CardinalDirection::South => CardinalDirection::North,
+            CardinalDirection::West => CardinalDirection::East,
+            CardinalDirection::North => CardinalDirection::South,
+            CardinalDirection::East => CardinalDirection::West,
+        }
+    }
     pub fn to_dir_vec(&self) -> IVec2 {
         match self {
             CardinalDirection::South => IVec2::new(0, -1),

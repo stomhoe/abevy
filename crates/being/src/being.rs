@@ -70,6 +70,7 @@ pub fn plugin(app: &mut App) {
             sync_player_being_chunk_ranges,
             assign_uncomputed_beings_to_host,
             sync_group_members_from_member_of,
+            assign_member_ranks_on_joined_squad.before(refresh_leader_on_member_rank_change),
             rebuild_portal_crossing_index,
             refresh_leader_on_member_rank_change,
             cross_portal,
@@ -116,9 +117,9 @@ pub fn plugin(app: &mut App) {
     .replicate::<CharacterCreatedBy>()
     .replicate::<DirectControllable>()
     .replicate::<Chasing>()
-    .replicate::<Wandering>()
+    .replicate_once::<WanderState>()
     .replicate::<Fleeing>()
-    .replicate::<AvoidBlacklistedSpawnTilesForWander>()
+    .replicate::<DoAvoidBlacklistedSpawnTilesForWander>()
     .replicate::<GoTo>()
     .replicate_filtered::<GlobalTilePos, Without<Being>>()
     .replicate::<being_shared::BgSimulatedIn>()
@@ -133,6 +134,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<LedBy>()
     .replicate::<JoinedGroups>()
     .register_type::<JoinedGroups>()
+    .register_type::<WanderState>()
     .replicate::<FactionRef>()
     .replicate::<SquadMemberOf>()
     .replicate::<crate::pack::pack_components::SquadAvgCenterPerDim>()

@@ -179,7 +179,7 @@ pub fn init_races(
                 race_seri.spawn_pack_size_normal_dist.clone(),
             )));
         }
-        cmd.entity(entity).insert(PackSpawnRadius(race_seri.pack_radius));
+        cmd.entity(entity).insert(PackSpawnRadius(race_seri.pack_spawn_radius));
         if !race_seri.spawn_pack_entity {
             cmd.entity(entity).insert(NoSpawnSquadEntity);
         }
@@ -187,7 +187,7 @@ pub fn init_races(
             cmd.entity(entity).insert(predator_cfg);
         }
         if !race_seri.wander.is_disabled() {
-            cmd.entity(entity).insert(WanderConfig::from_seri(&race_seri.wander));
+            cmd.entity(entity).insert(race_seri.wander.clone().sanitized());
         }
         if !race_seri.whitelisted_spawn_tile_tags.is_empty() {
             cmd.entity(entity).insert(WhitelistedSpawnTileTags::new(&race_seri.whitelisted_spawn_tile_tags));

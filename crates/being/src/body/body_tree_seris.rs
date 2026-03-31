@@ -13,6 +13,7 @@ pub struct BodypartNodeSeri {
 }
 
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
+#[serde(default)]
 pub struct BodyTreeSeri {
     pub id: String,
     pub name: String,
@@ -24,9 +25,7 @@ pub struct BodyTreeSeri {
     pub sexes: HashMap<String, being_shared::RaceSexEntrySeri>,
     #[serde(default)]
     pub caloric_burn_rate_multiplier: f32,
-    #[serde(default = "tilemap_shared::sentinel_melee_interaction_zone")]
     pub melee_interaction_zone: InteractionZoneSeri,
-    #[serde(default = "tilemap_shared::sentinel_collision_zone")]
     pub collision_zone: InteractionZoneSeri,
     pub root: BodypartNodeSeri,
 }

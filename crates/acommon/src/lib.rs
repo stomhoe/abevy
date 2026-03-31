@@ -10,6 +10,7 @@ pub mod common_tag_components;
 pub mod common_types;
 pub mod common_states;
 pub mod common_resources;
+pub mod query_macros;
 pub mod def_db;
 pub mod file_logging;
 mod common_systems;

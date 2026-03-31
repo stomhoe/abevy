@@ -14,7 +14,7 @@ pub struct BeingInstTemplate{
     pub extra_health_multiplier: f32,
 }
 impl BeingInstTemplate {
-    pub fn default_pack_radius() -> u8 {
+    pub fn default_pack_spawn_radius() -> u8 {
         crate::PackSpawnRadius::default().0
     }
 }
@@ -31,62 +31,39 @@ pub struct DontExtendRaceSpawnWhitelist;
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct DontExtendRaceSpawnBlacklist;
 
-#[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
+#[derive(serde::Deserialize, Asset, TypePath, Debug)]
+#[serde(default)]
 pub struct BitSeri {
     pub id: String,
-    #[serde(default)]
     pub tags: HashSet<String>,
     pub points: u32,
-    #[serde(default)]
     pub fallback_faction: String,
-    #[serde(default)]
     pub consecutive_name_weighted_distributions: Vec<Vec<(String, f32)>>,
     pub race: String,
-    #[serde(default)]
     pub scs_samplers: Vec<String>,
-    #[serde(default)]
     pub sprites_scale_ranges: HashMap<String, (f32, f32)>,
     pub size_variation: Option<NormalDistSeri>,
     pub hori_variation: Option<NormalDistSeri>,
     pub vert_variation: Option<NormalDistSeri>,
-    #[serde(default = "default_multiplier")]
     pub health_multiplier: f32,
-    #[serde(default)]
     pub body_tree: String,
     pub recruitment_difficulty: Option<i32>,
-    #[serde(default)]
     pub whitelisted_tiles_for_spawning: HashSet<String>,
-    #[serde(default)]
     pub blacklisted_tiles_for_spawning: HashSet<String>,
-    #[serde(default)]
     pub predator: crate::PredatorSeri,
-    #[serde(default = "tilemap_shared::sentinel_melee_interaction_zone")]
     pub melee_attack_zone: InteractionZoneSeri,
-    #[serde(default = "tilemap_shared::sentinel_collision_zone")]
     pub collision_zone: InteractionZoneSeri,
-    #[serde(default)]
     pub spawn_pack_size_normal_dist: Option<NormalDistSeri>,
-    #[serde(default = "BeingInstTemplate::default_pack_radius")]
-    pub pack_radius: u8,
-    #[serde(default)]
+    pub pack_spawn_radius: u8,
     pub belongs_to_packs: Vec<String>,
-    #[serde(default)]
     pub biome_affinity: HashMap<String, f32>,
-    #[serde(default)]
     pub whitelisted_spawn_tile_tags: HashSet<String>,
-    #[serde(default)]
     pub blacklisted_spawn_tile_tags: HashSet<String>,
-    #[serde(default)]
     pub dont_extend_from_bit_spawn_whitelist: bool,
-    #[serde(default)]
     pub dont_extend_from_bit_spawn_blacklist: bool,
-    #[serde(default)]
     pub dont_extend_from_race_spawn_whitelist: bool,
-    #[serde(default)]
     pub dont_extend_from_race_spawn_blacklist: bool,
-    #[serde(default = "default_true")]
     pub spawn_pack_entity: bool,
-    #[serde(default)]
     pub wander: WanderSeri,
 }
 
@@ -96,8 +73,43 @@ impl BitSeri {
     }
 }
 
-fn default_multiplier() -> f32 { 1.0 }
-fn default_true() -> bool { true }
+impl Default for BitSeri {
+    fn default() -> Self {
+        Self {
+            id: String::default(),
+            tags: HashSet::default(),
+            points: 0,
+            fallback_faction: String::default(),
+            consecutive_name_weighted_distributions: Vec::default(),
+            race: String::default(),
+            scs_samplers: Vec::default(),
+            sprites_scale_ranges: HashMap::default(),
+            size_variation: None,
+            hori_variation: None,
+            vert_variation: None,
+            health_multiplier: 1.0,
+            body_tree: String::default(),
+            recruitment_difficulty: None,
+            whitelisted_tiles_for_spawning: HashSet::default(),
+            blacklisted_tiles_for_spawning: HashSet::default(),
+            predator: crate::PredatorSeri::default(),
+            melee_attack_zone: InteractionZoneSeri::default(),
+            collision_zone: InteractionZoneSeri::default(),
+            spawn_pack_size_normal_dist: None,
+            pack_spawn_radius: crate::PackSpawnRadius::default().0,
+            belongs_to_packs: Vec::default(),
+            biome_affinity: HashMap::default(),
+            whitelisted_spawn_tile_tags: HashSet::default(),
+            blacklisted_spawn_tile_tags: HashSet::default(),
+            dont_extend_from_bit_spawn_whitelist: false,
+            dont_extend_from_bit_spawn_blacklist: false,
+            dont_extend_from_race_spawn_whitelist: false,
+            dont_extend_from_race_spawn_blacklist: false,
+            spawn_pack_entity: true,
+            wander: WanderSeri::default(),
+        }
+    }
+}
 common::define_entity_map_systems!(
     BeingInstTemplate,
     (),

@@ -36,5 +36,5 @@
         "beach": 1.4,
         "temp": 0.3,
     },
-    pack_radius: 4,
+    pack_spawn_radius: 7,
 )

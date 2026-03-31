@@ -14,20 +14,14 @@ pub struct PredatorCfg {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(default)]
 pub struct PredatorSeri {
-    #[serde(default)]
     pub territorialism: f32,
-    #[serde(default)]
     pub pack_size_min: u32,
-    #[serde(default)]
     pub pack_size_max: u32,
-    #[serde(default)]
     pub do_not_hunt_tags: HashSet<String>,
-    #[serde(default)]
     pub prey_body_size_ratio_tolerance: f32,
-    #[serde(default = "default_predator_seri_uninitialized")]
     pub min_hunger_to_hunt: f32,
-    #[serde(default)]
     pub min_hp_ratio_to_hunt: f32,
 }
 
@@ -94,8 +88,6 @@ impl PredatorCfg {
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct Predator;
-
-fn default_predator_seri_uninitialized() -> f32 { PredatorSeri::SERI_UNINITIALIZED }
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, MapEntities)]
 #[relationship(relationship_target = HuntedBy)]

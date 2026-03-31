@@ -2,67 +2,52 @@ use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use common::common_tag_components::TagSet;
 use tilemap_shared::tilemap_shared_samplers::NormalDistSeri;
 
-use being_shared::WanderConfig;
+use being_shared::WanderSeri;
 
 pub type SpawnWeight = f32;
 
 pub type RankDist = NormalDistSeri;
 
-#[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
+#[derive(serde::Deserialize, Asset, TypePath, Debug)]
+#[serde(default)]
 pub struct PackSeri {
     pub id: String,
-    #[serde(default)]
     pub tags: HashSet<String>,
-
-    #[serde(default = "default_true")]
     pub spawn_pack_entity: bool,
-
-    #[serde(default)]
     pub spawn_being_count_normal_dist: NormalDistSeri,
-    #[serde(default = "default_pack_radius")]
-    pub pack_radius: u8,
-    #[serde(default)]
+    pub pack_spawn_radius: u8,
     pub race_ids: HashMap<String, (SpawnWeight, RankDist)>,
-    #[serde(default)]
     pub bit_ids: HashMap<String, (SpawnWeight, RankDist)>,
-    #[serde(default = "default_center_rank_weight_multiplier")]
     pub center_rank_weight_multiplier: f32,
-    #[serde(default)]
     pub center_rank_weight_multipliers: HashMap<String, f32>,
-    #[serde(default)]
     pub biome_affinity: HashMap<String, f32>,
-    #[serde(default)]//placeholder, dont use this
     pub behavior_on_member_attack: String,
-    #[serde(default = "default_alert_effectiveness_falloff")]
     pub attack_alert_effectiveness_falloff: f32,
-    #[serde(default = "default_counter_regroup_tightness")]
     pub counter_regroup_tightness: f32,
-
-    #[serde(default)]
-    pub wander_config: WanderConfig,
-
-    #[serde(default)]//if empty, default to 1 inbetween chunk for all other packs
+    pub wander: WanderSeri,
     pub chunk_separation_to_others: HashMap<String, u8>,//u8: inbetween chunks of separation (should work radially)
 }
 
-fn default_true() -> bool {
-    true
-}
-
-fn default_center_rank_weight_multiplier() -> f32 {
-    1.0
-}
-
-fn default_alert_effectiveness_falloff() -> f32 {
-    0.05
-}
-
-fn default_counter_regroup_tightness() -> f32 {
-    1.5
-}
-
-fn default_pack_radius() -> u8 {
-    being_shared::PackSpawnRadius::default().0
+impl Default for PackSeri {
+    fn default() -> Self {
+        Self {
+            id: String::default(),
+            tags: HashSet::default(),
+            spawn_pack_entity: true,
+            spawn_being_count_normal_dist: NormalDistSeri::default(),
+            pack_spawn_radius: being_shared::PackSpawnRadius::default().0,
+            race_ids: HashMap::default(),
+            bit_ids: HashMap::default(),
+            center_rank_weight_multiplier: 1.0,
+            center_rank_weight_multipliers: HashMap::default(),
+            biome_affinity: HashMap::default(),
+            behavior_on_member_attack: String::default(),
+            attack_alert_effectiveness_falloff: 0.05,
+            counter_regroup_tightness: 1.5,
+            wander: WanderSeri::default(),
+            chunk_separation_to_others: HashMap::default(),
+        }
+    }
 }
 
 impl PackSeri {

@@ -8,6 +8,7 @@ pub use crate::def_db::*;
 #[allow(unused_imports, )]pub use crate::entity_map_macros::*;
 pub use crate::file_logging::*;
 pub use crate::log_targets::*;
+#[allow(unused_imports, )]pub use crate::query_macros::*;
 #[allow(unused_imports, )]
 pub use crate::marker_macros::*;
 

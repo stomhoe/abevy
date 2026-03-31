@@ -13,5 +13,5 @@
     },
     behavior_on_member_attack: "",
     chunk_separation_to_others: {},
-    pack_radius: 4,
+    pack_spawn_radius: 7,
 )

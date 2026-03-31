@@ -22,6 +22,7 @@ pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
     templ_ref_query: Query<'w, 's, &'static TemplEntiRef>,
     bit_query: Query<'w, 's, (&'static BeingInstTemplate,)>,
     race_query: Query<'w, 's, (), With<Race>>,
+    wander_state_query: Query<'w, 's, &'static WanderState>,
     scs_to_build_query: Query<'w, 's, (), With<ScsToBuild>>,
     mapped_sprites_to_sample_query: Query<'w, 's, &'static SexMappedSpritesToSample>,
     sexes_sampler_query: Query<'w, 's, &'static SexesSampler>,
@@ -36,8 +37,8 @@ pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
     dont_extend_from_race_spawn_blacklist_query: Query<'w, 's, (), With<DontExtendRaceSpawnBlacklist>>,
     faction_ref_query: Query<'w, 's, &'static FactionRef>,
     predator_cfg_query: Query<'w, 's, (), With<PredatorCfg>>,
-    wander_cfg_query: Query<'w, 's, &'static WanderConfig>,
-    avoid_blacklisted_spawn_tiles_query: Query<'w, 's, (), With<AvoidBlacklistedSpawnTilesForWander>>,
+    wander_cfg_query: Query<'w, 's, &'static WanderSeri>,
+    avoid_blacklisted_spawn_tiles_query: Query<'w, 's, (), With<DoAvoidBlacklistedSpawnTilesForWander>>,
 }
 
 #[derive(SystemParam)]
@@ -100,6 +101,21 @@ pub fn build_beings_from_refs(
             .and_then(|bit_ref| queries.race_ref_query.get(bit_ref.0).ok().copied())
             .or(race_ref);
         let current_refs = (bit_ref, race_ref);
+        let wander_cfg = common::query_fallback_get!(
+            queries.wander_cfg_query,
+            bit_ref.map(|bit_ref| bit_ref.0),
+            race_ref.map(|race_ref| race_ref.0),
+        );
+        if let Some(wander_cfg) = wander_cfg {
+            let has_initialized_wander_state = queries
+                .wander_state_query
+                .get(being_ent)
+                .ok()
+                .is_some_and(|state| !state.is_uninitialized());
+            if !wander_cfg.is_disabled() && !has_initialized_wander_state {
+                cmd.entity(being_ent).insert(WanderState::new(&mut rng, wander_cfg));
+            }
+        }
 
         let dont_extend_from_bit_spawn_whitelist = bit_ref.is_some_and(|bit_ref| queries.dont_extend_from_bit_spawn_whitelist_query.get(bit_ref.0).is_ok());
         let dont_extend_from_bit_spawn_blacklist = bit_ref.is_some_and(|bit_ref| queries.dont_extend_from_bit_spawn_blacklist_query.get(bit_ref.0).is_ok());
@@ -135,7 +151,7 @@ pub fn build_beings_from_refs(
         } else {
             cmd.entity(being_ent).try_remove::<Predator>();
         }
-        let has_avoid_blacklisted_spawn_tiles = if let Some(bit_ref) = bit_ref {
+        let avoid_blacklisted_spawn_tiles_for_wander = if let Some(bit_ref) = bit_ref {
             if let Ok(bit_wander_cfg) = queries.wander_cfg_query.get(bit_ref.0) {
                 bit_wander_cfg.avoid_blacklisted_spawn_tiles
             } else {
@@ -150,23 +166,17 @@ pub fn build_beings_from_refs(
                 .map(|cfg| cfg.avoid_blacklisted_spawn_tiles)
                 .unwrap_or(false)
         };
-        let had_avoid_blacklisted_spawn_tiles = queries
+        let was_avoiding_blacklisted_spawn_tiles_for_wander = queries
             .avoid_blacklisted_spawn_tiles_query
             .get(being_ent)
             .is_ok();
-        if has_avoid_blacklisted_spawn_tiles {
-            cmd.entity(being_ent).try_insert_if_new(AvoidBlacklistedSpawnTilesForWander);
+        if avoid_blacklisted_spawn_tiles_for_wander {
+            cmd.entity(being_ent).try_insert_if_new(DoAvoidBlacklistedSpawnTilesForWander);
         } else {
-            cmd.entity(being_ent).try_remove::<AvoidBlacklistedSpawnTilesForWander>();
+            cmd.entity(being_ent).try_remove::<DoAvoidBlacklistedSpawnTilesForWander>();
         }
-        if had_avoid_blacklisted_spawn_tiles != has_avoid_blacklisted_spawn_tiles {
-            debug!(
-                target: BEING_TEMPLATE_BUILD,
-                "Being {:?} avoid_blacklisted_spawn_tiles={}",
-                being_ent,
-                has_avoid_blacklisted_spawn_tiles,
-            );
-        }
+
+        
         match locals.prev_refs_by_ent.get(&being_ent).copied() {
             Some(prev_refs) if prev_refs == current_refs => continue,
             Some(prev_refs) => {

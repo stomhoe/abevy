@@ -47,11 +47,11 @@ pub fn init_packs(
         if !pack_seri.spawn_pack_entity {
             cmd.entity(pack_entity).insert(NoSpawnSquadEntity);
         }
-        cmd.entity(pack_entity).insert(PackSpawnRadius(pack_seri.pack_radius));
+        cmd.entity(pack_entity).insert(PackSpawnRadius(pack_seri.pack_spawn_radius));
         cmd.entity(pack_entity).insert(pack_seri.tags_with_id());
-        if !pack_seri.wander_config.is_disabled() {
+        if !pack_seri.wander.is_disabled() {
             cmd.entity(pack_entity)
-                .insert(pack_seri.wander_config.clone().sanitized());
+                .insert(pack_seri.wander.clone().sanitized());
         }
         if pack_seri.center_rank_weight_multiplier != 1.0 {
             cmd.entity(pack_entity).insert(GlobalCenterRankWeightMultiplier(

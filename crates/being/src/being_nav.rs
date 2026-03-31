@@ -28,7 +28,7 @@ pub use being_nav_chase_systems::*;
 #[allow(unused_parens)]
 pub fn plugin(app: &mut App) {
     app
-    .add_plugins(superstate_plugin::<BehavorialNavState, (Wandering, Chasing, Fleeing)>)
+    .add_plugins(superstate_plugin::<BehavorialNavState, (WanderState, Chasing, Fleeing)>)
     .add_systems(
         Update,
         (

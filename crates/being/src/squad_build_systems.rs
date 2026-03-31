@@ -32,7 +32,7 @@ pub(crate) struct InstancePackQueries<'w, 's> {
     bit_query: Query<'w, 's, (), (With<BeingInstTemplate>, With<Templ>, )>,
     whitelist_query: Query<'w, 's, &'static WhitelistedSpawnTileTags, (With<Templ>, )>,
     blacklist_query: Query<'w, 's, &'static BlacklistedSpawnTileTags, (With<Templ>, )>,
-    pack_radius_query: Query<'w, 's, &'static PackSpawnRadius>,
+    pack_spawn_radius_query: Query<'w, 's, &'static PackSpawnRadius>,
     no_spawn_squad_query: Query<'w, 's, (), With<NoSpawnSquadEntity>>,
     spawn_count_query: Query<'w, 's, (&'static PackInitialSizeSampler, )>,
 }
@@ -68,7 +68,7 @@ pub fn instance_pack_entities(
 
         if let Ok(being_sampler) = queries.pack_query.get(source_ent) {
             source_kind = Some(InstancePackSourceKind::Pack);
-            density_tiles = queries.pack_radius_query
+            density_tiles = queries.pack_spawn_radius_query
                 .get(source_ent)
                 .ok()
                 .copied()
@@ -99,7 +99,7 @@ pub fn instance_pack_entities(
         } else if queries.race_query.get(source_ent).is_ok() {
             source_kind = Some(InstancePackSourceKind::Race);
             is_race_target = true;
-            density_tiles = queries.pack_radius_query
+            density_tiles = queries.pack_spawn_radius_query
                 .get(source_ent)
                 .ok()
                 .copied()
@@ -126,7 +126,7 @@ pub fn instance_pack_entities(
         } else if queries.bit_query.get(source_ent).is_ok() {
             source_kind = Some(InstancePackSourceKind::Bit);
             is_bit_target = true;
-            density_tiles = queries.pack_radius_query
+            density_tiles = queries.pack_spawn_radius_query
                 .get(source_ent)
                 .ok()
                 .copied()
