@@ -36,4 +36,5 @@
         "desert": 1.2,
         "temp": 0.4,
     },
+    pack_radius: 4,
 )

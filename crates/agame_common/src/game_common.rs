@@ -103,6 +103,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<ScaleHpAndStrengthWithSampledSize>()
     .replicate_filtered::<ChildOf, Without<TilemapId>>()
     .replicate::<EntityWeightedSampler>()
+    .replicate::<CloneTemplChildren>()
 
     .replicate_once::<GlobalTransform>()
     .replicate_once::<Transform>()

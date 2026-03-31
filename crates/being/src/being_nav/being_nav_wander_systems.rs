@@ -11,7 +11,7 @@ use bevy::{
 use common::common_tag_components::TagSet;
 use common::log_targets::BEING_SYSTEM;
 use movement::movement_components::FinalNormMoveDir;
-use param_sets::BlockingTileParamSet;
+use ::param_sets::*;
 use rand::Rng;
 use std::time::Duration;
 use ::tilemap_shared::*;
@@ -527,6 +527,7 @@ pub fn wander_behavior(
                     dim_ref,
                     gpos,
                     pred_ent,
+                    GposSearchConfig::wander(),
                     &empty_whitelist,
                     &avoid_spawn_tile_tags,
                 ) {

@@ -32,4 +32,5 @@
         "temp": 1.0,
         "elf": 0.7,
     },
+    pack_radius: 4,
 )

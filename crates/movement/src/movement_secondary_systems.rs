@@ -102,7 +102,7 @@ pub fn add_movement_components_to_beings(
 pub fn update_facing_dir(
     mut query: Query<(Entity, &FinalNormMoveDir, Option<&GridLockedMovement>, &mut CardinalDirection), (With<ComputedLocally>)>,
     mut writer: MessageWriter<MirrorHolderStateForSprite>,
-    mut messages: Local<HashSet<MirrorHolderStateForSprite>>,
+    mut messages: Local<Vec<MirrorHolderStateForSprite>>,
 ) {
     for (being_ent, norm_move_dir, glm, mut facing_dir) in query.iter_mut() {
         let dir = glm
@@ -116,11 +116,10 @@ pub fn update_facing_dir(
         };
         if *facing_dir != next {
             *facing_dir = next;
-            trace!(target: MOVEMENT_SYSTEM, "Facing updated for {:?} to {:?}", being_ent, next);
-            messages.insert(MirrorHolderStateForSprite(being_ent));
+            messages.push(MirrorHolderStateForSprite(being_ent));
         }
     }
-    writer.write_batch(messages.drain());
+    writer.write_batch(messages.drain(..));
 }
 #[allow(unused_parens, )]
 pub fn copy_client_move_input_to_controlled_beings(

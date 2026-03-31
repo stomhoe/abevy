@@ -10,29 +10,12 @@ use common::common_components::StrId;
 use tilemap::chunking::{chunking_components::{Chunk, MacroChunk, MacroChunkRef, TerrGenState}, macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples}};
 use ::tilemap_shared::*;
 use ::being_shared::*;
-use wildlife::NaturalSpawnOrigin;
 
 #[derive(Clone, Copy, Default)]
 struct MacroChunkChunkStats {
     total_chunks: usize,
     finished_chunks: usize,
     disabled_chunks: usize,
-}
-
-impl MacroChunkChunkStats {
-    fn push(self, terrgen_state: TerrGenState) -> Self {
-        let mut next = self;
-        next.total_chunks += 1;
-        match terrgen_state {
-            TerrGenState::Finished => next.finished_chunks += 1,
-            TerrGenState::Pending | TerrGenState::Ready | TerrGenState::OpsLaunched => {}
-        }
-        next
-    }
-
-    fn finalized_chunks(self) -> usize {
-        self.finished_chunks + self.disabled_chunks
-    }
 }
 
 struct MacroChunkCell {
@@ -44,7 +27,7 @@ struct MacroChunkCell {
     loaded: bool,
     chunk_stats: MacroChunkChunkStats,
     chunk_states: Vec<(Entity, ChunkPos, TerrGenState)>,
-    seeded_for_wildlife: bool,
+    natural_origin_beings_count: usize,
 }
 
 #[derive(Clone)]
@@ -126,35 +109,36 @@ fn biome_distribution_lines(distribution: &BiomeDistribution, id_query: &Query<&
                 .map(|str_id| str_id.as_str().to_string())
                 .unwrap_or_else(|_| format!("{:?}", biome_ent));
             let pack_stats = distribution.averaged_pack_count_multiplier_stats(*biome_ent);
+            let pack_mean = if pack_stats.samples == 0 {
+                1.0
+            } else {
+                pack_stats.mean_sum / pack_stats.samples as f32
+            };
             let share = if total_weight > 0.0 { (*weight / total_weight) * 100.0 } else { 0.0 };
-            (label, *weight, share, pack_stats)
+            (label, *weight, share, pack_mean, pack_stats.averaged_std_dev())
         })
         .collect();
     lines.sort_by(|lhs, rhs| rhs.1.partial_cmp(&lhs.1).unwrap_or(Ordering::Equal));
     lines
         .into_iter()
-        .map(|(label, weight, share, pack_stats)| {
+        .map(|(label, weight, share, pack_mean, pack_std_dev)| {
             format!(
                 "{} | weight {:.2} ({:.1}%) | pack mean {:.2} std {:.2}",
                 label,
                 weight,
                 share,
-                pack_stats.averaged_mean(),
-                pack_stats.averaged_std_dev(),
+                pack_mean,
+                pack_std_dev,
             )
         })
         .collect()
-}
-
-fn final_biome_label(distribution: &BiomeDistribution, id_query: &Query<&StrId>) -> Option<String> {
-    dominant_biome(distribution, id_query).map(|(label, weight)| format!("Final dominant biome: {} ({:.2})", label, weight))
 }
 
 fn macrochunk_fill_color(cell: &MacroChunkCell) -> egui::Color32 {
     match cell.biome_sampling_state {
         Some(MacrochunkPendingBiomeSamples(remaining_samples)) if remaining_samples > 0 => egui::Color32::from_rgb(170, 120, 60),
         Some(_) => egui::Color32::from_rgb(52, 52, 52),
-        None if cell.seeded_for_wildlife => egui::Color32::from_rgb(60, 140, 82),
+        None if cell.natural_origin_beings_count > 0 => egui::Color32::from_rgb(60, 140, 82),
         None => egui::Color32::from_rgb(65, 105, 165),
     }
 }
@@ -178,14 +162,14 @@ fn macrochunk_hover_text(cell: &MacroChunkCell, id_query: &Query<&StrId>) -> Str
         format!("Loaded: {}", cell.loaded),
         format!(
             "Chunks finalized: {}/{}",
-            cell.chunk_stats.finalized_chunks(),
+            cell.chunk_stats.finished_chunks + cell.chunk_stats.disabled_chunks,
             cell.chunk_stats.total_chunks,
         ),
-        format!("Wildlife seeded: {}", cell.seeded_for_wildlife),
+        format!("Natural origin beings: {}", cell.natural_origin_beings_count),
     ];
     if cell.biome_sampling_state.is_none() {
-        if let Some(label) = final_biome_label(&cell.biome_distribution, id_query) {
-            lines.push(label);
+        if let Some((label, weight)) = dominant_biome(&cell.biome_distribution, id_query) {
+            lines.push(format!("Final dominant biome: {} ({:.2})", label, weight));
         }
     } else {
         lines.push("Biome finalization pending".to_string());
@@ -421,17 +405,17 @@ fn show_macrochunk_details(
     ui.label(format!("Loaded: {}", cell.loaded));
     ui.label(format!(
         "Chunks finalized: {}/{}",
-        cell.chunk_stats.finalized_chunks(),
+        cell.chunk_stats.finished_chunks + cell.chunk_stats.disabled_chunks,
         cell.chunk_stats.total_chunks,
     ));
-    ui.label(format!("Wildlife seeded: {}", cell.seeded_for_wildlife));
+    ui.label(format!("Natural origin beings in macrochunk: {}", cell.natural_origin_beings_count));
     ui.separator();
-    ui.label(format!(
-        "Final chunk states: finished {} | disabled {} | total {}",
-        cell.chunk_stats.finished_chunks,
-        cell.chunk_stats.disabled_chunks,
-        cell.chunk_stats.total_chunks,
-    ));
+            ui.label(format!(
+                "Final chunk states: finished {} | disabled {} | total {}",
+                cell.chunk_stats.finished_chunks,
+                cell.chunk_stats.disabled_chunks,
+                cell.chunk_stats.total_chunks,
+            ));
     egui::CollapsingHeader::new("Chunk states map")
         .default_open(true)
         .show(ui, |ui| {
@@ -536,8 +520,8 @@ fn show_macrochunk_details(
         }
         None => {
             ui.label("Biome finalized");
-            if let Some(label) = final_biome_label(&cell.biome_distribution, id_query) {
-                ui.label(label);
+            if let Some((label, weight)) = dominant_biome(&cell.biome_distribution, id_query) {
+                ui.label(format!("Final dominant biome: {} ({:.2})", label, weight));
             }
             ui.separator();
             egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
@@ -602,11 +586,13 @@ pub fn macrochunks_grid_window(
     let mut chunk_stats_by_macrochunk: HashMap<Entity, MacroChunkChunkStats> = HashMap::default();
     let mut chunk_states_by_macrochunk: HashMap<Entity, Vec<(Entity, ChunkPos, TerrGenState)>> = HashMap::default();
     for (entity, &macro_chunk_ref, &terrgen_state, &chunk_pos) in chunk_query.iter() {
-        let current = chunk_stats_by_macrochunk
-            .get(&macro_chunk_ref.0)
-            .copied()
-            .unwrap_or_default();
-        chunk_stats_by_macrochunk.insert(macro_chunk_ref.0, current.push(terrgen_state));
+        let stats = chunk_stats_by_macrochunk
+            .entry(macro_chunk_ref.0)
+            .or_default();
+        stats.total_chunks += 1;
+        if matches!(terrgen_state, TerrGenState::Finished) {
+            stats.finished_chunks += 1;
+        }
         chunk_states_by_macrochunk
             .entry(macro_chunk_ref.0)
             .or_default()
@@ -624,6 +610,13 @@ pub fn macrochunks_grid_window(
             });
     }
     origin_beings_by_chunk.values_mut().for_each(|entries| entries.sort_by_key(|entry| entry.entity.index()));
+    let mut origin_beings_count_by_macrochunk: HashMap<(DimensionRef, MacrochunkPos), usize> = HashMap::default();
+    for (&(entry_dim_ref, chunk_pos), origin_beings) in origin_beings_by_chunk.iter() {
+        let macrochunk_pos = chunk_pos.to_macrochunk_pos();
+        *origin_beings_count_by_macrochunk
+            .entry((entry_dim_ref, macrochunk_pos))
+            .or_default() += origin_beings.len();
+    }
 
     let mut macrochunks_by_dimension: BTreeMap<String, HashMap<MacrochunkPos, MacroChunkCell>> = BTreeMap::new();
     let mut selected_macrochunk_dimension = None;
@@ -637,7 +630,10 @@ pub fn macrochunks_grid_window(
             selected_macrochunk_dimension = Some(dim_name.clone());
         }
         let biome_sampling_state = macro_chunk_biome_sampling_states.get(entity).ok().copied();
-        let seeded_for_wildlife = biome_sampling_state.is_none();
+        let natural_origin_beings_count = origin_beings_count_by_macrochunk
+            .get(&(dim_ref, macro_chunk_pos))
+            .copied()
+            .unwrap_or(0);
         let chunk_stats = chunk_stats_by_macrochunk
             .get(&entity)
             .copied()
@@ -658,7 +654,7 @@ pub fn macrochunks_grid_window(
                     loaded,
                     chunk_stats,
                     chunk_states,
-                    seeded_for_wildlife,
+                    natural_origin_beings_count,
                 },
             );
     }
@@ -721,8 +717,8 @@ pub fn macrochunks_grid_window(
             ui.horizontal_wrapped(|ui| {
                 ui.colored_label(egui::Color32::from_rgb(52, 52, 52), "Idle");
                 ui.colored_label(egui::Color32::from_rgb(180, 130, 60), "Sampling");
-                ui.colored_label(egui::Color32::from_rgb(65, 105, 165), "Sampled");
-                ui.colored_label(egui::Color32::from_rgb(60, 140, 82), "Sampled + wildlife seeded");
+                ui.colored_label(egui::Color32::from_rgb(65, 105, 165), "Sampled, no NaturalSpawnOrigin");
+                ui.colored_label(egui::Color32::from_rgb(60, 140, 82), "Sampled + NaturalSpawnOrigin present");
             });
             ui.separator();
 

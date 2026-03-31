@@ -9,6 +9,7 @@ use tilemap_shared::tilemap_shared_samplers::*;
 
 
 use crate::pack::pack_components::PackInitialSizeSampler;
+use crate::pack::pack_components::PackSpawnRadius;
 use crate::being_interaction_zone_helper::build_being_interaction_zones_with_fallback;
 use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionStrIdRef};
@@ -92,6 +93,7 @@ pub fn init_being_templates(
                 spawn_pack_size_normal_dist,
             )));
         }
+        cmd.entity(bit_entity).insert(PackSpawnRadius(template_seri.pack_radius));
         if !template_seri.spawn_pack_entity {
             cmd.entity(bit_entity).insert(NoSpawnSquadEntity);
         }
@@ -123,15 +125,6 @@ pub fn init_being_templates(
         }
         if let Some(predator_cfg) = PredatorCfg::from_seri(&template_seri.predator) {
             cmd.entity(bit_entity).insert(predator_cfg);
-        }
-        if DetectionVisionCone::is_configured_in_seri(
-            template_seri.detection_vision_cone_range_tiles,
-            template_seri.detection_vision_cone_half_angle_deg,
-        ) {
-            cmd.entity(bit_entity).insert(DetectionVisionCone {
-                range_tiles: template_seri.detection_vision_cone_range_tiles.max(0.0),
-                half_angle_deg: template_seri.detection_vision_cone_half_angle_deg.clamp(1.0, 179.0),
-            });
         }
         // Resolve race entity from race string
         let race_str_id = StrId::trunc(&template_seri.race);

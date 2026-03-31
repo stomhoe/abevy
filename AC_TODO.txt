@@ -51,3 +51,7 @@ hacer q el sprite o sampler se ponga por body
 hacer q el damage sea como los damagedefs de rimworld
 
 hacer q bichos spawneen en dungeons
+
+
+para los tmap tiles, solo cargar las tiles visibles como entities. intentar usar los u16index para todos los sistemas
+de interaccion asi se pueden tener como 50 beings en nuestra faction muy dispersos en el mundo. sin que todos los tilemaps cargados por estos bajen el fps a 10 por todo el rendering q hacen.

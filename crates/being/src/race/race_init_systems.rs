@@ -14,6 +14,7 @@ use crate::body::body_tree_components::*;
 use crate::body::body_sampler::body_sampler_resources::*;
 use crate::being_interaction_zone_helper::build_being_interaction_zones_with_fallback;
 use crate::pack::pack_components::PackInitialSizeSampler;
+use crate::pack::pack_components::PackSpawnRadius;
 use crate::{sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use ::being_shared::*;
@@ -178,20 +179,12 @@ pub fn init_races(
                 race_seri.spawn_pack_size_normal_dist.clone(),
             )));
         }
+        cmd.entity(entity).insert(PackSpawnRadius(race_seri.pack_radius));
         if !race_seri.spawn_pack_entity {
             cmd.entity(entity).insert(NoSpawnSquadEntity);
         }
         if let Some(predator_cfg) = PredatorCfg::from_seri(&race_seri.predator) {
             cmd.entity(entity).insert(predator_cfg);
-        }
-        if DetectionVisionCone::is_configured_in_seri(
-            race_seri.detection_vision_cone_range_tiles,
-            race_seri.detection_vision_cone_half_angle_deg,
-        ) {
-            cmd.entity(entity).insert(DetectionVisionCone {
-                range_tiles: race_seri.detection_vision_cone_range_tiles.max(0.0),
-                half_angle_deg: race_seri.detection_vision_cone_half_angle_deg.clamp(1.0, 179.0),
-            });
         }
         if !race_seri.wander.is_disabled() {
             cmd.entity(entity).insert(WanderConfig::from_seri(&race_seri.wander));

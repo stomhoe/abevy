@@ -19,6 +19,8 @@ pub struct PackSeri {
 
     #[serde(default)]
     pub spawn_being_count_normal_dist: NormalDistSeri,
+    #[serde(default = "default_pack_radius")]
+    pub pack_radius: u8,
     #[serde(default)]
     pub race_ids: HashMap<String, (SpawnWeight, RankDist)>,
     #[serde(default)]
@@ -57,6 +59,10 @@ fn default_alert_effectiveness_falloff() -> f32 {
 
 fn default_counter_regroup_tightness() -> f32 {
     1.5
+}
+
+fn default_pack_radius() -> u8 {
+    being_shared::PackSpawnRadius::default().0
 }
 
 impl PackSeri {

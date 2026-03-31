@@ -13,6 +13,11 @@ pub struct BeingInstTemplate{
     pub points: u32,
     pub extra_health_multiplier: f32,
 }
+impl BeingInstTemplate {
+    pub fn default_pack_radius() -> u8 {
+        crate::PackSpawnRadius::default().0
+    }
+}
 
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct DontExtendBitSpawnWhitelist;
@@ -55,16 +60,14 @@ pub struct BitSeri {
     pub blacklisted_tiles_for_spawning: HashSet<String>,
     #[serde(default)]
     pub predator: crate::PredatorSeri,
-    #[serde(default = "default_detection_vision_cone_sentinel")]
-    pub detection_vision_cone_range_tiles: f32,
-    #[serde(default = "default_detection_vision_cone_sentinel")]
-    pub detection_vision_cone_half_angle_deg: f32,
     #[serde(default = "tilemap_shared::sentinel_melee_interaction_zone")]
     pub melee_attack_zone: InteractionZoneSeri,
     #[serde(default = "tilemap_shared::sentinel_collision_zone")]
     pub collision_zone: InteractionZoneSeri,
     #[serde(default)]
     pub spawn_pack_size_normal_dist: Option<NormalDistSeri>,
+    #[serde(default = "BeingInstTemplate::default_pack_radius")]
+    pub pack_radius: u8,
     #[serde(default)]
     pub belongs_to_packs: Vec<String>,
     #[serde(default)]
@@ -94,7 +97,6 @@ impl BitSeri {
 }
 
 fn default_multiplier() -> f32 { 1.0 }
-fn default_detection_vision_cone_sentinel() -> f32 { crate::DetectionVisionCone::SERI_SENTINEL }
 fn default_true() -> bool { true }
 common::define_entity_map_systems!(
     BeingInstTemplate,

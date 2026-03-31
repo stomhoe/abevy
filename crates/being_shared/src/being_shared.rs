@@ -214,27 +214,6 @@ impl Default for Hunger {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
-pub struct DetectionVisionCone {
-    pub range_tiles: f32,
-    pub half_angle_deg: f32,
-}
-impl Default for DetectionVisionCone {
-    fn default() -> Self {
-        Self {
-            range_tiles: 9.0,
-            half_angle_deg: 45.0,
-        }
-    }
-}
-impl DetectionVisionCone {
-    pub const SERI_SENTINEL: f32 = f32::NEG_INFINITY;
-    pub fn is_configured_in_seri(range_tiles: f32, half_angle_deg: f32) -> bool {
-        range_tiles > Self::SERI_SENTINEL && half_angle_deg > Self::SERI_SENTINEL
-    }
-}
-
-
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, bevy::ecs::entity::MapEntities, )]
 #[relationship(relationship_target = SimulatedBeingsWithin)]
 #[require(Unloaded)]
@@ -251,6 +230,9 @@ pub struct SimulatedBeingsWithin(Vec<Entity>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct Unloaded;
+
+#[derive(Component, Debug, Clone, Copy, )]
+pub struct NaturalSpawnOrigin(pub ChunkPos);
 
 
 pub type BeingOfPlayerFaction = (With<Being>, With<BelongsToAPlayerFaction>);

@@ -11,7 +11,7 @@ use bevy::{
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::*;
 use color_sampler::{ColorSamplerEntityMap, ColorSamplerRef,};
-use common::{AnyDisabling, TILE_INIT, common_components::*, common_tag_components::TagSet};
+use common::{AnyDisabling, TILE_INIT, common_components::*, common_tag_components::TagSet, log_targets::CHILDRENSPRITE_INIT};
 use item_shared::{ItemEntityMap, ItemsGeneratedOnDeath};
 use sprite_animation_shared::AcAnimationProgresses;
 use std::{fs, path::PathBuf};
@@ -333,57 +333,57 @@ fn gather_step_sfx_paths_from_dir(directory: &str) -> Vec<String> {
 #[allow(unused_parens)]
 pub fn init_childrensprite(
     mut cmd: Commands,
-    asset_server: Res<AssetServer>,
-    templ_img_path: Query<(Option<&ImagePathHolder>, Has<SpriteConfig>), (With<Templ>,)>,
     childrensprite_query: Query<
         (Entity, AnyOf<(&ImagePathHolder, &TemplEntiRef)>),
         (
-            Without<AcAnimationProgresses>,
-            Or<(Changed<ImagePathHolder>, Changed<TemplEntiRef>)>,
             With<TileChildSprite>,
+            Or<(Added<TileChildSprite>, Changed<ImagePathHolder>, Changed<TemplEntiRef>)>,
             Without<Sprite>,
+            Without<AcAnimationProgresses>,
             Without<TilemapId>,
             Without<Children>,
             Without<TileShader>,
             common::AnyDisabling,
         ),
     >,
+    templ_img_path: Query<(Option<&ImagePathHolder>, Has<SpriteConfig>), (With<Templ>,)>,
+    aserver: Res<AssetServer>,
 ) {
     let mut to_insert = Vec::new();
     for (entity, (image_path_holder, templ_ref)) in childrensprite_query.iter() {
         if let Some(img_path_holder) = image_path_holder {
-            trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
+            trace!(target: CHILDRENSPRITE_INIT, "Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
             to_insert.push((
                 entity,
                 Sprite {
-                    image: asset_server.load(img_path_holder.path()),
+                    image: aserver.load(img_path_holder.path()),
                     ..Default::default()
                 },
             ));
         } else if let Some(templ_ref) = templ_ref {
             let Ok((img_path_holder, is_templ_a_spriteconfig)) = templ_img_path.get(templ_ref.0)
             else {
-                error!(target: "childrensprite_init","Entity {:?} has TemplEntiRef {:?} but the referenced entity doesn't exist", entity, templ_ref.0);
+                error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has TemplEntiRef {:?} but the referenced entity doesn't exist", entity, templ_ref.0);
                 continue;
             };
             if is_templ_a_spriteconfig {
                 continue;
             }
             let Some(img_path_holder): Option<&ImagePathHolder> = img_path_holder else {
-                error!(target: "childrensprite_init","Entity {:?} has TemplEntiRef {:?} but the referenced entity has no ImagePathHolder", entity, templ_ref.0);
+                error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has TemplEntiRef {:?} but the referenced entity has no ImagePathHolder", entity, templ_ref.0);
                 continue;
             };
 
-            trace!(target: "childrensprite_init","Inserting Sprite for entity {:?} via TemplEntiRef {:?}, path: {:?}", entity, templ_ref.0, img_path_holder.path());
+            trace!(target: CHILDRENSPRITE_INIT, "Inserting Sprite for entity {:?} via TemplEntiRef {:?}, path: {:?}", entity, templ_ref.0, img_path_holder.path());
             to_insert.push((
                 entity,
                 Sprite {
-                    image: asset_server.load(img_path_holder.path()),
+                    image: aserver.load(img_path_holder.path()),
                     ..Default::default()
                 },
             ));
         } else {
-            error!(target: "childrensprite_init","Entity {:?} has neither ImagePathHolder nor TemplEntiRef", entity);
+            error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has neither ImagePathHolder nor TemplEntiRef", entity);
         }
     }
     cmd.try_insert_batch(to_insert);

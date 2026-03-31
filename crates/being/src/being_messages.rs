@@ -6,12 +6,6 @@ use ::being_shared::{GoTo, NavOrderSource};
 #[derive(Message, Debug, Clone, )]
 pub struct MakeChunkSnapshotForChaser(pub Entity);
 
-#[derive(Message, Debug, Clone, Copy)]
-pub struct PredatorSpottedByPrey {
-    pub prey: Entity,
-    pub predator: Entity,
-}
-
 #[derive(Message, Debug, Clone, )]
 pub struct NavOrder {
     pub being_ent: Entity,

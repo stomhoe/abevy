@@ -4,8 +4,6 @@ use game_common::game_common_components::Templ;
 use tilemap_shared::{DimensionRef, GlobalTilePos, };
 use ::being_shared::*;
 
-use crate::pack::pack_components::*;
-
 #[allow(unused_parens, )]
 pub fn despawn_empty_squads(
     mut cmd: Commands,

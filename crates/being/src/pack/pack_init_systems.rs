@@ -7,9 +7,7 @@ use game_common::{
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 use tilemap_shared::CappedNormalDist;
 
-use crate::{
-    pack::{pack_components::*, pack_resources::*},
-};
+use crate::pack::pack_resources::*;
 
 pub fn init_packs(
     mut cmd: Commands,
@@ -49,6 +47,7 @@ pub fn init_packs(
         if !pack_seri.spawn_pack_entity {
             cmd.entity(pack_entity).insert(NoSpawnSquadEntity);
         }
+        cmd.entity(pack_entity).insert(PackSpawnRadius(pack_seri.pack_radius));
         cmd.entity(pack_entity).insert(pack_seri.tags_with_id());
         if !pack_seri.wander_config.is_disabled() {
             cmd.entity(pack_entity)

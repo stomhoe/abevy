@@ -34,6 +34,7 @@
     spawn_pack_size_normal_dist: (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0),
     biome_affinity: {
         "temp": 1.0,
-        "artic": 0.6,
+        "artic": 0.2,
     },
+    pack_radius: 4,
 )

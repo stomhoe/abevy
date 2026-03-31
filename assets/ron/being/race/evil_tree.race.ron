@@ -27,4 +27,5 @@
     ),
     body_or_sampler: "evil_tree",
     size_variation: (min_dev: 0.251, max_dev: 0.251, mean: 1.0, std_dev: 0.1),
+    pack_radius: 4,
 )

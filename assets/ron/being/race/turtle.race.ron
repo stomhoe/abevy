@@ -32,4 +32,5 @@
         "beach": 1.0,
     },
     spawn_pack_entity: false,
+    pack_radius: 4,
 )

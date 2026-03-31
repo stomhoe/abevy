@@ -23,7 +23,7 @@ impl BiomePackCountAvgedNormDists {
 		self.samples = self.samples.saturating_add(1);
 	}
 
-	pub fn sample_pack_count_multiplier(self, rng: &mut impl rand::Rng) -> usize {
+	pub fn sample_pack_count_int_multiplier(self, rng: &mut impl rand::Rng) -> usize {
 		let mean = self.averaged_mean().max(0.0);
 		let std_dev = self.averaged_std_dev().max(0.0);
 		if std_dev <= f32::EPSILON {
@@ -35,7 +35,7 @@ impl BiomePackCountAvgedNormDists {
 		self.sample_fractional_pack_count(dist.sample(rng).max(0.0), rng)
 	}
 
-	pub fn averaged_mean(&self) -> f32 {
+	fn averaged_mean(&self) -> f32 {
 		if self.samples == 0 {
 			return 1.0;
 		}

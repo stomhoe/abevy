@@ -106,7 +106,7 @@ fn build_filter() -> String {
 
         log_targets::PORTAL_INIT, WARN,
         log_targets::POSITION_SEARCH, INFO,
-        log_targets::CHILDRENSPRITE_INIT, INFO,
+        log_targets::CHILDRENSPRITE_INIT, TRACE,
         log_targets::BIOME_INIT, DEBUG,
 
         log_targets::OPLIST_INIT, WARN,

@@ -51,6 +51,24 @@ impl std::hash::Hash for AcZ {
 pub struct CardinalDirAtGpos (
     pub HashMap<(HashId, GlobalTilePos), CardinalDirection>,
 );
+impl CardinalDirAtGpos {
+    pub fn resolve_tile_direction(
+        &self,
+        hash_id_query: &Query<&HashId, common::AnyDisabling>,
+        templ_ent: Entity,
+        gpos: GlobalTilePos,
+        fallback: CardinalDirection,
+    ) -> CardinalDirection {
+        let Ok(hash_id) = hash_id_query.get(templ_ent) else {
+            return fallback;
+        };
+        self
+            .0
+            .get(&(*hash_id, gpos))
+            .copied()
+            .unwrap_or(fallback)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkGposMask(pub BitArr!(for ChunkPos::CHUNK_AREA));

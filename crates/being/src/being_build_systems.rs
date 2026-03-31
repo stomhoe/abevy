@@ -302,12 +302,8 @@ pub fn sample_sprite_normal_size_variations(
     locals.global_dist_results.clear();
     locals.hori_dist_results.clear();
     locals.vert_dist_results.clear();
-
     locals.beings_to_process.extend(removed.removed_disabled.read());
     locals.beings_to_process.extend(queries.changed_beings.iter());
-    if locals.beings_to_process.is_empty() {
-        return;
-    }
 
     let mut rng = rand::rng();
     let mut global_dist_results = Vec::new();
@@ -364,7 +360,7 @@ pub fn sample_sprite_normal_size_variations(
             vert_dist_results.push((being_ent, result));
         }
     }
-    cmd.try_insert_batch(global_dist_results);
-    cmd.try_insert_batch(hori_dist_results);
-    cmd.try_insert_batch(vert_dist_results);
+    cmd.try_insert_batch_if_new(global_dist_results);
+    cmd.try_insert_batch_if_new(hori_dist_results);
+    cmd.try_insert_batch_if_new(vert_dist_results);
 }

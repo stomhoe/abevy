@@ -3,7 +3,6 @@ use bevy::{
     prelude::*,
 };
 use being::pack::pack_components::*;
-use ::being_shared::*;
 use tilemap_shared::*;
 
 const SEPARATION_BETWEEN_PACKS_ANCHOR_CPOS: u8 = 1;
@@ -14,11 +13,6 @@ pub struct PackAnchorCpos {
     pub pack_ent: Entity,
     pub center_chunk: ChunkPos,
 }
-
-
-
-#[derive(Component, Debug, Clone, Copy)]
-pub struct NaturalSpawnOrigin(pub ChunkPos);
 
 pub fn choose_best_anchor_cpos_for_pack(
     distribution: &BiomeDistribution,

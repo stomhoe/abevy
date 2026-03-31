@@ -97,10 +97,6 @@ pub struct RaceSeri {
 
     #[serde(default)]
     pub predator: crate::PredatorSeri,
-    #[serde(default = "default_detection_vision_cone_sentinel")]
-    pub detection_vision_cone_range_tiles: f32,
-    #[serde(default = "default_detection_vision_cone_sentinel")]
-    pub detection_vision_cone_half_angle_deg: f32,
     #[serde(default)]
     pub wander: WanderSeri,
     #[serde(default = "tilemap_shared::sentinel_melee_interaction_zone")]
@@ -111,6 +107,8 @@ pub struct RaceSeri {
     pub pack_size_min_max: (u32, u32),
     #[serde(default)]//if this race wins sampling, it will spawn with a pack size drawn from this distribution
     pub spawn_pack_size_normal_dist: NormalDistSeri,
+    #[serde(default = "default_pack_radius")]
+    pub pack_radius: u8,
     #[serde(default)]//additive membership into already-defined packs
     pub belongs_to_packs: Vec<String>,
     #[serde(default)]
@@ -147,8 +145,7 @@ pub struct RaceSexEntrySeri {//TODO fix usage
 }
 
 fn default_true() -> bool { true }
-
-fn default_detection_vision_cone_sentinel() -> f32 { crate::DetectionVisionCone::SERI_SENTINEL }
+fn default_pack_radius() -> u8 { crate::PackSpawnRadius::default().0 }
 
 common::define_entity_map_systems!(
     Race,

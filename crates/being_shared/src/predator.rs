@@ -97,9 +97,6 @@ pub struct Predator;
 
 fn default_predator_seri_uninitialized() -> f32 { PredatorSeri::SERI_UNINITIALIZED }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, MapEntities)]
-pub struct PredatorDetectedByPrey(#[entities] pub Entity);
-
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, MapEntities)]
 #[relationship(relationship_target = HuntedBy)]
 pub struct Hunting {

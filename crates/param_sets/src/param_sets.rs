@@ -1,6 +1,7 @@
 
 
 use bevy::ecs::system::SystemParam;
+use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use common::common_components::HashId;
 use common::common_tag_components::TagSet;
@@ -14,29 +15,63 @@ use ::tilemap_shared::{BlacklistedSpawnTileTagsRef, WhitelistedSpawnTileTagsRef}
 use tilemap::chunking::*;
 use tilemap::tile::*;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GposSearchConfig {
+    pub start_ring_ix: u16,
+    pub max_ring_ix: u16,
+    pub radius_increase_per_ring: u16,
+    pub sample_spacing: u16,
+}
+impl Default for GposSearchConfig {
+    fn default() -> Self {
+        Self::concentric(3, 2)
+    }
+}
+impl GposSearchConfig {
+    pub const fn concentric(radius_increase_per_ring: u16, sample_spacing: u16) -> Self {
+        Self {
+            start_ring_ix: 0,
+            max_ring_ix: u16::MAX,
+            radius_increase_per_ring,
+            sample_spacing,
+        }
+    }
+
+    pub const fn thorough() -> Self {
+        Self {
+            start_ring_ix: 0,
+            max_ring_ix: u16::MAX,
+            radius_increase_per_ring: 1,
+            sample_spacing: 0,
+        }
+    }
+
+    pub const fn wander() -> Self {
+        Self {
+            start_ring_ix: 2,
+            max_ring_ix: u16::MAX,
+            radius_increase_per_ring: 3,
+            sample_spacing: 2,
+        }
+    }
+
+    pub const fn with_start_ring_ix(mut self, start_ring_ix: u16) -> Self {
+        self.start_ring_ix = start_ring_ix;
+        self
+    }
+
+    pub const fn with_max_ring_ix(mut self, max_ring_ix: u16) -> Self {
+        self.max_ring_ix = max_ring_ix;
+        self
+    }
+}
+
 #[derive(Clone, Copy, )]
 struct CollisionTileSample {
     templ_ent: Entity,
     tile_origin: GlobalTilePos,
     direction: CardinalDirection,
     dead_despawning: bool,
-}
-
-fn resolve_tile_direction(
-    hash_id_query: &Query<&HashId, common::AnyDisabling>,
-    card_at_gpos: &Res<CardinalDirAtGpos>,
-    templ_ent: Entity,
-    gpos: GlobalTilePos,
-    fallback: CardinalDirection,
-) -> CardinalDirection {
-    let Ok(hash_id) = hash_id_query.get(templ_ent) else {
-        return fallback;
-    };
-    card_at_gpos
-        .0
-        .get(&(*hash_id, gpos))
-        .copied()
-        .unwrap_or(fallback)
 }
 
 
@@ -63,6 +98,7 @@ pub struct BlockingTileParamSet<'w, 's> {
     beings_at_gpos: Res<'w, BeingsAtGpos>,
     occupied_gposes: Local<'s, Vec<GlobalTilePos>>,
     collision_tile_samples: Local<'s, Vec<CollisionTileSample>>,
+    gposes_set: Local<'s, HashSet<GlobalTilePos>>,
 }
 #[allow(unused_parens, )]
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
@@ -454,7 +490,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 self.collision_tile_samples.push(CollisionTileSample {
                     templ_ent: templ_ref.0,
                     tile_origin: *tile_origin,
-                    direction: resolve_tile_direction(&self.hash_id_query, &self.card_at_gpos, templ_ref.0, *tile_origin, fallback_direction),
+                    direction: self.card_at_gpos.resolve_tile_direction(&self.hash_id_query, templ_ref.0, *tile_origin, fallback_direction),
                     dead_despawning: self.will_despawn_query.get(tile_entity).is_ok(),
                 });
             }
@@ -473,7 +509,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 self.collision_tile_samples.push(CollisionTileSample {
                     templ_ent,
                     tile_origin: occupied_gpos,
-                    direction: resolve_tile_direction(&self.hash_id_query, &self.card_at_gpos, templ_ent, occupied_gpos, CardinalDirection::default()),
+                    direction: self.card_at_gpos.resolve_tile_direction(&self.hash_id_query, templ_ent, occupied_gpos, CardinalDirection::default()),
                     dead_despawning: false,
                 });
             }
@@ -485,6 +521,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         dim_ref: DimensionRef,
         target_gpos: GlobalTilePos,
         being: Entity,
+        search_config: GposSearchConfig,
         whitelisted_tags: &WhitelistedTags,
         blacklisted_tags: &BlacklistedTags,
     ) -> Option<GlobalTilePos> {
@@ -492,6 +529,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             dim_ref,
             target_gpos,
             being,
+            search_config,
             &WhitelistedSpawnTileTagsRef(whitelisted_tags),
             &BlacklistedSpawnTileTagsRef(blacklisted_tags),
         )
@@ -502,6 +540,7 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         dim_ref: DimensionRef,
         target_gpos: GlobalTilePos,
         being: Entity,
+        search_config: GposSearchConfig,
         whitelisted_tags: &WhitelistedSpawnTileTagsRef<'_>,
         blacklisted_tags: &BlacklistedSpawnTileTagsRef<'_>,
     ) -> Option<GlobalTilePos> {
@@ -519,66 +558,39 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         tries += 1;
 
         const MAX_SPIRAL_RADIUS: i32 = 256;
-        for radius in 1..=MAX_SPIRAL_RADIUS {
-            let min = -radius;
-            let max = radius;
-            for x in min..=max {
-                if tries >= MAX_TRIES {
-                    error!(target: POSITION_SEARCH, "Failed to find allowed gpos for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, MAX_TRIES);
-                    return None;
-                }
-                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(x, min));
-                tries += 1;
-                if self.allowed_at_refs(
-                    dim_ref,
-                    candidate,
-                    being,
-                    whitelisted_tags,
-                    blacklisted_tags,
-                ) {
-                    return Some(candidate);
-                }
+        use std::f32::consts::PI;
+        self.gposes_set.clear();
+        let start_ring_ix = search_config.start_ring_ix.max(1);
+        let max_ring_ix = search_config.max_ring_ix.min(MAX_SPIRAL_RADIUS as u16);
+        if start_ring_ix > max_ring_ix {
+            error!(target: POSITION_SEARCH, "No valid tile found for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, tries);
+            return None;
+        }
+        for ring_i in start_ring_ix..=max_ring_ix {
+            let ring_radius = i32::from(ring_i)
+                .saturating_mul(i32::from(search_config.radius_increase_per_ring.max(1)));
+            let radius_f = ring_radius as f32;
+            let circumference = 2.0 * PI * radius_f;
+            let sample_spacing = f32::from(search_config.sample_spacing);
+            let sample_count = if search_config.sample_spacing == 0 {
+                circumference.ceil() as i32
+            } else {
+                (circumference / sample_spacing.max(0.0001)).ceil() as i32
             }
-            for y in (min + 1)..=max {
+            .max(1);
+            for sample_i in 0..sample_count {
                 if tries >= MAX_TRIES {
                     error!(target: POSITION_SEARCH, "Failed to find allowed gpos for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, MAX_TRIES);
                     return None;
                 }
-                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(max, y));
-                tries += 1;
-                if self.allowed_at_refs(
-                    dim_ref,
-                    candidate,
-                    being,
-                    whitelisted_tags,
-                    blacklisted_tags,
-                ) {
-                    return Some(candidate);
+                let angle = 2.0 * PI * sample_i as f32 / sample_count as f32;
+                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(
+                    (radius_f * angle.cos()).round() as i32,
+                    (radius_f * angle.sin()).round() as i32,
+                ));
+                if !self.gposes_set.insert(candidate) {
+                    continue;
                 }
-            }
-            for x in (min..max).rev() {
-                if tries >= MAX_TRIES {
-                    error!(target: POSITION_SEARCH, "Failed to find allowed gpos for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, MAX_TRIES);
-                    return None;
-                }
-                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(x, max));
-                tries += 1;
-                if self.allowed_at_refs(
-                    dim_ref,
-                    candidate,
-                    being,
-                    whitelisted_tags,
-                    blacklisted_tags,
-                ) {
-                    return Some(candidate);
-                }
-            }
-            for y in ((min + 1)..max).rev() {
-                if tries >= MAX_TRIES {
-                    error!(target: POSITION_SEARCH, "Failed to find allowed gpos for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, MAX_TRIES);
-                    return None;
-                }
-                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(min, y));
                 tries += 1;
                 if self.allowed_at_refs(
                     dim_ref,
@@ -593,6 +605,297 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         }
         error!(target: POSITION_SEARCH, "No valid tile found for {:?} in {:?} around {} after {} tries", being, dim_ref, target_gpos, tries);
         None
+    }
+
+    pub fn find_allowed_gposes_in_area(
+        &mut self,
+        dim_ref: DimensionRef,
+        target_gpos: GlobalTilePos,
+        needed_count: usize,
+        preferred_radius_tiles: Option<u16>,
+        hard_max_radius_tiles: Option<u16>,
+        gather_all_gpos_within_same_allowed_island: bool,
+        only_same_island: bool,
+        being: Entity,
+        whitelisted_tags: &WhitelistedTags,
+        blacklisted_tags: &BlacklistedTags,
+        out: &mut Vec<GlobalTilePos>,
+    ) {
+        self.find_allowed_gposes_in_area_refs(
+            dim_ref,
+            target_gpos,
+            needed_count,
+            preferred_radius_tiles,
+            hard_max_radius_tiles,
+            gather_all_gpos_within_same_allowed_island,
+            only_same_island,
+            being,
+            &WhitelistedSpawnTileTagsRef(whitelisted_tags),
+            &BlacklistedSpawnTileTagsRef(blacklisted_tags),
+            out,
+        );
+    }
+
+    pub fn find_allowed_gposes_in_area_refs(
+        &mut self,
+        dim_ref: DimensionRef,
+        target_gpos: GlobalTilePos,
+        needed_count: usize,
+        preferred_radius_tiles: Option<u16>,
+        hard_max_radius_tiles: Option<u16>,
+        gather_all_gpos_within_same_allowed_island: bool,
+        only_same_island: bool,
+        being: Entity,
+        whitelisted_tags: &WhitelistedSpawnTileTagsRef<'_>,
+        blacklisted_tags: &BlacklistedSpawnTileTagsRef<'_>,
+        out: &mut Vec<GlobalTilePos>,
+    ) {
+        out.clear();
+        if needed_count == 0 {
+            return;
+        }
+        out.reserve(needed_count);
+        let preferred_radius = i32::from(preferred_radius_tiles.unwrap_or(16));
+        let mut hard_max_radius = i32::from(hard_max_radius_tiles.unwrap_or_else(|| preferred_radius_tiles.unwrap_or(16)));
+        if hard_max_radius < preferred_radius {
+            hard_max_radius = preferred_radius;
+        }
+        let min_x = target_gpos.0.x - hard_max_radius;
+        let max_x = target_gpos.0.x + hard_max_radius;
+        let min_y = target_gpos.0.y - hard_max_radius;
+        let max_y = target_gpos.0.y + hard_max_radius;
+        let preferred_radius_sqr = preferred_radius.saturating_mul(preferred_radius);
+        let hard_max_radius_sqr = hard_max_radius.saturating_mul(hard_max_radius);
+        let is_within_radius = |candidate: GlobalTilePos, radius_sqr: i32| {
+            let delta = candidate.0 - target_gpos.0;
+            delta.x.saturating_mul(delta.x) + delta.y.saturating_mul(delta.y) <= radius_sqr
+        };
+
+        let mut allowed_candidates_preferred = Vec::<GlobalTilePos>::new();
+        let mut allowed_candidates_expanded = Vec::<GlobalTilePos>::new();
+        let mut allowed_set = HashSet::<GlobalTilePos>::default();
+        for radius in 0..=hard_max_radius {
+            let min = -radius;
+            let max = radius;
+            for x in min..=max {
+                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(x, min));
+                if candidate.0.x < min_x || candidate.0.x > max_x || candidate.0.y < min_y || candidate.0.y > max_y {
+                    continue;
+                }
+                if !is_within_radius(candidate, hard_max_radius_sqr) {
+                    continue;
+                }
+                if !self.allowed_at_refs(dim_ref, candidate, being, whitelisted_tags, blacklisted_tags) {
+                    continue;
+                }
+                if !allowed_set.insert(candidate) {
+                    continue;
+                }
+                if is_within_radius(candidate, preferred_radius_sqr) {
+                    allowed_candidates_preferred.push(candidate);
+                } else {
+                    allowed_candidates_expanded.push(candidate);
+                }
+            }
+            for y in (min + 1)..=max {
+                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(max, y));
+                if candidate.0.x < min_x || candidate.0.x > max_x || candidate.0.y < min_y || candidate.0.y > max_y {
+                    continue;
+                }
+                if !is_within_radius(candidate, hard_max_radius_sqr) {
+                    continue;
+                }
+                if !self.allowed_at_refs(dim_ref, candidate, being, whitelisted_tags, blacklisted_tags) {
+                    continue;
+                }
+                if !allowed_set.insert(candidate) {
+                    continue;
+                }
+                if is_within_radius(candidate, preferred_radius_sqr) {
+                    allowed_candidates_preferred.push(candidate);
+                } else {
+                    allowed_candidates_expanded.push(candidate);
+                }
+            }
+            for x in (min..max).rev() {
+                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(x, max));
+                if candidate.0.x < min_x || candidate.0.x > max_x || candidate.0.y < min_y || candidate.0.y > max_y {
+                    continue;
+                }
+                if !is_within_radius(candidate, hard_max_radius_sqr) {
+                    continue;
+                }
+                if !self.allowed_at_refs(dim_ref, candidate, being, whitelisted_tags, blacklisted_tags) {
+                    continue;
+                }
+                if !allowed_set.insert(candidate) {
+                    continue;
+                }
+                if is_within_radius(candidate, preferred_radius_sqr) {
+                    allowed_candidates_preferred.push(candidate);
+                } else {
+                    allowed_candidates_expanded.push(candidate);
+                }
+            }
+            for y in ((min + 1)..max).rev() {
+                let candidate = GlobalTilePos(target_gpos.0 + IVec2::new(min, y));
+                if candidate.0.x < min_x || candidate.0.x > max_x || candidate.0.y < min_y || candidate.0.y > max_y {
+                    continue;
+                }
+                if !is_within_radius(candidate, hard_max_radius_sqr) {
+                    continue;
+                }
+                if !self.allowed_at_refs(dim_ref, candidate, being, whitelisted_tags, blacklisted_tags) {
+                    continue;
+                }
+                if !allowed_set.insert(candidate) {
+                    continue;
+                }
+                if is_within_radius(candidate, preferred_radius_sqr) {
+                    allowed_candidates_preferred.push(candidate);
+                } else {
+                    allowed_candidates_expanded.push(candidate);
+                }
+            }
+        }
+
+        let mut candidates = Vec::<GlobalTilePos>::new();
+        if !gather_all_gpos_within_same_allowed_island {
+            candidates.reserve(allowed_candidates_preferred.len() + allowed_candidates_expanded.len());
+            candidates.extend(allowed_candidates_preferred.iter().copied());
+            candidates.extend(allowed_candidates_expanded.iter().copied());
+        } else {
+            let seed = allowed_candidates_preferred
+                .first()
+                .copied()
+                .or_else(|| allowed_candidates_expanded.first().copied());
+            let Some(seed) = seed else {
+                return;
+            };
+            let mut island_set = HashSet::<GlobalTilePos>::default();
+            let mut open = Vec::with_capacity(needed_count.max(16));
+            let mut visited = HashSet::<GlobalTilePos>::default();
+            open.push(seed);
+            visited.insert(seed);
+            let mut open_idx = 0usize;
+            while open_idx < open.len() {
+                let current = open[open_idx];
+                open_idx += 1;
+                if !island_set.insert(current) {
+                    continue;
+                }
+                candidates.push(current);
+                for delta in [
+                    IVec2::new(1, 0),
+                    IVec2::new(-1, 0),
+                    IVec2::new(0, 1),
+                    IVec2::new(0, -1),
+                ] {
+                    let neighbor = GlobalTilePos(current.0 + delta);
+                    if neighbor.0.x < min_x || neighbor.0.x > max_x || neighbor.0.y < min_y || neighbor.0.y > max_y {
+                        continue;
+                    }
+                    if !visited.insert(neighbor) || !allowed_set.contains(&neighbor) {
+                        continue;
+                    }
+                    open.push(neighbor);
+                }
+            }
+
+            if !only_same_island && candidates.len() < needed_count {
+                for candidate in allowed_candidates_preferred.iter().copied() {
+                    if island_set.insert(candidate) {
+                        candidates.push(candidate);
+                    }
+                }
+                for candidate in allowed_candidates_expanded.iter().copied() {
+                    if island_set.insert(candidate) {
+                        candidates.push(candidate);
+                    }
+                }
+            }
+        }
+
+        if allowed_candidates_preferred.is_empty() && allowed_candidates_expanded.is_empty() {
+            return;
+        }
+        if gather_all_gpos_within_same_allowed_island && candidates.is_empty() {
+            return;
+        }
+
+        let sqr_dist = |a: GlobalTilePos, b: GlobalTilePos| {
+            let delta = a.0 - b.0;
+            delta.x * delta.x + delta.y * delta.y
+        };
+        let mut preferred_candidates = allowed_candidates_preferred;
+        let mut expanded_candidates = allowed_candidates_expanded;
+        self.gposes_set.clear();
+        if gather_all_gpos_within_same_allowed_island {
+            preferred_candidates.retain(|candidate| candidates.contains(candidate));
+            expanded_candidates.retain(|candidate| candidates.contains(candidate));
+        }
+
+        if !preferred_candidates.is_empty() {
+            let mut remaining = preferred_candidates;
+            let mut first_choice = None;
+            let mut first_choice_dist = -1;
+            for (idx, candidate) in remaining.iter().enumerate() {
+                let candidate_dist = sqr_dist(*candidate, target_gpos);
+                if candidate_dist > first_choice_dist {
+                    first_choice = Some(idx);
+                    first_choice_dist = candidate_dist;
+                }
+            }
+            if let Some(first_choice_idx) = first_choice {
+                let next = remaining.swap_remove(first_choice_idx);
+                out.push(next);
+                self.gposes_set.insert(next);
+            }
+
+            while out.len() < needed_count && !remaining.is_empty() {
+                let mut best_idx = None;
+                let mut best_min_dist = -1;
+                let mut best_anchor_dist = -1;
+                for (idx, candidate) in remaining.iter().enumerate() {
+                    if self.gposes_set.contains(candidate) {
+                        continue;
+                    }
+                    let mut min_dist = i32::MAX;
+                    for picked in out.iter() {
+                        let dist = sqr_dist(*candidate, *picked);
+                        if dist < min_dist {
+                            min_dist = dist;
+                        }
+                    }
+                    let anchor_dist = sqr_dist(*candidate, target_gpos);
+                    if min_dist > best_min_dist || (min_dist == best_min_dist && anchor_dist > best_anchor_dist) {
+                        best_idx = Some(idx);
+                        best_min_dist = min_dist;
+                        best_anchor_dist = anchor_dist;
+                    }
+                }
+                let Some(best_idx) = best_idx else {
+                    break;
+                };
+                let next = remaining.swap_remove(best_idx);
+                out.push(next);
+                self.gposes_set.insert(next);
+            }
+        }
+
+        if out.len() < needed_count && !expanded_candidates.is_empty() {
+            expanded_candidates.sort_by_key(|candidate| sqr_dist(*candidate, target_gpos));
+            for candidate in expanded_candidates {
+                if self.gposes_set.contains(&candidate) {
+                    continue;
+                }
+                out.push(candidate);
+                self.gposes_set.insert(candidate);
+                if out.len() >= needed_count {
+                    break;
+                }
+            }
+        }
     }
 }
 
