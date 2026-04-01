@@ -1,9 +1,11 @@
 use bevy::ecs::entity_disabling::Disabled;
+use bevy::ecs::entity::EntityHashMap;
 use bevy::ecs::system::SystemParam;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use ::being_shared::*;
 use common::log_targets::BEING_SYSTEM;
+use common::common_components::StrId;
 use game_common::Templ;
 use game_common::game_common_components::TemplEntiRef;
 use param_sets::BlockingTileParamSet;
@@ -27,7 +29,7 @@ enum InstancePackSourceKind {
 
 #[derive(SystemParam)]
 pub(crate) struct InstancePackQueries<'w, 's> {
-    pack_query: Query<'w, 's, &'static BeingTemplateSampler, (With<Pack>, With<Templ>, )>,
+    pack_query: Query<'w, 's, (&'static BeingTemplateSampler, Option<&'static PackMemberSpawnBounds>, Option<&'static StrId>), (With<Pack>, With<Templ>, )>,
     race_query: Query<'w, 's, (), (With<Race>, With<Templ>, )>,
     bit_query: Query<'w, 's, (), (With<BeingInstTemplate>, With<Templ>, )>,
     whitelist_query: Query<'w, 's, &'static WhitelistedSpawnTileTags, (With<Templ>, )>,
@@ -66,13 +68,13 @@ pub fn instance_pack_entities(
         let mut from_no_spawn_squad = false;
         locals.sampled_beings.clear();
 
-        if let Ok(being_sampler) = queries.pack_query.get(source_ent) {
+        if let Ok((being_sampler, forced_bounds, pack_str_id)) = queries.pack_query.get(source_ent) {
             source_kind = Some(InstancePackSourceKind::Pack);
             density_tiles = msg.resolved_pack_spawn_radius_tiles(
                 queries.pack_spawn_radius_query.get(source_ent).ok().copied(),
             );
             from_no_spawn_squad = queries.no_spawn_squad_query.get(source_ent).is_ok();
-            let final_count: usize = msg
+            let sampled_count: usize = msg
                 .override_being_count
                 .map(usize::from)
                 .unwrap_or_else(|| {
@@ -84,11 +86,28 @@ pub fn instance_pack_entities(
                     let sampled_count_mult: f32 = msg.sampled_count_mult.unwrap_or(1.).max(0.);
                     ((sampled_count as f32) * sampled_count_mult).round().max(0.0) as usize
                 });
+            let forced_total = forced_bounds
+                .map(|forced_bounds| {
+                    forced_bounds
+                        .0
+                        .values()
+                        .map(|(min_count, _)| usize::try_from(*min_count).unwrap_or(usize::MAX))
+                        .sum::<usize>()
+                })
+                .unwrap_or_default();
+            let final_count = sampled_count.max(forced_total);
             if final_count == 0 {
                 trace!(target: BEING_SYSTEM, "Ignored InstancePackEntity for {:?}: sampled final count was 0", source_ent);
                 continue;
             }
-            being_sampler.0.sample_n_with_rng(final_count, &mut rng, &mut *locals.sampled_beings);
+            sample_pack_members(
+                being_sampler,
+                forced_bounds,
+                final_count,
+                &mut rng,
+                &mut locals.sampled_beings,
+                pack_str_id,
+            );
             if locals.sampled_beings.is_empty() {
                 error!(target: BEING_SYSTEM, "Failed to sample members from pack template {:?} while handling InstancePackEntity", source_ent);
                 continue;
@@ -288,6 +307,74 @@ pub fn instance_pack_entities(
             msg.dim_ref,
             squad_ent,
             density_tiles,
+        );
+    }
+}
+
+fn sample_pack_members(
+    being_sampler: &BeingTemplateSampler,
+    forced_bounds: Option<&PackMemberSpawnBounds>,
+    target_count: usize,
+    rng: &mut impl rand::Rng,
+    out: &mut Vec<Entity>,
+    pack_str_id: Option<&StrId>,
+) {
+    out.clear();
+    let Some(forced_bounds) = forced_bounds else {
+        being_sampler.0.sample_n_with_rng(target_count, rng, out);
+        return;
+    };
+
+    let mut counts: EntityHashMap<usize> = EntityHashMap::default();
+    let mut max_counts: EntityHashMap<usize> = EntityHashMap::default();
+    let mut forced_total = 0usize;
+    out.reserve(target_count.max(forced_bounds.0.len()));
+
+    for (&ent, &(min_count, max_count)) in forced_bounds.0.iter() {
+        let min_count = usize::try_from(min_count).unwrap_or(usize::MAX);
+        let max_count = if max_count == u32::MAX {
+            None
+        } else {
+            Some(usize::try_from(max_count).unwrap_or(usize::MAX).max(min_count))
+        };
+        forced_total = forced_total.saturating_add(min_count);
+        counts.insert(ent, min_count);
+        if let Some(max_count) = max_count {
+            max_counts.insert(ent, max_count);
+        }
+        for _ in 0..min_count {
+            out.push(ent);
+        }
+    }
+
+    let target_count = target_count.max(forced_total);
+    if out.len() >= target_count {
+        return;
+    }
+
+    let mut attempts_left = target_count.saturating_mul(16).max(32);
+    while out.len() < target_count && attempts_left > 0 {
+        attempts_left -= 1;
+        let Some(sampled_ent) = being_sampler.0.sample_with_rng(rng) else {
+            break;
+        };
+        let current_count = counts.get(&sampled_ent).copied().unwrap_or_default();
+        if let Some(&max_count) = max_counts.get(&sampled_ent) {
+            if current_count >= max_count {
+                continue;
+            }
+        }
+        counts.insert(sampled_ent, current_count.saturating_add(1));
+        out.push(sampled_ent);
+    }
+
+    if out.len() < target_count {
+        trace!(
+            target: BEING_SYSTEM,
+            "Pack {:?} could only sample {} of {} requested members after applying forced min/max bounds",
+            pack_str_id.map(StrId::as_str).unwrap_or("<no-strid>"),
+            out.len(),
+            target_count,
         );
     }
 }

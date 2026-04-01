@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
 };
 #[allow(unused_imports, )]
-use common::{AnyDisabling, common_components::{SampleSpriteEnts, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
+use common::{AnyDisabling, common_components::{SampleSpritesamplers, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
 use faction::faction_resources::FactionRef;
 use game_common::game_common_components::TemplEntiRef;
 use game_common::game_common_timers::Templ;
@@ -26,7 +26,7 @@ pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
     scs_to_build_query: Query<'w, 's, (), With<ScsToBuild>>,
     mapped_sprites_to_sample_query: Query<'w, 's, &'static SexMappedSpritesToSample>,
     sexes_sampler_query: Query<'w, 's, &'static SexesSampler>,
-    sample_sprite_ents_query: Query<'w, 's, &'static SampleSpriteEnts>,
+    sample_sprite_ents_query: Query<'w, 's, &'static SampleSpritesamplers>,
     body_weighted_sampler_query: Query<'w, 's, &'static BodyWeightedSamplerRef>,
     body_tree_ref_query: Query<'w, 's, &'static BodyTreeRef>,
     race_ref_query: Query<'w, 's, &'static RaceRef>,

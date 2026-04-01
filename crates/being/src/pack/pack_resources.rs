@@ -8,5 +8,4 @@ common::define_entity_map_systems!(
     Pack,
     (With<Templ>, ),
     (Pack, Templ),
-    PackSeri, "seri.being.pack", "pack.ron",
 );

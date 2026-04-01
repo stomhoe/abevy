@@ -3,7 +3,7 @@
     paused: true,
     rows_cols: (2, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/beholder/beholder_south.png",
+    img_path: "texture/being/npc/monster/beholder/beholder_south.png",
     clips: [
         (
             target: 0,
@@ -22,7 +22,7 @@
 (
     id: "beholder_south_move",
     rows_cols: (2, 3),
-    img_path: "texture/being/npc/dungeon/beholder/beholder_south.png",
+    img_path: "texture/being/npc/monster/beholder/beholder_south.png",
     clips: [
         (
             target: 0,
@@ -41,7 +41,7 @@
     paused: true,
     rows_cols: (2, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/beholder/beholder_north.png",
+    img_path: "texture/being/npc/monster/beholder/beholder_north.png",
     clips: [
         (
             target: 0,
@@ -60,7 +60,7 @@
 (
     id: "beholder_north_move",
     rows_cols: (2, 3),
-    img_path: "texture/being/npc/dungeon/beholder/beholder_north.png",
+    img_path: "texture/being/npc/monster/beholder/beholder_north.png",
     clips: [
         (
             target: 0,
@@ -79,7 +79,7 @@
     paused: true,
     rows_cols: (2, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/beholder/beholder_west.png",
+    img_path: "texture/being/npc/monster/beholder/beholder_west.png",
     clips: [
         (
             target: 0,
@@ -98,7 +98,7 @@
 (
     id: "beholder_west_move",
     rows_cols: (2, 3),
-    img_path: "texture/being/npc/dungeon/beholder/beholder_west.png",
+    img_path: "texture/being/npc/monster/beholder/beholder_west.png",
     clips: [
         (
             target: 0,
@@ -117,7 +117,7 @@
     paused: true,
     rows_cols: (2, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/beholder/beholder_east.png",
+    img_path: "texture/being/npc/monster/beholder/beholder_east.png",
     clips: [
         (
             target: 0,
@@ -136,7 +136,7 @@
 (
     id: "beholder_east_move",
     rows_cols: (2, 3),
-    img_path: "texture/being/npc/dungeon/beholder/beholder_east.png",
+    img_path: "texture/being/npc/monster/beholder/beholder_east.png",
     clips: [
         (
             target: 0,

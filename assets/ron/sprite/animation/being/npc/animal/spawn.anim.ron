@@ -3,7 +3,7 @@
     paused: true,
     rows_cols: (4, 8),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/spawn.png",
+    img_path: "texture/being/npc/monster/spawn.png",
     clips: [
         (
             target: 0,
@@ -17,7 +17,7 @@
 (
     id: "spawn_south_move",
     rows_cols: (4, 8),
-    img_path: "texture/being/npc/dungeon/spawn.png",
+    img_path: "texture/being/npc/monster/spawn.png",
     clips: [
         (
             target: 0,
@@ -34,7 +34,7 @@
     paused: true,
     rows_cols: (4, 8),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/spawn.png",
+    img_path: "texture/being/npc/monster/spawn.png",
     clips: [
         (
             target: 1,
@@ -48,7 +48,7 @@
 (
     id: "spawn_north_move",
     rows_cols: (4, 8),
-    img_path: "texture/being/npc/dungeon/spawn.png",
+    img_path: "texture/being/npc/monster/spawn.png",
     clips: [
         (
             target: 1,
@@ -65,7 +65,7 @@
     paused: true,
     rows_cols: (4, 8),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/spawn.png",
+    img_path: "texture/being/npc/monster/spawn.png",
     clips: [
         (
             target: 2,
@@ -79,7 +79,7 @@
 (
     id: "spawn_west_move",
     rows_cols: (4, 8),
-    img_path: "texture/being/npc/dungeon/spawn.png",
+    img_path: "texture/being/npc/monster/spawn.png",
     clips: [
         (
             target: 2,
@@ -96,7 +96,7 @@
     paused: true,
     rows_cols: (4, 8),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/spawn.png",
+    img_path: "texture/being/npc/monster/spawn.png",
     clips: [
         (
             target: 3,
@@ -110,7 +110,7 @@
 (
     id: "spawn_east_move",
     rows_cols: (4, 8),
-    img_path: "texture/being/npc/dungeon/spawn.png",
+    img_path: "texture/being/npc/monster/spawn.png",
     clips: [
         (
             target: 3,

@@ -1,43 +1,3 @@
-use bevy::{
-    platform::collections::{HashMap, HashSet},
-    prelude::*,
-};
-use bevy::reflect::Reflect;
-use rand::Rng;
-use serde::{Deserialize, Serialize};
-
-use crate::being_shared_nav_states::BehavorialNavState;
-use common::common_tag_components::TagSet;
-use ::tilemap_shared::{BlacklistedSpawnTileTags, BlacklistedTags, CardinalDirection, GlobalTilePos};
-
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub struct AvoidBeingSpec {
-    pub radius: f32,
-    pub strength: f32,
-}
-
-impl AvoidBeingSpec {
-    pub const DEFAULT_RADIUS: f32 = 18.0;
-    pub const DEFAULT_STRENGTH: f32 = 0.85;
-
-    pub fn strongest_entity_avoidance(&self, delta: Vec2, distance: f32, move_speed: f32) -> Vec2 {
-        if self.radius <= 0.0 || distance <= 0.0 || distance > self.radius {
-            return Vec2::ZERO;
-        }
-        let pull = ((self.radius - distance) / self.radius).clamp(0.0, 1.0);
-        delta.normalize_or_zero() * (move_speed * self.strength * pull * pull)
-    }
-}
-
-impl Default for AvoidBeingSpec {
-    fn default() -> Self {
-        Self {
-            radius: Self::DEFAULT_RADIUS,
-            strength: Self::DEFAULT_STRENGTH,
-        }
-    }
-}
-
 #[derive(Component, Asset, TypePath, Clone, Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct WanderSeri {
@@ -62,25 +22,6 @@ pub struct WanderSeri {
     pub pack_orbit_retarget_secs_min: f32,
     pub pack_orbit_retarget_secs_max: f32,
 }
-
-#[derive(Component, Debug, Clone, Deserialize, Serialize, Reflect, Default)]
-#[require(BehavorialNavState, )]
-pub struct WanderState {
-    pub(crate) dir: Vec2,
-    pub(crate) dir_secs_left: f32,
-    pub(crate) speed_mult: f32,
-    pub(crate) halting: bool,
-    pub(crate) phase_secs_left: f32,
-    pub(crate) pack_orbit_secs_left: f32,
-    pub(crate) pack_orbit_target: Option<GlobalTilePos>,
-    #[serde(default)]
-    #[reflect(ignore)]
-    pub(crate) pack_return_dir: Option<CardinalDirection>,
-    pub(crate) lod_level: u8,
-    pub(crate) lod_secs_left: f32,
-    pub(crate) lod_accum_secs: f32,
-}
-
 impl Default for WanderSeri {
     fn default() -> Self {
         Self {
@@ -90,8 +31,8 @@ impl Default for WanderSeri {
             move_secs_max: 2.2,
             halt_secs_min: 0.2,
             halt_secs_max: 1.0,
-            speed_min: 0.12,
-            speed_max: 0.4,
+            speed_min: 0.4,
+            speed_max: 0.6,
             avoid_tile_tags: HashSet::default(),
             avoid_bit_tags: HashMap::default(),
             avoid_race_tags: HashMap::default(),
@@ -101,13 +42,34 @@ impl Default for WanderSeri {
             wander_around_leader: false,
             avoid_being_tags: HashMap::default(),
             avoid_blacklisted_spawn_tiles: false,
-            pack_orbit_radius: 20.0,
+            pack_orbit_radius: 70.0,
             pack_orbit_retarget_secs_min: 30.,
-            pack_orbit_retarget_secs_max: 120.,
+            pack_orbit_retarget_secs_max: 240.,
         }
     }
 }
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+pub struct AvoidBeingSpec {
+    pub radius: f32,
+    pub strength: f32,
+}
+impl AvoidBeingSpec {
+    pub const DEFAULT_RADIUS: f32 = 18.0;
+    pub const DEFAULT_STRENGTH: f32 = 0.85;
 
+    pub fn strongest_entity_avoidance(&self, delta: Vec2, distance: f32, move_speed: f32) -> Vec2 {
+        if self.radius <= 0.0 || distance <= 0.0 || distance > self.radius {
+            return Vec2::ZERO;
+        }
+        let pull = ((self.radius - distance) / self.radius).clamp(0.0, 1.0);
+        delta.normalize_or_zero() * (move_speed * self.strength * pull * pull)
+    }
+}
+impl Default for AvoidBeingSpec {
+    fn default() -> Self {
+        Self { radius: Self::DEFAULT_RADIUS, strength: Self::DEFAULT_STRENGTH, }
+    }
+}
 impl WanderSeri {
     pub fn resolve_wander_avoid_tile_tags(
         &self,
@@ -278,7 +240,23 @@ impl WanderSeri {
         sample_seconds(rng, self.pack_orbit_retarget_secs_min, self.pack_orbit_retarget_secs_max)
     }
 }
-
+#[derive(Component, Debug, Clone, Deserialize, Serialize, Reflect, Default)]
+#[require(BehavorialNavState, )]
+pub struct WanderState {
+    pub(crate) dir: Vec2,
+    pub(crate) dir_secs_left: f32,
+    pub(crate) speed_mult: f32,
+    pub(crate) halting: bool,
+    pub(crate) phase_secs_left: f32,
+    pub(crate) pack_orbit_secs_left: f32,
+    pub(crate) pack_orbit_target: Option<GlobalTilePos>,
+    #[serde(default)]
+    #[reflect(ignore)]
+    pub(crate) pack_return_dir: Option<CardinalDirection>,
+    pub(crate) lod_level: u8,
+    pub(crate) lod_secs_left: f32,
+    pub(crate) lod_accum_secs: f32,
+}
 impl WanderState {
     pub fn new(rng: &mut impl Rng, cfg: &WanderSeri) -> Self {
         let mut state = Self::default();
@@ -576,3 +554,15 @@ impl AvoidBeingSpec {
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct DoAvoidBlacklistedSpawnTilesForWander;
+
+use bevy::{
+    platform::collections::{HashMap, HashSet},
+    prelude::*,
+};
+use bevy::reflect::Reflect;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+
+use crate::being_shared_nav_states::BehavorialNavState;
+use common::common_tag_components::TagSet;
+use ::tilemap_shared::*;

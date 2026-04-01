@@ -3,7 +3,7 @@
 use common::common_components::*;
 use game_common::game_common_components::Templ;
 use game_common::game_common_string_components::*;
-use common::common_components::SampleSpriteEnts;
+use common::common_components::SampleSpritesamplers;
 use sprite_systems::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 
@@ -90,7 +90,7 @@ pub fn init_races(
             );
         }
 
-        let mut mapped_sprites_to_sample: EntityHashMap<SampleSpriteEnts> = EntityHashMap::default();
+        let mut mapped_sprites_to_sample: EntityHashMap<SampleSpritesamplers> = EntityHashMap::default();
 
         let sets_of_monochoosable_sprites = {
             let mut labeled_monochoosable_sets = Vec::new();
@@ -234,7 +234,7 @@ pub fn init_races(
                                 sex_id
                             );
                         } else {
-                            mapped_sprites_to_sample.insert(sex_entity, SampleSpriteEnts::new(resolved_entities));
+                            mapped_sprites_to_sample.insert(sex_entity, SampleSpritesamplers(resolved_entities));
                         }
                     }
                     Err(_) => {

@@ -8,7 +8,7 @@ use bevy::{
     prelude::*,
 };
 use common::common_tag_components::TagSet;
-use common::log_targets::BEING_SYSTEM;
+use common::log_targets::WANDER_SYSTEM;
 use movement::movement_components::FinalNormMoveDir;
 use ::param_sets::*;
 use std::time::Duration;
@@ -315,8 +315,8 @@ pub fn wander_behavior(
                         gpos,
                         pack_center,
                     ) {
-                        debug!(
-                            target: BEING_SYSTEM,
+                        trace!(
+                            target: WANDER_SYSTEM,
                             "wander_behavior: max_drift return correction being={:?} dim={:?} gpos={:?} pack_center={:?} hard_flip={} pending_return={:?}",
                             pred_ent,
                             dim_ref.0,
@@ -449,7 +449,7 @@ pub fn wander_behavior(
     }
     if evaluated_wanderers > 0 {
         trace!(
-            target: BEING_SYSTEM,
+            target: WANDER_SYSTEM,
             "wander_behavior: evaluated_wanderers={} skipped_for_lod={} emitted_nav_orders={}",
             evaluated_wanderers,
             skipped_for_lod,

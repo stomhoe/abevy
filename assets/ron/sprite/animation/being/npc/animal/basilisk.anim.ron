@@ -3,7 +3,7 @@
     paused: true,
     rows_cols: (2, 4),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/basilisk/basilisk_south.png",
+    img_path: "texture/being/npc/monster/basilisk/basilisk_south.png",
     clips: [
         (
             target: 0,
@@ -16,7 +16,7 @@
 ),(
     id: "basilisk_south_move",
     rows_cols: (2, 4),
-    img_path: "texture/being/npc/dungeon/basilisk/basilisk_south.png",
+    img_path: "texture/being/npc/monster/basilisk/basilisk_south.png",
     clips: [
         (
             target: 1,
@@ -31,7 +31,7 @@
     paused: true,
     rows_cols: (2, 4),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/basilisk/basilisk_north.png",
+    img_path: "texture/being/npc/monster/basilisk/basilisk_north.png",
     clips: [
         (
             target: 0,
@@ -44,7 +44,7 @@
 ),(
     id: "basilisk_north_move",
     rows_cols: (2, 4),
-    img_path: "texture/being/npc/dungeon/basilisk/basilisk_north.png",
+    img_path: "texture/being/npc/monster/basilisk/basilisk_north.png",
     clips: [
         (
             target: 1,
@@ -59,7 +59,7 @@
     paused: true,
     rows_cols: (2, 4),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/basilisk/basilisk_west.png",
+    img_path: "texture/being/npc/monster/basilisk/basilisk_west.png",
     clips: [
         (
             target: 0,
@@ -72,7 +72,7 @@
 ),(
     id: "basilisk_west_move",
     rows_cols: (2, 4),
-    img_path: "texture/being/npc/dungeon/basilisk/basilisk_west.png",
+    img_path: "texture/being/npc/monster/basilisk/basilisk_west.png",
     clips: [
         (
             target: 1,
@@ -87,7 +87,7 @@
     paused: true,
     rows_cols: (2, 4),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/basilisk/basilisk_east.png",
+    img_path: "texture/being/npc/monster/basilisk/basilisk_east.png",
     clips: [
         (
             target: 0,
@@ -100,7 +100,7 @@
 ),(
     id: "basilisk_east_move",
     rows_cols: (2, 4),
-    img_path: "texture/being/npc/dungeon/basilisk/basilisk_east.png",
+    img_path: "texture/being/npc/monster/basilisk/basilisk_east.png",
     clips: [
         (
             target: 1,

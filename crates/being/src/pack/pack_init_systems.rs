@@ -30,6 +30,7 @@ pub fn init_packs(
     let mut pack_by_id: HashMap<StrId, Entity> = HashMap::default();
     let mut being_samplers_by_pack: EntityHashMap<BeingTemplateSampler> = EntityHashMap::default();
     let mut rank_sampler_by_pack: EntityHashMap<PackMemberRankSampler> = EntityHashMap::default();
+    let mut spawn_bounds_by_pack: EntityHashMap<PackMemberSpawnBounds> = EntityHashMap::default();
     let mut center_rank_multipliers_by_pack: EntityHashMap<CenterWeightRankBasedMultiplier> = EntityHashMap::default();
     let mut min_dists_by_pack: EntityHashMap<PackMinSepToPacksOrRaces> = EntityHashMap::default();
 
@@ -53,9 +54,9 @@ pub fn init_packs(
             cmd.entity(pack_entity)
                 .insert(pack_seri.wander.clone().sanitized());
         }
-        if pack_seri.center_rank_weight_multiplier != 1.0 {
+        if pack_seri.avgpos_rank_based_weight_multiplier != 1.0 {
             cmd.entity(pack_entity).insert(GlobalCenterRankWeightMultiplier(
-                pack_seri.center_rank_weight_multiplier,
+                pack_seri.avgpos_rank_based_weight_multiplier,
             ));
         }
 
@@ -65,39 +66,57 @@ pub fn init_packs(
         let leader_priority = rank_sampler_by_pack
             .entry(pack_entity)
             .or_default();
+        let spawn_bounds = spawn_bounds_by_pack
+            .entry(pack_entity)
+            .or_default();
         let center_rank_multipliers = center_rank_multipliers_by_pack
             .entry(pack_entity)
             .or_default();
         let min_dists = min_dists_by_pack
             .entry(pack_entity)
             .or_default();
-        for (race_id, config) in &pack_seri.race_ids {
-            let trimmed = race_id.as_str().trim();
-            let (weight, priority) = config;
-            if trimmed.is_empty() || *weight <= 0.0 {
+        for (member_id, config) in &pack_seri.ids {
+            let trimmed = member_id.as_str().trim();
+            let weight = config.weight;
+            let priority = &config.rank_dist;
+            let min_count = config.min;
+            let max_count = config.max;
+            if trimmed.is_empty() || weight <= 0.0 {
                 continue;
             }
-            let Ok(race_ent) = race_emap.0.get_cloned(trimmed) else {
+            let resolved_ent = if config.race_first {
+                race_emap
+                    .0
+                    .get_cloned(trimmed)
+                    .or_else(|_| bit_emap.0.get_cloned(trimmed))
+            } else {
+                bit_emap
+                    .0
+                    .get_cloned(trimmed)
+                    .or_else(|_| race_emap.0.get_cloned(trimmed))
+            };
+            let Ok(resolved_ent) = resolved_ent else {
                 continue;
             };
-            being_sampler.0.insert(race_ent, *weight);
-            leader_priority.0.insert(race_ent, CappedNormalDist::from_seri(priority.clone()));
-        }
-
-        for (bit_id, config) in &pack_seri.bit_ids {
-            let trimmed = bit_id.as_str().trim();
-            let (weight, priority) = config;
-            if trimmed.is_empty() || *weight <= 0.0 {
-                continue;
+            being_sampler.0.insert(resolved_ent, weight);
+            leader_priority.0.insert(resolved_ent, CappedNormalDist::from_seri(priority.clone()));
+            if min_count > 0 || max_count < u32::MAX {
+                let max_count = if max_count == u32::MAX {
+                    u32::MAX
+                } else {
+                    max_count.max(min_count)
+                };
+                let entry = spawn_bounds.0.entry(resolved_ent).or_insert((0, 0));
+                entry.0 = entry.0.max(min_count);
+                entry.1 = if entry.1 == u32::MAX || max_count == u32::MAX {
+                    u32::MAX
+                } else {
+                    entry.1.max(max_count)
+                };
             }
-            let Ok(bit_ent) = bit_emap.0.get_cloned(trimmed) else {
-                continue;
-            };
-            being_sampler.0.insert(bit_ent, *weight);
-            leader_priority.0.insert(bit_ent, CappedNormalDist::from_seri(priority.clone()));
         }
 
-        for (member_id, multiplier) in &pack_seri.center_rank_weight_multipliers {
+        for (member_id, multiplier) in &pack_seri.avgpos_rank_based_weight_multipliers {
             let trimmed = member_id.trim();
             if trimmed.is_empty() || *multiplier <= 0.0 {
                 continue;
@@ -218,6 +237,13 @@ pub fn init_packs(
         }
         cmd.entity(pack_ent)
             .insert(rank_sampler);
+    }
+    for (pack_ent, spawn_bounds) in spawn_bounds_by_pack {
+        if spawn_bounds.0.is_empty() {
+            continue;
+        }
+        cmd.entity(pack_ent)
+            .insert(spawn_bounds);
     }
     for (pack_ent, center_rank_multipliers) in center_rank_multipliers_by_pack {
         if center_rank_multipliers.0.is_empty() {

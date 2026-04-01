@@ -1,9 +1,9 @@
 ([(
     id: "goblin_grunt_south_idle",
     paused: true,
-    rows_cols: (4, 6),
+    rows_cols: (4, 8),
     speed: 1.0,
-    img_path: "texture/being/npc/goblin_grunt.png",
+    img_path: "texture/being/npc/goblin/goblin_grunt.png",
     clips: [
         (
             target: 0,
@@ -16,8 +16,8 @@
 ),
 (
     id: "goblin_grunt_south_move",
-    rows_cols: (4, 6),
-    img_path: "texture/being/npc/goblin_grunt.png",
+    rows_cols: (4, 8),
+    img_path: "texture/being/npc/goblin/goblin_grunt.png",
     clips: [
         (
             target: 0,
@@ -31,9 +31,9 @@
 (
     id: "goblin_grunt_north_idle",
     paused: true,
-    rows_cols: (4, 6),
+    rows_cols: (4, 8),
     speed: 1.0,
-    img_path: "texture/being/npc/goblin_grunt.png",
+    img_path: "texture/being/npc/goblin/goblin_grunt.png",
     clips: [
         (
             target: 1,
@@ -46,8 +46,8 @@
 ),
 (
     id: "goblin_grunt_north_move",
-    rows_cols: (4, 6),
-    img_path: "texture/being/npc/goblin_grunt.png",
+    rows_cols: (4, 8),
+    img_path: "texture/being/npc/goblin/goblin_grunt.png",
     clips: [
         (
             target: 1,
@@ -61,9 +61,9 @@
 (
     id: "goblin_grunt_west_idle",
     paused: true,
-    rows_cols: (4, 6),
+    rows_cols: (4, 8),
     speed: 1.0,
-    img_path: "texture/being/npc/goblin_grunt.png",
+    img_path: "texture/being/npc/goblin/goblin_grunt.png",
     clips: [
         (
             target: 2,
@@ -76,8 +76,8 @@
 ),
 (
     id: "goblin_grunt_west_move",
-    rows_cols: (4, 6),
-    img_path: "texture/being/npc/goblin_grunt.png",
+    rows_cols: (4, 8),
+    img_path: "texture/being/npc/goblin/goblin_grunt.png",
     clips: [
         (
             target: 2,
@@ -91,9 +91,9 @@
 (
     id: "goblin_grunt_east_idle",
     paused: true,
-    rows_cols: (4, 6),
+    rows_cols: (4, 8),
     speed: 1.0,
-    img_path: "texture/being/npc/goblin_grunt.png",
+    img_path: "texture/being/npc/goblin/goblin_grunt.png",
     clips: [
         (
             target: 3,
@@ -106,8 +106,8 @@
 ),
 (
     id: "goblin_grunt_east_move",
-    rows_cols: (4, 6),
-    img_path: "texture/being/npc/goblin_grunt.png",
+    rows_cols: (4, 8),
+    img_path: "texture/being/npc/goblin/goblin_grunt.png",
     clips: [
         (
             target: 3,

@@ -26,7 +26,7 @@ pub struct DenyForTemplClonedChildren(
     Templ,
     BaseHolderRef,
     Disabled,
-    ImagePathHolder,
+    PathHolder,
     AcZ,
     YSortOrigin,
     AllScalesAndOffsets,

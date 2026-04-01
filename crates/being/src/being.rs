@@ -83,7 +83,7 @@ pub fn plugin(app: &mut App) {
             instance_pack_entities.run_if(on_message::<InstantiateTemplPackEntity>),
         ).in_set(HostSystems),
     ))
-    .add_observer(cleanup_being_from_chunk_pos_res_on_despawn)
+    .add_observer(cleanup_being_from_BeingsInCpos_on_despawn)
     .add_systems(Update, (
         on_control_change,
         sync_predator_squad_marker,

@@ -30,9 +30,8 @@ impl DisplayName {
     }
 
     pub fn insert_name_if_non_empty<S: AsRef<str>>(name: S, entity: &mut EntityCommands) {
-        let name_str = name.as_ref();
-        if !name_str.is_empty() {
-            entity.insert(DisplayName(name_str.to_string()));
+        if !name.as_ref().trim().is_empty() {
+            entity.insert(DisplayName(name.as_ref().to_string()));
         }
     }
 }
@@ -54,73 +53,67 @@ impl Debug for DisplayName {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Reflect)]
-pub struct ImagePathHolder(bevy::asset::AssetPath<'static>);
-
-impl ImagePathHolder {
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct PathHolder(bevy::asset::AssetPath<'static>);
+impl PathHolder {
     pub fn new<S>(path: S) -> Result<Self, BevyError>
     where
         S: AsRef<str> + Into<bevy::asset::AssetPath<'static>>,
     {
-        ImagePathHolder::validate_path_exists(path.as_ref())?;
+        Self::validate_path_exists(path.as_ref())?;
         let asset_path: bevy::asset::AssetPath<'static> = path.into();
-        Ok(ImagePathHolder(asset_path))
+        Ok(Self(asset_path))
     }
     pub fn validate_path_exists<S: AsRef<str>>(path: S) -> Result<(), BevyError> {
         let path = path.as_ref().trim();
-        if path.is_empty() {
-            let err = BevyError::from("Image path is empty");
-            return Err(err);
+        match path.is_empty() {
+            true => return Err(BevyError::from("Image path is empty")),
+            false => {}
         }
         let path = format!("assets/{}", path);
-        if !std::path::Path::new(&path).exists() {
-            let err = BevyError::from(format!("Image path does not exist: {}", path));
-            return Err(err);
+        match std::path::Path::new(&path).try_exists() {
+            Ok(true) => Ok(()),
+            Ok(false) => Err(BevyError::from(format!("no file at: {}", path))),
+            Err(err) => Err(BevyError::from(format!("failed to check image path '{}': {}", path, err))),
         }
-        Ok(())
     }
     pub fn path(&self) -> &bevy::asset::AssetPath<'static> {
         &self.0
     }
 }
-impl Display for ImagePathHolder {
+impl Display for PathHolder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
-impl From<ImagePathHolder> for bevy::asset::AssetPath<'_> {
-    fn from(holder: ImagePathHolder) -> Self {
+impl From<PathHolder> for bevy::asset::AssetPath<'_> {
+    fn from(holder: PathHolder) -> Self {
         bevy::asset::AssetPath::from(holder.0)
     }
 }
-#[derive(Component, Debug, Default, Clone, Reflect)]
-pub struct MultipleImagePathHolder(Vec<bevy::asset::AssetPath<'static>>);
-impl MultipleImagePathHolder {
-    pub fn new<S, I>(paths: I) -> Result<Self, BevyError>
+#[derive(Component, Debug, Default, Clone)]
+pub struct MultiplePathsHolder(HashMap<StrId, bevy::asset::AssetPath<'static>>);
+impl MultiplePathsHolder {
+    pub fn new<I, K, P>(paths: I) -> Result<Self, BevyError>
     where
-        S: AsRef<str> + Into<bevy::asset::AssetPath<'static>>,
-        I: IntoIterator<Item = S>,
+        I: IntoIterator<Item = (K, P)>,
+        K: Into<StrId>,
+        P: AsRef<str> + Into<bevy::asset::AssetPath<'static>>,
     {
-        let mut path_vec = Vec::new();
-        for path in paths {
-            ImagePathHolder::validate_path_exists(path.as_ref())?;
+        let mut path_map = HashMap::default();
+        for (str_id, path) in paths {
+            PathHolder::validate_path_exists(path.as_ref())?;
             let asset_path: bevy::asset::AssetPath<'static> = path.into();
-            path_vec.push(asset_path);
+            path_map.insert(str_id.into(), asset_path);
         }
-        Ok(MultipleImagePathHolder(path_vec))
+        Ok(MultiplePathsHolder(path_map))
     }
-    pub fn paths(&self) -> &Vec<bevy::asset::AssetPath<'static>> {
+    pub fn paths(&self) -> &HashMap<StrId, bevy::asset::AssetPath<'static>> {
         &self.0
     }
 }
-
-#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities)]
-pub struct SampleSpriteEnts(#[entities] pub Vec<Entity>);
-impl SampleSpriteEnts {
-    pub fn new(entities: Vec<Entity>) -> Self {
-        Self(entities)
-    }
-}
+#[derive(Component, Debug, Clone, )]
+pub struct SampleSpritesamplers(pub Vec<Entity>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Eq, Clone, Copy, Hash, PartialEq)]
 pub enum Grounding {
@@ -154,7 +147,7 @@ impl From<&str> for Grounding {
     }
 }
 
-#[derive(Component, Debug, Clone, Default, Hash, PartialEq, Eq, Reflect)]
+#[derive(Component, Debug, Clone, Default, Hash, PartialEq, Eq, )]
 pub struct ImageHolder(pub Handle<Image>);
 impl ImageHolder {
     pub fn new<S>(asset_server: &AssetServer, path: S) -> Result<Self, BevyError>
@@ -162,10 +155,18 @@ impl ImageHolder {
         S: AsRef<str> + Into<bevy::asset::AssetPath<'static>>,
     {
         let img_path = format!("assets/{}", path.as_ref());
-        if !std::path::Path::new(&img_path).exists() {
-            let err = BevyError::from(format!("Image path does not exist: {}", img_path));
-            error!(target: "image_loading", "{}", err);
-            return Err(err);
+        match std::path::Path::new(&img_path).try_exists() {
+            Ok(true) => {}
+            Ok(false) => {
+                let err = BevyError::from(format!("Image path does not exist: {}", img_path));
+                error!(target: "image_loading", "{}", err);
+                return Err(err);
+            }
+            Err(err) => {
+                let err = BevyError::from(format!("Failed to check image path '{}': {}", img_path, err));
+                error!(target: "image_loading", "{}", err);
+                return Err(err);
+            }
         }
         Ok(Self(asset_server.load(path)))
     }

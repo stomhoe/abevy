@@ -1,16 +1,13 @@
-(
+pack {
     id: "duck",
-    spawn_being_count_normal_dist: (min_dev: 2.0, max_dev: 2.0, mean: 6.0, std_dev: 2.0),
-    race_ids: {
-        "duck": (1.0, (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0)),
+    spawn_being_count_normal_dist: { min_dev: 2.0, max_dev: 2.0, mean: 6.0, std_dev: 2.0 },
+    ids: {
+        duck: 1.0,
     },
-    bit_ids: {},
     biome_affinity: {
-        "ocean": -2.5,
-        "beach": 1.1,
-        "temp": 0.6,
+        ocean: -2.5,
+        beach: 1.1,
+        temp: 0.6,
     },
-    behavior_on_member_attack: "",
-    chunk_separation_to_others: {},
     pack_spawn_radius: 7,
-)
+}

@@ -1,0 +1,17 @@
+pack {
+    id: "goblin",
+    spawn_being_count_normal_dist: { min_dev: 1.0, max_dev: 2.0, mean: 5.0, std_dev: 2.0 },
+    ids: {
+        goblin_grunt: { weight: 0.55, rank: { min_dev: 0.10, max_dev: 0.10, mean: 0.25, std_dev: 0.10 }, min: 1 },
+        goblin: { weight: 0.25, rank: { min_dev: 0.15, max_dev: 0.15, mean: 0.85, std_dev: 0.15 } },
+        goblin_merchant: { weight: 0.12, rank: { min_dev: 0.20, max_dev: 0.20, mean: 1.75, std_dev: 0.20 }, max: 1 },
+        goblin_axe: { weight: 0.08, rank: { min_dev: 0.25, max_dev: 0.25, mean: 2.25, std_dev: 0.25 }, max: 1 },
+    },
+    biome_affinity: {
+        temp: 1.0,
+        desert: 0.6,
+        beach: 0.3,
+        ocean: -2.5,
+    },
+    pack_spawn_radius: 7,
+}

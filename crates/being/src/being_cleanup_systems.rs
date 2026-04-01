@@ -7,7 +7,7 @@ use ::tilemap_shared::*;
 
 use ::being_shared::*;
 
-pub const MAX_LOADED_BEINGS: usize = 30;
+pub const MAX_LOADED_BEINGS: usize = 300;
 
 #[allow(unused_parens, )]
 pub fn cull_loaded_beings_far_from_humans(
@@ -63,11 +63,11 @@ pub fn cull_loaded_beings_far_from_humans(
 }
 
 
-#[allow(unused_parens, )]
-pub fn cleanup_being_from_chunk_pos_res_on_despawn(
+#[allow(unused_parens, non_snake_case)]
+pub fn cleanup_being_from_BeingsInCpos_on_despawn(
     trigger: On<Despawn, Being>,
     chunk_query: Query<(&DimensionRef, &ChunkPos), common::AnyDisabling>,
-    mut beings_within_chunk: ResMut<BeingsWithinChunk>,
+    mut beings_within_chunk: ResMut<BeingsInCpos>,
 ) {
     let Ok((&dim_ref, &chunk_pos)) = chunk_query.get(trigger.entity) else {
         return;

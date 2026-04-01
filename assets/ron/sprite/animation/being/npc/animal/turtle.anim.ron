@@ -3,7 +3,7 @@
     paused: true,
     rows_cols: (2, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/turtle/turtle_south.png",
+    img_path: "texture/being/npc/reptile/turtle_south.png",
     clips: [
         (
             target: 0,
@@ -22,7 +22,7 @@
 (
     id: "turtle_south_move",
     rows_cols: (2, 3),
-    img_path: "texture/being/npc/turtle/turtle_south.png",
+    img_path: "texture/being/npc/reptile/turtle_south.png",
     clips: [
         (
             target: 0,
@@ -41,7 +41,7 @@
     paused: true,
     rows_cols: (2, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/turtle/turtle_north.png",
+    img_path: "texture/being/npc/reptile/turtle_north.png",
     clips: [
         (
             target: 0,
@@ -60,7 +60,7 @@
 (
     id: "turtle_north_move",
     rows_cols: (2, 3),
-    img_path: "texture/being/npc/turtle/turtle_north.png",
+    img_path: "texture/being/npc/reptile/turtle_north.png",
     clips: [
         (
             target: 0,
@@ -79,7 +79,7 @@
     paused: true,
     rows_cols: (2, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/turtle/turtle_west.png",
+    img_path: "texture/being/npc/reptile/turtle_west.png",
     clips: [
         (
             target: 0,
@@ -98,7 +98,7 @@
 (
     id: "turtle_west_move",
     rows_cols: (2, 3),
-    img_path: "texture/being/npc/turtle/turtle_west.png",
+    img_path: "texture/being/npc/reptile/turtle_west.png",
     clips: [
         (
             target: 0,
@@ -117,7 +117,7 @@
     paused: true,
     rows_cols: (2, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/turtle/turtle_east.png",
+    img_path: "texture/being/npc/reptile/turtle_east.png",
     clips: [
         (
             target: 0,
@@ -136,7 +136,7 @@
 (
     id: "turtle_east_move",
     rows_cols: (2, 3),
-    img_path: "texture/being/npc/turtle/turtle_east.png",
+    img_path: "texture/being/npc/reptile/turtle_east.png",
     clips: [
         (
             target: 0,

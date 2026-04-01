@@ -3,7 +3,7 @@
     paused: true,
     rows_cols: (4, 6),
     speed: 1.0,
-    img_path: "texture/being/npc/orc0.png",
+    img_path: "texture/being/npc/orc/orc0.png",
     clips: [
         (
             target: 0,
@@ -17,7 +17,7 @@
 (
     id: "orc0_south_move",
     rows_cols: (4, 6),
-    img_path: "texture/being/npc/orc0.png",
+    img_path: "texture/being/npc/orc/orc0.png",
     clips: [
         (
             target: 0,
@@ -33,7 +33,7 @@
     paused: true,
     rows_cols: (4, 6),
     speed: 1.0,
-    img_path: "texture/being/npc/orc0.png",
+    img_path: "texture/being/npc/orc/orc0.png",
     clips: [
         (
             target: 1,
@@ -47,7 +47,7 @@
 (
     id: "orc0_north_move",
     rows_cols: (4, 6),
-    img_path: "texture/being/npc/orc0.png",
+    img_path: "texture/being/npc/orc/orc0.png",
     clips: [
         (
             target: 1,
@@ -63,7 +63,7 @@
     paused: true,
     rows_cols: (4, 6),
     speed: 1.0,
-    img_path: "texture/being/npc/orc0.png",
+    img_path: "texture/being/npc/orc/orc0.png",
     clips: [
         (
             target: 2,
@@ -77,12 +77,13 @@
 (
     id: "orc0_west_move",
     rows_cols: (4, 6),
-    img_path: "texture/being/npc/orc0.png",
+    img_path: "texture/being/npc/orc/orc0.png",
     clips: [
         (
             target: 2,
             is_row: true,
             start_frame: Some(1),
+            partial: Some((0, 4)),
         ),
     ],
     z: 1000,
@@ -93,7 +94,7 @@
     paused: true,
     rows_cols: (4, 6),
     speed: 1.0,
-    img_path: "texture/being/npc/orc0.png",
+    img_path: "texture/being/npc/orc/orc0.png",
     clips: [
         (
             target: 3,
@@ -107,12 +108,14 @@
 (
     id: "orc0_east_move",
     rows_cols: (4, 6),
-    img_path: "texture/being/npc/orc0.png",
+    img_path: "texture/being/npc/orc/orc0.png",
     clips: [
         (
             target: 3,
             is_row: true,
             start_frame: Some(1),
+            partial: Some((0, 4)),
+
         ),
     ],
     z: 1000,

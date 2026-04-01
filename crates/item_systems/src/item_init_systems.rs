@@ -107,7 +107,7 @@ pub fn init_items(
             entity_cmd.insert(Description(seri.description.trim().to_string()));
         }
         if !seri.icon_img_path.trim().is_empty() {
-            if let Ok(icon_path) = ImagePathHolder::new(seri.icon_img_path.trim().to_string()) {
+            if let Ok(icon_path) = PathHolder::new(seri.icon_img_path.trim().to_string()) {
                 entity_cmd.insert(icon_path);
             }
         }

@@ -142,7 +142,7 @@ pub fn init_sprite_configs(
         let fallback_img_path = seri.fallback_img_path.trim();
         let has_fallback = !fallback_img_path.is_empty();
         if has_fallback {
-            let Ok(img_path_holder) = ImagePathHolder::new(fallback_img_path.to_string()) else {
+            let Ok(img_path_holder) = PathHolder::new(fallback_img_path.to_string()) else {
                 error!(target: SPRITE_INIT, "SpriteConfig '{}' fallback_img_path '{}' is invalid", str_id, fallback_img_path);
                 continue;
             };

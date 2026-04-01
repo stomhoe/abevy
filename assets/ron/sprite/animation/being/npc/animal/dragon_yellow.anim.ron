@@ -3,7 +3,7 @@
     paused: true,
     rows_cols: (4, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/dragon_yellow/dragon_yellow_south.png",
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_south.png",
     clips: [
         (
             target: 0,
@@ -16,7 +16,7 @@
 ),(
     id: "dragon_yellow_south_move",
     rows_cols: (4, 3),
-    img_path: "texture/being/npc/dungeon/dragon_yellow/dragon_yellow_south.png",
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_south.png",
     clips: [
         (
             target: 1,
@@ -31,7 +31,7 @@
     paused: true,
     rows_cols: (4, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/dragon_yellow/dragon_yellow_north.png",
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_north.png",
     clips: [
         (
             target: 0,
@@ -44,7 +44,7 @@
 ),(
     id: "dragon_yellow_north_move",
     rows_cols: (4, 3),
-    img_path: "texture/being/npc/dungeon/dragon_yellow/dragon_yellow_north.png",
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_north.png",
     clips: [
         (
             target: 1,
@@ -59,7 +59,7 @@
     paused: true,
     rows_cols: (4, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/dragon_yellow/dragon_yellow_west.png",
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_west.png",
     clips: [
         (
             target: 0,
@@ -72,7 +72,7 @@
 ),(
     id: "dragon_yellow_west_move",
     rows_cols: (4, 3),
-    img_path: "texture/being/npc/dungeon/dragon_yellow/dragon_yellow_west.png",
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_west.png",
     clips: [
         (
             target: 1,
@@ -87,7 +87,7 @@
     paused: true,
     rows_cols: (4, 3),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/dragon_yellow/dragon_yellow_east.png",
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_east.png",
     clips: [
         (
             target: 0,
@@ -100,7 +100,7 @@
 ),(
     id: "dragon_yellow_east_move",
     rows_cols: (4, 3),
-    img_path: "texture/being/npc/dungeon/dragon_yellow/dragon_yellow_east.png",
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_east.png",
     clips: [
         (
             target: 1,

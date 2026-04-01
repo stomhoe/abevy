@@ -5,7 +5,7 @@ use common::{AnyDisabling, common_components::StrId, };
 
 use game_common::game_common_components::Templ;
 use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
-use common::common_components::SampleSpriteEnts;
+use common::common_components::SampleSpritesamplers;
 use ::sprite_shared::*;
 
 use crate::{sprite_resources::*, sprite_sampler::SpriteWeightedSamplerEntityMap};
@@ -15,7 +15,7 @@ use crate::{sprite_resources::*, sprite_sampler::SpriteWeightedSamplerEntityMap}
 pub fn replace_sampler_string_ids_by_entities(
     mut cmd: Commands,
     changed_query: Query<Entity, Changed<SampleSpritesFromStrIds>>,
-    query: Query<(&SampleSpritesFromStrIds, Option<&StrId>, Has<SampleSpriteEnts>), AnyDisabling>,
+    query: Query<(&SampleSpritesFromStrIds, Option<&StrId>, Has<SampleSpritesamplers>), AnyDisabling>,
     sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
     sprite_map: Option<Res<SpriteConfigEntityMap>>,
     mut removed_disabled: RemovedComponents<Disabled>,
@@ -64,7 +64,7 @@ pub fn replace_sampler_string_ids_by_entities(
         }
 
         if !resolved_entities.is_empty() {
-            sample_sprites_to_insert.push((ent, SampleSpriteEnts::new(resolved_entities.drain(..).collect())));
+            sample_sprites_to_insert.push((ent, SampleSpritesamplers(resolved_entities.drain(..).collect())));
         }
     }
 
@@ -75,8 +75,8 @@ pub fn replace_sampler_string_ids_by_entities(
 #[allow(unused_parens)]
 pub fn sample_from_sprite_entities(
     mut cmd: Commands,
-    changed_beings: Query<Entity, (Changed<SampleSpriteEnts>, Without<BeingInstTemplate>, Without<Templ>)>,
-    being_query: Query<(&SampleSpriteEnts, Has<ScsToBuild>), (Without<BeingInstTemplate>, Without<Templ>, AnyDisabling)>,
+    changed_beings: Query<Entity, (Changed<SampleSpritesamplers>, Without<BeingInstTemplate>, Without<Templ>)>,
+    being_query: Query<(&SampleSpritesamplers, Has<ScsToBuild>), (Without<BeingInstTemplate>, Without<Templ>, AnyDisabling)>,
     samplers_query: Query<&EntityWeightedSampler>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut beings_to_process: Local<Vec<Entity>>,
@@ -117,7 +117,7 @@ pub fn sample_from_sprite_entities(
         if !sampled_configs.is_empty() {
             configs_to_build.push((*ent, ScsToBuild(std::mem::take(&mut sampled_configs))));
         }
-        cmd.entity(*ent).try_remove::<SampleSpriteEnts>();
+        cmd.entity(*ent).try_remove::<SampleSpritesamplers>();
     }
 
     cmd.try_insert_batch(std::mem::take(&mut configs_to_build));

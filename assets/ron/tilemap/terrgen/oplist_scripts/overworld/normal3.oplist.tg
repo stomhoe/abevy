@@ -12,6 +12,6 @@ let lakeness = -(lakeness, riverness)
 
 out = idxmax(continent_threshold, lakeness, )
 
-bif normal4 -> [tempgrass] biomes: [temp=3.5(1.0,0.05)]
+bif normal4 -> [tempgrass] biomes: [temp=3.5(3.0,0.35)]
 bif "" -> [lake]
 bif "" -> [orange]

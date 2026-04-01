@@ -1,0 +1,17 @@
+(
+    id: "goblin",
+    points: 0,
+
+    race: "goblin",
+    scs_samplers: ["goblin"],
+    sprites_scale_ranges: {},
+    health_multiplier: 1.0,
+    body_tree: "goblin",
+
+    recruitment_difficulty: None,
+
+    whitelisted_tiles_for_spawning: [],
+    blacklisted_tiles_for_spawning: [],
+
+    pack_spawn_radius: 7,
+)

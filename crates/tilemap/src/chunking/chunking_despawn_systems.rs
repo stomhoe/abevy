@@ -81,7 +81,7 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
     activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
     chunks_query: Query<(&DimensionRef, &ChunkPos, Option<&Tilemaps>, Option<&TilesToSave>), >,
     loaded_chunks: Res<LoadedChunks>,
-    beings_within_chunk: Res<BeingsWithinChunk>,
+    beings_within_chunk: Res<BeingsInCpos>,
     mut despawn_events: ResMut<Messages<CheckIfChunkShouldDespawn>>,
     mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
     mut force_despawn_reader: MessageReader<MakeChunkDespawn>,
@@ -154,7 +154,7 @@ pub fn on_chunk_despawn(
     mut ___________cmd: Commands,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut ____________loaded_macro_chunks: ResMut<LoadedMacroChunks>,
-    beings_within_chunk: Res<BeingsWithinChunk>,
+    beings_within_chunk: Res<BeingsInCpos>,
     mut ub_writer: MessageWriter<FaithfulSimBeing>,
     mut ub_messages: Local<Vec<FaithfulSimBeing>>,
 ){

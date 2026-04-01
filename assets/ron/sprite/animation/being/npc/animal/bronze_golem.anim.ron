@@ -3,7 +3,7 @@
     paused: true,
     rows_cols: (4, 5),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/bronze_golem.png",
+    img_path: "texture/being/npc/monster/bronze_golem.png",
     clips: [
         (
             target: 0,
@@ -16,7 +16,7 @@
 ),(
     id: "bronze_golem_south_move",
     rows_cols: (4, 5),
-    img_path: "texture/being/npc/dungeon/bronze_golem.png",
+    img_path: "texture/being/npc/monster/bronze_golem.png",
     clips: [
         (
             target: 0,
@@ -31,7 +31,7 @@
     paused: true,
     rows_cols: (4, 5),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/bronze_golem.png",
+    img_path: "texture/being/npc/monster/bronze_golem.png",
     clips: [
         (
             target: 1,
@@ -44,7 +44,7 @@
 ),(
     id: "bronze_golem_north_move",
     rows_cols: (4, 5),
-    img_path: "texture/being/npc/dungeon/bronze_golem.png",
+    img_path: "texture/being/npc/monster/bronze_golem.png",
     clips: [
         (
             target: 1,
@@ -59,7 +59,7 @@
     paused: true,
     rows_cols: (4, 5),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/bronze_golem.png",
+    img_path: "texture/being/npc/monster/bronze_golem.png",
     clips: [
         (
             target: 2,
@@ -72,7 +72,7 @@
 ),(
     id: "bronze_golem_west_move",
     rows_cols: (4, 5),
-    img_path: "texture/being/npc/dungeon/bronze_golem.png",
+    img_path: "texture/being/npc/monster/bronze_golem.png",
     clips: [
         (
             target: 2,
@@ -87,7 +87,7 @@
     paused: true,
     rows_cols: (4, 5),
     speed: 1.0,
-    img_path: "texture/being/npc/dungeon/bronze_golem.png",
+    img_path: "texture/being/npc/monster/bronze_golem.png",
     clips: [
         (
             target: 3,
@@ -100,7 +100,7 @@
 ),(
     id: "bronze_golem_east_move",
     rows_cols: (4, 5),
-    img_path: "texture/being/npc/dungeon/bronze_golem.png",
+    img_path: "texture/being/npc/monster/bronze_golem.png",
     clips: [
         (
             target: 3,

@@ -47,7 +47,7 @@ impl TileHashIdsHandles {
         let mut ids = Vec::with_capacity(img_paths.len());
         let mut handles = Vec::with_capacity(img_paths.len());
         for (key, path) in img_paths {
-            let Ok(image_holder) = ImagePathHolder::new(path.clone()) else {
+            let Ok(image_holder) = PathHolder::new(path.clone()) else {
                 error!(target: TILE_INIT, "Failed to find image file for key {} at path: {}", key, path);
                 continue;
             };

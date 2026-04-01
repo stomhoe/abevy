@@ -14,12 +14,12 @@ pub struct LoadedChunks(pub HashMap<(DimensionRef, ChunkPos), Entity>,);
 pub struct LoadedMacroChunks(pub HashMap<(DimensionRef, MacrochunkPos), Entity>,);
 
 #[derive(Resource, Clone, Default)]
-pub struct BeingsWithinChunk {
+pub struct BeingsInCpos {
     pub by_chunk: HashMap<(DimensionRef, ChunkPos), SmallVec<[Entity; 8]>>,
     pub by_being: EntityHashMap<(DimensionRef, ChunkPos)>,
 }
 
-impl BeingsWithinChunk {
+impl BeingsInCpos {
     pub fn set_being_chunk(
         &mut self,
         being_ent: Entity,

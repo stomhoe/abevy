@@ -102,6 +102,12 @@ pub struct BlockingTileParamSet<'w, 's> {
     occupied_gposes: Local<'s, Vec<GlobalTilePos>>,
     collision_tile_samples: Local<'s, Vec<CollisionTileSample>>,
     gposes_set: Local<'s, HashSet<GlobalTilePos>>,
+    allowed_candidates_preferred: Local<'s, Vec<GlobalTilePos>>,
+    allowed_candidates_expanded: Local<'s, Vec<GlobalTilePos>>,
+    allowed_candidates_combined: Local<'s, Vec<GlobalTilePos>>,
+    island_open: Local<'s, Vec<GlobalTilePos>>,
+    island_visited: Local<'s, HashSet<GlobalTilePos>>,
+    island_set: Local<'s, HashSet<GlobalTilePos>>,
 }
 #[allow(unused_parens, )]
 impl<'w, 's> BlockingTileParamSet<'w, 's> {
@@ -562,9 +568,13 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             delta.x.saturating_mul(delta.x) + delta.y.saturating_mul(delta.y) <= radius_sqr
         };
 
-        let mut allowed_candidates_preferred = Vec::<GlobalTilePos>::new();
-        let mut allowed_candidates_expanded = Vec::<GlobalTilePos>::new();
-        let mut allowed_set = HashSet::<GlobalTilePos>::default();
+        self.allowed_candidates_preferred.clear();
+        self.allowed_candidates_expanded.clear();
+        self.allowed_candidates_combined.clear();
+        self.island_open.clear();
+        self.island_visited.clear();
+        self.island_set.clear();
+        self.gposes_set.clear();
         for radius in 0..=hard_max_radius {
             let min = -radius;
             let max = radius;
@@ -579,13 +589,13 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 if !self.allowed_at_refs(dim_ref, candidate, being, whitelisted_tags, blacklisted_tags) {
                     continue;
                 }
-                if !allowed_set.insert(candidate) {
+                if !self.gposes_set.insert(candidate) {
                     continue;
                 }
                 if is_within_radius(candidate, preferred_radius_sqr) {
-                    allowed_candidates_preferred.push(candidate);
+                    self.allowed_candidates_preferred.push(candidate);
                 } else {
-                    allowed_candidates_expanded.push(candidate);
+                    self.allowed_candidates_expanded.push(candidate);
                 }
             }
             for y in (min + 1)..=max {
@@ -599,13 +609,13 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 if !self.allowed_at_refs(dim_ref, candidate, being, whitelisted_tags, blacklisted_tags) {
                     continue;
                 }
-                if !allowed_set.insert(candidate) {
+                if !self.gposes_set.insert(candidate) {
                     continue;
                 }
                 if is_within_radius(candidate, preferred_radius_sqr) {
-                    allowed_candidates_preferred.push(candidate);
+                    self.allowed_candidates_preferred.push(candidate);
                 } else {
-                    allowed_candidates_expanded.push(candidate);
+                    self.allowed_candidates_expanded.push(candidate);
                 }
             }
             for x in (min..max).rev() {
@@ -619,13 +629,13 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 if !self.allowed_at_refs(dim_ref, candidate, being, whitelisted_tags, blacklisted_tags) {
                     continue;
                 }
-                if !allowed_set.insert(candidate) {
+                if !self.gposes_set.insert(candidate) {
                     continue;
                 }
                 if is_within_radius(candidate, preferred_radius_sqr) {
-                    allowed_candidates_preferred.push(candidate);
+                    self.allowed_candidates_preferred.push(candidate);
                 } else {
-                    allowed_candidates_expanded.push(candidate);
+                    self.allowed_candidates_expanded.push(candidate);
                 }
             }
             for y in ((min + 1)..max).rev() {
@@ -639,43 +649,42 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                 if !self.allowed_at_refs(dim_ref, candidate, being, whitelisted_tags, blacklisted_tags) {
                     continue;
                 }
-                if !allowed_set.insert(candidate) {
+                if !self.gposes_set.insert(candidate) {
                     continue;
                 }
                 if is_within_radius(candidate, preferred_radius_sqr) {
-                    allowed_candidates_preferred.push(candidate);
+                    self.allowed_candidates_preferred.push(candidate);
                 } else {
-                    allowed_candidates_expanded.push(candidate);
+                    self.allowed_candidates_expanded.push(candidate);
                 }
             }
         }
 
-        let mut candidates = Vec::<GlobalTilePos>::new();
         if !gather_all_gpos_within_same_allowed_island {
-            candidates.reserve(allowed_candidates_preferred.len() + allowed_candidates_expanded.len());
-            candidates.extend(allowed_candidates_preferred.iter().copied());
-            candidates.extend(allowed_candidates_expanded.iter().copied());
+            self.allowed_candidates_combined.reserve(
+                self.allowed_candidates_preferred.len() + self.allowed_candidates_expanded.len(),
+            );
+            self.allowed_candidates_combined.extend(self.allowed_candidates_preferred.iter().copied());
+            self.allowed_candidates_combined.extend(self.allowed_candidates_expanded.iter().copied());
         } else {
-            let seed = allowed_candidates_preferred
+            let seed = self.allowed_candidates_preferred
                 .first()
                 .copied()
-                .or_else(|| allowed_candidates_expanded.first().copied());
+                .or_else(|| self.allowed_candidates_expanded.first().copied());
             let Some(seed) = seed else {
                 return;
             };
-            let mut island_set = HashSet::<GlobalTilePos>::default();
-            let mut open = Vec::with_capacity(needed_count.max(16));
-            let mut visited = HashSet::<GlobalTilePos>::default();
-            open.push(seed);
-            visited.insert(seed);
+            self.island_open.reserve(needed_count.max(16));
+            self.island_open.push(seed);
+            self.island_visited.insert(seed);
             let mut open_idx = 0usize;
-            while open_idx < open.len() {
-                let current = open[open_idx];
+            while open_idx < self.island_open.len() {
+                let current = self.island_open[open_idx];
                 open_idx += 1;
-                if !island_set.insert(current) {
+                if !self.island_set.insert(current) {
                     continue;
                 }
-                candidates.push(current);
+                self.allowed_candidates_combined.push(current);
                 for delta in [
                     IVec2::new(1, 0),
                     IVec2::new(-1, 0),
@@ -686,31 +695,31 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                     if neighbor.0.x < min_x || neighbor.0.x > max_x || neighbor.0.y < min_y || neighbor.0.y > max_y {
                         continue;
                     }
-                    if !visited.insert(neighbor) || !allowed_set.contains(&neighbor) {
+                    if !self.island_visited.insert(neighbor) || !self.gposes_set.contains(&neighbor) {
                         continue;
                     }
-                    open.push(neighbor);
+                    self.island_open.push(neighbor);
                 }
             }
 
-            if !only_same_island && candidates.len() < needed_count {
-                for candidate in allowed_candidates_preferred.iter().copied() {
-                    if island_set.insert(candidate) {
-                        candidates.push(candidate);
+            if !only_same_island && self.allowed_candidates_combined.len() < needed_count {
+                for candidate in self.allowed_candidates_preferred.iter().copied() {
+                    if self.island_set.insert(candidate) {
+                        self.allowed_candidates_combined.push(candidate);
                     }
                 }
-                for candidate in allowed_candidates_expanded.iter().copied() {
-                    if island_set.insert(candidate) {
-                        candidates.push(candidate);
+                for candidate in self.allowed_candidates_expanded.iter().copied() {
+                    if self.island_set.insert(candidate) {
+                        self.allowed_candidates_combined.push(candidate);
                     }
                 }
             }
         }
 
-        if allowed_candidates_preferred.is_empty() && allowed_candidates_expanded.is_empty() {
+        if self.allowed_candidates_preferred.is_empty() && self.allowed_candidates_expanded.is_empty() {
             return;
         }
-        if gather_all_gpos_within_same_allowed_island && candidates.is_empty() {
+        if gather_all_gpos_within_same_allowed_island && self.allowed_candidates_combined.is_empty() {
             return;
         }
 
@@ -718,16 +727,18 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             let delta = a.0 - b.0;
             delta.x * delta.x + delta.y * delta.y
         };
-        let mut preferred_candidates = allowed_candidates_preferred;
-        let mut expanded_candidates = allowed_candidates_expanded;
         self.gposes_set.clear();
         if gather_all_gpos_within_same_allowed_island {
-            preferred_candidates.retain(|candidate| candidates.contains(candidate));
-            expanded_candidates.retain(|candidate| candidates.contains(candidate));
+            self.allowed_candidates_preferred.retain(|candidate| {
+                self.allowed_candidates_combined.contains(candidate)
+            });
+            self.allowed_candidates_expanded.retain(|candidate| {
+                self.allowed_candidates_combined.contains(candidate)
+            });
         }
 
-        if !preferred_candidates.is_empty() {
-            let mut remaining = preferred_candidates;
+        if !self.allowed_candidates_preferred.is_empty() {
+            let remaining = &mut self.allowed_candidates_preferred;
             let mut first_choice = None;
             let mut first_choice_dist = -1;
             for (idx, candidate) in remaining.iter().enumerate() {
@@ -774,9 +785,9 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
             }
         }
 
-        if out.len() < needed_count && !expanded_candidates.is_empty() {
-            expanded_candidates.sort_by_key(|candidate| sqr_dist(*candidate, target_gpos));
-            for candidate in expanded_candidates {
+        if out.len() < needed_count && !self.allowed_candidates_expanded.is_empty() {
+            self.allowed_candidates_expanded.sort_by_key(|candidate| sqr_dist(*candidate, target_gpos));
+            for candidate in self.allowed_candidates_expanded.iter().copied() {
                 if self.gposes_set.contains(&candidate) {
                     continue;
                 }

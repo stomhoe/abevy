@@ -17,6 +17,9 @@ pub struct BeingTemplateSampler(#[entities] pub EntityWeightedSampler);
 pub struct PackMemberRankSampler(pub EntityHashMap<CappedNormalDist>);
 
 #[derive(Component, Debug, Clone, Default)]
+pub struct PackMemberSpawnBounds(pub EntityHashMap<(u32, u32)>);
+
+#[derive(Component, Debug, Clone, Default)]
 pub struct CenterWeightRankBasedMultiplier(pub EntityHashMap<f32>);
 
 #[derive(Component, Debug, Copy, Clone)]

@@ -61,7 +61,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<LoadChunksAround>()
     .init_resource::<LoadedChunks>()
     .init_resource::<LoadedMacroChunks>()
-    .init_resource::<BeingsWithinChunk>()
+    .init_resource::<BeingsInCpos>()
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), load_chunking_settings)
 
     .add_observer(on_chunk_despawn)

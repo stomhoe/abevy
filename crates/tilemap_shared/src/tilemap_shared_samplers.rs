@@ -127,7 +127,7 @@ impl CappedNormalDist {
         }
         let range = max - min;
         if std_dev > range {
-            error!(
+            warn!(
                 "CappedNormalDist: std_dev ({}) is larger than the range ({} - {} = {}). \
                  Most samples will be clamped.",
                 std_dev, max, min, range

@@ -195,7 +195,7 @@ pub struct CreatedCharacters(Vec<Entity>);
 #[derive(Component, Debug, Clone, )]
 pub struct SexMappedSpritesToSample(
     /// sexent - samplespriteents
-    pub EntityHashMap<SampleSpriteEnts>,
+    pub EntityHashMap<SampleSpritesamplers>,
 );
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]

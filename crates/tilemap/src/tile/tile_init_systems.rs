@@ -256,7 +256,7 @@ pub fn init_tiles(
 
             let len = seri.img_paths.len();
             for (key, path) in seri.img_paths.iter_mut() {
-                let path_holder = ImagePathHolder::new(path.clone());
+                let path_holder = PathHolder::new(path.clone());
                 let spritecfg_str_id_present = !key.trim().is_empty();
 
                     if path_holder.is_err() && spritecfg_str_id_present
@@ -334,10 +334,10 @@ fn gather_step_sfx_paths_from_dir(directory: &str) -> Vec<String> {
 pub fn init_childrensprite(
     mut cmd: Commands,
     childrensprite_query: Query<
-        (Entity, AnyOf<(&ImagePathHolder, &TemplEntiRef)>),
+        (Entity, AnyOf<(&PathHolder, &TemplEntiRef)>),
         (
             With<TileChildSprite>,
-            Or<(Added<TileChildSprite>, Changed<ImagePathHolder>, Changed<TemplEntiRef>)>,
+            Or<(Added<TileChildSprite>, Changed<PathHolder>, Changed<TemplEntiRef>)>,
             Without<Sprite>,
             Without<AcAnimationProgresses>,
             Without<TilemapId>,
@@ -346,7 +346,7 @@ pub fn init_childrensprite(
             common::AnyDisabling,
         ),
     >,
-    templ_img_path: Query<(Option<&ImagePathHolder>, Has<SpriteConfig>), (With<Templ>,)>,
+    templ_img_path: Query<(Option<&PathHolder>, Has<SpriteConfig>), (With<Templ>,)>,
     aserver: Res<AssetServer>,
 ) {
     let mut to_insert = Vec::new();
@@ -369,7 +369,7 @@ pub fn init_childrensprite(
             if is_templ_a_spriteconfig {
                 continue;
             }
-            let Some(img_path_holder): Option<&ImagePathHolder> = img_path_holder else {
+            let Some(img_path_holder): Option<&PathHolder> = img_path_holder else {
                 error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has TemplEntiRef {:?} but the referenced entity has no ImagePathHolder", entity, templ_ref.0);
                 continue;
             };

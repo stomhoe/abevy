@@ -41,7 +41,7 @@ pub fn plugin(app: &mut App) {
         .replicate::<Prefix>()
         //.register_type_data::<Prefix, InspectorEguiImpl>()
         .replicate::<StrId>()//.register_type_data::<StrId, InspectorEguiImpl>()
-        .replicate::<ImagePathHolder>()
+        .replicate::<PathHolder>()
         .replicate::<DisplayName>()
         .replicate::<HashId>()
         .replicate::<StrId>()

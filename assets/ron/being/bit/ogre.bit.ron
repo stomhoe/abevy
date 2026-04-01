@@ -1,0 +1,17 @@
+(
+    id: "ogre",
+    points: 0,
+
+    race: "ogre",
+    scs_samplers: ["ogre"],
+    sprites_scale_ranges: {},
+    health_multiplier: 1.0,
+    body_tree: "ogre",
+
+    recruitment_difficulty: None,
+
+    whitelisted_tiles_for_spawning: [],
+    blacklisted_tiles_for_spawning: [],
+
+    pack_spawn_radius: 7,
+)

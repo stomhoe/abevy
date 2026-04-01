@@ -82,12 +82,12 @@ pub fn init_animations(
     while i < merged_seris_vec.len() {
         let (ent, seri) = &mut merged_seris_vec[i];
 
-        let Ok(_) = ImagePathHolder::validate_path_exists(seri.img_path.clone()) else {
-            let err = BevyError::from(format!("Failed to find image for Animation {}: {}", seri.id, "invalid image path"));
+        if let Err(bevy_err) = PathHolder::validate_path_exists(&seri.img_path) {
+            let err = BevyError::from(format!("Animation {} {}", seri.id, bevy_err));
             error!(target: SPRITE_ANIMATION_INIT, "{}", err);
             merged_seris_vec.remove(i);
             continue;
-        };
+        }
         let str_id = StrId::trunc(std::mem::take(&mut seri.id));
 
         let y_sort = seri.y_sort.clone();

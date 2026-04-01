@@ -1,17 +1,14 @@
-(
+pack {
     id: "rat",
-    spawn_being_count_normal_dist: (min_dev: 5.0, max_dev: 6.0, mean: 6.0, std_dev: 4.0),
-    race_ids: {
-        "rat": (1.0, (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0)),
+    spawn_being_count_normal_dist: { min_dev: 5.0, max_dev: 6.0, mean: 6.0, std_dev: 4.0 },
+    ids: {
+        rat: 1.0,
     },
-    bit_ids: {},
     biome_affinity: {
-        "ocean": -2.5,
-        "temp": 1.2,
-        "desert": 0.3,
-        "beach": 0.4,
+        ocean: -2.5,
+        temp: 1.2,
+        desert: 0.3,
+        beach: 0.4,
     },
-    behavior_on_member_attack: "",
-    chunk_separation_to_others: {},
     pack_spawn_radius: 7,
-)
+}

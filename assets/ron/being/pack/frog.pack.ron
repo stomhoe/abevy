@@ -1,16 +1,13 @@
-(
+pack {
     id: "frog",
-    spawn_being_count_normal_dist: (min_dev: 3.0, max_dev: 7.0, mean: 8.0, std_dev: 3.0),
-    race_ids: {
-        "frog": (1.0, (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0)),
+    spawn_being_count_normal_dist: { min_dev: 3.0, max_dev: 7.0, mean: 8.0, std_dev: 3.0 },
+    ids: {
+        frog: 1.0,
     },
-    bit_ids: {},
     biome_affinity: {
-        "ocean": -2.5,
-        "beach": 1.0,
-        "temp": 0.8,
+        ocean: -2.5,
+        beach: 1.0,
+        temp: 0.8,
     },
-    behavior_on_member_attack: "",
-    chunk_separation_to_others: {},
     pack_spawn_radius: 7,
-)
+}

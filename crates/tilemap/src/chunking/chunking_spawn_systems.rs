@@ -194,7 +194,7 @@ pub fn update_beings_within_chunk_res(
         ),
     >,
     loaded_chunks: Res<LoadedChunks>,
-    mut beings_within_chunk: ResMut<BeingsWithinChunk>,
+    mut beings_within_chunk: ResMut<BeingsInCpos>,
     mut chunk_beings_changed_writer: MessageWriter<ChunkBeingsChanged>,
     mut chunk_beings_changed_msgs: Local<Vec<ChunkBeingsChanged>>,
 ) {

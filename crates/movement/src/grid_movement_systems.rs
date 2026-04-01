@@ -68,7 +68,6 @@ pub fn resolve_overlapping_beings(
         Option<&mut GridLockedMovement>,
         Option<&mut GridLockedMovementVisual>,
     ), With<Being>>,
-    loaded_chunks: Res<LoadedChunks>,
     mut blocking_tiles: BlockingTileParamSet,
     mut occupied_positions: Local<HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>>,
     mut duplicate_positions: Local<Vec<((DimensionRef, GlobalTilePos), Vec<Entity>)>>,
@@ -110,7 +109,6 @@ pub fn resolve_overlapping_beings(
         for &being_ent in overlapping_beings.iter().skip(1) {
             let Some(found_gpos) = find_nearest_overlap_resolution_gpos(
                 &mut blocking_tiles,
-                &loaded_chunks,
                 &reserved_positions,
                 dim_ref,
                 source_gpos,

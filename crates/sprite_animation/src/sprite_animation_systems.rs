@@ -39,7 +39,7 @@ pub fn switch_or_readjust_sprite_animation(
     spriteconfig: Query<(
         Option<&MappedAnimations>,
         Has<UseFallbackSprite>,
-        Option<&ImagePathHolder>,
+        Option<&PathHolder>,
         Has<Directionable>,
         Has<MovementBased>,
         Has<GroundingBased>,

@@ -25,7 +25,7 @@ pub struct ToDenyOnTileClone(
     TileShaderRef,
     ChildOf,
     TileColor,
-    ImagePathHolder,
+    PathHolder,
     DeleteOtherTilesInSamePos,
     PortalRecipe,
     PortalSeri,
