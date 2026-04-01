@@ -1,6 +1,7 @@
 use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
+use bevy_replicon::prelude::{ClientState, ServerState};
 use ac_input::ac_input_actions::{
     DebugToggleHotReloadWindowAction, DebugToggleMainMenuAction, HotReloadAction,
 };
@@ -10,6 +11,24 @@ use tilemap_shared::{ForceAllChunksDespawn, GlobalGenSettings};
 use tilemap::regioning::regioning_resources::StructureGenerationSettings;
 
 use crate::debug_resources::{DebugUiConfig, DubugWindowsVisibility, load_debug_ui_config_seri_defs};
+
+fn render_state_row<T: States + std::fmt::Debug>(ui: &mut egui::Ui, label: &str, state: &State<T>) {
+    ui.horizontal(|ui| {
+        ui.monospace(label);
+        ui.label(format!("{:?}", state.get()));
+    });
+}
+
+fn render_optional_state_row<T: States + std::fmt::Debug>(ui: &mut egui::Ui, label: &str, state: Option<Res<State<T>>>) {
+    ui.horizontal(|ui| {
+        ui.monospace(label);
+        if let Some(state) = state {
+            ui.label(format!("{:?}", state.into_inner().get()));
+        } else {
+            ui.label("Not available");
+        }
+    });
+}
 
 #[allow(unused_parens)]
 pub fn debug_toggle_hot_reload_window(
@@ -116,6 +135,60 @@ pub fn states_window(
 }
 
 #[allow(unused_parens)]
+pub fn all_states_window(
+    mut contexts: EguiContexts,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+    app_state: Res<State<AppState>>,
+    pre_game_state: Res<State<PreGameState>>,
+    game_phase: Res<State<GamePhase>>,
+    asset_loading: Res<State<AssetLoading>>,
+    asset_hot_reload_state: Res<State<AssetHotReloadState>>,
+    client_state: Res<State<ClientState>>,
+    server_state: Res<State<ServerState>>,
+    game_setup_screen: Option<Res<State<GameSetupScreen>>>,
+    simulation_state: Option<Res<State<SimulationState>>>,
+) {
+    if !window_visible.all_states {
+        return;
+    }
+
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+
+    let screen_rect = ctx.content_rect();
+    let default_x = screen_rect.right() - 340.0;
+    let mut open = window_visible.all_states;
+
+    egui::Window::new("All States Inspector")
+        .default_pos([default_x, 10.0])
+        .resizable(true)
+        .movable(true)
+        .open(&mut open)
+        .show(ctx, |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.heading("Core");
+                render_state_row(ui, "AppState", &app_state);
+                render_state_row(ui, "PreGameState", &pre_game_state);
+                render_state_row(ui, "GamePhase", &game_phase);
+
+                ui.separator();
+                ui.heading("Network / Loading");
+                render_state_row(ui, "ClientState", &client_state);
+                render_state_row(ui, "ServerState", &server_state);
+                render_state_row(ui, "AssetLoading", &asset_loading);
+                render_state_row(ui, "AssetHotReloadState", &asset_hot_reload_state);
+
+                ui.separator();
+                ui.heading("Sub States");
+                render_optional_state_row(ui, "GameSetupScreen", game_setup_screen);
+                render_optional_state_row(ui, "SimulationState", simulation_state);
+            });
+        });
+    window_visible.all_states = open;
+}
+
+#[allow(unused_parens)]
 pub fn main_menu_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
@@ -149,6 +222,7 @@ pub fn main_menu_window(
             .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(230, 110, 110)));
             if ui.add_sized([ui.available_width(), 28.0], close_all).clicked() {
                 window_visible.states = false;
+                window_visible.all_states = false;
                 window_visible.chunks_list = false;
                 window_visible.macrochunks_grid = false;
                 window_visible.regions_list = false;
@@ -177,6 +251,9 @@ pub fn main_menu_window(
             ui.separator();
             if ui.button(egui::RichText::new("🔍 States Inspector").size(16.0)).clicked() {
                 window_visible.states = !window_visible.states;
+            }
+            if ui.button(egui::RichText::new("📚 All States").size(16.0)).clicked() {
+                window_visible.all_states = !window_visible.all_states;
             }
             if ui.button(egui::RichText::new("▢▢  Chunking").size(16.0)).clicked() {
                 window_visible.chunks_list = !window_visible.chunks_list;

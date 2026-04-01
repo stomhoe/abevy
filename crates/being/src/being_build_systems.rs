@@ -38,7 +38,6 @@ pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
     faction_ref_query: Query<'w, 's, &'static FactionRef>,
     predator_cfg_query: Query<'w, 's, (), With<PredatorCfg>>,
     wander_cfg_query: Query<'w, 's, &'static WanderSeri>,
-    avoid_blacklisted_spawn_tiles_query: Query<'w, 's, (), With<DoAvoidBlacklistedSpawnTilesForWander>>,
 }
 
 #[derive(SystemParam)]
@@ -166,17 +165,13 @@ pub fn build_beings_from_refs(
                 .map(|cfg| cfg.avoid_blacklisted_spawn_tiles)
                 .unwrap_or(false)
         };
-        let was_avoiding_blacklisted_spawn_tiles_for_wander = queries
-            .avoid_blacklisted_spawn_tiles_query
-            .get(being_ent)
-            .is_ok();
         if avoid_blacklisted_spawn_tiles_for_wander {
             cmd.entity(being_ent).try_insert_if_new(DoAvoidBlacklistedSpawnTilesForWander);
         } else {
             cmd.entity(being_ent).try_remove::<DoAvoidBlacklistedSpawnTilesForWander>();
         }
 
-        
+
         match locals.prev_refs_by_ent.get(&being_ent).copied() {
             Some(prev_refs) if prev_refs == current_refs => continue,
             Some(prev_refs) => {

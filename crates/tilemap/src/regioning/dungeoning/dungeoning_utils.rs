@@ -1,8 +1,14 @@
 use bevy::{platform::collections::HashMap, prelude::*};
+use bevy::ecs::system::SystemParam;
+use ::being_shared::*;
+use common::common_components::StrId;
 use common::common_components::HashId;
 use game_common::game_common_components::ArgsDict;
+use game_common::game_common_components::Templ;
 use crate::tile::tile_sampler_components::TileWeightedSampler;
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
+use crate::regioning::regioning_resources::SgcCommandRegistry;
+use crate::regioning::regioning_sgc_seris::{SgcArgValue, SgcArgsDict};
 use ::tilemap_shared::*;
 
 #[derive(Default, Debug)]
@@ -68,6 +74,50 @@ pub fn extend_occupied_gpos(
         }
     }
 }
+
+pub fn seal_structure_border_band(
+    floor_map: &mut [bool],
+    hazard_map: Option<&mut [bool]>,
+    tile_width: usize,
+    tile_height: usize,
+    border_band: usize,
+) {
+    if border_band == 0 || tile_width == 0 || tile_height == 0 {
+        return;
+    }
+    if border_band * 2 >= tile_width || border_band * 2 >= tile_height {
+        floor_map.fill(false);
+        if let Some(hazard_map) = hazard_map {
+            hazard_map.fill(false);
+        }
+        return;
+    }
+
+    let end_x = tile_width - border_band;
+    let end_y = tile_height - border_band;
+
+    let clear_idx = |map: &mut [bool], x: usize, y: usize| {
+        map[y * tile_width + x] = false;
+    };
+
+    for y in 0..tile_height {
+        for x in 0..tile_width {
+            if x < border_band || x >= end_x || y < border_band || y >= end_y {
+                clear_idx(floor_map, x, y);
+            }
+        }
+    }
+
+    if let Some(hazard_map) = hazard_map {
+        for y in 0..tile_height {
+            for x in 0..tile_width {
+                if x < border_band || x >= end_x || y < border_band || y >= end_y {
+                    clear_idx(hazard_map, x, y);
+                }
+            }
+        }
+    }
+}
 impl DeleteOtherTilesConfigMap {
     pub fn get(&self, placeholder_id: &str) -> Option<DeleteOtherTilesInSamePos> {
         let mut merged = self.global.clone().unwrap_or_default();
@@ -128,4 +178,194 @@ pub fn resolve_sampled_tile_entity_from_sampler(
         return Some(sampled_ent);
     }
     None
+}
+
+#[derive(Debug, Clone)]
+pub struct DungeonRoomPackSpawnSpec {
+    pub source_template_id: String,
+    pub override_being_count: Option<u16>,
+    pub pack_spawn_radius: Option<u8>,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct DungeonRoomPackSpawnConfig(pub HashMap<String, DungeonRoomPackSpawnSpec>);
+
+impl DungeonRoomPackSpawnConfig {
+    pub fn from_typed_args(
+        args: &SgcArgsDict,
+        command_registry: &SgcCommandRegistry,
+        structure_id: &str,
+    ) -> Self {
+        let mut out = Self::default();
+        let allowed_shapes = command_registry.allowed_room_spawn_shapes_for(structure_id);
+
+        if let Some(room_spawn_map) = args.get_map("room_spawn") {
+            for (shape_key, spec_value) in room_spawn_map {
+                if let Some(allowed_shapes) = allowed_shapes
+                    && !allowed_shapes.contains(shape_key)
+                {
+                    continue;
+                }
+                let Some(spec) = parse_room_spawn_spec(spec_value) else {
+                    continue;
+                };
+                out.0.insert(shape_key.clone(), spec);
+            }
+        }
+
+        for (key, value) in args.iter() {
+            let Some((_, rest)) = key.split_once("room_spawn.") else {
+                continue;
+            };
+            let Some((shape_key, field)) = rest.split_once('.') else {
+                continue;
+            };
+            if shape_key.is_empty() || field.is_empty() {
+                continue;
+            }
+            if let Some(allowed_shapes) = allowed_shapes
+                && !allowed_shapes.contains(shape_key)
+            {
+                continue;
+            }
+            let entry = out.0.entry(shape_key.to_string()).or_insert_with(|| DungeonRoomPackSpawnSpec {
+                source_template_id: String::new(),
+                override_being_count: None,
+                pack_spawn_radius: None,
+            });
+            match field {
+                "pack_id" | "source_id" | "source_template_id" => {
+                    let Some(source_template_id) = value.as_scalar_string() else {
+                        continue;
+                    };
+                    entry.source_template_id = source_template_id;
+                }
+                "override_being_count" | "count" => {
+                    entry.override_being_count = match value {
+                        SgcArgValue::Int(raw) => u16::try_from(*raw).ok(),
+                        SgcArgValue::Str(raw) => raw.parse::<u16>().ok(),
+                        _ => None,
+                    };
+                }
+                "pack_spawn_radius" | "spawn_radius" => {
+                    entry.pack_spawn_radius = match value {
+                        SgcArgValue::Int(raw) => u8::try_from(*raw).ok(),
+                        SgcArgValue::Str(raw) => raw.parse::<u8>().ok(),
+                        _ => None,
+                    };
+                }
+                _ => {}
+            }
+        }
+
+        out.0.retain(|_, spec| !spec.source_template_id.trim().is_empty());
+        out
+    }
+}
+
+#[derive(SystemParam)]
+pub struct DungeonRoomPackSpawnSystemParams<'w, 's> {
+    pub command_registry: Res<'w, SgcCommandRegistry>,
+    pub pack_templates: Query<'w, 's, (Entity, &'static StrId, ), (With<Pack>, With<Templ>, common::AnyDisabling),>,
+    pub race_templates: Query<'w, 's, (Entity, &'static StrId, ), (With<Race>, With<Templ>, common::AnyDisabling),>,
+    pub bit_templates: Query<'w, 's, (Entity, &'static StrId, ), (With<BeingInstTemplate>, With<Templ>, common::AnyDisabling),>,
+    pub writer: MessageWriter<'w, InstantiateTemplPackEntity>,
+    pub pending_messages: Local<'s, Vec<InstantiateTemplPackEntity>>,
+    pub source_lookup: Local<'s, HashMap<StrId, Entity>>,
+}
+
+impl DungeonRoomPackSpawnSystemParams<'_, '_> {
+    pub fn begin_pass(&mut self) {
+        self.pending_messages.clear();
+        self.source_lookup.clear();
+        rebuild_spawn_source_lookup(
+            &self.pack_templates,
+            &self.race_templates,
+            &self.bit_templates,
+            &mut self.source_lookup,
+        );
+    }
+
+    pub fn finish_pass(&mut self) {
+        self.writer.write_batch(self.pending_messages.drain(..));
+    }
+}
+
+fn parse_room_spawn_spec(value: &SgcArgValue) -> Option<DungeonRoomPackSpawnSpec> {
+    let map = value.as_map()?;
+    let source_template_id = map
+        .get("pack_id")
+        .or_else(|| map.get("source_id"))
+        .or_else(|| map.get("source_template_id"))
+        .and_then(SgcArgValue::as_scalar_string)?;
+    let override_being_count = map
+        .get("override_being_count")
+        .or_else(|| map.get("count"))
+        .and_then(|value| match value {
+            SgcArgValue::Int(raw) => u16::try_from(*raw).ok(),
+            SgcArgValue::Str(raw) => raw.parse::<u16>().ok(),
+            _ => None,
+        });
+    let pack_spawn_radius = map
+        .get("pack_spawn_radius")
+        .or_else(|| map.get("spawn_radius"))
+        .and_then(|value| match value {
+            SgcArgValue::Int(raw) => u8::try_from(*raw).ok(),
+            SgcArgValue::Str(raw) => raw.parse::<u8>().ok(),
+            _ => None,
+        });
+    Some(DungeonRoomPackSpawnSpec {
+        source_template_id,
+        override_being_count,
+        pack_spawn_radius,
+    })
+}
+
+pub fn rebuild_spawn_source_lookup(
+    pack_templates: &Query<(Entity, &StrId, ), (With<Pack>, With<Templ>, common::AnyDisabling),>,
+    race_templates: &Query<(Entity, &StrId, ), (With<Race>, With<Templ>, common::AnyDisabling),>,
+    bit_templates: &Query<(Entity, &StrId, ), (With<BeingInstTemplate>, With<Templ>, common::AnyDisabling),>,
+    source_lookup: &mut HashMap<StrId, Entity>,
+) {
+    source_lookup.clear();
+    source_lookup.reserve(
+        pack_templates.iter().len()
+            + race_templates.iter().len()
+            + bit_templates.iter().len(),
+    );
+    for (entity, str_id) in pack_templates.iter() {
+        source_lookup.insert(str_id.clone(), entity);
+    }
+    for (entity, str_id) in race_templates.iter() {
+        source_lookup.insert(str_id.clone(), entity);
+    }
+    for (entity, str_id) in bit_templates.iter() {
+        source_lookup.insert(str_id.clone(), entity);
+    }
+}
+
+pub fn queue_room_spawn_instance_message(
+    room_shape_key: &str,
+    anchor_gpos: GlobalTilePos,
+    dim_ref: DimensionRef,
+    room_spawn_config: &DungeonRoomPackSpawnConfig,
+    source_lookup: &HashMap<StrId, Entity>,
+    pending_messages: &mut Vec<InstantiateTemplPackEntity>,
+) -> bool {
+    let Some(room_spec) = room_spawn_config.0.get(room_shape_key) else {
+        return false;
+    };
+    let source_id = StrId::trunc(room_spec.source_template_id.as_str());
+    let Some(&source_ent) = source_lookup.get(&source_id) else {
+        return false;
+    };
+    pending_messages.push(InstantiateTemplPackEntity::new(
+        source_ent,
+        room_spec.override_being_count,
+        None,
+        room_spec.pack_spawn_radius,
+        dim_ref,
+        [anchor_gpos],
+    ));
+    true
 }

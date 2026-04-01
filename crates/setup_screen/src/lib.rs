@@ -1,15 +1,13 @@
-pub use setup_screen::*;
+use bevy::prelude::*;
+
+pub mod character_creation;
+pub mod lobby;
 pub mod setup_screen;
 
-pub mod lobby;
-pub mod character_creation;
-
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use crate::{
-        setup_screen::*,
-        lobby::*,
-        character_creation::*,
-    };
+#[allow(unused_parens, )]
+pub fn plugin(app: &mut App) {
+    app.add_plugins((
+        setup_screen::plugin,
+        character_creation::plugin,
+    ));
 }

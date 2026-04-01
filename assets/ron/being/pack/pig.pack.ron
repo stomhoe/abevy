@@ -7,7 +7,7 @@
     bit_ids: {},
     biome_affinity: {
         "ocean": -2.5,
-        "temp": 909991.2,
+        "temp": 1.2,
     },
     behavior_on_member_attack: "",
     chunk_separation_to_others: {},

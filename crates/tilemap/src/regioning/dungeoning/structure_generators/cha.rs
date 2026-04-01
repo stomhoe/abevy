@@ -1,4 +1,4 @@
-#[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)] use bevy::{platform::collections::*, prelude::*};
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
@@ -17,7 +17,7 @@ use super::super::dungeoning_carve_helpers::{
     carve_room_regular_polygon, carve_room_triangle_vertices,
 };
 use super::super::dungeoning_ids::CHAMBERS_CORRIDORS;
-use super::super::dungeoning_utils::extend_occupied_gpos;
+use super::super::dungeoning_utils::{extend_occupied_gpos, seal_structure_border_band};
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 
 #[derive(Clone, Copy)]
@@ -34,10 +34,12 @@ pub fn corridor_dungeon_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     templs_map: Res<TileEntityMap>,
+    mut room_pack_spawn: super::super::dungeoning_utils::DungeonRoomPackSpawnSystemParams,
     templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
+    mut room_spawn_anchors: Local<Vec<(GlobalTilePos, &'static str)>>,
     mut rooms: Local<Vec<Room>>,
     mut tiles4chunk: Local<TilesFromBuilder>,
 ) {
@@ -46,6 +48,8 @@ pub fn corridor_dungeon_building_system(
         return;
     };
     compliances_to_emit.clear();
+    room_spawn_anchors.clear();
+    room_pack_spawn.begin_pass();
     rooms.clear();
     tiles4chunk.clear();
     for build_order in reader.read() {
@@ -55,6 +59,11 @@ pub fn corridor_dungeon_building_system(
         if structured_gen_cfg.structure_hash_id() != CHAMBERS_CORRIDORS {
             continue;
         }
+        let room_spawn_config = super::super::dungeoning_utils::DungeonRoomPackSpawnConfig::from_typed_args(
+            &structured_gen_cfg.typed_args,
+            &room_pack_spawn.command_registry,
+            structured_gen_cfg.structure_id().as_str(),
+        );
         let floor_tile_id = structured_gen_cfg.args
             .get("floor_tile_id")
             .and_then(|v| v.first())
@@ -200,6 +209,9 @@ pub fn corridor_dungeon_building_system(
             .args
             .parse_arg("corridor_detour_max_offset", 0)
             .clamp(0, 32);
+        let border_seal_margin: usize = structured_gen_cfg
+            .args
+            .parse_arg("border_seal_margin", 1);
 
         let pick_shape = |rng: &mut rand_pcg::Pcg64Mcg| -> RoomShape {
             let total = rect_weight + circle_weight + triangle_weight + polygon_weight;
@@ -299,14 +311,22 @@ pub fn corridor_dungeon_building_system(
         }
 
         // Carve rooms with configurable shapes
+        room_spawn_anchors.clear();
+        room_spawn_anchors.reserve(rooms.len());
         for rm in &rooms {
             let shape = same_shape.unwrap_or_else(|| pick_shape(&mut rng));
+            let anchor_gpos = GlobalTilePos::new(
+                origin_tile.x() + (rm.x + (rm.w / 2)),
+                origin_tile.y() + (rm.y + (rm.h / 2)),
+            );
             match shape {
                 RoomShape::Rectangle => {
                     carve_room_rectangle(&mut floor_map, tile_width, tile_height, rm.x, rm.y, rm.w, rm.h);
+                    room_spawn_anchors.push((anchor_gpos, "rectangle"));
                 }
                 RoomShape::Circle => {
                     carve_room_circle(&mut floor_map, tile_width, tile_height, rm.x, rm.y, rm.w, rm.h);
+                    room_spawn_anchors.push((anchor_gpos, "circle"));
                 }
                 RoomShape::Triangle => {
                     // Randomly choose triangle type
@@ -369,6 +389,7 @@ pub fn corridor_dungeon_building_system(
                         }
                     };
                     carve_room_triangle_vertices(&mut floor_map, tile_width, tile_height, v0, v1, v2);
+                    room_spawn_anchors.push((anchor_gpos, "triangle"));
                 }
                 RoomShape::RegularPolygon => {
                     let sides = if polygon_max_sides <= polygon_min_sides {
@@ -392,8 +413,29 @@ pub fn corridor_dungeon_building_system(
                         sides,
                         rotation_deg,
                     );
+                    room_spawn_anchors.push((anchor_gpos, "regular_polygon"));
                 }
             }
+        }
+        for (anchor_gpos, room_shape_key) in room_spawn_anchors.iter().copied() {
+            let queued = super::super::dungeoning_utils::queue_room_spawn_instance_message(
+                room_shape_key,
+                anchor_gpos,
+                build_order.dimension_ref,
+                &room_spawn_config,
+                &room_pack_spawn.source_lookup,
+                &mut room_pack_spawn.pending_messages,
+            );
+            if !queued {
+                continue;
+            }
+            trace!(
+                target: DUNGEONING_SYSTEM,
+                "Queued room_spawn InstancePack for structure={} shape={} at {}",
+                structured_gen_cfg.structure_id(),
+                room_shape_key,
+                anchor_gpos,
+            );
         }
 
         let mut corridor_map = vec![false; tile_map_size];
@@ -546,6 +588,14 @@ pub fn corridor_dungeon_building_system(
             }
         }
 
+        seal_structure_border_band(
+            &mut floor_map,
+            Some(&mut hazard_map),
+            tile_width,
+            tile_height,
+            border_seal_margin,
+        );
+
         // Create wall outlines only (around floor tiles and corridors)
         let mut wall_map = vec![false; tile_map_size];
         for y in 0..tile_height {
@@ -622,4 +672,5 @@ pub fn corridor_dungeon_building_system(
         });
     }
     writer.write_batch(compliances_to_emit.drain(..));
+    room_pack_spawn.finish_pass();
 }

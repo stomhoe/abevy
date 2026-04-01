@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use common::log_targets::BEING_SYSTEM;
 use faction_shared::BelongsToAPlayerFaction;
-use tilemap_shared::GlobalTilePos;
-use tilemap_shared::DimensionRef;
+use ::tilemap_shared::*;
 
 use ::being_shared::*;
 
@@ -61,4 +60,24 @@ pub fn cull_loaded_beings_far_from_humans(
     };
     debug!(target: BEING_SYSTEM, "Despawning loaded non-human being {:?} at {:?} in {:?}; loaded_count={} exceeded threshold={} and avg_distance_to_humans={:.2}", being_ent, being_gpos, being_dim, loaded_count, MAX_LOADED_BEINGS, avg_distance);
     cmd.entity(being_ent).try_despawn();
+}
+
+
+#[allow(unused_parens, )]
+pub fn cleanup_being_from_chunk_pos_res_on_despawn(
+    trigger: On<Despawn, Being>,
+    chunk_query: Query<(&DimensionRef, &ChunkPos), common::AnyDisabling>,
+    mut beings_within_chunk: ResMut<BeingsWithinChunk>,
+) {
+    let Ok((&dim_ref, &chunk_pos)) = chunk_query.get(trigger.entity) else {
+        return;
+    };
+    beings_within_chunk.remove_being(trigger.entity);
+    trace!(
+        target: BEING_SYSTEM,
+        "Removed despawned being {:?} from chunk membership in {:?} {}",
+        trigger.entity,
+        dim_ref,
+        chunk_pos,
+    );
 }

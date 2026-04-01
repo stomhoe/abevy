@@ -1,0 +1,23 @@
+sgc {
+    id = river
+    structure_id = river
+    weight = 1.0
+    priority = 1000.0
+    tags = [river]
+    whitelisted_tags = [river, dungeon]
+    max_per_region = 1
+    args {
+        river_tile_id = blue
+        river_land_threshold = -0.05
+        river_min_island_area_chunks = 225
+        river_source_min_inlandness = 0.20
+        river_source_hash_stride = 19
+        river_source_mouth_min_distance = 8
+        river_main_half_width_start = 1
+        river_main_half_width_end = 3
+        river_worm_length = 240
+        river_max_sources = 5
+        river_mouth_max_inlandness = 0.05
+        disable_terrgen.floor_tile_id = true
+    }
+}

@@ -1,5 +1,31 @@
 
 pub use debug::*;
+pub use beings_list_window::*;
+pub use being_details_inspector::*;
+pub use chunk_details_inspector::*;
+pub use debug_chunking_window::*;
+pub use debug_fonts::*;
+pub use debug_messages::*;
+pub use debug_resources::*;
+pub use debug_seris::*;
+pub use debug_systems::*;
+pub use debug_window_systems::*;
+pub use gpos_maps_window::*;
+pub use macrochunks_grid_window::*;
+pub use player_details_inspector::*;
+pub use players_list_window::*;
+pub use portals_list_window::*;
+pub use region_details_inspector::*;
+pub use regions_list_window::*;
+pub use registered_positions_window::*;
+pub use sprite_cfgs_details_inspector::*;
+pub use sprite_cfgs_list_window::*;
+pub use terrgen_editor_window::*;
+pub use terrgen_values_window::*;
+pub use tile_indices_map_window::*;
+pub use tile_details_inspector::*;
+pub use tilemap_details_inspector::*;
+pub use world_tile_click_picker_window::*;
 pub mod debug;
 mod debug_window_systems;
 mod debug_chunking_window;
@@ -28,38 +54,3 @@ mod gpos_maps_window;
 mod tile_indices_map_window;
 mod world_tile_click_picker_window;
 mod debug_ui_helpers;
-
-
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use crate::{
-        debug::*,
-        debug_window_systems::*,
-        debug_chunking_window::*,
-        macrochunks_grid_window::*,
-        tile_details_inspector::*,
-        chunk_details_inspector::*,
-        region_details_inspector::*,
-        tilemap_details_inspector::*,
-        being_details_inspector::*,
-        player_details_inspector::*,
-        regions_list_window::*,
-        beings_list_window::*,
-        players_list_window::*,
-        portals_list_window::*,
-        terrgen_editor_window::*,
-        terrgen_values_window::*,
-        registered_positions_window::*,
-        sprite_cfgs_list_window::*,
-        sprite_cfgs_details_inspector::*,
-        debug_resources::*,
-        debug_seris::*,
-        debug_systems::*,
-        debug_fonts::*,
-        debug_messages::*,
-        gpos_maps_window::*,
-        tile_indices_map_window::*,
-        world_tile_click_picker_window::*,
-    };
-}

@@ -1,0 +1,17 @@
+sgc {
+    id = maze_catas
+    structure_id = maze
+    weight = 1.0
+    tags = [dungeon]
+    whitelisted_tags = [dungeon, river]
+    args {
+        floor_tile_id = ducatas
+        wall_tile_id = nw
+        lava_tile_id = lava
+        claim_square_min_side_length = 7
+        claim_square_max_side_length = 11
+        claim_square_normal_mean = 7.0
+        claim_square_normal_std_dev = 3.0
+        disable_terrgen.floor_tile_id = true
+    }
+}

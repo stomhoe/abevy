@@ -1,0 +1,15 @@
+sgc {
+    id = dw_newbie
+    structure_id = drunkwalk
+    weight = 1.0
+    tags = [dungeon]
+    whitelisted_tags = [dungeon, river]
+    args {
+        floor_tile_id = dunewbie
+        wall_tile_id = nw
+        lava_tile_id = lava
+        boulder_sampler_id = boulder_sampler
+        boulder_frequency = 0.015
+        disable_terrgen.floor_tile_id = true
+    }
+}

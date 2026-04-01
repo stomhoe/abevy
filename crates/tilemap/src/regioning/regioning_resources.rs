@@ -1,4 +1,4 @@
-use bevy::{platform::collections::{HashMap, }, prelude::*};
+use bevy::{platform::collections::*, prelude::*};
 use bevy_replicon::prelude::*;
 
 use ::tilemap_shared::*;
@@ -30,8 +30,65 @@ common::define_entity_map_systems!(
     "SGC",
     StructuredGenConfig,
     common::common_components::StrId,
-    SgcSeri, "seri.tilemap.region.sgc", "sgc.ron",
 );
+
+#[derive(Debug, Clone, Default)]
+pub struct SgcCommandSchema {
+    pub room_spawn_shapes: HashSet<String>,
+}
+
+#[derive(Resource, Debug, Clone, Default)]
+pub struct SgcCommandRegistry(pub HashMap<String, SgcCommandSchema>);
+
+impl SgcCommandRegistry {
+    pub fn with_builtins() -> Self {
+        let mut registry = Self::default();
+        registry.register_room_spawn_shapes(
+            "chamberscorridors",
+            [
+                "rectangle",
+                "circle",
+                "triangle",
+                "regular_polygon",
+            ],
+        );
+        registry.register_room_spawn_shapes(
+            "maze",
+            [
+                "square_room",
+                "circle_room",
+                "island_circle",
+                "island_triangle",
+                "island_hexagon",
+                "island_square",
+            ],
+        );
+        registry.register_room_spawn_shapes("drunkwalk", ["chamber_circle"]);
+        registry.register_room_spawn_shapes("spiral", ["center_circle"]);
+        registry.register_room_spawn_shapes("archi", ["center_spiral"]);
+        registry
+    }
+
+    pub fn register_room_spawn_shapes<S, I>(&mut self, structure_id: &str, room_shapes: I)
+    where
+        S: AsRef<str>,
+        I: IntoIterator<Item = S>,
+    {
+        let schema = self
+            .0
+            .entry(structure_id.to_string())
+            .or_default();
+        for room_shape in room_shapes {
+            schema
+                .room_spawn_shapes
+                .insert(room_shape.as_ref().to_string());
+        }
+    }
+
+    pub fn allowed_room_spawn_shapes_for(&self, structure_id: &str) -> Option<&HashSet<String>> {
+        self.0.get(structure_id).map(|schema| &schema.room_spawn_shapes)
+    }
+}
 #[derive(Resource, Default)]
 pub struct LoadedRegions(pub HashMap<(DimensionRef, RegionPos), Entity>);
 

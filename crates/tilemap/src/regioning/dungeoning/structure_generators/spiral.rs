@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-#[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)] use bevy::{platform::collections::*, prelude::*};
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
@@ -16,7 +16,7 @@ use crate::tile::tile_resources::*;
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 use super::super::dungeoning_carve_helpers::carve_room_circle;
 use super::super::dungeoning_ids::SPIRAL;
-use super::super::dungeoning_utils::extend_occupied_gpos;
+use super::super::dungeoning_utils::{extend_occupied_gpos, seal_structure_border_band};
 
 #[allow(unused_parens, )]
 pub fn spiral_dungeon_building_system(
@@ -24,12 +24,14 @@ pub fn spiral_dungeon_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     templs_map: Res<TileEntityMap>,
+    mut room_pack_spawn: super::super::dungeoning_utils::DungeonRoomPackSpawnSystemParams,
     templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
 ) {
     compliances_to_emit.clear();
+    room_pack_spawn.begin_pass();
 
     let Ok(settings) = settings.single() else {
         error_once!("Failed to get global gen settings");
@@ -42,6 +44,11 @@ pub fn spiral_dungeon_building_system(
         if structured_gen_cfg.structure_hash_id() != SPIRAL {
             continue;
         }
+        let room_spawn_config = super::super::dungeoning_utils::DungeonRoomPackSpawnConfig::from_typed_args(
+            &structured_gen_cfg.typed_args,
+            &room_pack_spawn.command_registry,
+            structured_gen_cfg.structure_id().as_str(),
+        );
 
         let floor_tile_id = structured_gen_cfg.args
             .get("floor_tile_id")
@@ -106,11 +113,14 @@ pub fn spiral_dungeon_building_system(
 
         let tile_map_size = tile_width * tile_height;
         let mut floor_map = vec![false; tile_map_size];
-        let hazard_map = vec![false; tile_map_size];
+        let mut hazard_map = vec![false; tile_map_size];
         let carve_margin: usize = 1;
         if tile_width <= carve_margin * 2 || tile_height <= carve_margin * 2 {
             continue;
         }
+        let border_seal_margin: usize = structured_gen_cfg
+            .args
+            .parse_arg("border_seal_margin", carve_margin);
 
         let Ok(&dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
             error!(target: "dungeoning", "Dimension entity {:?} has no HashId component for spiral dungeon", build_order.dimension_ref);
@@ -148,6 +158,10 @@ pub fn spiral_dungeon_building_system(
 
         let center_x = (tile_width as i32) / 2;
         let center_y = (tile_height as i32) / 2;
+        let center_anchor_gpos = GlobalTilePos::new(
+            origin_tile.x() + center_x,
+            origin_tile.y() + center_y,
+        );
         let inner_radius = room_radius;
         let outer_radius = room_radius + wall_thickness;
 
@@ -357,6 +371,30 @@ pub fn spiral_dungeon_building_system(
                 }
             }
         }
+        let queued = super::super::dungeoning_utils::queue_room_spawn_instance_message(
+            "center_circle",
+            center_anchor_gpos,
+            build_order.dimension_ref,
+            &room_spawn_config,
+            &room_pack_spawn.source_lookup,
+            &mut room_pack_spawn.pending_messages,
+        );
+        if queued {
+            trace!(
+                target: DUNGEONING_SYSTEM,
+                "Queued room_spawn InstancePack for structure={} shape=center_circle at {}",
+                structured_gen_cfg.structure_id(),
+                center_anchor_gpos,
+            );
+        }
+
+        seal_structure_border_band(
+            &mut floor_map,
+            Some(&mut hazard_map),
+            tile_width,
+            tile_height,
+            border_seal_margin,
+        );
 
         // Create wall outlines only (around floor tiles)
         let mut wall_map = vec![false; tile_map_size];
@@ -475,4 +513,5 @@ pub fn spiral_dungeon_building_system(
         });
     }
     writer.write_batch(compliances_to_emit.drain(..));
+    room_pack_spawn.finish_pass();
 }

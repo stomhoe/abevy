@@ -30,6 +30,9 @@ pub struct CommonSpawnOriginFound {
     pub pos: GlobalTilePos,
 }
 
+#[derive(Resource, Debug, Default, Copy, Clone)]
+pub struct CommonSpawnOriginCache(pub Option<CommonSpawnOriginFound>);
+
 #[derive(Resource, Clone, Debug)]
 pub struct GameInitSettings {
     pub players_spawn_probe_id: StrId,
@@ -62,6 +65,27 @@ impl GameInitSettingsSeri {
 }
 fn default_players_spawn_probe_id() -> String { "land".to_string() }
 fn default_players_initial_bit_ref_strid() -> String { "player_warrior".to_string() }
+
+fn place_player_being_at(
+    cmd: &mut Commands,
+    being_ent: Entity,
+    spawn_dim: DimensionRef,
+    gpos: GlobalTilePos,
+    settings: &GameInitSettings,
+) {
+    cmd.entity(being_ent).try_insert((
+        Transform::from_translation(gpos.to_translation(0.0)),
+        gpos,
+        GridLockedMovement::default(),
+        GridLockedMovementVisual {
+            visual_origin_tile: gpos.0,
+            ..default()
+        },
+        DimensionRef(spawn_dim.0),
+        BitStrIdRef::new(settings.players_initial_bit.as_str()),
+        Being,
+    ));
+}
 
 pub fn load_game_init_settings(mut settings: ResMut<GameInitSettings>) {
     let db = match common::def_db::DefDatabase::<GameInitSettingsSeri>::load_from_assets_dir_with_type(
@@ -161,17 +185,14 @@ pub fn find_common_player_spawn_origin(
     settings: Res<GameInitSettings>,
 ) {
     let make_search_request = |_cmd: &mut Commands| -> Option<TerrProbeJob> {
-        let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
-            error_once!(target: GAME_INIT, "Overworld dimension '{}' not in DimensionEntityMap", Dimension::overworld());
+    let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
             return None;
         };
 
         let Ok(probe_template_ent) = terrprobe_entity_map.0.get_cloned(settings.players_spawn_probe_id.clone()) else {
-            error_once!(target: GAME_INIT, "TerrainProbe template {} not in TerrainProbeTemplateEntityMap", settings.players_spawn_probe_id.clone());
             return None;
         };
         let Ok(probe_template) = terrprobe_query.get(probe_template_ent) else {
-            error_once!(target: GAME_INIT, "TerrainProbe template entity {:?} missing TerrProbeTempl", probe_template_ent);
             return None;
         };
         Some(probe_template.to_probe(probe_template_ent, DimensionRef(ow_dimension), GlobalTilePos::default()))
@@ -184,7 +205,6 @@ pub fn find_common_player_spawn_origin(
         let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
             return false;
         };
-        info!(target: GAME_INIT, "Found shared spawn origin at {:?} in dimension {:?}", found_pos, ow_dimension);
         cmd.trigger(CommonSpawnOriginFound {
             dim_ref: DimensionRef(ow_dimension),
             pos: found_pos,
@@ -192,8 +212,7 @@ pub fn find_common_player_spawn_origin(
         true
     };
 
-    let handle_failure = |_cmd: &mut Commands, failed_probe_ent: Entity| {
-        error_once!(target: GAME_INIT, "Common spawn search failed for probe {:?}", failed_probe_ent);
+    let handle_failure = |_cmd: &mut Commands, _failed_probe_ent: Entity| {
     };
 
     run_oneshot_suitable_pos_search_logic!(
@@ -213,12 +232,13 @@ pub fn find_common_player_spawn_origin(
 pub fn put_player_beings_on_map(
     trigger: On<CommonSpawnOriginFound>,
     mut cmd: Commands,
-    players: Query<(&CreatedCharacters, ), (With<Player>)>,
-    created_by_query: Query<&CharacterCreatedBy>,
+    beings_to_place: Query<(Entity, &CharacterCreatedBy, ), (With<Being>, Without<DimensionRef>)>,
     settings: Res<GameInitSettings>,
     mut next_spawn_offset_x: Local<i32>,
+    mut spawn_cache: ResMut<CommonSpawnOriginCache>,
 ) {
     let found = trigger.event();
+    spawn_cache.0 = Some(*found);
     let spawn_dim = found.dim_ref;
     let origin = found.pos;
 
@@ -228,27 +248,31 @@ pub fn put_player_beings_on_map(
         spawn_pos
     };
 
-    for (created_characters, ) in players.iter() {
-        debug!(target: GAME_INIT, "Spawning player being: {:?}", created_characters);
+    for (being_ent, _, ) in beings_to_place.iter() {
+        let gpos = compute_spawn_pos(origin, &mut *next_spawn_offset_x);
+        place_player_being_at(&mut cmd, being_ent, spawn_dim, gpos, &settings);
+    }
+}
 
-        for being_ent in created_characters.iter() {
-            let gpos = compute_spawn_pos(origin, &mut *next_spawn_offset_x);
-            let Ok(____created_by) = created_by_query.get(being_ent) else { continue; };
-
-            cmd.entity(being_ent)
-                .try_insert((
-                Transform::from_translation(gpos.to_translation(0.0)),
-                gpos,
-                GridLockedMovement::default(),
-                GridLockedMovementVisual {
-                    visual_origin_tile: gpos.0,
-                    ..default()
-                },
-                DimensionRef(spawn_dim.0),
-                BitStrIdRef::new(settings.players_initial_bit.as_str()),
-                Being,
-
-            ));
-        }
+#[allow(unused_parens, )]
+pub fn place_unpositioned_player_beings_with_cached_origin(
+    mut cmd: Commands,
+    beings_to_place: Query<(Entity, &CharacterCreatedBy, ), (With<Being>, Without<DimensionRef>)>,
+    settings: Res<GameInitSettings>,
+    spawn_cache: Res<CommonSpawnOriginCache>,
+    mut next_spawn_offset_x: Local<i32>,
+) {
+    let Some(found) = spawn_cache.0
+    else {
+        return;
+    };
+    let compute_spawn_pos = |origin: GlobalTilePos, next_x: &mut i32| -> GlobalTilePos {
+        let spawn_pos = origin + GlobalTilePos::new(*next_x, 0);
+        *next_x += 1;
+        spawn_pos
+    };
+    for (being_ent, _, ) in beings_to_place.iter() {
+        let gpos = compute_spawn_pos(found.pos, &mut *next_spawn_offset_x);
+        place_player_being_at(&mut cmd, being_ent, found.dim_ref, gpos, &settings);
     }
 }

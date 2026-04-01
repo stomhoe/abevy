@@ -12,6 +12,7 @@ use crate::lobby::{lobby_layout::*, lobby_systems::*};
 pub mod lobby_components;
 mod lobby_systems;
 mod lobby_layout;
+pub use lobby_components::*;
 
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
@@ -53,12 +54,6 @@ pub fn plugin(app: &mut App) {
 
         .add_observer(on_player_disconnect)
 
-        
+
     ;
-}
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        lobby_components::*,
-    };
 }

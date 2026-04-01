@@ -14,24 +14,23 @@ use game_common::{
     game_common::GameplaySystems,
 };
 use sprite_systems::AcSpriteSystems;
-use crate::being_melee_systems::apply_melee_attack;
+use crate::being_melee_systems::*;
 use crate::being_messages::{MakeChunkSnapshotForChaser, NavOrder};
-use crate::being_cleanup_systems::cull_loaded_beings_far_from_humans;
-use crate::being_on_chunk_despawn_systems::{faithful_sim_being, on_chunk_with_beings_attempt_unload};
-use crate::being_enable_systems::unfreeze_beings_on_chunk_load;
-use crate::squad_build_systems::instance_pack_entities;
+use crate::being_cleanup_systems::*;
+use crate::being_on_chunk_despawn_systems::*;
+use crate::being_enable_systems::*;
+use crate::squad_build_systems::*;
 use crate::being_nav::{AiNavGrids, ChaserNavPlans, SharedChaseFlowFields};
-use crate::being_simulation_systems::insert_macrochunk_nav_islands;
+use crate::being_simulation_systems::*;
+use crate::being_hunt_systems::*;
+use crate::being_control_systems::*;
+use crate::being_build_systems::*;
+use crate::being_portal_systems::*;
 use tilemap_shared::NewMacrochunkLoaded;
 
 use crate::{
-    being_hunt_systems::*,
-    being_build_systems::*,
-    being_enable_systems::*,
-    being_control_systems::*,
     being_inst_template::BeingInstTemplateSystems,
     being_portal_resources::*,
-    being_portal_systems::*,
     being_systems::*,
     body::{self, BodySystems},
     being_nav,
@@ -84,6 +83,7 @@ pub fn plugin(app: &mut App) {
             instance_pack_entities.run_if(on_message::<InstantiateTemplPackEntity>),
         ).in_set(HostSystems),
     ))
+    .add_observer(cleanup_being_from_chunk_pos_res_on_despawn)
     .add_systems(Update, (
         on_control_change,
         sync_predator_squad_marker,

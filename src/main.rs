@@ -26,134 +26,83 @@ const TRACE: &str = "trace";
 struct InspectorVisibility(bool);
 
 fn build_filter() -> String {
-    format!(
-        "info,\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        \
-        {}={},\
-        {}={},\
-        {}={},\
-        \
-        {}={},\
-        {}={},\
-        {}={},\
-        \
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        \
-        {}={},\
-        \
-        {}={},\
-        \
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        \
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        \
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},\
-        {}={},",
-        log_targets::NAGA, ERROR,
-        log_targets::WGPU_HAL, ERROR,
-        log_targets::BEVY_ECS_TILEMAP, WARN,
-        log_targets::WGPU_CORE, ERROR,
-        log_targets::BEVY_EGUI, WARN,
-        log_targets::BEVY_REPLICON, WARN,
-        log_targets::BEVY_RENDER, WARN,
-        log_targets::BEVY_APP, WARN,
-        log_targets::COSMIC_TEXT, WARN,
-        log_targets::OFFSET_ALLOCATOR, WARN,
-        log_targets::BEVY_ASSET_LOADER, WARN,
-        log_targets::BEVY_ECS_RELATIONSHIP, ERROR,
-        log_targets::CALLOOP_LOOP_LOGIC, ERROR,
+    let mut filter = String::from("info");
+    for (target, level) in [
+        (log_targets::NAGA, ERROR),
+        (log_targets::WGPU_HAL, ERROR),
+        (log_targets::BEVY_ECS_TILEMAP, WARN),
+        (log_targets::WGPU_CORE, ERROR),
+        (log_targets::BEVY_EGUI, WARN),
+        (log_targets::BEVY_REPLICON, WARN),
+        (log_targets::BEVY_RENDER, WARN),
+        (log_targets::BEVY_APP, WARN),
+        (log_targets::COSMIC_TEXT, WARN),
+        (log_targets::OFFSET_ALLOCATOR, WARN),
+        (log_targets::BEVY_ASSET_LOADER, WARN),
+        (log_targets::BEVY_ECS_RELATIONSHIP, ERROR),
+        (log_targets::CALLOOP_LOOP_LOGIC, ERROR),
 
-        log_targets::PORTAL_INIT, WARN,
-        log_targets::POSITION_SEARCH, INFO,
-        log_targets::CHILDRENSPRITE_INIT, TRACE,
-        log_targets::BIOME_INIT, DEBUG,
+        (log_targets::PORTAL_INIT, WARN),
+        (log_targets::POSITION_SEARCH, INFO),
+        (log_targets::CHILDRENSPRITE_INIT, DEBUG),
+        (log_targets::BIOME_INIT, DEBUG),
 
-        log_targets::OPLIST_INIT, WARN,
-        log_targets::TERRGEN_INIT, WARN,
-        log_targets::SGC_INIT, WARN,
+        (log_targets::OPLIST_INIT, WARN),
+        (log_targets::TERRGEN_INIT, INFO),
+        (log_targets::SGC_INIT, DEBUG),
+        (log_targets::REGION_SYSTEM, DEBUG),
+        (log_targets::SGC_CHUNK_OFFER, DEBUG),
+        (log_targets::SGC_CHUNK_CLAIM, WARN),
 
-        log_targets::TERRGEN_SYSTEM, DEBUG,
-        log_targets::TERRGEN_PROCESS, INFO,
-        log_targets::STRUCTURE_SPAWN, WARN,
-        log_targets::TILEMAP_SYSTEM, INFO,
-        log_targets::GPOS_MAP, WARN,
+        (log_targets::TERRGEN_SYSTEM, DEBUG),
+        (log_targets::TERRGEN_PROCESS, INFO),
+        (log_targets::STRUCTURE_SPAWN, INFO),
+        (log_targets::TILEMAP_SYSTEM, INFO),
+        (log_targets::GPOS_MAP, WARN),
+        (log_targets::CHUNK_DESPAWN, INFO),
+        (log_targets::CHUNK_VISIBILITY, WARN),
+        (log_targets::CHUNK_ACTIVATION, DEBUG),
 
-        log_targets::CHUNK_DESPAWN, INFO,
+        (log_targets::DEBUG, DEBUG),
 
-        log_targets::DEBUG, DEBUG,
+        (log_targets::MOVEMENT_SYSTEM, DEBUG),
+        (log_targets::SPRITE_SAMPLER_SYSTEM, WARN),
+        (log_targets::SPRITE_INIT, WARN),
+        (log_targets::SPRITE_BUILD, INFO),
+        (log_targets::SPRITE_SYSTEM, WARN),
 
-        log_targets::MOVEMENT_SYSTEM, TRACE,
-        log_targets::SPRITE_SAMPLER_SYSTEM, TRACE,
-        log_targets::SPRITE_INIT, WARN,
-        log_targets::SPRITE_BUILD, INFO,
-        log_targets::SPRITE_SYSTEM, WARN,
+        (log_targets::BEING_CONTROL, DEBUG),
+        (log_targets::BODY_BUILD, DEBUG),
+        (log_targets::GAME_INIT, DEBUG),
 
-        log_targets::BEING_CONTROL, TRACE,
-        log_targets::BODY_BUILD, DEBUG,
-        log_targets::GAME_INIT, DEBUG,
+        (log_targets::SPRITE_ANIMATION_INIT, WARN),
+        (log_targets::SPRITE_ANIMATION_SYSTEM, DEBUG),
+        (log_targets::ENTITY_ZERO_SYSTEM, INFO),
+        (log_targets::DUNGEONING_SYSTEM, DEBUG),
 
-        log_targets::SPRITE_ANIMATION_INIT, WARN,
-        log_targets::SPRITE_ANIMATION_SYSTEM, DEBUG,
-        log_targets::ENTITY_ZERO_SYSTEM, INFO,
-        log_targets::DUNGEONING_SYSTEM, DEBUG,
-        log_targets::SGC_CHUNK_CLAIM, WARN,
-
-        log_targets::TILE_INIT, INFO,
-        log_targets::ASSET_LOAD, WARN,
-        log_targets::TILEMAP_LOAD, WARN,
-        log_targets::DIMENSION_LOAD, WARN,
-        log_targets::CONTROL, WARN,
-        log_targets::BEING_TEMPLATE_BUILD, DEBUG,
-        log_targets::BEING_SYSTEM, DEBUG,
-        log_targets::BEING_MELEE_DEBUG, TRACE,
-        log_targets::FACTION_SYSTEM, WARN,
-        log_targets::ENTITY_MAP_SYSTEM, WARN,
-        log_targets::INSPECTOR, WARN,
-        log_targets::RIVER_SYSTEM, WARN,
-        log_targets::ITEM_SYSTEM, TRACE,
-        log_targets::WILDLIFE_SYSTEM, DEBUG,
-    )
+        (log_targets::TILE_INIT, INFO),
+        (log_targets::ASSET_LOADING, INFO),
+        (log_targets::TILEMAP_LOAD, INFO),
+        (log_targets::DIMENSION_LOADING, WARN),
+        (log_targets::DEF_VALIDATION, INFO),
+        (log_targets::CONTROL, WARN),
+        (log_targets::BEING_TEMPLATE_INIT, INFO),
+        (log_targets::BEING_TEMPLATE_BUILD, DEBUG),
+        (log_targets::BEING_SYSTEM, DEBUG),
+        (log_targets::BEING_MELEE_DEBUG, TRACE),
+        (log_targets::FACTION_SYSTEM, WARN),
+        (log_targets::ENTITY_MAP_SYSTEM, DEBUG),
+        (log_targets::INSPECTOR, WARN),
+        (log_targets::RIVER_SYSTEM, WARN),
+        (log_targets::ITEM_SYSTEM, DEBUG),
+        (log_targets::WILDLIFE_SYSTEM, DEBUG),
+    ] {
+        filter.push(',');
+        filter.push_str(target);
+        filter.push('=');
+        filter.push_str(level);
+    }
+    filter
 }
 //Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 

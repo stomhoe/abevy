@@ -79,8 +79,9 @@ pub fn periodically_check_despawn_unreferenced_chunks(
 pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE PUEDEN DESPAWNEAR LOS CHUNKS, PARA RESPETAR EL ORDEN DE SISTEMAS
     mut cmd: Commands,
     activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
-    chunks_query: Query<(Option<&Tilemaps>, Option<&TilesToSave>, Option<&BeingsWithinChunk>), >,
+    chunks_query: Query<(&DimensionRef, &ChunkPos, Option<&Tilemaps>, Option<&TilesToSave>), >,
     loaded_chunks: Res<LoadedChunks>,
+    beings_within_chunk: Res<BeingsWithinChunk>,
     mut despawn_events: ResMut<Messages<CheckIfChunkShouldDespawn>>,
     mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
     mut force_despawn_reader: MessageReader<MakeChunkDespawn>,
@@ -114,10 +115,13 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
 
     for MakeChunkDespawn { chunk_ent, reschedule_if_beings_present } in chunks_to_despawn.drain(..) {
         let mut delegate_chunk_despawn_to_other_system = false;
-        let Ok((tilemaps, _tiles_to_save, beings_within_chunk)) = chunks_query.get(chunk_ent) else {
+        let Ok((&chunk_dimension, &chunk_pos, tilemaps, _tiles_to_save)) = chunks_query.get(chunk_ent) else {
             cmd.entity(chunk_ent).try_despawn();
             continue;
         };
+        let beings_within_chunk_count = beings_within_chunk
+            .beings_in_chunk(chunk_dimension, chunk_pos)
+            .map_or(0, |beings| beings.len());
         if let Some(tilemaps) = tilemaps {
             for _tmap_ent in tilemaps.iter() {
                 // if tiles_to_save.entities().contains(&child) {
@@ -128,7 +132,6 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
                 // }
             }
         }
-        let beings_within_chunk_count = beings_within_chunk.map_or(0, |beings| beings.len());
         if beings_within_chunk_count > 0 {
             delegate_chunk_despawn_to_other_system = true;
         }
@@ -147,14 +150,15 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
 #[allow(unused_parens)]
 pub fn on_chunk_despawn(
     trig: On<Despawn, (Chunk, )>,
-    chunk_query: Query<(&DimensionRef, &ChunkPos, Option<&BeingsWithinChunk>), ()>,
+    chunk_query: Query<(&DimensionRef, &ChunkPos), ()>,
     mut ___________cmd: Commands,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut ____________loaded_macro_chunks: ResMut<LoadedMacroChunks>,
+    beings_within_chunk: Res<BeingsWithinChunk>,
     mut ub_writer: MessageWriter<FaithfulSimBeing>,
     mut ub_messages: Local<Vec<FaithfulSimBeing>>,
 ){
-    let Ok((&chunk_dimension, &chunk_pos, beings_within_chunk)) = chunk_query.get(trig.entity) else {
+    let Ok((&chunk_dimension, &chunk_pos)) = chunk_query.get(trig.entity) else {
         error!(target: "chunk_despawn", "Chunk entity {:?} despawned but its DimensionRef or ChunkPos component is missing", trig.entity);
         loaded_chunks.0.retain(|_, chunk_entity| chunk_entity.clone() != trig.entity);
 
@@ -167,12 +171,13 @@ pub fn on_chunk_despawn(
     if *chunk_ent == trig.entity {
         loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
     }
-    if let Some(beings_within_chunk) = beings_within_chunk {
-        for being_ent in beings_within_chunk.iter() {
-            ub_messages.push(FaithfulSimBeing(being_ent));
-        }
-        ub_writer.write_batch(ub_messages.drain(..));
+    let Some(beings) = beings_within_chunk.beings_in_chunk(chunk_dimension, chunk_pos) else {
+        return;
+    };
+    for &being_ent in beings {
+        ub_messages.push(FaithfulSimBeing(being_ent));
     }
+    ub_writer.write_batch(ub_messages.drain(..));
 
 
     /*

@@ -2,10 +2,9 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use game_common::game_common_components::{TemplEntiRef, };
 use tilemap_shared::tilemap_shared_samplers::*;
-use ::sprite_shared::{sprite_scale_offset::*, };
+use ::sprite_shared::*;
 use ::tilemap_shared::directions::*;
 
-use crate::sprite_components::*;
 use crate::sprite_systems::SpriteChanged;
 
 

@@ -1,0 +1,19 @@
+sgc {
+    id = archi_catas
+    structure_id = archi
+    weight = 1.0
+    tags = [dungeon]
+    whitelisted_tags = [dungeon, river]
+    args {
+        floor_tile_id = ducatas
+        wall_tile_id = nw
+        lava_tile_id = lava
+        boulder_sampler_id = boulder_sampler
+        boulder_frequency = 0.025
+        disable_terrgen.floor_tile_id = true
+        claim_square_min_side_length = 8
+        claim_square_max_side_length = 10
+        claim_square_normal_mean = 9.0
+        claim_square_normal_std_dev = 3.0
+    }
+}

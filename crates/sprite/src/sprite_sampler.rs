@@ -3,9 +3,6 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::HostSystems;
 
-use crate::sprite_sampler::sprite_sampler_init_systems::*;
-use crate::sprite_sampler::sprite_sampler_systems::*;
-pub use sprite_shared::sprite_sampler::*;
 
 common::define_entity_map_systems!(
     SpriteWeightedSampler,
@@ -36,11 +33,6 @@ pub fn plugin(app: &mut App) {
 
 mod sprite_sampler_init_systems;
 pub mod sprite_sampler_systems;
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        sprite_sampler_init_systems::*,
-        sprite_sampler_systems::*,
-    };
-}
+use sprite_sampler_init_systems::*;
+use sprite_sampler_systems::*;
+use sprite_shared::sprite_sampler::*;

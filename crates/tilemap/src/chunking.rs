@@ -19,6 +19,7 @@ pub use chunking_spawn_systems::*;
 pub use chunking_visibility_systems::*;
 pub use chunking_despawn_systems::*;
 pub use chunking_components::*;
+pub use ::tilemap_shared::chunking_shared_resources::*;
 use ::tilemap_shared::*;
 
 use crate::{ChunkSystems, };
@@ -51,7 +52,7 @@ pub fn plugin(app: &mut App) {
             .run_if(on_message::<RecheckChunksVisibility>),
         detect_camera_change_pos_visib,
         periodically_recheck_chunk_visibility.run_if(on_timer(Duration::from_millis(500))),
-        update_within_chunk,
+        update_beings_within_chunk_res,
     ).in_set(ChunkSystems))
 
     .add_systems(Update, (
@@ -60,6 +61,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<LoadChunksAround>()
     .init_resource::<LoadedChunks>()
     .init_resource::<LoadedMacroChunks>()
+    .init_resource::<BeingsWithinChunk>()
     .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), load_chunking_settings)
 
     .add_observer(on_chunk_despawn)
@@ -71,19 +73,9 @@ pub fn plugin(app: &mut App) {
     .add_message::<MakeChunkDespawn>()
     .add_message::<ForceAllChunksDespawn>()
     .add_message::<ChunkWithBeingsWantsDespawn>()
+    .add_message::<ChunkBeingsChanged>()
     .add_message::<ChunkLoaded>()
 
 
     ;
-}
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use super::{
-        macro_chunk_components::*,
-        chunking_shared_resources::*,
-        chunking_spawn_systems::*,
-        chunking_visibility_systems::*,
-        chunking_despawn_systems::*,
-    };
 }

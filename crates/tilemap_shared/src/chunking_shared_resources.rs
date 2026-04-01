@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::ecs::entity::EntityHashMap;
 use bevy::platform::collections::HashMap;
 use common::log_targets::TILEMAP_LOAD;
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,65 @@ pub struct LoadedChunks(pub HashMap<(DimensionRef, ChunkPos), Entity>,);
 #[derive(Resource, Clone, Default)]
 pub struct LoadedMacroChunks(pub HashMap<(DimensionRef, MacrochunkPos), Entity>,);
 
-pub type SmallEntiArr = SmallVec<[Entity; 16]>;
+#[derive(Resource, Clone, Default)]
+pub struct BeingsWithinChunk {
+    pub by_chunk: HashMap<(DimensionRef, ChunkPos), SmallVec<[Entity; 8]>>,
+    pub by_being: EntityHashMap<(DimensionRef, ChunkPos)>,
+}
+
+impl BeingsWithinChunk {
+    pub fn set_being_chunk(
+        &mut self,
+        being_ent: Entity,
+        dim_ref: DimensionRef,
+        chunk_pos: ChunkPos,
+    ) -> Option<(DimensionRef, ChunkPos)> {
+        let new_key = (dim_ref, chunk_pos);
+        let old_key = self.by_being.insert(being_ent, new_key);
+        if old_key == Some(new_key) {
+            self.insert_into_chunk(new_key, being_ent);
+            return old_key;
+        }
+        if let Some(old_key) = old_key {
+            self.remove_from_chunk(old_key, being_ent);
+        }
+        self.insert_into_chunk(new_key, being_ent);
+        old_key
+    }
+
+    pub fn remove_being(&mut self, being_ent: Entity) -> Option<(DimensionRef, ChunkPos)> {
+        let Some(old_key) = self.by_being.remove(&being_ent) else {
+            return None;
+        };
+        self.remove_from_chunk(old_key, being_ent);
+        Some(old_key)
+    }
+
+    pub fn beings_in_chunk(&self, dim_ref: DimensionRef, chunk_pos: ChunkPos) -> Option<&[Entity]> {
+        self.by_chunk.get(&(dim_ref, chunk_pos)).map(SmallVec::as_slice)
+    }
+
+    fn insert_into_chunk(&mut self, key: (DimensionRef, ChunkPos), being_ent: Entity) {
+        let beings = self.by_chunk.entry(key).or_default();
+        if !beings.contains(&being_ent) {
+            beings.push(being_ent);
+        }
+    }
+
+    fn remove_from_chunk(&mut self, key: (DimensionRef, ChunkPos), being_ent: Entity) {
+        let Some(beings) = self.by_chunk.get_mut(&key) else {
+            return;
+        };
+        if let Some(idx) = beings.iter().position(|&ent| ent == being_ent) {
+            beings.swap_remove(idx);
+        }
+        if beings.is_empty() {
+            self.by_chunk.remove(&key);
+        }
+    }
+}
+
+pub type EntiSmallVec = SmallVec<[Entity; 4]>;
 
 #[derive(Resource, Component, Clone, Copy, Debug, Deserialize, Serialize)]
 #[require(ActivatingChunks)]

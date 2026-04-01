@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::{AppRuleExt};
 
-#[allow(unused_imports, )]
-use crate::prelude::*;
+use crate::{player_components::*, player_resources::*};
 
 
 

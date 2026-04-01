@@ -3,12 +3,12 @@ use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
 use smallvec::SmallVec;
 
-use crate::{CardinalDirection, DimensionRef, GlobalTilePos, InteractionZones, SmallEntiArr};
+use crate::{CardinalDirection, DimensionRef, GlobalTilePos, InteractionZones, EntiSmallVec};
 
-type BeingOccupiedPositions = SmallVec<[GlobalTilePos; 16]>;
+type BeingOccupiedPositions = SmallVec<[GlobalTilePos; 4]>;
 
 #[derive(Resource, Debug, Default)]
-pub struct SpriteTilesAtGpos(pub HashMap<(DimensionRef, GlobalTilePos), SmallEntiArr>);
+pub struct SpriteTilesAtGpos(pub HashMap<(DimensionRef, GlobalTilePos), EntiSmallVec>);
 impl SpriteTilesAtGpos {
     pub fn tiles_at_pos(&self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
         self.0.get(&(dim_ref, gpos)).map(|entities| entities.as_slice()).unwrap_or(&[])
@@ -69,7 +69,7 @@ impl SpriteTilesAtGpos {
 
 #[derive(Resource, Debug, Default)]
 pub struct BeingsAtGpos {
-    pub by_pos: HashMap<(DimensionRef, GlobalTilePos), SmallEntiArr>,
+    pub by_pos: HashMap<(DimensionRef, GlobalTilePos), EntiSmallVec>,
     by_ent: EntityHashMap<(DimensionRef, BeingOccupiedPositions)>,
 }
 impl BeingsAtGpos {
@@ -120,7 +120,7 @@ impl BeingsAtGpos {
 }
 
 #[derive(Resource, Debug, Default)]
-pub struct ItemsAtGpos(pub HashMap<(DimensionRef, GlobalTilePos), SmallEntiArr>);
+pub struct ItemsAtGpos(pub HashMap<(DimensionRef, GlobalTilePos), EntiSmallVec>);
 impl ItemsAtGpos {
     pub fn items_at_pos(&self, dim_ref: DimensionRef, gpos: GlobalTilePos) -> &[Entity] {
         self.0.get(&(dim_ref, gpos)).map(|entities| entities.as_slice()).unwrap_or(&[])

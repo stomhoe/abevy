@@ -63,11 +63,11 @@ impl PackInitialSizeSampler {
 pub struct PackSpawnRadius(pub u8);
 impl Default for PackSpawnRadius {
     fn default() -> Self {
-        Self(3)
+        Self(7)
     }
 }
 impl PackSpawnRadius {
-    pub fn spacing_tiles(&self) -> i32 {
+    pub fn as_i32(&self) -> i32 {
         i32::from(self.0)
     }
 }

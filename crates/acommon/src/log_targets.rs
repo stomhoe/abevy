@@ -27,9 +27,10 @@ pub const CALLOOP_LOOP_LOGIC: &str = "calloop_loop_logic";
 // ============================================================================
 // ASSET & RESOURCE LOADING (format: <name>_load)
 // ============================================================================
-pub const ASSET_LOAD: &str = "asset_load";
+pub const ASSET_LOADING: &str = "asset_loading";
 pub const TILEMAP_LOAD: &str = "tilemap_load";
-pub const DIMENSION_LOAD: &str = "dimension_load";
+pub const DIMENSION_LOADING: &str = "dimension_loading";
+pub const DEF_VALIDATION: &str = "def_validation";
 
 // ============================================================================
 // INITIALIZATION SYSTEMS (format: <name>_init)

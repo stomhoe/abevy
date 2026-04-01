@@ -1,14 +1,10 @@
 #[allow(unused_imports)]
 use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileColor;
-#[allow(unused_imports)]
-use bevy_replicon::prelude::*;
 use common::common_components::*;
 use ::tilemap_shared::*;
 
-use crate::{
-    color_sampler_components::*, color_sampler_resources::*, ColorSamplerEntityMap, ColorSamplerRef,
-};
+use crate::*;
 use crate::load_weighted_colors_seri_defs;
 
 #[allow(unused_parens)]

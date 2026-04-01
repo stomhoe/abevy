@@ -58,6 +58,7 @@ pub fn plugin(app: &mut App) {
             (
                 main_menu_window,
                 states_window,
+                all_states_window,
                 debug_chunking_window,
                 macrochunks_grid_window,
                 regions_list_window,

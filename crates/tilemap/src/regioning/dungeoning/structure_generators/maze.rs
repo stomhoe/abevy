@@ -1,4 +1,4 @@
-#[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)] use bevy::{platform::collections::*, prelude::*};
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
@@ -13,7 +13,7 @@ use crate::regioning::{    regioning_components::*,
 use crate::tile::tile_resources::*;
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 use super::super::dungeoning_ids::MAZE;
-use super::super::dungeoning_utils::extend_occupied_gpos;
+use super::super::dungeoning_utils::{extend_occupied_gpos, seal_structure_border_band};
 
 #[derive(Clone, Copy)]
 pub enum ShapeType {
@@ -29,10 +29,12 @@ pub fn maze_dungeon_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     templs_map: Res<TileEntityMap>,
+    mut room_pack_spawn: super::super::dungeoning_utils::DungeonRoomPackSpawnSystemParams,
     templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
+    mut room_spawn_anchors: Local<Vec<(GlobalTilePos, &'static str)>>,
     mut island_seeds: Local<Vec<(usize, usize, ShapeType)>>,
     mut stack: Local<Vec<(usize, usize)>>,
     mut room_positions: Local<Vec<(usize, usize)>>,
@@ -42,6 +44,8 @@ pub fn maze_dungeon_building_system(
         return;
     };
     compliances_to_emit.clear();
+    room_spawn_anchors.clear();
+    room_pack_spawn.begin_pass();
     island_seeds.clear();
     stack.clear();
     room_positions.clear();
@@ -52,6 +56,11 @@ pub fn maze_dungeon_building_system(
         if structured_gen_cfg.structure_hash_id() != MAZE {
             continue;
         }
+        let room_spawn_config = super::super::dungeoning_utils::DungeonRoomPackSpawnConfig::from_typed_args(
+            &structured_gen_cfg.typed_args,
+            &room_pack_spawn.command_registry,
+            structured_gen_cfg.structure_id().as_str(),
+        );
 
         let floor_tile_id = structured_gen_cfg.args
             .get("floor_tile_id")
@@ -107,14 +116,20 @@ pub fn maze_dungeon_building_system(
 
         let chunk_width = (max_chunk_x - min_chunk_x + 1) as usize;
         let chunk_height = (max_chunk_y - min_chunk_y + 1) as usize;
-        let tile_width = chunk_width * ChunkPos::CHUNK_SIZE.x as usize;
-        let tile_height = chunk_height * ChunkPos::CHUNK_SIZE.y as usize;
+        let Some(tile_width) = chunk_width.checked_mul(ChunkPos::CHUNK_SIZE.x as usize) else {
+            continue;
+        };
+        let Some(tile_height) = chunk_height.checked_mul(ChunkPos::CHUNK_SIZE.y as usize) else {
+            continue;
+        };
         if tile_width == 0 || tile_height == 0 { continue; }
 
         let origin_chunk = ChunkPos::new(min_chunk_x, min_chunk_y);
         let origin_tile = origin_chunk.to_tilepos();
 
-        let tile_map_size = tile_width * tile_height;
+        let Some(tile_map_size) = tile_width.checked_mul(tile_height) else {
+            continue;
+        };
         let mut floor_map = vec![false; tile_map_size];
         let mut hazard_map = vec![false; tile_map_size];
 
@@ -125,11 +140,16 @@ pub fn maze_dungeon_building_system(
 
         let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
+        room_spawn_anchors.clear();
+        room_spawn_anchors.reserve(32);
 
         let corridor_wiggle_chance: f32 = structured_gen_cfg
             .args
             .parse_arg("corridor_wiggle_chance", 0.0);
         let corridor_wiggle_chance = corridor_wiggle_chance.clamp(0.0, 1.0);
+        let border_seal_margin: usize = structured_gen_cfg
+            .args
+            .parse_arg("border_seal_margin", 1);
 
         let point_in_shape = |px: i32, py: i32, cx: i32, cy: i32, radius: i32, shape: ShapeType| -> bool {
             let dx = px - cx;
@@ -204,6 +224,19 @@ pub fn maze_dungeon_building_system(
         }
 
         for &(island_cx, island_cy, shape) in &island_seeds {
+            let island_shape_key = match shape {
+                ShapeType::Circle => "island_circle",
+                ShapeType::Triangle => "island_triangle",
+                ShapeType::Hexagon => "island_hexagon",
+                ShapeType::Square => "island_square",
+            };
+            room_spawn_anchors.push((
+                GlobalTilePos::new(
+                    origin_tile.x() + island_cx as i32,
+                    origin_tile.y() + island_cy as i32,
+                ),
+                island_shape_key,
+            ));
             let max_available_width = (tile_width as i32 - 8).max(10) as usize;
             let max_available_height = (tile_height as i32 - 8).max(10) as usize;
             let island_size_multiplier = if island_seeds.len() == 1 { 0.95 } else { 0.75 };
@@ -224,7 +257,10 @@ pub fn maze_dungeon_building_system(
 
             if actual_maze_width < 3 || actual_maze_height < 3 { continue; }
 
-            let mut maze = vec![1; actual_maze_width * actual_maze_height];
+            let Some(maze_map_size) = actual_maze_width.checked_mul(actual_maze_height) else {
+                continue;
+            };
+            let mut maze = vec![1; maze_map_size];
             let start_range_x = ((actual_maze_width.saturating_sub(2)) / 2).max(1);
             let start_range_y = ((actual_maze_height.saturating_sub(2)) / 2).max(1);
             let start_x = (rng.random_range(0..start_range_x) * 2 + 1).min(actual_maze_width - 2);
@@ -317,6 +353,13 @@ pub fn maze_dungeon_building_system(
                 }
 
                 room_positions.push((room_x + room_w / 2, room_y + room_h / 2));
+                room_spawn_anchors.push((
+                    GlobalTilePos::new(
+                        origin_tile.x() + (room_x + room_w / 2) as i32,
+                        origin_tile.y() + (room_y + room_h / 2) as i32,
+                    ),
+                    "square_room",
+                ));
             }
 
             let num_rooms = rng.random_range(2..=6);
@@ -360,6 +403,18 @@ pub fn maze_dungeon_building_system(
                     }
                 }
                 room_positions.push((room_x + room_size / 2, room_y + room_size / 2));
+                let room_shape_key = if room_shape == 1 {
+                    "circle_room"
+                } else {
+                    "square_room"
+                };
+                room_spawn_anchors.push((
+                    GlobalTilePos::new(
+                        origin_tile.x() + (room_x + room_size / 2) as i32,
+                        origin_tile.y() + (room_y + room_size / 2) as i32,
+                    ),
+                    room_shape_key,
+                ));
             }
 
             let num_breaks = rng.random_range(2..=5);
@@ -424,6 +479,26 @@ pub fn maze_dungeon_building_system(
                     }
                 }
             }
+        }
+        for (anchor_gpos, room_shape_key) in room_spawn_anchors.iter().copied() {
+            let queued = super::super::dungeoning_utils::queue_room_spawn_instance_message(
+                room_shape_key,
+                anchor_gpos,
+                build_order.dimension_ref,
+                &room_spawn_config,
+                &room_pack_spawn.source_lookup,
+                &mut room_pack_spawn.pending_messages,
+            );
+            if !queued {
+                continue;
+            }
+            trace!(
+                target: DUNGEONING_SYSTEM,
+                "Queued room_spawn InstancePack for structure={} shape={} at {}",
+                structured_gen_cfg.structure_id(),
+                room_shape_key,
+                anchor_gpos,
+            );
         }
 
         if island_seeds.len() > 1 {
@@ -524,6 +599,14 @@ pub fn maze_dungeon_building_system(
             }
         }
 
+        seal_structure_border_band(
+            &mut floor_map,
+            Some(&mut hazard_map),
+            tile_width,
+            tile_height,
+            border_seal_margin,
+        );
+
         let mut wall_map = vec![false; tile_map_size];
         for y in 0..tile_height {
             for x in 0..tile_width {
@@ -598,4 +681,5 @@ pub fn maze_dungeon_building_system(
         });
     }
     writer.write_batch(compliances_to_emit.drain(..));
+    room_pack_spawn.finish_pass();
 }

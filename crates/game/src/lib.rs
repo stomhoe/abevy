@@ -1,12 +1,4 @@
 pub mod game;
 pub use game::*;
+pub use game_init_systems::*;
 pub mod game_init_systems;
-
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use crate::{
-        game::*,
-        game_init_systems::*,
-    };
-}

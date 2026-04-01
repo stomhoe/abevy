@@ -24,6 +24,12 @@ pub struct ChunkWithBeingsWantsDespawn {
     pub chunk_ent: Entity,
 }
 
+#[derive(Message, Debug, Clone, Copy)]
+pub struct ChunkBeingsChanged {
+    pub dim: DimensionRef,
+    pub cpos: ChunkPos,
+}
+
 #[derive(Debug, Message, Clone, Copy)]
 pub struct CheckIfChunkShouldDespawn(pub Entity);
 

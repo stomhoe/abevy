@@ -1,4 +1,5 @@
 #[allow(unused_imports)] use bevy::prelude::*;
+use crate::*;
 use smallvec::SmallVec;
 use tilemap_shared::*;
 
@@ -23,6 +24,7 @@ pub struct InstantiateTemplPackEntity {
     pub source_ent: Entity,
     pub override_being_count: Option<u16>,
     pub sampled_count_mult: Option<f32>,
+    pub pack_spawn_radius: Option<u8>,
     pub dim_ref: DimensionRef,
     pub member_gpos: SmallVec<[GlobalTilePos; 4]>,
     pub only_same_island: bool,
@@ -33,6 +35,7 @@ impl InstantiateTemplPackEntity {
         source_ent: Entity,
         override_being_count: Option<u16>,
         sampled_count_multiplier: Option<f32>,
+        pack_spawn_radius: Option<u8>,
         dim_ref: DimensionRef,
         member_gpos: impl IntoIterator<Item = GlobalTilePos>,
     ) -> Self {
@@ -40,10 +43,21 @@ impl InstantiateTemplPackEntity {
             source_ent,
             override_being_count,
             sampled_count_mult: sampled_count_multiplier,
+            pack_spawn_radius,
             dim_ref,
             member_gpos: member_gpos.into_iter().collect(),
             only_same_island: false,
             squad_spawn_mode: SquadSpawnMode::default(),
         }
+    }
+
+    pub fn resolved_pack_spawn_radius_tiles(
+        &self,
+        sampled_pack_spawn_radius: Option<PackSpawnRadius>,
+    ) -> i32 {
+        self.pack_spawn_radius
+            .map(i32::from)
+            .or_else(|| sampled_pack_spawn_radius.map(|radius| radius.as_i32()))
+            .unwrap_or_else(|| PackSpawnRadius::default().as_i32())
     }
 }

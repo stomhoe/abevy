@@ -1,4 +1,4 @@
-#[allow(unused_imports)] use bevy::prelude::*;
+#[allow(unused_imports)] use bevy::{platform::collections::*, prelude::*};
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
@@ -13,7 +13,7 @@ use crate::tile::tile_resources::*;
 use crate::tile::tile_sampler_components::TileWeightedSampler;
 use crate::tile::tile_sampler_resources::TileWeightedSamplerEntityMap;
 use super::super::dungeoning_ids::ARCHI;
-use super::super::dungeoning_utils::{extend_occupied_gpos, resolve_sampled_tile_entity_from_sampler};
+use super::super::dungeoning_utils::{extend_occupied_gpos, resolve_sampled_tile_entity_from_sampler, seal_structure_border_band};
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 
 #[allow(unused_parens, )]
@@ -22,6 +22,7 @@ pub fn archimedes_spiral_building_system(
     structured_gens: Query<(&StructuredGenConfig,),()>,
     mut writer: MessageWriter<StructureBuildCompliance>,
     templs_map: Res<TileEntityMap>,
+    mut room_pack_spawn: super::super::dungeoning_utils::DungeonRoomPackSpawnSystemParams,
     sampler_map: Res<TileWeightedSamplerEntityMap>,
     sampler_query: Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
     templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
@@ -35,6 +36,7 @@ pub fn archimedes_spiral_building_system(
         return;
     };
     compliances_to_emit.clear();
+    room_pack_spawn.begin_pass();
     candidates.clear();
     tiles4chunk.clear();
     for build_order in reader.read() {
@@ -43,6 +45,11 @@ pub fn archimedes_spiral_building_system(
         if structured_gen_cfg.structure_hash_id() != ARCHI {
             continue;
         }
+        let room_spawn_config = super::super::dungeoning_utils::DungeonRoomPackSpawnConfig::from_typed_args(
+            &structured_gen_cfg.typed_args,
+            &room_pack_spawn.command_registry,
+            structured_gen_cfg.structure_id().as_str(),
+        );
 
         let floor_tile_id = structured_gen_cfg.args
             .get("floor_tile_id")
@@ -111,6 +118,9 @@ pub fn archimedes_spiral_building_system(
         if tile_width <= carve_margin * 2 || tile_height <= carve_margin * 2 {
             continue;
         }
+        let border_seal_margin: usize = structured_gen_cfg
+            .args
+            .parse_arg("border_seal_margin", carve_margin);
 
         let Ok(&dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
             error!(target: "dungeoning", "Dimension entity {:?} has no HashId component for archimedes spiral dungeon", build_order.dimension_ref);
@@ -156,6 +166,10 @@ pub fn archimedes_spiral_building_system(
         let max_y = tile_height as i32 - 1 - carve_margin as i32;
         let center_x = (min_x + max_x) / 2;
         let center_y = (min_y + max_y) / 2;
+        let center_anchor_gpos = GlobalTilePos::new(
+            origin_tile.x() + center_x,
+            origin_tile.y() + center_y,
+        );
         let max_radius = (center_x - min_x)
             .min(max_x - center_x)
             .min(center_y - min_y)
@@ -246,6 +260,31 @@ pub fn archimedes_spiral_building_system(
             prev_y = Some(y);
             theta += angle_step;
         }
+        let queued = super::super::dungeoning_utils::queue_room_spawn_instance_message(
+            "center_spiral",
+            center_anchor_gpos,
+            build_order.dimension_ref,
+            &room_spawn_config,
+            &room_pack_spawn.source_lookup,
+            &mut room_pack_spawn.pending_messages,
+        );
+        if queued {
+            trace!(
+                target: DUNGEONING_SYSTEM,
+                "Queued room_spawn InstancePack for structure={} shape=center_spiral at {}",
+                structured_gen_cfg.structure_id(),
+                center_anchor_gpos,
+            );
+        }
+
+        seal_structure_border_band(
+            &mut floor_map,
+            None,
+            tile_width,
+            tile_height,
+            border_seal_margin,
+        );
+
         let mut boulder_anchor_map: Vec<Option<TemplEntiRef>> = vec![None; tile_map_size];
         if boulder_frequency > 0.0 {
             let boulder_sampler: Option<&EntityWeightedSampler> = sampler_map
@@ -379,4 +418,5 @@ pub fn archimedes_spiral_building_system(
     }
 
     writer.write_batch(compliances_to_emit.drain(..));
+    room_pack_spawn.finish_pass();
 }

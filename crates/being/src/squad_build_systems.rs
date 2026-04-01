@@ -62,18 +62,15 @@ pub fn instance_pack_entities(
         let mut source_kind = None;
         let mut is_race_target = false;
         let mut is_bit_target = false;
-        let mut density_tiles = PackSpawnRadius::default().spacing_tiles();
+        let mut density_tiles = PackSpawnRadius::default().as_i32();
         let mut from_no_spawn_squad = false;
         locals.sampled_beings.clear();
 
         if let Ok(being_sampler) = queries.pack_query.get(source_ent) {
             source_kind = Some(InstancePackSourceKind::Pack);
-            density_tiles = queries.pack_spawn_radius_query
-                .get(source_ent)
-                .ok()
-                .copied()
-                .unwrap_or_default()
-                .spacing_tiles();
+            density_tiles = msg.resolved_pack_spawn_radius_tiles(
+                queries.pack_spawn_radius_query.get(source_ent).ok().copied(),
+            );
             from_no_spawn_squad = queries.no_spawn_squad_query.get(source_ent).is_ok();
             let final_count: usize = msg
                 .override_being_count
@@ -99,12 +96,9 @@ pub fn instance_pack_entities(
         } else if queries.race_query.get(source_ent).is_ok() {
             source_kind = Some(InstancePackSourceKind::Race);
             is_race_target = true;
-            density_tiles = queries.pack_spawn_radius_query
-                .get(source_ent)
-                .ok()
-                .copied()
-                .unwrap_or_default()
-                .spacing_tiles();
+            density_tiles = msg.resolved_pack_spawn_radius_tiles(
+                queries.pack_spawn_radius_query.get(source_ent).ok().copied(),
+            );
             from_no_spawn_squad = queries.no_spawn_squad_query.get(source_ent).is_ok();
             let final_count = msg
                 .override_being_count
@@ -126,12 +120,9 @@ pub fn instance_pack_entities(
         } else if queries.bit_query.get(source_ent).is_ok() {
             source_kind = Some(InstancePackSourceKind::Bit);
             is_bit_target = true;
-            density_tiles = queries.pack_spawn_radius_query
-                .get(source_ent)
-                .ok()
-                .copied()
-                .unwrap_or_default()
-                .spacing_tiles();
+            density_tiles = msg.resolved_pack_spawn_radius_tiles(
+                queries.pack_spawn_radius_query.get(source_ent).ok().copied(),
+            );
             from_no_spawn_squad = queries.no_spawn_squad_query.get(source_ent).is_ok();
             let final_count = msg
                 .override_being_count

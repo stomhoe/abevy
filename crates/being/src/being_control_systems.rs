@@ -4,7 +4,7 @@ use common::log_targets::BEING_CONTROL;
 use faction_shared::BelongsToAPlayerFaction;
 use game_common::game_common_components::CameraTarget;
 use movement::movement_components::{InputMaxSpeed, InputMoveDir, InputSpeedThrottleMult};
-use player::{player_components::{HostPlayer, Mine, Player}, prelude::MyPlayer};
+use player::player_components::{HostPlayer, Mine, MyPlayer, Player};
 use tilemap::chunking::chunking_components::ActivatingChunks;
 use tilemap_shared::LoadChunksAround;
 

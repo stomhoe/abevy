@@ -1,0 +1,31 @@
+sgc {
+    id = cha_newbie
+    structure_id = chamberscorridors
+    weight = 1.0
+    tags = [dungeon]
+    whitelisted_tags = [dungeon, river]
+    args {
+        floor_tile_id = dunewbie
+        wall_tile_id = nw
+        lava_tile_id = lava
+        room_shape_weight_rectangle = 1.0
+        room_shape_weight_circle = 1.0
+        room_shape_weight_triangle = 1.0
+        room_shape_weight_polygon = 1.0
+        room_same_shape_chance = 0.25
+        room_same_shape_weight_rectangle = 1.0
+        room_same_shape_weight_circle = 1.0
+        room_same_shape_weight_triangle = 0.0
+        room_same_shape_weight_polygon = 1.0
+        room_polygon_min_sides = 4
+        room_polygon_max_sides = 12
+        room_polygon_rotation_min_deg = 0.0
+        room_polygon_rotation_max_deg = 360.0
+        corridor_radius = 2
+        corridor_wiggle_chance = 0.05
+        corridor_wiggle_step_max = 1
+        corridor_detour_chance = 0.0
+        corridor_detour_max_offset = 0
+        disable_terrgen.floor_tile_id = true
+    }
+}

@@ -4,9 +4,9 @@ if a queried component has no fields, use Has<ComponentName> instead of Option<&
 Prefer let Ok/Some(...) else {continue;} over if let Ok/Some(...){}. Use
 EntityHashmap/set over Hashmap/set<Entity>. use .read() to read MessageReader's received messages, not .iter(). to write messages with a MessageWriter, define mut messages: Local<Vec<MessageType>> in the system params, then call writer.write_batch(messages.drain(..)); at the end of the system. Don't forget to add imports. If you use something from a crate, add the dependency. if you change fields of a *Seri struct, fix dependent .ron files, and don't create legacy adapters for these outdated .rons, just update the rons.
 
-For target: in error!, info!, etc. put the corresponding constant from log_targets.rs. If constant is missing, define it in log_targets.rs and then add into main.rs's format string 
+For "target" parameter in error!, info!, trace!, debug!, warn! macros, put the corresponding constant from log_targets.rs. If constant is missing, define it in log_targets.rs and then add into main.rs's format string.
 
-For freshly implemented features, add debug! prints and update main.rs to actually show the logs, so that the user can help debug, but make these occupy a single line even if long. if spammy use trace! instead. Avoid overdoing it, put in the most important sections.
+For freshly implemented features, add debug! prints with the correct "target:" const from log_targets.rs for the file and update main.rs to actually show the logs, so that the user can help you debug, but make these occupy a single line even if long. if spammy use trace! instead. Avoid overdoing it, put in the most important sections. Only do it if you suspect the code can be buggy and it's not straightforward
 
 Make sure to .replicate::<T> newly added components which the client also uses in his locally running systems.
 
@@ -53,5 +53,7 @@ try to use .reserve()/with_capacity() for collections in which you know how many
 
 VERY IMPORTANT: if you got requested implicitely or explicitely to fix/generate some code, first check if you are in read mode (can't edit files), dont read/explore/generate any code, instead immediately tell the user to change your authorization level before beginning.
 
+
+try to use dereference with & as soon as you can to avoid putting * each time you pass the var as an argument for a parameter which needs an owned type. specially for types which derive Copy
 
 if using BlockedTileParamSet in a system, use its inner gpos query instead of querying for gpos in the consumer system, otherwise query conflict will hapen

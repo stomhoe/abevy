@@ -1,0 +1,20 @@
+sgc {
+    id = spiral_catas
+    structure_id = spiral
+    weight = 1.0
+    tags = [dungeon]
+    whitelisted_tags = [dungeon, river]
+    args {
+        floor_tile_id = ducatas
+        wall_tile_id = nw
+        lava_tile_id = lava
+        claim_square_min_side_length = 6
+        claim_square_max_side_length = 10
+        claim_square_normal_mean = 19.0
+        claim_square_normal_std_dev = 3.0
+        spiral_corridor_width_min = 3
+        spiral_corridor_width_max = 5
+        spiral_room_radius = 6
+        disable_terrgen.floor_tile_id = true
+    }
+}

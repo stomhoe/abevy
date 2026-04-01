@@ -19,7 +19,7 @@ use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::*;
 use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker, resolve_modifier_component};
 use movement::movement_components::*;
-use player::prelude::*;
+use player::{player_components::*, };
 use tilemap_shared::{CardinalDirection, GlobalTilePos, InteractionZone, InteractionZones};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};

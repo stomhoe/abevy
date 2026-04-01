@@ -1,4 +1,4 @@
-use ::sprite_shared::{sprite_scale_offset::*, };
+use ::sprite_shared::*;
 #[allow(unused_imports)]
 use bevy::prelude::*;
 #[allow(unused_imports)]
@@ -7,7 +7,7 @@ use common::{SPRITE_INIT, common_components::*, common_tag_components::TagSet};
 use game_common::game_common_components::*;
 use sprite_animation_shared::AcAnimationEntityMap;
 
-use crate::{sprite_components::*, sprite_resources::*};
+use crate::{ sprite_resources::*};
 
 #[allow(unused_parens)]
 pub fn init_sprite_configs(

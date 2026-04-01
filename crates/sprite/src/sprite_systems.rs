@@ -7,13 +7,11 @@ use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use bevy::ecs::entity_disabling::Disabled;
 use game_common::game_common_components::{Templ, TemplEntiRef, };
+use ::sprite_shared::*;
 use tilemap_shared::{GlobalTilePos};
 use ::tilemap_shared::directions::*;
 
-use ::sprite_shared::{sprite_scale_offset::*, };
 
-#[allow(unused_imports, )]
-use crate::sprite_components::*;
 
 
 #[derive(Message, Debug, Clone, Hash, PartialEq, Eq)]

@@ -1,5 +1,6 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use being::pack::pack_components::*;
+#[allow(unused_imports, )]
 use ::being_shared::*;
 use common::log_targets::WILDLIFE_SYSTEM;
 use ::game_common::*;
@@ -145,6 +146,7 @@ pub fn seed_natural_wildlife_for_biomesampled_macrochunks(
             spawned_packs += 1;
             let instance_pack_message = InstantiateTemplPackEntity::new(
                 sampled_pack_or_race_or_bit_ent,
+                None,
                 None,
                 None,
                 dim_ref,

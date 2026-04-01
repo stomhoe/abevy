@@ -154,6 +154,51 @@ fn collect_entity_avoidance(
     avoidance
 }
 
+fn orbit_target_allowed_for_pack_members(
+    blocking_tiles: &mut BlockingTileParamSet,
+    wander_cfg_query: &Query<&WanderSeri>,
+    blacklisted_spawn_tile_tags_query: &Query<&BlacklistedSpawnTileTags>,
+    squad_ent: Entity,
+    pack_members: &[(Entity, DimensionRef, bool)],
+    dim_ref: DimensionRef,
+    target_gpos: GlobalTilePos,
+) -> bool {
+    let empty_whitelist = WhitelistedTags::default();
+    let empty_whitelist = WhitelistedSpawnTileTagsRef(&empty_whitelist);
+    let fallback_cfg = WanderSeri::default();
+    for &(member_ent, member_dim, has_avoid_blacklisted_spawn_tiles) in pack_members {
+        if member_dim != dim_ref {
+            continue;
+        }
+        let bit_ref = blocking_tiles.get_being_bit_ref(member_ent);
+        let race_ref = blocking_tiles.get_being_race_ref(member_ent);
+        let cfg = common::query_fallback_get!(
+            wander_cfg_query,
+            Some(squad_ent),
+            bit_ref.map(|bit_ref| bit_ref.0),
+            race_ref.map(|race_ref| race_ref.0),
+        )
+        .unwrap_or(&fallback_cfg);
+        let avoid_tile_tags = cfg.resolve_wander_avoid_tile_tags(
+            has_avoid_blacklisted_spawn_tiles,
+            bit_ref,
+            race_ref,
+            blacklisted_spawn_tile_tags_query,
+        );
+        let avoid_spawn_tile_tags = BlacklistedSpawnTileTagsRef(&avoid_tile_tags);
+        if !blocking_tiles.allowed_at_refs(
+            dim_ref,
+            target_gpos,
+            member_ent,
+            &empty_whitelist,
+            &avoid_spawn_tile_tags,
+        ) {
+            return false;
+        }
+    }
+    true
+}
+
 #[allow(unused_parens, )]
 pub fn wander_behavior(
     mut writer: MessageWriter<NavOrder>,
@@ -185,6 +230,7 @@ pub fn wander_behavior(
     pack_center_query: Query<&SquadAvgCenterPerDim>,
     mut nearby_threats: Local<EntityHashSet>,
     mut activator_positions_by_dim: Local<EntityHashMap<Vec<GlobalTilePos>>>,
+    mut pack_members_by_squad: Local<EntityHashMap<Vec<(Entity, DimensionRef, bool)>>>,
     mut messages: Local<Vec<NavOrder>>,
 ) {
     let mut rng = rand::rng();
@@ -202,6 +248,20 @@ pub fn wander_behavior(
             .entry(dim_ref.0)
             .or_default()
             .push(activator_gpos);
+    }
+    pack_members_by_squad.clear();
+    {
+        let pack_member_iter = beings.iter_mut();
+        pack_members_by_squad.reserve(pack_member_iter.size_hint().1.unwrap_or(pack_member_iter.size_hint().0));
+        for (member_ent, &member_dim, _, member_of, has_avoid_blacklisted_spawn_tiles) in pack_member_iter {
+            let Some(member_of) = member_of else {
+                continue;
+            };
+            pack_members_by_squad
+                .entry(member_of.0)
+                .or_default()
+                .push((member_ent, member_dim, has_avoid_blacklisted_spawn_tiles));
+        }
     }
     for (pred_ent, &dim_ref, mut state, member_of, has_avoid_blacklisted_spawn_tiles, ) in beings.iter_mut() {
         evaluated_wanderers += 1;
@@ -246,12 +306,50 @@ pub fn wander_behavior(
                 .ok()
                 .and_then(|pack_center| pack_center.0.get(&dim_ref).copied())
             {
-                let pack_distance = (pack_center.0 - gpos.0).as_vec2().length();
                 let pack_delta = pack_center.0 - gpos.0;
+                let pack_distance = pack_delta.as_vec2().length();
                 if cfg.max_drift.is_finite() && pack_distance > cfg.max_drift {
-                    input_dir = pack_delta.as_vec2().normalize_or_zero() * (state.current_speed_mult_or_zero() * 2.0);
+                    if let Some(return_dir) = state.maybe_apply_pack_drift_return(
+                        &mut rng,
+                        cfg,
+                        gpos,
+                        pack_center,
+                    ) {
+                        debug!(
+                            target: BEING_SYSTEM,
+                            "wander_behavior: max_drift return correction being={:?} dim={:?} gpos={:?} pack_center={:?} hard_flip={} pending_return={:?}",
+                            pred_ent,
+                            dim_ref.0,
+                            gpos,
+                            pack_center,
+                            cfg.allow_hard_flips_to_return,
+                            state.has_pack_return_dir(),
+                        );
+                        input_dir = return_dir;
+                    }
                 } else if cfg.pack_orbit_radius > 0.0 {
-                    input_dir += state.pack_orbit_pull(elapsed_secs, &mut rng, cfg, pack_center, gpos);
+                    let pack_members = pack_members_by_squad
+                        .get(&member_of.0)
+                        .map(Vec::as_slice)
+                        .unwrap_or(&[]);
+                    input_dir += state.pack_orbit_pull(
+                        elapsed_secs,
+                        &mut rng,
+                        cfg,
+                        pack_center,
+                        gpos,
+                        |target_gpos| {
+                            orbit_target_allowed_for_pack_members(
+                                &mut blocking_tiles,
+                                &wander_cfg_query,
+                                &blacklisted_spawn_tile_tags_query,
+                                member_of.0,
+                                pack_members,
+                                dim_ref,
+                                target_gpos,
+                            )
+                        },
+                    );
                 }
             }
         }

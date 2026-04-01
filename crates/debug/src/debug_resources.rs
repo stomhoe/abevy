@@ -8,6 +8,7 @@ use std::collections::HashMap;
 #[derive(Resource, Debug, Clone)]
 pub struct DubugWindowsVisibility{
     pub states: bool,
+    pub all_states: bool,
     pub main_menu: bool,
     pub chunks_list: bool,
     pub macrochunks_grid: bool,
@@ -39,6 +40,7 @@ impl Default for DubugWindowsVisibility {
     fn default() -> Self {
         Self {
             states: false,
+            all_states: false,
             main_menu: true,
             chunks_list: false,
             macrochunks_grid: false,
@@ -232,6 +234,7 @@ impl DebugUiConfigSeri {
                 let mut v = DubugWindowsVisibility::default();
                 v.main_menu = self.windows_open_on_start.main_menu;
                 v.hot_reload_window_open_on_start = self.windows_open_on_start.hot_reload_window_open_on_start;
+                v.all_states = self.windows_open_on_start.all_states;
                 v.terrgen_editor = self.windows_open_on_start.terrgen_editor;
                 v.terrgen_values = self.windows_open_on_start.terrgen_values;
                 v.settings_editor = self.windows_open_on_start.settings_editor;

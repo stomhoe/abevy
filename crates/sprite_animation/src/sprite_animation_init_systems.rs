@@ -6,7 +6,8 @@ use common::common_components::*;
 use common::def_db::discover_assets_files_by_suffixes;
 use common::log_targets::SPRITE_ANIMATION_INIT;
 use ::sprite_shared::*;
-use sprite_systems::prelude::*;
+use sprite_animation_shared::EguiAcAnimationsHolder;
+use sprite_systems::EguiScsHolder;
 use ::sprite_animation_shared::*;
 
 fn load_animation_defs_from_filesystem() -> Vec<AnimationSeri> {

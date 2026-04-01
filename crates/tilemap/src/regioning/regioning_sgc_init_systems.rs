@@ -2,7 +2,6 @@ use std::cmp::Ordering;
 
 use bevy::{platform::collections::HashSet, prelude::*};
 use common::{common_components::*, common_tag_components::TagSet, log_targets::SGC_INIT};
-use game_common::game_common_components::ArgsDict;
 use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
 use ::tilemap_shared::*;
 
@@ -125,6 +124,7 @@ fn build_prioritized_entities(defs: &[PrioritySgcDef]) -> Vec<Entity> {
 pub fn init_structured_gen_configs(
     mut cmd: Commands,
     map: Res<StructuredGenConfigEntityMap>,
+    sgc_command_registry: Res<SgcCommandRegistry>,
     dimension_entity_map: Res<DimensionEntityMap>,
     egui_holder_query: Query<Entity, With<EguiSgcsHolder>>,
     _opfilter_entity_map: Res<OpFilterEntityMap>,
@@ -146,18 +146,26 @@ pub fn init_structured_gen_configs(
 
     for structured_gen_seri in load_sgc_seri_defs() {
         let seri_id = structured_gen_seri.id.clone();
+        let structure_id = structured_gen_seri.structure_id.clone();
         let main_ent = cmd.spawn_empty().id();
 
-        let mut gen_cfg = StructuredGenConfig::new(structured_gen_seri.structure_id);
+        let mut gen_cfg = StructuredGenConfig::new(structure_id.as_str());
         let sgc_id = StrId::trunc(seri_id.clone());
 
         gen_cfg.max_per_region = structured_gen_seri.max_per_region;
         gen_cfg.whitelisted_tags = TagSet::new(structured_gen_seri.whitelisted_tags.iter().map(String::as_str));
         gen_cfg.blacklisted_tags = TagSet::new(structured_gen_seri.blacklisted_tags.iter().map(String::as_str));
-        if !structured_gen_seri.args.is_empty() {
-            gen_cfg.args = ArgsDict::with_capacity(structured_gen_seri.args.len());
-            for (key, val_vec) in structured_gen_seri.args.clone() {
-                gen_cfg.args.insert(key, val_vec);
+        gen_cfg.typed_args = structured_gen_seri.args.clone();
+        gen_cfg.args = gen_cfg.typed_args.to_legacy_args_dict();
+        let configured_room_spawn_shapes = gen_cfg.typed_args.room_spawn_shape_keys();
+        if !configured_room_spawn_shapes.is_empty()
+            && let Some(allowed_room_spawn_shapes) = sgc_command_registry
+                .allowed_room_spawn_shapes_for(structure_id.as_str())
+        {
+            for configured_shape in configured_room_spawn_shapes {
+                if allowed_room_spawn_shapes.contains(configured_shape.as_str()) {
+                    continue;
+                }
             }
         }
 
@@ -178,7 +186,6 @@ pub fn init_structured_gen_configs(
                 dim_refs.0.insert(dim_ent);
             }
             if dim_refs.0.is_empty() {
-                error!(target: SGC_INIT, "StructureSeri with id: {} has no valid dimension references.", seri_id);
                 continue;
             }
             exclusive_for_dims.push((main_ent, dim_refs));
@@ -187,7 +194,6 @@ pub fn init_structured_gen_configs(
             let Ok(poisson_disk) =
                 PoissonDisk::multiple_tagged(structured_gen_seri.pdisk_mindist_and_tag.clone(), 3, 16)
             else {
-                error!(target: SGC_INIT, "Failed to create PoissonDisk for StructureSeri with id: {}, skipping PoissonDisk creation.", seri_id);
                 continue;
             };
             cmd.entity(main_ent).insert(poisson_disk);

@@ -1,9 +1,8 @@
 #[allow(unused_imports)]
 use bevy::prelude::*;
 
-pub use sprite_shared::sprite_resources::*;
+use ::sprite_shared::*;
 
-use crate::sprite_components::SpriteConfig;
 
 common::define_entity_map_systems!(
     SpriteConfig,

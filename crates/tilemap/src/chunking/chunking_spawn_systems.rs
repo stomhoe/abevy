@@ -1,6 +1,4 @@
 
-use std::mem::take;
-
 use bevy::prelude::*;
 use common::log_targets::CHUNK_ACTIVATION;
 use tilemap_shared::*;
@@ -185,33 +183,56 @@ pub fn detect_activators_with_pos_changes(
 
 
 #[allow(unused_parens)]
-pub fn update_within_chunk(
+pub fn update_beings_within_chunk_res(
     mut cmd: Commands,
     mut query: Query<
-        (Entity, &GlobalTilePos, &DimensionRef, Option<&WithinChunk>, Option<&mut ChunkPos>),
-        (With<Being>, Without<Unloaded>, Changed<GlobalTilePos>),
+        (Entity, &GlobalTilePos, &DimensionRef, Option<&mut ChunkPos>),
+        (
+            With<Being>,
+            Without<Unloaded>,
+            Or<(Changed<GlobalTilePos>, Changed<DimensionRef>, Added<Being>)>,
+        ),
     >,
     loaded_chunks: Res<LoadedChunks>,
+    mut beings_within_chunk: ResMut<BeingsWithinChunk>,
+    mut chunk_beings_changed_writer: MessageWriter<ChunkBeingsChanged>,
+    mut chunk_beings_changed_msgs: Local<Vec<ChunkBeingsChanged>>,
 ) {
-    let mut within_chunks: Vec<(Entity, WithinChunk)> = Vec::new();
-    for (being_ent, gpos, &dim_ref, within_chunk, being_chunk_pos) in query.iter_mut() {
-        let new_chunk_pos = ChunkPos::from(*gpos);
-        let new_chunk_key = (dim_ref, new_chunk_pos);
-
-        let Some(&new_chunk_ent) = loaded_chunks.0.get(&new_chunk_key) else {
-            debug!(target: common::log_targets::CHUNK_ACTIVATION, "Being {:?} at {:?} moved to unloaded chunk", being_ent, gpos);
+    for (being_ent, gpos, &dim_ref, being_chunk_pos) in query.iter_mut() {
+        let &gpos = gpos;
+        let new_chunk_pos = ChunkPos::from(gpos);
+        let old_chunk_pos = beings_within_chunk.by_being.get(&being_ent).copied();
+        if old_chunk_pos == Some((dim_ref, new_chunk_pos)) {
             continue;
-        };
+        }
 
-        if within_chunk.map(|c| c.0) != Some(new_chunk_ent) {
-
-            within_chunks.push((being_ent, WithinChunk(new_chunk_ent)));
-            if let Some(mut being_chunk_pos) = being_chunk_pos {
+        if let Some(mut being_chunk_pos) = being_chunk_pos {
+            if *being_chunk_pos != new_chunk_pos {
                 *being_chunk_pos = new_chunk_pos;
-            } else{
-                cmd.entity(being_ent).try_insert(new_chunk_pos);
+            }
+        } else{
+            cmd.entity(being_ent).try_insert(new_chunk_pos);
+        }
+
+        beings_within_chunk.set_being_chunk(being_ent, dim_ref, new_chunk_pos);
+
+        if let Some(old_chunk_pos) = old_chunk_pos {
+            if old_chunk_pos != (dim_ref, new_chunk_pos) {
+                if loaded_chunks.0.contains_key(&old_chunk_pos) {
+                    chunk_beings_changed_msgs.push(ChunkBeingsChanged {
+                        dim: old_chunk_pos.0,
+                        cpos: old_chunk_pos.1,
+                    });
+                }
             }
         }
+
+        if loaded_chunks.0.contains_key(&(dim_ref, new_chunk_pos)) {
+            chunk_beings_changed_msgs.push(ChunkBeingsChanged {
+                dim: dim_ref,
+                cpos: new_chunk_pos,
+            });
+        }
     }
-    cmd.try_insert_batch(take(&mut within_chunks));
+    chunk_beings_changed_writer.write_batch(chunk_beings_changed_msgs.drain(..));
 }

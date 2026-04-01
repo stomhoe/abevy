@@ -39,6 +39,8 @@ pub struct DebugWindowsOpenOnStartSeri {
     #[serde(default)]
     pub hot_reload_window_open_on_start: bool,
     #[serde(default)]
+    pub all_states: bool,
+    #[serde(default)]
     pub terrgen_editor: bool,
     #[serde(default)]
     pub terrgen_values: bool,

@@ -6,6 +6,7 @@ use bevy::{ecs::entity::MapEntities, };
 
 use common::{common_components::*, common_tag_components::TagSet};
 use serde::{Deserialize, Serialize};
+use super::regioning_sgc_seris::SgcArgsDict;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, )]
 #[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SGC"), )]
@@ -16,6 +17,7 @@ pub struct StructuredGenConfig{
     structure_hash_id: HashId,
     pub max_per_region: u32,
     pub args: ArgsDict,
+    pub typed_args: SgcArgsDict,
     pub whitelisted_tags: TagSet,
     pub blacklisted_tags: TagSet,
 }
@@ -26,6 +28,7 @@ impl StructuredGenConfig {
             structure_hash_id: HashId::hash(structure_id.as_ref()),
             max_per_region: 1024,
             args: ArgsDict::default(),
+            typed_args: SgcArgsDict::default(),
             whitelisted_tags: TagSet::default(),
             blacklisted_tags: TagSet::default(),
         }

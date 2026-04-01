@@ -54,6 +54,7 @@ pub struct WanderSeri {
     pub avoid_race_tags: HashMap<String, AvoidBeingSpec>,
     pub avoid_pack_tags: HashMap<String, AvoidBeingSpec>,
     pub max_drift: f32,
+    pub allow_hard_flips_to_return: bool,
     pub wander_around_leader: bool,
     pub avoid_being_tags: HashMap<String, AvoidBeingSpec>,
     pub avoid_blacklisted_spawn_tiles: bool,
@@ -72,6 +73,9 @@ pub struct WanderState {
     pub(crate) phase_secs_left: f32,
     pub(crate) pack_orbit_secs_left: f32,
     pub(crate) pack_orbit_target: Option<GlobalTilePos>,
+    #[serde(default)]
+    #[reflect(ignore)]
+    pub(crate) pack_return_dir: Option<CardinalDirection>,
     pub(crate) lod_level: u8,
     pub(crate) lod_secs_left: f32,
     pub(crate) lod_accum_secs: f32,
@@ -93,6 +97,7 @@ impl Default for WanderSeri {
             avoid_race_tags: HashMap::default(),
             avoid_pack_tags: HashMap::default(),
             max_drift: 30.0,
+            allow_hard_flips_to_return: false,
             wander_around_leader: false,
             avoid_being_tags: HashMap::default(),
             avoid_blacklisted_spawn_tiles: false,
@@ -288,6 +293,7 @@ impl WanderState {
             && self.lod_secs_left <= 0.0
             && self.dir == Vec2::ZERO
             && self.speed_mult == 0.0
+            && self.pack_return_dir.is_none()
     }
 
     pub fn initialize(&mut self, rng: &mut impl Rng, cfg: &WanderSeri) {
@@ -298,6 +304,7 @@ impl WanderState {
         self.phase_secs_left = sample_seconds(rng, cfg.move_secs_min, cfg.move_secs_max);
         self.pack_orbit_secs_left = cfg.sample_pack_orbit_timer_secs(rng);
         self.pack_orbit_target = None;
+        self.pack_return_dir = None;
         self.lod_level = 0;
         self.lod_secs_left = 0.0;
         self.lod_accum_secs = 0.0;
@@ -311,8 +318,13 @@ impl WanderState {
     ) -> Vec2 {
         self.dir_secs_left -= dt;
         if self.dir_secs_left <= 0.0 {
-            self.dir = pick_wander_dir(rng, CardinalDirection::from_dir_vec(self.dir.as_ivec2())).to_dir_vec().as_vec2();
-            self.dir_secs_left = sample_seconds(rng, cfg.dir_secs_min, cfg.dir_secs_max);
+            if let Some(return_dir) = self.pack_return_dir.take() {
+                self.dir = return_dir.to_dir_vec().as_vec2();
+                self.dir_secs_left = sample_seconds(rng, 1.0, 1.5);
+            } else {
+                self.dir = pick_wander_dir(rng, CardinalDirection::from_dir_vec(self.dir.as_ivec2())).to_dir_vec().as_vec2();
+                self.dir_secs_left = sample_seconds(rng, cfg.dir_secs_min, cfg.dir_secs_max);
+            }
         }
 
         self.phase_secs_left -= dt;
@@ -367,18 +379,23 @@ impl WanderState {
         cfg: &WanderSeri,
         pack_center: GlobalTilePos,
         gpos: GlobalTilePos,
+        mut is_target_allowed: impl FnMut(GlobalTilePos) -> bool,
     ) -> Vec2 {
         if cfg.pack_orbit_radius <= 0.0 {
             return Vec2::ZERO;
         }
         self.pack_orbit_secs_left -= dt;
         if self.pack_orbit_target.is_none() || self.pack_orbit_secs_left <= 0.0 {
-            self.pack_orbit_target = Some(cfg.sample_pack_orbit_target(rng, pack_center));
+            self.pack_orbit_target = sample_pack_orbit_target_filtered(rng, cfg, pack_center, &mut is_target_allowed);
             self.pack_orbit_secs_left = cfg.sample_pack_orbit_timer_secs(rng);
         }
         let Some(orbit_target) = self.pack_orbit_target else {
             return Vec2::ZERO;
         };
+        if !is_target_allowed(orbit_target) {
+            self.pack_orbit_target = None;
+            return Vec2::ZERO;
+        }
         let orbit_delta = orbit_target.0 - gpos.0;
         let orbit_distance = orbit_delta.as_vec2().length();
         if orbit_distance <= 0.5 {
@@ -392,6 +409,73 @@ impl WanderState {
 
     pub fn current_speed_mult_or_zero(&self) -> f32 {
         self.speed_mult.max(0.0)
+    }
+
+    pub fn has_pack_return_dir(&self) -> bool {
+        self.pack_return_dir.is_some()
+    }
+
+    pub fn maybe_apply_pack_drift_return(
+        &mut self,
+        rng: &mut impl Rng,
+        cfg: &WanderSeri,
+        gpos: GlobalTilePos,
+        pack_center: GlobalTilePos,
+    ) -> Option<Vec2> {
+        if !cfg.max_drift.is_finite() {
+            return None;
+        }
+
+        let speed_mult = self.current_speed_mult_or_zero();
+        if speed_mult <= 0.0 {
+            return None;
+        }
+
+        let pack_delta = pack_center.0 - gpos.0;
+        let current_step = self.dir.as_ivec2();
+        if current_step == IVec2::ZERO {
+            return None;
+        }
+
+        let current_dist_sq = pack_delta.x.saturating_mul(pack_delta.x).saturating_add(pack_delta.y.saturating_mul(pack_delta.y));
+        let current_next_dist_sq = pack_drift_candidate_distance_sq(gpos, pack_center, current_step);
+        if current_next_dist_sq < current_dist_sq {
+            self.pack_return_dir = None;
+            return None;
+        }
+        if cfg.allow_hard_flips_to_return {
+            self.pack_return_dir = None;
+            return Some(cardinal_step_toward(pack_delta).as_vec2() * (speed_mult * 2.0));
+        }
+
+        let current_dir = CardinalDirection::from_dir_vec(current_step);
+        let adjacent_dirs = [
+            current_dir.next_clockwise(),
+            current_dir.next_clockwise().next_clockwise().next_clockwise(),
+        ];
+        let mut chosen_dir = None;
+        let mut chosen_dist_sq = i32::MAX;
+        for candidate_dir in adjacent_dirs {
+            let candidate_step = candidate_dir.to_dir_vec();
+            let candidate_dist_sq = pack_drift_candidate_distance_sq(gpos, pack_center, candidate_step);
+            if candidate_dist_sq < chosen_dist_sq {
+                chosen_dir = Some(candidate_dir);
+                chosen_dist_sq = candidate_dist_sq;
+            }
+        }
+
+        let Some(chosen_dir) = chosen_dir else {
+            return None;
+        };
+
+        self.dir = chosen_dir.to_dir_vec().as_vec2();
+        self.dir_secs_left = sample_seconds(rng, 1.0, 1.5);
+        self.pack_return_dir = if chosen_dist_sq < current_dist_sq {
+            None
+        } else {
+            Some(CardinalDirection::from_dir_vec(cardinal_step_toward(pack_delta)))
+        };
+        Some(self.dir * speed_mult)
     }
 }
 
@@ -425,6 +509,44 @@ fn sample_seconds(rng: &mut impl Rng, min: f32, max: f32) -> f32 {
     } else {
         rng.random_range(min..max)
     }
+}
+
+fn sample_pack_orbit_target_filtered(
+    rng: &mut impl Rng,
+    cfg: &WanderSeri,
+    pack_center: GlobalTilePos,
+    is_target_allowed: &mut impl FnMut(GlobalTilePos) -> bool,
+) -> Option<GlobalTilePos> {
+    const MAX_CANDIDATE_TRIES: usize = 24;
+    for _ in 0..MAX_CANDIDATE_TRIES {
+        let candidate = cfg.sample_pack_orbit_target(rng, pack_center);
+        if is_target_allowed(candidate) {
+            return Some(candidate);
+        }
+    }
+    if is_target_allowed(pack_center) {
+        return Some(pack_center);
+    }
+    None
+}
+
+fn cardinal_step_toward(delta: IVec2) -> IVec2 {
+    if delta == IVec2::ZERO {
+        IVec2::ZERO
+    } else if delta.x.abs() >= delta.y.abs() {
+        IVec2::new(delta.x.signum(), 0)
+    } else {
+        IVec2::new(0, delta.y.signum())
+    }
+}
+
+fn pack_drift_candidate_distance_sq(
+    gpos: GlobalTilePos,
+    pack_center: GlobalTilePos,
+    step: IVec2,
+) -> i32 {
+    let candidate_delta = pack_center.0 - (gpos.0 + step);
+    candidate_delta.x.saturating_mul(candidate_delta.x).saturating_add(candidate_delta.y.saturating_mul(candidate_delta.y))
 }
 
 impl AvoidBeingSpec {

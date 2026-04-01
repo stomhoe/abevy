@@ -11,7 +11,6 @@ use game_common::{
 #[allow(unused_imports, )]
 use crate::{
     sprite_build_systems::*,
-    sprite_components::*,
     sprite_config_init_systems::*,
     sprite_resources::*,
     sprite_sampler::{SpriteSamplerSystems, sprite_sampler_systems::*},

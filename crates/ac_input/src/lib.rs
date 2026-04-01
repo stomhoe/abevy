@@ -1,6 +1,11 @@
 pub mod ac_input;
 pub use ac_input::*;
 pub use paste;
+pub use ac_input_actions::*;
+pub use ac_input_contexts::*;
+pub use ac_input_egui_holders::*;
+pub use ac_input_systems::*;
+pub use player_action_requests::*;
 
 pub mod ac_input_being_actions;
 pub mod ac_input_egui_holders;
@@ -10,16 +15,3 @@ pub mod ac_input_actions;
 pub mod player_action_request_macros;
 pub mod player_action_requests;
 mod ac_input_systems;
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use crate::{
-        ac_input::*,
-        ac_input_actions::*,
-        ac_input_contexts::*,
-        ac_input_egui_holders::*,
-        player_action_request_macros::*,
-        player_action_requests::*,
-        ac_input_systems::*,
-    };
-}

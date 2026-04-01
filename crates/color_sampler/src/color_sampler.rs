@@ -1,7 +1,7 @@
 use bevy::{prelude::*};
 use common::{define_entity_map_systems_no_replicate, common_states::*, };
 
-use crate::{color_sampler_components::*, color_sampler_resources::*, color_sampler_systems::*};
+use crate::{WeightedColorsSeri, color_sampler_components::*, color_sampler_systems::*};
 
 define_entity_map_systems_no_replicate!(
     main_component: ColorSampler,

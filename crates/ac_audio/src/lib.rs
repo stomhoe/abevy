@@ -8,8 +8,8 @@ use serde::Deserialize;
 
 pub mod ac_audio_components;
 pub mod ac_audio_systems;
-
-use ac_audio_systems::*;
+pub use ac_audio_components::*;
+pub use ac_audio_systems::*;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct AcAudioSystems;
@@ -106,14 +106,4 @@ pub fn load_spatial_audio_settings(mut settings: ResMut<SpatialAudioSettings>) {
         return;
     };
     *settings = loaded;
-}
-
-
-
-#[allow(unused_imports, ambiguous_glob_reexports)]
-pub mod prelude {
-    pub use crate::{
-        ac_audio_components::*,
-        ac_audio_systems::*,
-    };
 }

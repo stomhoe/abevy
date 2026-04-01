@@ -5,9 +5,8 @@ use ::being_shared::*;
 use bevy::prelude::*;
 use common::log_targets::BEING_SYSTEM;
 use sprite_shared::HeldSprites;
-use tilemap_shared::{ChunkWithBeingsWantsDespawn, LoadChunksAround, LoadedMacroChunks, MakeChunkDespawn};
-use tilemap::chunking::*;
-use tilemap_shared::{ChunkPos, DimensionRef};
+use ::tilemap_shared::*;
+
 #[allow(unused_parens)]
 pub fn faithful_sim_being(mut cmd: Commands,
     mut reader: MessageReader<FaithfulSimBeing>,
@@ -40,7 +39,8 @@ pub fn faithful_sim_being(mut cmd: Commands,
 #[allow(unused_parens, )]
 pub fn on_chunk_with_beings_attempt_unload(
     mut reader: MessageReader<ChunkWithBeingsWantsDespawn>,
-    chunks_query: Query<&BeingsWithinChunk>,
+    chunks_query: Query<(&DimensionRef, &ChunkPos)>,
+    beings_within_chunk: Res<BeingsWithinChunk>,
     chaser_beings: Query<&Chasing, With<Being>>,
     prevents_chunk_unloading_query: Query<(), (Or<(With<PreventsChunkUnloading>, With<LoadChunksAround>),>,)>,
     player_targets: Query<(), (BeingOfPlayerFaction)>,
@@ -50,11 +50,15 @@ pub fn on_chunk_with_beings_attempt_unload(
     mut chunk_despawn_writer: MessageWriter<MakeChunkDespawn>,
 ) {
     for msg in reader.read() {
-        let Ok(beings_within_chunk) = chunks_query.get(msg.chunk_ent) else {
+        let Ok((&chunk_dim, &chunk_pos)) = chunks_query.get(msg.chunk_ent) else {
+            continue;
+        };
+        let Some(beings_within_chunk) = beings_within_chunk.beings_in_chunk(chunk_dim, chunk_pos) else {
+            chunks_to_despawn.push(MakeChunkDespawn::new_no_delegate_if_beings(msg.chunk_ent));
             continue;
         };
 
-        let should_cancel = beings_within_chunk.iter().any(|being_ent| {
+        let should_cancel = beings_within_chunk.iter().any(|&being_ent| {
             if prevents_chunk_unloading_query.get(being_ent).is_ok() {
                 return true;
             }
@@ -65,7 +69,7 @@ pub fn on_chunk_with_beings_attempt_unload(
         });
 
         if should_cancel {
-            for being_ent in beings_within_chunk.iter() {
+            for &being_ent in beings_within_chunk {
                 if prevents_chunk_unloading_query.get(being_ent).is_ok() {
                     debug!(target: BEING_SYSTEM, "Canceled despawn for chunk {:?} because being {:?} prevents chunk unloading", msg.chunk_ent, being_ent);
                     continue;
