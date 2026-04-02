@@ -34,7 +34,8 @@ pub fn plugin(app: &mut App) {
             MOVEMENT_SCHEDULE,
             (
                 receive_step_request_from_client
-                    .run_if(in_state(ServerState::Running)),
+                    .run_if(in_state(ServerState::Running))
+                    .after(progress_tile_transition_transform),
                 apply_pending_tile_corrections
                     .run_if(in_state(ClientState::Connected)),
                 sync_occupancy_for_beings_at_gpos_res,

@@ -136,7 +136,7 @@ pub fn receive_step_request_from_client(
             .min(MAX_GRID_STEPS_PER_FIXED_TICK as f32 + STEP_EARLY_TOLERANCE);
         if state.step_credit + STEP_EARLY_TOLERANCE < requested_steps as f32 {
             if elapsed <= f32::EPSILON {
-                warn!(
+                trace!(
                     target: MOVEMENT_SYSTEM,
                     "Deferred same-tick early request for {:?}: dir {:?}, steps={}, credit {:.2}",
                     being_ent,
@@ -169,27 +169,15 @@ pub fn receive_step_request_from_client(
         }
         glm.ensure_grid_anchor(&mut glm_visual, curr_tile_pos);
         if glm.is_stepping() {
-            let finishes_this_tick = glm.progress_ticks.saturating_add(1) >= glm.step_ticks_total;
-            if finishes_this_tick {
-                glm.clear_step(&mut glm_visual, curr_tile_pos);
-                trace!(
-                    target: MOVEMENT_SYSTEM,
-                    "Bridged near-complete server step for {:?}: accepting chained dir {:?} at {:?}",
-                    being_ent,
-                    step_dir,
-                    curr_tile_pos
-                );
-            } else {
-                warn!(
-                    target: MOVEMENT_SYSTEM,
-                    "Deferred request while server step in progress for {:?}: dir {:?}, current {:?}",
-                    being_ent,
-                    step_dir,
-                    curr_tile_pos
-                );
-                deferred_requests.insert(being_ent, deferred_request);
-                continue;
-            }
+            trace!(
+                target: MOVEMENT_SYSTEM,
+                "Deferred request while server step in progress for {:?}: dir {:?}, current {:?}",
+                being_ent,
+                step_dir,
+                curr_tile_pos
+            );
+            deferred_requests.insert(being_ent, deferred_request);
+            continue;
         }
         let step_ticks = ticks_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec);
         let steps_taken = if step_ticks > 1 {
