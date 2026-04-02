@@ -1,0 +1,5 @@
+id: boar
+extends: hooved
+add:
+  neck > head > tusk | Left Tusk
+  neck > head > tusk | Right Tusk

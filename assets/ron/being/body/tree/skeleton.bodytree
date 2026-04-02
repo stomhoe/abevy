@@ -1,0 +1,19 @@
+id: skeleton
+tree:
+torso | Torso
+  neck | Neck
+    head | Head
+  chest | Chest
+  abdomen | Abdomen
+  spine | Spine
+  pelvis | Pelvis
+  shoulder | Left Shoulder
+    arm | Left Arm
+      hand | Left Hand
+  shoulder | Right Shoulder
+    arm | Right Arm
+      hand | Right Hand
+  leg | Left Leg
+    foot | Left Foot
+  leg | Right Leg
+    foot | Right Foot

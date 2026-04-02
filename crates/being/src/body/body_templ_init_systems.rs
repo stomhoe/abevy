@@ -5,17 +5,18 @@ use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
 use common::common_id_components::{HashId, HashIdMap};
 use common::log_targets::BODY_BUILD;
-use game_common::game_common_components::{Templ, TemplEntiRef};
+use game_common::game_common_components::Templ;
 use modifier_shared::modifier_components::{ApplyMode, BaseValue, CurrEffectiveValue, ModifierSynergies, ModifierTarget};
 use modifier_shared::modifier_item_types::MassKg;
 use modifier_shared::modifier_types::*;
 use ::being_shared::*;
 use crate::being_interaction_zone_helper::build_being_interaction_zones;
 
-use crate::body::body_hp_systems::UserBodypartInstances;
 use crate::body::{
-    body_components::*, bodypart::bodypart_resources::*,
+    body_components::*,
+    bodypart::bodypart_resources::*,
     body_resources::*,
+    bodytree::*,
 };
 
 const STAT_BLEED_RATE: HashId = HashId::hash("bleed_rate");
@@ -25,6 +26,8 @@ pub fn init_templ_bodys(
     mut cmd: Commands,
     body_map: Res<BodyEntityMap>,
     part_map: Res<BodypartEntityMap>,
+    bodytree_map: Res<BodyTreeTemplateEntityMap>,
+    bodytree_abstract_query: Query<Has<BodyTreeAbstract>, (With<Templ>, )>,
 ) {
     if !body_map.0.is_empty() {
         return;
@@ -35,7 +38,7 @@ pub fn init_templ_bodys(
             Ok(id) => id,
             Err(e) => {
                 let err = BevyError::from(format!("Failed to create StrId for BodyConfig: {}", e));
-                error!(target: "body_init", "{}", err);
+                error!(target: BODY_BUILD, "{}", err);
                 continue;
             }
         };
@@ -90,14 +93,43 @@ pub fn init_templ_bodys(
         }
         let totals_to_distribute = StatBudgetsToDistributeAmongBodyPartsOfTemplBody(totals.clone());
         cmd.entity(body_ent).insert((
-            totals_to_distribute.clone(),
+            totals_to_distribute,
             BodySexes(seri.sexes.clone()),
             CaloricBurnRateMultiplier(seri.caloric_burn_rate_multiplier),
         ));
-        let root_node = std::mem::take(&mut seri.root);
-        let root_id = StrId::trunc(root_node.part_id.as_str());
+        let bodytree_id = seri.bodytree_id.trim();
+        if !bodytree_id.is_empty() {
+            let bodytree_str_id = match StrId::new_with_result(bodytree_id.to_string(), 3) {
+                Ok(id) => id,
+                Err(err) => {
+                    error!(target: BODY_BUILD, "Body '{}' has invalid bodytree_id '{}': {}", body_id, bodytree_id, err);
+                    continue;
+                }
+            };
+            let Ok(bodytree_ent) = bodytree_map.0.get_cloned(&bodytree_str_id) else {
+                error!(target: BODY_BUILD, "Body '{}' references missing bodytree '{}'", body_id, bodytree_str_id);
+                continue;
+            };
+            let Ok(is_abstract) = bodytree_abstract_query.get(bodytree_ent) else {
+                error!(target: BODY_BUILD, "Body '{}' could not inspect bodytree '{}'", body_id, bodytree_str_id);
+                continue;
+            };
+            if is_abstract {
+                error!(target: BODY_BUILD, "Body '{}' references abstract bodytree '{}'; use a derived concrete tree instead", body_id, bodytree_str_id);
+                continue;
+            }
+            cmd.entity(body_ent).insert(BodyTreeRef(bodytree_ent));
+            debug!(target: BODY_BUILD, "Body '{}' uses shared bodytree '{}'", body_id, bodytree_str_id);
+            continue;
+        }
 
-        let root_ent = rec_build_templ_body(
+        let root_node = std::mem::take(&mut seri.root);
+        if root_node.part_id.trim().is_empty() {
+            error!(target: BODY_BUILD, "Body '{}' is missing both bodytree_id and root definition", body_id);
+            continue;
+        }
+        let root_id = StrId::trunc(root_node.part_id.as_str());
+        let root_ent = rec_build_templ_body_tree_nodes(
             &mut cmd,
             &part_map,
             body_ent,
@@ -105,101 +137,16 @@ pub fn init_templ_bodys(
             root_node,
             None,
         );
-
-        if let Some(root_ent) = root_ent {
-            cmd.entity(root_ent).insert(TreeRoot);
-        } else {
-            warn!(target: "body_init", "BodyConfig '{}' root part '{}' not found", body_id, root_id);
+        let Some(root_ent) = root_ent else {
+            warn!(target: BODY_BUILD, "Body '{}' root part '{}' was not found", body_id, root_id);
             continue;
-        }
-
+        };
+        cmd.entity(root_ent).insert(TreeRoot);
+        debug!(target: BODY_BUILD, "Body '{}' built local root tree from root '{}'", body_id, root_id);
     }
 }
 
-fn rec_build_templ_body(
-    cmd: &mut Commands,
-    part_map: &Res<BodypartEntityMap>,
-    templ_body_ent: Entity,
-    body_id: &StrId,
-    node: BodypartNodeSeri,
-    parent_node_ent: Option<Entity>,
-) -> Option<Entity> {
-    let node_bodypart_id = StrId::trunc(node.part_id.as_str());
-    let Ok(source_part_ent) = part_map.0.get_cloned(&node_bodypart_id) else {
-        error!(target: BODY_BUILD, "Bodypart '{}' not found in BodypartCfgEntityMap for body '{}', skipping", node_bodypart_id, body_id);
-        return None;
-    };
-
-    let parent_bodypart = parent_node_ent.unwrap_or(templ_body_ent);
-    let node_ent = cmd.entity(source_part_ent).clone_and_spawn_with_opt_out(|builder| {
-        builder.deny::<(
-            Templ,
-            ChildOf,
-            Children,
-            BodypartChildrenBodyparts,
-        )>();
-    }).id();
-    cmd.entity(node_ent).insert((
-        BodypartChildOfBodypart { parent_bodypart },
-        ChildOf(templ_body_ent),
-        TemplEntiRef(source_part_ent),
-        UserBodypartInstances::default(),
-        Templ,
-        Name::default(),
-    ));
-
-    let override_label = node.label_override.trim();
-    if !override_label.is_empty() {
-        cmd.entity(node_ent).insert(DisplayName::trunc(override_label));
-    }
-
-    for child in node.children {
-        rec_build_templ_body(cmd, part_map, templ_body_ent, body_id, child, Some(node_ent));
-    }
-
-    Some(node_ent)
-}
-
-
-
-#[allow(unused_parens, )]
-pub fn distribute_templ_body_modifiers(
-    mut cmd: Commands,
-    body_query: Query<(Entity, &StrId, &StatBudgetsToDistributeAmongBodyPartsOfTemplBody, &Children), (With<Body>, With<Templ>, )>,
-    forced_query: Query<&BodypartForcedStats, >,
-    weighted_query: Query<&BodypartWeightedDistribution, >,
-    synergy_query: Query<&ModifierSynergies, >,
-    templ_bodypart_refs_query: Query<&TemplEntiRef, ()>,
-    mut templs_mapped_to_bodyparts: Local<Vec<(Entity, Entity)>>,
-) {
-    for (body_ent, body_id, budgets_to_distribute, bodyparts_list) in body_query.iter() {
-
-        templs_mapped_to_bodyparts.clear();
-        for bodypart_ent in bodyparts_list.iter() {
-            let Ok(templ_ref) = templ_bodypart_refs_query.get(bodypart_ent) else {
-                error!(target: BODY_BUILD, "Body {} bodypart node {:?} is missing TemplEntiRef; skipping node", body_id, bodypart_ent);
-                continue;
-            };
-            templs_mapped_to_bodyparts.push((bodypart_ent, templ_ref.0));
-        }
-        if templs_mapped_to_bodyparts.is_empty() {
-            error!(target: BODY_BUILD, "Body {} produced zero templ bodypart references; skipping distribution", body_id);
-            continue;
-        }
-        distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
-            &mut cmd,
-            body_id,
-            &templs_mapped_to_bodyparts,
-            body_ent,
-            budgets_to_distribute,
-            &forced_query,
-            &weighted_query,
-            &synergy_query,
-        );
-    }
-}
-
-fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
+pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
     cmd: &mut Commands,
     body_id: &StrId,
     parts: &[(Entity, Entity)],

@@ -1,0 +1,9 @@
+id: medusa
+extends: humanoid
+add:
+  body > neck > head > snake_hair | Snake Hair 1
+  body > neck > head > snake_hair | Snake Hair 2
+  body > neck > head > snake_hair | Snake Hair 3
+  body > neck > head > snake_hair | Snake Hair 4
+  body > neck > head > snake_hair | Snake Hair 5
+  body > neck > head > snake_hair | Snake Hair 6

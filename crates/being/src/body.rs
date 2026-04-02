@@ -17,6 +17,7 @@ pub mod bodypart;
 pub mod body_resources;
 pub mod body_seris;
 pub mod body_sampler;
+pub mod bodytree;
 mod body_systems;
 mod body_hp_systems;
 mod body_build_systems;
@@ -33,6 +34,7 @@ pub fn plugin(app: &mut App) {
     app.add_plugins((
         body_sampler::plugin,
         bodypart::plugin,
+        bodytree::plugin,
         plugin_body,
     ))
     .add_systems(
@@ -56,13 +58,15 @@ pub fn plugin(app: &mut App) {
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (
-            (init_templ_bodys, ApplyDeferred, distribute_templ_body_modifiers, map_body_id_to_entity).chain().in_set(BodySystems),
+            (init_templ_bodys, ApplyDeferred, map_body_id_to_entity).chain().in_set(BodySystems),
         ),
     )
     .configure_sets(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (
             crate::body::bodypart::BodypartSystems.before(BodySystems),
+            crate::body::bodypart::BodypartSystems.before(bodytree::BodyTreeSystems),
+            bodytree::BodyTreeSystems.before(BodySystems),
             BodySystems.before(body_sampler::BodySamplerSystems),
         ),
     )

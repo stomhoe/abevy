@@ -5,6 +5,8 @@ use common::log_targets::BODY_BUILD;
 use modifier_shared::modifier_components::{AppliedModifiers, ModifierSynergies};
 
 use crate::body::BodyRef;
+use crate::body::body_templ_init_systems::distribute_budgets_among_bodyparts_based_on_weights_and_forcings;
+use crate::body::bodytree::BodyTreeRef;
 use crate::body::{body_components::*};
 use ::being_shared::*;
 
@@ -15,37 +17,58 @@ pub fn build_bodys_on_beings(
         (Entity, &BodyRef, ),
         (With<Being>, Added<BodyRef>, Without<Templ>, Without<Race>, Without<BeingInstTemplate>),
     >,
-    templ_tree_bodyparts_query: Query<(&BodypartChildrenBodyparts, ), (With<Templ>,)>,
+    templ_tree_bodyparts_query: Query<(&BodypartChildrenBodyparts, ), (With<Templ>, )>,
     root_bodypart_query: Query<(), (With<TreeRoot>, )>,
     toclone_query: Query<(&BodypartChildrenBodyparts, ), (With<Templ>, )>,
+    body_totals_query: Query<(&StrId, &StatBudgetsToDistributeAmongBodyPartsOfTemplBody, ), (With<Body>, With<Templ>, )>,
+    bodytree_ref_query: Query<&BodyTreeRef, (With<Body>, With<Templ>, )>,
+    forced_query: Query<&BodypartForcedStats, >,
+    weighted_query: Query<&BodypartWeightedDistribution, >,
+    synergy_query: Query<&ModifierSynergies, >,
     display_name_query: Query<(&DisplayName, Has<Templ>),>,
+    mut cloned_parts_to_source: Local<Vec<(Entity, Entity)>>,
 ) {
     for (being_ent, tree_to_build, ) in consumer_beings_query.iter() {
-        trace!(target: BODY_BUILD, "Building body tree {} for being {} from source templ {}", entity_dbg(tree_to_build.0, &display_name_query), entity_dbg(being_ent, &display_name_query), entity_dbg(tree_to_build.0, &display_name_query));
+        let body_templ_ent = tree_to_build.0;
+        let Ok((body_id, totals_to_distribute)) = body_totals_query.get(body_templ_ent) else {
+            error!(target: BODY_BUILD, "Body template {} is missing distributed totals; skipping build for {}", entity_dbg(body_templ_ent, &display_name_query), entity_dbg(being_ent, &display_name_query));
+            continue;
+        };
+        let source_tree_ent = bodytree_ref_query
+            .get(body_templ_ent)
+            .map(|bodytree_ref| bodytree_ref.0)
+            .unwrap_or(body_templ_ent);
+        trace!(target: BODY_BUILD, "Building body '{}' for being {} using source tree {}", body_id, entity_dbg(being_ent, &display_name_query), entity_dbg(source_tree_ent, &display_name_query));
+
         let body_ent = cmd.spawn((
             BodyOf { being: being_ent },
             ChildOf(being_ent),
-            TemplEntiRef(tree_to_build.0),
+            TemplEntiRef(body_templ_ent),
             BodySums::default(),
         )).id();
 
-        let Ok((templ_bodyparts, )) = templ_tree_bodyparts_query.get(tree_to_build.0) else {
-            error!(target: BODY_BUILD, "Body {:?} has no BodyRootPart; skipping source clone for owner {:?}", tree_to_build.0, being_ent);
+        let Ok((templ_bodyparts, )) = templ_tree_bodyparts_query.get(source_tree_ent) else {
+            error!(target: BODY_BUILD, "Body tree {} has no BodypartChildrenBodyparts; skipping {}", entity_dbg(source_tree_ent, &display_name_query), entity_dbg(being_ent, &display_name_query));
             continue;
         };
         let root_templ_bodypart = templ_bodyparts
             .iter()
             .find(|&templ_bodypart| root_bodypart_query.get(templ_bodypart).is_ok());
         let Some(root_templ_bodypart) = root_templ_bodypart else {
-            error!(target: BODY_BUILD, "Body {} has no valid BodyRootPart; skipping source clone for owner {}", entity_dbg(tree_to_build.0, &display_name_query), entity_dbg(being_ent, &display_name_query));
+            error!(target: BODY_BUILD, "Body tree {} has no TreeRoot bodypart; skipping {}", entity_dbg(source_tree_ent, &display_name_query), entity_dbg(being_ent, &display_name_query));
             continue;
         };
-        trace!(target: BODY_BUILD, "Selected root source body part {} for being {} from body tree {}", entity_dbg(root_templ_bodypart, &display_name_query), entity_dbg(being_ent, &display_name_query), entity_dbg(tree_to_build.0, &display_name_query));
+        trace!(target: BODY_BUILD, "Selected root source bodypart {} for being {}", entity_dbg(root_templ_bodypart, &display_name_query), entity_dbg(being_ent, &display_name_query));
+
+        cloned_parts_to_source.clear();
+        let source_part_count = templ_bodyparts.iter().count();
+        cloned_parts_to_source.reserve(source_part_count);
 
         let Some(new_root_ent) = walk_and_clone_tree(
             &mut cmd,
             root_templ_bodypart,
             &toclone_query,
+            &mut cloned_parts_to_source,
             None,
             body_ent,
             &display_name_query,
@@ -53,6 +76,17 @@ pub fn build_bodys_on_beings(
             continue;
         };
         trace!(target: BODY_BUILD, "Root clone {} finished for being {}; attached to body {}", entity_dbg(new_root_ent, &display_name_query), entity_dbg(being_ent, &display_name_query), entity_dbg(body_ent, &display_name_query));
+
+        distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
+            &mut cmd,
+            body_id,
+            &cloned_parts_to_source,
+            body_ent,
+            totals_to_distribute,
+            &forced_query,
+            &weighted_query,
+            &synergy_query,
+        );
     }
 }
 
@@ -60,6 +94,7 @@ fn walk_and_clone_tree(
     cmd: &mut Commands,
     templtree_curr_node_ent: Entity,
     ref_of_bpart_toclone_query: &Query<(&BodypartChildrenBodyparts, ), (With<Templ>, )>,
+    cloned_parts_to_source: &mut Vec<(Entity, Entity)>,
     parent_node: Option<Entity>,
     body_ent: Entity,
     display_name_query: &Query<(&DisplayName, Has<Templ>),>,
@@ -79,6 +114,7 @@ fn walk_and_clone_tree(
         TemplEntiRef(templtree_curr_node_ent),
         Name::default(),
     ));
+    cloned_parts_to_source.push((cloned_bodypart_ent, templtree_curr_node_ent));
     trace!(target: BODY_BUILD, "Created clone {} from source {} for body {}", entity_dbg(cloned_bodypart_ent, display_name_query), entity_dbg(templtree_curr_node_ent, display_name_query), entity_dbg(body_ent, display_name_query));
     trace!(target: BODY_BUILD, "Assigned BodypartChildOf parent {} and ChildOf body {} to clone {}", entity_dbg(parent_bodypart, display_name_query), entity_dbg(body_ent, display_name_query), entity_dbg(cloned_bodypart_ent, display_name_query));
 
@@ -90,6 +126,7 @@ fn walk_and_clone_tree(
                 cmd,
                 templ_child_bodypart_ent,
                 ref_of_bpart_toclone_query,
+                cloned_parts_to_source,
                 Some(cloned_bodypart_ent),
                 body_ent,
                 display_name_query,

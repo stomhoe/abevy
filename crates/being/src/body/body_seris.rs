@@ -4,7 +4,7 @@ use bevy::platform::collections::HashMap;
 use tilemap_shared::InteractionZoneSeri;
 
 
-#[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
+#[derive(serde::Deserialize, Asset, TypePath, Default, Debug, Clone)]
 pub struct BodypartNodeSeri {
     pub part_id: String,
     #[serde(default)]
@@ -27,5 +27,8 @@ pub struct BodySeri {
     pub caloric_burn_rate_multiplier: f32,
     pub melee_interaction_zone: InteractionZoneSeri,
     pub collision_zone: InteractionZoneSeri,
+    #[serde(default)]
+    pub bodytree_id: String,
+    #[serde(default)]
     pub root: BodypartNodeSeri,
 }

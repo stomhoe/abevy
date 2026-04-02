@@ -1,0 +1,12 @@
+id: snake
+tree:
+body | Body
+  head | Head
+    brain | Brain
+    eye | Left Eye
+    eye | Right Eye
+    nose | Nose
+    jaw | Jaw
+      mouth | Mouth
+  spine | Spine
+  tail | Tail

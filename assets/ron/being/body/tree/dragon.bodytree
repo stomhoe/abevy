@@ -1,0 +1,34 @@
+id: dragon
+tree:
+torso | Torso
+  neck | Neck
+    head | Head
+      brain | Brain
+      eye | Left Eye
+      eye | Right Eye
+      ear | Left Ear
+      ear | Right Ear
+      nose | Nose
+      jaw | Jaw
+        mouth | Mouth
+  chest | Chest
+    heart | Heart
+    lung | Left Lung
+    lung | Right Lung
+  abdomen | Abdomen
+    stomach | Stomach
+    liver | Liver
+    kidney | Left Kidney
+    kidney | Right Kidney
+  spine | Spine
+  pelvis | Pelvis
+  shoulder | Left Shoulder
+    arm | Left Arm
+      hand | Left Hand
+  shoulder | Right Shoulder
+    arm | Right Arm
+      hand | Right Hand
+  leg | Left Leg
+    foot | Left Foot
+  leg | Right Leg
+    foot | Right Foot

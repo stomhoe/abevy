@@ -1,5 +1,15 @@
 {
     "chat.tools.terminal.autoApprove": {
         "mv": true
-    }
+    },
+  "editor.fontFamily": "JetBrains Mono",
+  "workbench.statusBar.visible": true, // Zed tiene una barra de estado muy fina
+  "editor.minimap.enabled": false,
+  "workbench.sideBar.location": "left",
+  "explorer.compactFolders": false,
+  "workbench.tree.renderIndentGuides": "none",
+  "editor.stickyScroll.enabled": false,
+  "window.menuBarVisibility": "compact",
+  "workbench.activityBar.location": "hidden"
+
 }
