@@ -21,16 +21,23 @@ pub struct WanderSeri {
     pub pack_orbit_radius: f32,
     pub pack_orbit_retarget_secs_min: f32,
     pub pack_orbit_retarget_secs_max: f32,
+    pub min_speech_length: f32,
+    pub max_speech_length: f32,
+    pub meet_cooldown_secs_min: f32,
+    pub meet_cooldown_secs_max: f32,
+    pub min_subordinate_participants: f32,
+    pub max_subordinate_participants: f32,
+    pub min_sep_tospeaker: u8,
 }
 impl Default for WanderSeri {
     fn default() -> Self {
         Self {
             dir_secs_min: 1.0,
-            dir_secs_max: 2.0,
-            move_secs_min: 0.8,
-            move_secs_max: 2.2,
+            dir_secs_max: 15.0,
+            move_secs_min: 1.,
+            move_secs_max: 6.2,
             halt_secs_min: 0.2,
-            halt_secs_max: 1.0,
+            halt_secs_max: 4.0,
             speed_min: 0.4,
             speed_max: 0.6,
             avoid_tile_tags: HashSet::default(),
@@ -45,6 +52,13 @@ impl Default for WanderSeri {
             pack_orbit_radius: 70.0,
             pack_orbit_retarget_secs_min: 30.,
             pack_orbit_retarget_secs_max: 240.,
+            min_speech_length: 30.0,
+            max_speech_length: 60.0,
+            meet_cooldown_secs_min: 50.0,
+            meet_cooldown_secs_max: 120.0,
+            min_subordinate_participants: 2.0,
+            max_subordinate_participants: 10.0,
+            min_sep_tospeaker: 1,
         }
     }
 }
@@ -132,6 +146,17 @@ impl WanderSeri {
         self.pack_orbit_radius = self.pack_orbit_radius.max(0.0);
         self.pack_orbit_retarget_secs_min = self.pack_orbit_retarget_secs_min.max(0.0);
         self.pack_orbit_retarget_secs_max = self.pack_orbit_retarget_secs_max.max(self.pack_orbit_retarget_secs_min);
+        self.min_speech_length = self.min_speech_length.max(0.0);
+        self.max_speech_length = self.max_speech_length.max(self.min_speech_length);
+        self.meet_cooldown_secs_min = self.meet_cooldown_secs_min.max(0.0);
+        self.meet_cooldown_secs_max = self
+            .meet_cooldown_secs_max
+            .max(self.meet_cooldown_secs_min);
+        self.min_subordinate_participants = self.min_subordinate_participants.max(0.0);
+        self.max_subordinate_participants = self
+            .max_subordinate_participants
+            .max(self.min_subordinate_participants);
+        self.min_sep_tospeaker = self.min_sep_tospeaker.max(1);
         self.avoid_bit_tags = self
             .avoid_bit_tags
             .into_iter()
@@ -204,6 +229,12 @@ impl WanderSeri {
             && self.pack_orbit_radius == 0.0
             && self.pack_orbit_retarget_secs_min == 0.0
             && self.pack_orbit_retarget_secs_max == 0.0
+            && self.min_speech_length == 0.0
+            && self.max_speech_length == 0.0
+            && self.meet_cooldown_secs_min == 0.0
+            && self.meet_cooldown_secs_max == 0.0
+            && self.min_subordinate_participants == 0.0
+            && self.max_subordinate_participants == 0.0
             && !self.wander_around_leader
             && self.avoid_being_tags.is_empty()
             && !self.avoid_blacklisted_spawn_tiles
@@ -239,23 +270,55 @@ impl WanderSeri {
         }
         sample_seconds(rng, self.pack_orbit_retarget_secs_min, self.pack_orbit_retarget_secs_max)
     }
+
+    pub fn speech_enabled(&self) -> bool {
+        self.max_speech_length > 0.0
+            && self.max_subordinate_participants > 0.0
+    }
+
+    pub fn sample_speech_length_secs(&self, rng: &mut impl Rng) -> f32 {
+        if self.max_speech_length <= 0.0 {
+            return 0.0;
+        }
+        sample_seconds(rng, self.min_speech_length, self.max_speech_length)
+    }
 }
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Reflect, Default, PartialEq, Eq)]
+pub enum WanderPhase {
+    #[default]
+    Move,
+    Halt,
+    Meet,
+}
+
 #[derive(Component, Debug, Clone, Deserialize, Serialize, Reflect, Default)]
 #[require(BehavorialNavState, )]
 pub struct WanderState {
-    pub(crate) dir: Vec2,
-    pub(crate) dir_secs_left: f32,
-    pub(crate) speed_mult: f32,
-    pub(crate) halting: bool,
-    pub(crate) phase_secs_left: f32,
-    pub(crate) pack_orbit_secs_left: f32,
-    pub(crate) pack_orbit_target: Option<GlobalTilePos>,
+    pub dir: Vec2,
+    pub dir_secs_left: f32,
+    pub speed_mult: f32,
+    pub phase: WanderPhase,
+    pub phase_secs_left: f32,
+    pub pack_orbit_secs_left: f32,
+    pub pack_orbit_target: Option<GlobalTilePos>,
     #[serde(default)]
     #[reflect(ignore)]
-    pub(crate) pack_return_dir: Option<CardinalDirection>,
-    pub(crate) lod_level: u8,
-    pub(crate) lod_secs_left: f32,
-    pub(crate) lod_accum_secs: f32,
+    pub pack_return_dir: Option<CardinalDirection>,
+    #[serde(default)]
+    pub halt_facing_adjusted_this_halt: bool,
+    #[serde(default)]
+    #[reflect(ignore)]
+    pub meet_anchor: Option<Entity>,
+    #[serde(default)]
+    #[reflect(ignore)]
+    pub meet_target: Option<GlobalTilePos>,
+    #[serde(default)]
+    #[reflect(ignore)]
+    pub meet_facing: CardinalDirection,
+    pub lod_level: u8,
+    pub lod_secs_left: f32,
+    pub lod_accum_secs: f32,
 }
 impl WanderState {
     pub fn new(rng: &mut impl Rng, cfg: &WanderSeri) -> Self {
@@ -271,21 +334,84 @@ impl WanderState {
             && self.lod_secs_left <= 0.0
             && self.dir == Vec2::ZERO
             && self.speed_mult == 0.0
+            && self.phase == WanderPhase::Move
             && self.pack_return_dir.is_none()
+            && !self.halt_facing_adjusted_this_halt
+            && self.meet_anchor.is_none()
+            && self.meet_target.is_none()
     }
 
     pub fn initialize(&mut self, rng: &mut impl Rng, cfg: &WanderSeri) {
         self.dir = CardinalDirection::random(rng).to_dir_vec().as_vec2();
         self.dir_secs_left = sample_seconds(rng, cfg.dir_secs_min, cfg.dir_secs_max);
         self.speed_mult = sample_seconds(rng, cfg.speed_min, cfg.speed_max);
-        self.halting = false;
+        self.phase = WanderPhase::Move;
         self.phase_secs_left = sample_seconds(rng, cfg.move_secs_min, cfg.move_secs_max);
         self.pack_orbit_secs_left = cfg.sample_pack_orbit_timer_secs(rng);
         self.pack_orbit_target = None;
         self.pack_return_dir = None;
+        self.halt_facing_adjusted_this_halt = false;
+        self.meet_anchor = None;
+        self.meet_target = None;
+        self.meet_facing = CardinalDirection::default();
         self.lod_level = 0;
         self.lod_secs_left = 0.0;
         self.lod_accum_secs = 0.0;
+    }
+
+    pub fn current_cardinal_dir(&self) -> CardinalDirection {
+        CardinalDirection::from_dir_vec(self.dir.as_ivec2())
+    }
+
+    pub fn is_halting(&self) -> bool {
+        self.phase == WanderPhase::Halt
+    }
+
+    pub fn is_meeting(&self) -> bool {
+        self.phase == WanderPhase::Meet
+    }
+
+    pub fn meeting_anchor(&self) -> Option<Entity> {
+        self.meet_anchor
+    }
+
+    pub fn meeting_target(&self) -> Option<GlobalTilePos> {
+        self.meet_target
+    }
+
+    pub fn meeting_facing(&self) -> CardinalDirection {
+        self.meet_facing
+    }
+
+    pub fn start_meet(
+        &mut self,
+        anchor: Entity,
+        target: GlobalTilePos,
+        facing: CardinalDirection,
+        length_secs: f32,
+    ) {
+        self.phase = WanderPhase::Meet;
+        self.phase_secs_left = length_secs.max(0.0);
+        self.meet_anchor = Some(anchor);
+        self.meet_target = Some(target);
+        self.meet_facing = facing;
+    }
+
+    pub fn should_adjust_halt_facing_once(&self) -> bool {
+        self.phase == WanderPhase::Halt && !self.halt_facing_adjusted_this_halt
+    }
+
+    pub fn mark_halt_facing_adjusted(&mut self) {
+        self.halt_facing_adjusted_this_halt = true;
+    }
+
+    pub fn set_motion_dir(&mut self, dir: CardinalDirection, rng: &mut impl Rng, cfg: &WanderSeri) {
+        self.dir = dir.to_dir_vec().as_vec2();
+        self.dir_secs_left = sample_seconds(rng, cfg.dir_secs_min, cfg.dir_secs_max);
+    }
+
+    pub fn expire_motion_dir(&mut self) {
+        self.dir_secs_left = 0.0;
     }
 
     pub fn advance_motion(
@@ -307,19 +433,25 @@ impl WanderState {
 
         self.phase_secs_left -= dt;
         if self.phase_secs_left <= 0.0 {
-            self.halting = !self.halting;
-            if self.halting {
-                self.phase_secs_left = sample_seconds(rng, cfg.halt_secs_min, cfg.halt_secs_max);
-            } else {
-                self.phase_secs_left = sample_seconds(rng, cfg.move_secs_min, cfg.move_secs_max);
-                self.speed_mult = sample_seconds(rng, cfg.speed_min, cfg.speed_max);
+            match self.phase {
+                WanderPhase::Move => {
+                    self.phase = WanderPhase::Halt;
+                    self.halt_facing_adjusted_this_halt = false;
+                    self.phase_secs_left = sample_seconds(rng, cfg.halt_secs_min, cfg.halt_secs_max);
+                }
+                WanderPhase::Halt | WanderPhase::Meet => {
+                    self.phase = WanderPhase::Move;
+                    self.phase_secs_left = sample_seconds(rng, cfg.move_secs_min, cfg.move_secs_max);
+                    self.speed_mult = sample_seconds(rng, cfg.speed_min, cfg.speed_max);
+                    self.meet_anchor = None;
+                    self.meet_target = None;
+                }
             }
         }
 
-        if self.halting {
-            Vec2::ZERO
-        } else {
-            self.dir * self.speed_mult
+        match self.phase {
+            WanderPhase::Move => self.dir * self.speed_mult,
+            WanderPhase::Halt | WanderPhase::Meet => Vec2::ZERO,
         }
     }
 

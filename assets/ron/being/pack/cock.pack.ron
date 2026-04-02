@@ -1,0 +1,12 @@
+pack {
+    id: "cock",
+    spawn_being_count_normal_dist: { min_dev: 3.0, max_dev: 3.0, mean: 5.0, std_dev: 2.0 },
+    ids: {
+        cock: 1.0,
+    },
+    biome_affinity: {
+        ocean: -2.5,
+        temp: 1.2,
+    },
+    pack_spawn_radius: 7,
+}

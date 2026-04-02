@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_common::game_common::ModifierSystems;
+use game_common::{HostSystems, game_common::ModifierSystems};
 use item_systems::generate_items_on_deaths;
 use {
     crate::modifier_hp_systems::*,
@@ -23,27 +23,24 @@ pub fn plugin(app: &mut App) {
             update_modifier_effective_values.run_if(on_timer(Duration::from_millis(300))),
             sync_modifier_name_to_effects,
         )
-            .chain()
-            .in_set(ModifierSystems),
+            .in_set(ModifierSystems).in_set(HostSystems),
     )
     .add_systems(
         Update,
         (
-            update_body_manipulation_totals,
+            update_body_manipulation_totals.run_if(on_timer(Duration::from_millis(300))),
             (
-                generate_items_on_deaths,
                 despawn_entities_on_death,
             )
-                .chain(),
         )
-            .in_set(ModifierSystems),
+        .in_set(ModifierSystems).in_set(HostSystems),
     )
     .register_type::<AppliedModifiers>()
     .register_type::<ModifierTarget>()
 
     .replicate::<ModifierTarget>()
     .replicate::<BaseValue>()
-    .replicate::<CurrEffectiveValue>()
+    .replicate_once::<CurrEffectiveValue>()
     .replicate::<MitigatingOnly>()
     .replicate::<ApplyMode>()
     .replicate::<Antidote>()

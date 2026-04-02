@@ -17,37 +17,39 @@ const MOVEMENT_SCHEDULE: FixedUpdate = FixedUpdate;
 
 pub fn plugin(app: &mut App) {
     app.add_systems(
-        Update,
-        (
-            add_grid_locked_movement_requirements,
-            add_movement_components_to_beings,
-            copy_client_move_input_to_controlled_beings,
-            receive_gpos_from_server
-                .run_if(in_state(ClientState::Connected))
-                .run_if(on_message::<SyncGpos>),
-            )
-            .in_set(MovementSystems),
-    )
-        .add_systems(
-            MOVEMENT_SCHEDULE,
+            Update,
             (
-                receive_step_request_from_client
-                    .run_if(in_state(ServerState::Running))
-                    .run_if(on_message::<FromClient<SendStepRequest>>),
-                apply_pending_tile_corrections
-                    .run_if(in_state(ClientState::Connected)),
-                sync_occupancy_for_beings_at_gpos_res,
-            )
-                .in_set(MovementSystems),
+                add_grid_locked_movement_requirements,
+                add_movement_components_to_beings,
+                copy_client_move_input_to_controlled_beings,
+                apply_input_vec_modi_mul_to_final_norm_move_dir
+                    .after(copy_client_move_input_to_controlled_beings)
+                    .after(process_input_direction_modifiers),
+                receive_gpos_from_server
+                    .run_if(in_state(ClientState::Connected))
+                    .run_if(on_message::<SyncGpos>),
+            ).in_set(MovementSystems),
         )
         .add_systems(
             MOVEMENT_SCHEDULE,
             (
-                resolve_overlapping_beings.in_set(HostSystems),
+                receive_step_request_from_client
+                    .run_if(in_state(ServerState::Running)),
+                apply_pending_tile_corrections
+                    .run_if(in_state(ClientState::Connected)),
+                sync_occupancy_for_beings_at_gpos_res,
+            )
+            .in_set(MovementSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                resolve_overlapping_beings,
                 process_input_direction_modifiers,
                 process_speed_modifiers,
             )
-                .in_set(MovementSystems),
+            .in_set(HostSystems)
+            .in_set(MovementSystems),
         )
         .add_systems(
             MOVEMENT_SCHEDULE,
@@ -56,7 +58,7 @@ pub fn plugin(app: &mut App) {
                 start_grid_locked_steps,
                 progress_tile_transition_transform,
             )
-                .in_set(MovementSystems),
+            .in_set(MovementSystems),
         )
         .add_systems(
             MOVEMENT_SCHEDULE,
@@ -64,7 +66,7 @@ pub fn plugin(app: &mut App) {
                 update_facing_dir,
                 do_free_movement,
             )
-                .in_set(MovementSystems),
+            .in_set(MovementSystems),
         )
         .configure_sets(FixedUpdate, MovementSystems.in_set(SimRunningSystems))
         .configure_sets(Update, MovementSystems.in_set(SimRunningSystems))
@@ -73,5 +75,6 @@ pub fn plugin(app: &mut App) {
         .replicate_once::<GridLockedMovement>()
         .replicate_once::<GridLockedMovementVisual>()
         .replicate::<SpeedMagnitude>()
-        .replicate_filtered::<CardinalDirection, (Without<FinalNormMoveDir>,)>();
+        .replicate::<InputInvMul>()
+        .replicate_filtered::<CardinalDirection, (Without<FinalNormMoveDir>, Without<SpeedMagnitude>)>();
 }

@@ -6,7 +6,7 @@
     scs_samplers: ["goblin"],
     sprites_scale_ranges: {},
     health_multiplier: 1.0,
-    body_tree: "goblin",
+    body: "goblin",
 
     recruitment_difficulty: None,
 

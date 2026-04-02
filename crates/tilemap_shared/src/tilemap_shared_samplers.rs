@@ -3,6 +3,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::*;
 
 #[derive(Asset, TypePath, Debug, Clone, Deserialize, )]
+///https://homepage.divms.uiowa.edu/~mbognar/applets/normal.html
 pub struct NormalDistSeri {
     pub min_dev: f32,
     pub max_dev: f32,

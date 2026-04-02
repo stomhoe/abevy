@@ -96,24 +96,6 @@ impl RaceSeri {
         TagSet::new(self.tags.iter().chain(std::iter::once(&self.id)))
     }
 }
-
-#[derive(serde::Deserialize, Debug, Clone, Default)]
-pub struct RaceFootstepSfxSeri {
-    #[serde(default)]
-    pub paths: Vec<String>,
-    #[serde(default)]
-    pub disable_tile_step_sfx: bool,
-}
-
-#[derive(serde::Deserialize, Debug, Clone, Default)]
-pub struct RaceSexEntrySeri {//TODO fix usage
-    #[serde(default)]
-    pub weight: u32,
-    #[serde(default)]
-    pub sprites: Vec<String>,
-    pub size_variation: Option<NormalDistSeri>,
-}
-
 impl Default for RaceSeri {
     fn default() -> Self {
         Self {
@@ -155,6 +137,24 @@ impl Default for RaceSeri {
         }
     }
 }
+
+#[derive(serde::Deserialize, Debug, Clone, Default)]
+pub struct RaceFootstepSfxSeri {
+    #[serde(default)]
+    pub paths: Vec<String>,
+    #[serde(default)]
+    pub disable_tile_step_sfx: bool,
+}
+
+#[derive(serde::Deserialize, Debug, Clone, Default)]
+pub struct RaceSexEntrySeri {//TODO fix usage
+    #[serde(default)]
+    pub weight: u32,
+    #[serde(default)]
+    pub sprites: Vec<String>,
+    pub size_variation: Option<NormalDistSeri>,
+}
+
 
 common::define_entity_map_systems!(
     Race,

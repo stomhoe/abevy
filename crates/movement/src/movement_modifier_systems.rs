@@ -1,6 +1,6 @@
 use core::f32;
 
-use being_shared::{HeldBody, BodypartChildrenBodyparts, BodyTreeWeightSum, ComputedLocally};
+use being_shared::{HeldBody, BodypartChildrenBodyparts, BodyWeightSum, ComputedLocally};
 use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::ClientState;
@@ -11,17 +11,14 @@ use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::{InvertMovement, WalkSpeed};
 use tilemap_shared::*;
 
-use crate::movement_components::{InputMaxSpeed, InputMoveDir, InputSpeedThrottleMult, FinalNormMoveDir, SpeedMagnitude};
+use crate::movement_components::*;
 
 #[allow(unused_parens, )]
 pub fn process_input_direction_modifiers(
-    state: Res<State<ClientState>>,
     mut being_query: Query<(
         Entity,
         Option<&HeldBody>,
-        &InputMoveDir,
-        &mut FinalNormMoveDir,
-        Has<ComputedLocally>,
+        &mut InputInvMul,
     )>,
     applied_mods_query: Query<&AppliedModifiers, >,
     modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>, ), (Without<Templ>, )>,
@@ -31,16 +28,12 @@ pub fn process_input_direction_modifiers(
     bodyparts_query: Query<&BodypartChildrenBodyparts, >,
     templ_refs_query: Query<&TemplEntiRef>,
     mut effects: Local<EntityHashSet>,
-
 ) {
-    let is_client = state.get() == &ClientState::Connected;
-    for (being_ent, body, input_move_dir, mut norm_move_dir, controlled_locally) in being_query.iter_mut()
+    for (being_ent, body, mut input_vec_modi_mul, ) in being_query.iter_mut()
     {
-        if is_client && !controlled_locally {
-            continue;
+        if input_vec_modi_mul.is_non_default() {
+            input_vec_modi_mul.0 = 1.0;
         }
-        let input_dir = input_move_dir.0;
-
         let mut invert_sum: f32 = 0.0;
         let mut invert_scale: f32 = 1.0;
         effects.clear();
@@ -80,13 +73,31 @@ pub fn process_input_direction_modifiers(
                 _ => {}
             }
         }
-        norm_move_dir.0 = if input_dir == Vec2::ZERO {
-            Vec2::ZERO
-        } else if invert_sum * invert_scale > 1.0 {
-            -input_dir.normalize()
-        } else {
-            input_dir.normalize()
-        };
+        if invert_sum * invert_scale > 1.0 {
+            input_vec_modi_mul.0 = -1.0;
+        }
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn apply_input_vec_modi_mul_to_final_norm_move_dir(
+    state: Res<State<ClientState>>,
+    mut being_query: Query<(
+        &InputMoveDir,
+        &InputInvMul,
+        &mut FinalNormMoveDir,
+        Has<ComputedLocally>,
+    )>,
+) {
+    let is_client = state.get() == &ClientState::Connected;
+    for (input_move_dir, input_vec_modi_mul, mut final_norm_move_dir, controlled_locally) in being_query.iter_mut() {
+        if is_client && !controlled_locally {
+            continue;
+        }
+        let new_val = input_move_dir.0 * input_vec_modi_mul.0;
+        if final_norm_move_dir.new_val_is_different(new_val) {
+            final_norm_move_dir.0 = new_val;
+        }
     }
 }
 
@@ -99,7 +110,7 @@ pub fn process_speed_modifiers(
         &GlobalTilePos,
         Option<&HeldBody>,
         &mut SpeedMagnitude,
-        Option<&BodyTreeWeightSum>,
+        Option<&BodyWeightSum>,
         Option<&InputSpeedThrottleMult>,
         Option<&InputMaxSpeed>,
         Has<ComputedLocally>,

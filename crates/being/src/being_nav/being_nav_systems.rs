@@ -409,24 +409,22 @@ pub fn apply_nav_orders(
     for (being_ent, order) in selected_by_ent.drain() {
         if let Some(go_to) = order.go_to {
             if let Ok(Some(mut curr_go_to)) = go_to_query.get_mut(being_ent) {
-                curr_go_to.pos = go_to.pos;
-                curr_go_to.stop_distance = go_to.stop_distance;
-                curr_go_to.source = Some(order.source);
-                curr_go_to.updated_tick = tick;
+                *curr_go_to = GoTo::with_source(
+                    go_to.pos,
+                    go_to.stop_distance,
+                    order.source,
+                    tick,
+                );
             } else {
                 cmd.entity(being_ent).try_insert(GoTo::with_source(
-                    go_to.pos.expect("NavOrder::go_to should always contain a target"),
+                    go_to.pos,
                     go_to.stop_distance,
                     order.source,
                     tick,
                 ));
             }
         } else {
-            if let Ok(Some(mut curr_go_to)) = go_to_query.get_mut(being_ent) {
-                curr_go_to.pos = None;
-                curr_go_to.source = None;
-                curr_go_to.updated_tick = 0;
-            }
+            cmd.entity(being_ent).try_remove::<GoTo>();
         }
         let speed_throttle_mult = order.speed_throttle_mult.clamp(0.0, 1.0);
         let Ok((mut input_speed_throttle_mult, mut input_max_speed)) = input_speed_query.get_mut(being_ent) else {
@@ -440,21 +438,18 @@ pub fn apply_nav_orders(
 
 #[allow(unused_parens, )]
 pub fn clear_nav_outputs_for_beings_without_nav_state(
+    mut cmd: Commands,
     mut query: Query<(Entity, Has<WanderState>, Has<Chasing>, Has<Fleeing>, Option<&mut GoTo>, ), (With<Being>, LocalAiControlled, )>,
     mut input_speed_query: Query<(&mut InputSpeedThrottleMult, &mut InputMaxSpeed, ), (), >,
 ) {
-    for (being_ent, has_wandering, has_chasing, has_fleeing, go_to, ) in query.iter_mut() {
+    for (being_ent, has_wandering, has_chasing, has_fleeing, _, ) in query.iter_mut() {
         if has_wandering || has_chasing || has_fleeing {
             continue;
         }
         let Ok((mut input_speed_throttle_mult, mut input_max_speed)) = input_speed_query.get_mut(being_ent) else {
             continue;
         };
-        if let Some(mut go_to) = go_to {
-            go_to.pos = None;
-            go_to.source = None;
-            go_to.updated_tick = 0;
-        }
+        cmd.entity(being_ent).try_remove::<GoTo>();
         input_speed_throttle_mult.0 = 1.0;
         input_max_speed.0 = f32::MAX;
     }
@@ -492,10 +487,7 @@ pub fn sync_ai_nav_grids(
     scratch.dim_center_counts.reserve(chaser_count);
 
     for (being_ent, dim_ref, controlled_by, goto, ) in chaser_iter {
-        let Some(goto) = goto else {
-            continue;
-        };
-        if goto.pos.is_none() {
+        let Some(_) = goto else {
             continue;
         };
         if let Some(controlled_by) = controlled_by {

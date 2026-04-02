@@ -5,7 +5,7 @@ use bevy_replicon::prelude::*;
 use param_sets::BlockingTileParamSet;
 use sprite_animation_shared::MirrorHolderStateForSprite;
 use tilemap::tile::tile_components::Tile;
-use tilemap_shared::{DimensionRef, GlobalTilePos};
+use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};
 
 use common::log_targets::MOVEMENT_SYSTEM;
 
@@ -17,6 +17,13 @@ const STEP_EARLY_TOLERANCE: f32 = 0.6;
 pub struct ClientStepRateState {
     last_server_secs: f64,
     step_credit: f32,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct DeferredStepRequest {
+    client_id: ClientId,
+    step_dir: CardinalDirection,
+    steps: u16,
 }
 
 #[allow(unused_parens, )]
@@ -37,12 +44,28 @@ pub fn receive_step_request_from_client(
     mut move_state_writer: MessageWriter<MirrorHolderStateForSprite>,
     mut move_state_msgs: Local<Vec<MirrorHolderStateForSprite>>,
     mut rate_states: Local<EntityHashMap<ClientStepRateState>>,
+    mut deferred_requests: Local<EntityHashMap<DeferredStepRequest>>,
 ) {
+    let mut pending_requests = std::mem::take(&mut *deferred_requests);
     for from_client in events.read() {
-        let SendStepRequest { being_ent, dir: step_dir, steps } = from_client.message.clone();
-        let client_id = from_client.client_id;
+        let SendStepRequest {
+            being_ent,
+            dir: step_dir,
+            steps,
+        } = from_client.message.clone();
+        pending_requests.insert(
+            being_ent,
+            DeferredStepRequest {
+                client_id: from_client.client_id,
+                step_dir,
+                steps,
+            },
+        );
+    }
+    for (being_ent, deferred_request) in pending_requests {
+        let DeferredStepRequest { client_id, step_dir, steps } = deferred_request;
         let Ok((controlled_by, )) = controlled_beings.get(being_ent) else {
-            error!(
+            warn!(
                 target: MOVEMENT_SYSTEM,
                 "Dropped step request for uncontrolled/missing being {:?} from {:?}",
                 being_ent,
@@ -50,9 +73,9 @@ pub fn receive_step_request_from_client(
             );
             continue;
         };
-        if let Some(client_ent) = from_client.client_id.entity() {
+        if let Some(client_ent) = client_id.entity() {
             if controlled_by.client_ent != client_ent {
-                error!(
+                warn!(
                     target: MOVEMENT_SYSTEM,
                     "Dropped spoofed step request for {:?}: owner {:?}, sender {:?}",
                     being_ent,
@@ -62,7 +85,7 @@ pub fn receive_step_request_from_client(
                 continue;
             }
         } else if client_id != ClientId::Server {
-            error!(
+            warn!(
                 target: MOVEMENT_SYSTEM,
                 "Dropped step request from unmapped non-server sender {:?} for {:?}",
                 client_id,
@@ -85,7 +108,7 @@ pub fn receive_step_request_from_client(
                 let _ = blocking_tiles.set_being_direction(being_ent, step_dir);
                 move_state_msgs.push(MirrorHolderStateForSprite(being_ent));
                 messages.push(ToClients {
-                    mode: SendMode::Broadcast,
+                    mode: SendMode::BroadcastExcept(client_id),
                     message: SyncGpos {
                         being_ent,
                         gpos: curr_tile_pos,
@@ -112,6 +135,27 @@ pub fn receive_step_request_from_client(
         state.step_credit = (state.step_credit + elapsed / secs_per_step)
             .min(MAX_GRID_STEPS_PER_FIXED_TICK as f32 + STEP_EARLY_TOLERANCE);
         if state.step_credit + STEP_EARLY_TOLERANCE < requested_steps as f32 {
+            if elapsed <= f32::EPSILON {
+                warn!(
+                    target: MOVEMENT_SYSTEM,
+                    "Deferred same-tick early request for {:?}: dir {:?}, steps={}, credit {:.2}",
+                    being_ent,
+                    step_dir,
+                    requested_steps,
+                    state.step_credit
+                );
+                deferred_requests.insert(being_ent, deferred_request);
+                continue;
+            }
+            warn!(
+                target: MOVEMENT_SYSTEM,
+                "Rejected step request for {:?}: dir {:?}, steps={}, credit {:.2}, expected {:.3}s",
+                being_ent,
+                step_dir,
+                requested_steps,
+                state.step_credit,
+                secs_per_step
+            );
             messages.push(ToClients {
                 mode: SendMode::Direct(client_id),
                 message: SyncGpos {
@@ -124,20 +168,50 @@ pub fn receive_step_request_from_client(
             continue;
         }
         glm.ensure_grid_anchor(&mut glm_visual, curr_tile_pos);
+        if glm.is_stepping() {
+            let finishes_this_tick = glm.progress_ticks.saturating_add(1) >= glm.step_ticks_total;
+            if finishes_this_tick {
+                glm.clear_step(&mut glm_visual, curr_tile_pos);
+                trace!(
+                    target: MOVEMENT_SYSTEM,
+                    "Bridged near-complete server step for {:?}: accepting chained dir {:?} at {:?}",
+                    being_ent,
+                    step_dir,
+                    curr_tile_pos
+                );
+            } else {
+                warn!(
+                    target: MOVEMENT_SYSTEM,
+                    "Deferred request while server step in progress for {:?}: dir {:?}, current {:?}",
+                    being_ent,
+                    step_dir,
+                    curr_tile_pos
+                );
+                deferred_requests.insert(being_ent, deferred_request);
+                continue;
+            }
+        }
         let step_ticks = ticks_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec);
         let steps_taken = if step_ticks > 1 {
             let next_gpos = GlobalTilePos(curr_tile_pos.0 + dir_vec);
             if blocking_tiles.is_blocked_at(dim_ref, next_gpos, entity) {
+                warn!(
+                    target: MOVEMENT_SYSTEM,
+                    "Rejected blocked step request for {:?}: dir {:?}, target {:?}",
+                    being_ent,
+                    step_dir,
+                    next_gpos
+                );
                 messages.push(ToClients {
                     mode: SendMode::Direct(client_id),
-                message: SyncGpos {
-                    being_ent,
-                    gpos: curr_tile_pos,
-                    dir: facing_dir,
-                    force_resync: true,
-                },
-            });
-            continue;
+                    message: SyncGpos {
+                        being_ent,
+                        gpos: curr_tile_pos,
+                        dir: facing_dir,
+                        force_resync: true,
+                    },
+                });
+                continue;
             }
             match glm.try_start_step(
                 &mut glm_visual,
@@ -147,7 +221,7 @@ pub fn receive_step_request_from_client(
                 &mut curr_tile_pos,
                 dir_vec,
                 step_ticks,
-            ) {
+                ) {
                 TryStartStepOutcome::Successful => {
                     if facing_dir != step_dir {
                         let _ = blocking_tiles.set_being_direction(being_ent, step_dir);
@@ -156,6 +230,13 @@ pub fn receive_step_request_from_client(
                     1
                 }
                 TryStartStepOutcome::AlreadyStepping => {
+                    warn!(
+                        target: MOVEMENT_SYSTEM,
+                        "Rejected already-stepping request for {:?}: dir {:?}, current {:?}",
+                        being_ent,
+                        step_dir,
+                        curr_tile_pos
+                    );
                     messages.push(ToClients {
                         mode: SendMode::Direct(client_id),
                         message: SyncGpos {
@@ -168,6 +249,13 @@ pub fn receive_step_request_from_client(
                     continue;
                 }
                 TryStartStepOutcome::Blocked => {
+                    warn!(
+                        target: MOVEMENT_SYSTEM,
+                        "Rejected blocked step request for {:?}: dir {:?}, current {:?}",
+                        being_ent,
+                        step_dir,
+                        curr_tile_pos
+                    );
                     messages.push(ToClients {
                         mode: SendMode::Direct(client_id),
                         message: SyncGpos {
@@ -192,6 +280,14 @@ pub fn receive_step_request_from_client(
                 requested_steps,
             );
             if steps_taken == 0 {
+                warn!(
+                    target: MOVEMENT_SYSTEM,
+                    "Rejected immediate step request for {:?}: dir {:?}, requested {}, current {:?}",
+                    being_ent,
+                    step_dir,
+                    requested_steps,
+                    curr_tile_pos
+                );
                 messages.push(ToClients {
                     mode: SendMode::Direct(client_id),
                     message: SyncGpos {
@@ -215,7 +311,7 @@ pub fn receive_step_request_from_client(
         };
         *being_gpos = curr_tile_pos;
         messages.push(ToClients {
-            mode: SendMode::Broadcast,
+            mode: SendMode::BroadcastExcept(client_id),
             message: SyncGpos {
                 being_ent,
                 gpos: curr_tile_pos,

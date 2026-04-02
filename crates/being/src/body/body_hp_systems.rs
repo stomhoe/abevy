@@ -10,7 +10,7 @@ use modifier_shared::{modifier_components::*, modifier_types::*};
 use ::being_shared::*;
 use game_common::game_common_components::Dead;
 
-use crate::body::{body_tree_components::*, };
+use crate::body::{body_components::*, };
 
 #[derive(Resource, Default)]
 pub struct BodypartMaxHpMap(pub EntityHashMap<f32>);

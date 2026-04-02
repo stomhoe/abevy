@@ -150,7 +150,7 @@ pub struct WallPhaser;
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
-pub struct BodyTreeWeightSum(pub f32);
+pub struct BodyWeightSum(pub f32);
 
 #[derive(Component, Debug, Clone, Copy, Hash, PartialEq, Default)]
 pub struct MainCharacter;

@@ -194,16 +194,14 @@ pub fn refresh_leader_on_member_rank_change(
             }
         }
         //ta bien
-        let Some((leader_ent, leader_rank)) = best_member else {
-            if led_by.is_some() {
-                cmd.entity(group_ent).try_remove::<LedBy>();
-            }
+        let Some((leader_ent, _)) = best_member
+        else {
+            cmd.entity(group_ent).try_remove::<LedBy>();
             continue;
         };
         if led_by.map(|led_by| led_by.leader != leader_ent).unwrap_or(true) {
             cmd.entity(group_ent).try_insert(LedBy { leader: leader_ent });
         }
-        debug!(target: BEING_SYSTEM, "Selected pack leader {:?} for pack {:?} with rank {}", leader_ent, group_ent, leader_rank);
     }
 }
 

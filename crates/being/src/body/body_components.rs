@@ -11,16 +11,15 @@ pub use ::being_shared::*;
 #[require(
     SparedFromHotReloading,
     AssetScoped,
-    Replicated,
-    Prefix::trunc("BodyTree")
+    Prefix::trunc("Body")
 )]
-pub struct BodyTree;
+pub struct Body;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
-pub struct StatBudgetsToDistributeAmongBodyPartsOfTemplBodyTree(pub HashIdMap<f32>);
+pub struct StatBudgetsToDistributeAmongBodyPartsOfTemplBody(pub HashIdMap<f32>);
 
 #[derive(Component, Debug, Default, Clone)]
-pub struct BodyTreeSexes(pub HashMap<String, RaceSexEntrySeri>);
+pub struct BodySexes(pub HashMap<String, RaceSexEntrySeri>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
 pub struct CaloricBurnRateMultiplier(pub f32);
@@ -81,12 +80,12 @@ pub enum DamageDistributeMode {
 }
 
 /*
-BodyTreeDistributedTotals` is the cached stat budget for a body tree template.
+BodyDistributedTotals` is the cached stat budget for a body tree template.
 
 Where it lives:
-- Defined on the body-tree template side in [`crates/being/src/body/body_tree_seris.rs`](/mnt/data/abevy/crates/being/src/body/body_tree_seris.rs)
-- Attached to the body-tree source entity in [`crates/being/src/body/body_tree_templ_init_systems.rs`](/mnt/data/abevy/crates/being/src/body/body_tree_templ_init_systems.rs)
-- Read when building a concrete being body in [`crates/being/src/body/body_tree_build_systems.rs`](/mnt/data/abevy/crates/being/src/body/body_tree_build_systems.rs)
+- Defined on the body-tree template side in [`crates/being/src/body/body_seris.rs`](/mnt/data/abevy/crates/being/src/body/body_seris.rs)
+- Attached to the body-tree source entity in [`crates/being/src/body/body_templ_init_systems.rs`](/mnt/data/abevy/crates/being/src/body/body_templ_init_systems.rs)
+- Read when building a concrete being body in [`crates/being/src/body/body_build_systems.rs`](/mnt/data/abevy/crates/being/src/body/body_build_systems.rs)
 
 What it is used for:
 - It stores the total available values for stats like mass, HP, regen, walk speed, swim speed, fly speed, manipulation, vision, pain, etc.
@@ -99,11 +98,11 @@ What it is not:
 - It does not by itself update when parts are removed from a living being.
 
 Why this matters for your refactor:
-- Right now `build_body_tree` uses `BodyTreeDistributedTotals` once to compute the initial distributed modifiers for a being.
-- If you want to reuse modifier entities and recalculate later when body parts change, `BodyTreeDistributedTotals` is still useful as the static template budget, but you still need a live per-being recompute pass for the current part set.
+- Right now `build_body` uses `BodyDistributedTotals` once to compute the initial distributed modifiers for a being.
+- If you want to reuse modifier entities and recalculate later when body parts change, `BodyDistributedTotals` is still useful as the static template budget, but you still need a live per-being recompute pass for the current part set.
 
 So the short version is:
-- `BodyTreeDistributedTotals` = template-level total stat budget
+- `BodyDistributedTotals` = template-level total stat budget
 - `apply_distributions` = distributes that budget onto body part modifiers
 - runtime body changes still need a separate recalculation path
 

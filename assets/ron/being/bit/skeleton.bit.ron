@@ -6,7 +6,7 @@
     scs_samplers: ["skeleton"],
     sprites_scale_ranges: {},
     health_multiplier: 1.0,
-    body_tree: "skeleton",
+    body: "skeleton",
 
     recruitment_difficulty: None,
 

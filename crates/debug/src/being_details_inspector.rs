@@ -190,6 +190,79 @@ fn paint_interaction_zone_preview(
     }
 }
 
+fn paint_meeting_slots_preview(
+    ui: &mut egui::Ui,
+    leader_gpos: GlobalTilePos,
+    reserved_targets: &[GlobalTilePos],
+) {
+    let mut rel_positions = reserved_targets
+        .iter()
+        .map(|target| target.0 - leader_gpos.0)
+        .collect::<Vec<_>>();
+    rel_positions.sort_unstable_by_key(|rel| (rel.x, rel.y));
+    rel_positions.dedup();
+
+    let mut min_x = 0;
+    let mut max_x = 0;
+    let mut min_y = 0;
+    let mut max_y = 0;
+    for rel in rel_positions.iter().copied() {
+        min_x = min_x.min(rel.x);
+        max_x = max_x.max(rel.x);
+        min_y = min_y.min(rel.y);
+        max_y = max_y.max(rel.y);
+    }
+
+    let cell_size = 14.0;
+    let width = (max_x - min_x + 1) as f32 * cell_size;
+    let height = (max_y - min_y + 1) as f32 * cell_size;
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+    let background = ui.visuals().extreme_bg_color;
+    let stroke = egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color);
+    painter.rect_filled(rect, 3.0, background);
+
+    for y in (min_y..=max_y).rev() {
+        for x in min_x..=max_x {
+            let x_idx = (x - min_x) as f32;
+            let y_idx = (max_y - y) as f32;
+            let cell_rect = egui::Rect::from_min_size(
+                egui::pos2(rect.min.x + x_idx * cell_size, rect.min.y + y_idx * cell_size),
+                egui::vec2(cell_size, cell_size),
+            )
+            .shrink(1.0);
+            painter.rect_stroke(cell_rect, 2.0, stroke, egui::StrokeKind::Inside);
+        }
+    }
+
+    let leader_rel = IVec2::ZERO;
+    let leader_x_idx = (leader_rel.x - min_x) as f32;
+    let leader_y_idx = (max_y - leader_rel.y) as f32;
+    let leader_rect = egui::Rect::from_min_size(
+        egui::pos2(
+            rect.min.x + leader_x_idx * cell_size,
+            rect.min.y + leader_y_idx * cell_size,
+        ),
+        egui::vec2(cell_size, cell_size),
+    )
+    .shrink(2.0);
+    painter.rect_filled(leader_rect, 1.0, egui::Color32::YELLOW);
+
+    for rel in rel_positions.iter().copied() {
+        if rel == IVec2::ZERO {
+            continue;
+        }
+        let x_idx = (rel.x - min_x) as f32;
+        let y_idx = (max_y - rel.y) as f32;
+        let cell_rect = egui::Rect::from_min_size(
+            egui::pos2(rect.min.x + x_idx * cell_size, rect.min.y + y_idx * cell_size),
+            egui::vec2(cell_size, cell_size),
+        )
+        .shrink(2.0);
+        painter.rect_filled(cell_rect, 1.0, ui.visuals().selection.bg_fill);
+    }
+}
+
 fn interaction_zone_label(zone_id: HashId) -> String {
     if zone_id == InteractionZones::COLLISION {
         return "Collision Mask".to_string();
@@ -403,6 +476,8 @@ pub fn being_details_inspector(world: &mut World) {
     let mut grid_move_query = world.query::<&GridLockedMovement>();
     let mut gpos_query = world.query::<&tilemap_shared::GlobalTilePos>();
     let mut facing_query = world.query::<&CardinalDirection>();
+    let mut wander_state_query = world.query::<&WanderState>();
+    let mut wander_state_entity_query = world.query::<(Entity, &WanderState)>();
     let mut templ_refs_query = world.query::<&TemplEntiRef>();
     let mut applied_mods_query = world.query::<&AppliedModifiers>();
     let mut modifiers_query =
@@ -520,7 +595,9 @@ pub fn being_details_inspector(world: &mut World) {
             }
             ui.separator();
 
-            ui.collapsing("Movement Details", |ui| {
+            egui::CollapsingHeader::new("Movement Details")
+                .default_open(true)
+                .show(ui, |ui| {
                 let mut is_human_input = false;
                 if let Ok(computed_by) = computed_by_query.get(world, selected_being_entity) {
                     is_human_input = computed_by.human_dc_input;
@@ -571,6 +648,52 @@ pub fn being_details_inspector(world: &mut World) {
                 if let Ok(facing) = facing_query.get(world, selected_being_entity) {
                     ui.label(format!("Facing: {:?}", facing));
                 }
+                ui.collapsing("WanderState", |ui| {
+                    match wander_state_query.get(world, selected_being_entity) {
+                        Ok(wander_state) => {
+                            if wander_state.is_meeting() {
+                                let meeting_role = if wander_state.meeting_anchor() == Some(selected_being_entity) {
+                                    "Leader"
+                                } else {
+                                    "Subordinate"
+                                };
+                                ui.label(format!("Meeting Role: {meeting_role}"));
+                                let leader_ent = wander_state
+                                    .meeting_anchor()
+                                    .unwrap_or(selected_being_entity);
+                                if let Ok(&leader_gpos) = gpos_query.get(world, leader_ent) {
+                                    let mut reserved_targets = Vec::new();
+                                    let all_wanderers = wander_state_entity_query.iter(world);
+                                    reserved_targets.reserve(all_wanderers.size_hint().1.unwrap_or(all_wanderers.size_hint().0));
+                                    for (being_ent, other_wander_state, ) in all_wanderers {
+                                        if !other_wander_state.is_meeting() {
+                                            continue;
+                                        }
+                                        if other_wander_state.meeting_anchor() != Some(leader_ent) {
+                                            continue;
+                                        }
+                                        if let Some(target) = other_wander_state.meeting_target() {
+                                            reserved_targets.push(target);
+                                        } else if being_ent == leader_ent {
+                                            reserved_targets.push(leader_gpos);
+                                        }
+                                    }
+                                    if reserved_targets.is_empty() {
+                                        reserved_targets.push(leader_gpos);
+                                    }
+                                    ui.label("Meeting Slots (relative to leader):");
+                                    paint_meeting_slots_preview(ui, leader_gpos, &reserved_targets);
+                                } else {
+                                    ui.label("Meeting Slots: leader gpos missing");
+                                }
+                            }
+                            ui.label(format!("{wander_state:#?}"));
+                        }
+                        Err(_) => {
+                            ui.label("WanderState: missing");
+                        }
+                    };
+                });
                 let facing = facing_query
                     .get(world, selected_being_entity)
                     .copied()

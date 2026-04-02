@@ -3,7 +3,7 @@
     name: "Spawn Body",
     tags: ["humanoid"],
     distributed_totals: {
-        "mass_kg": 30.0,
+        "mass_kg": 60.0,
         "hp_capacity": 491.0,
         "hp_regen_rate": 23.5,
         "blood_capacity": 285.5,

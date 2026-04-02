@@ -4,7 +4,7 @@
 use common::common_components::StrId;
 use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
 
-use crate::body::{body_tree_resources::*, body_sampler::{body_sampler_components::*, body_sampler_resources::*}};
+use crate::body::{body_resources::*, body_sampler::{body_sampler_components::*, body_sampler_resources::*}};
 
 
 #[allow(unused_parens)]
@@ -35,7 +35,7 @@ pub fn init_body_weighted_samplers(
 pub fn init_body_weighted_samplers_strid_refs(
     mut cmd: Commands,
     body_weighted_map: Res<BodyWeightedSamplerEntityMap>,
-    body_map: Res<BodyTreeEntityMap>,
+    body_map: Res<BodyEntityMap>,
 ) {
     for mut seri in load_body_weighted_sampler_seri_defs() {
 

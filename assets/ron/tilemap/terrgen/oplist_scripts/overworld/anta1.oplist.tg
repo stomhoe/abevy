@@ -10,4 +10,4 @@ out = idxmax(continent_threshold, continentness)
 
 
 bif "" -> [ocean]
-bif anta2 -> []
+bif anta2 -> [] biomes: [artic=3.5(5.0,0.35)]

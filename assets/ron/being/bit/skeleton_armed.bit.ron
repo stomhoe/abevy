@@ -6,7 +6,7 @@
     scs_samplers: ["skeleton_armed"],
     sprites_scale_ranges: {},
     health_multiplier: 1.0,
-    body_tree: "skeleton_armed",
+    body: "skeleton_armed",
 
     recruitment_difficulty: None,
 

@@ -6,7 +6,7 @@
     scs_samplers: ["orc_shaman"],
     sprites_scale_ranges: {},
     health_multiplier: 1.0,
-    body_tree: "orc_shaman",
+    body: "orc_shaman",
 
     recruitment_difficulty: None,
 

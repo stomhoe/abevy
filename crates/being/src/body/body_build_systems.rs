@@ -4,16 +4,16 @@ use game_common::game_common_components::{Templ, TemplEntiRef};
 use common::log_targets::BODY_BUILD;
 use modifier_shared::modifier_components::{AppliedModifiers, ModifierSynergies};
 
-use crate::body::BodyTreeRef;
-use crate::body::{body_tree_components::*};
+use crate::body::BodyRef;
+use crate::body::{body_components::*};
 use ::being_shared::*;
 
 #[allow(unused_parens, )]
-pub fn build_body_trees_on_beings(
+pub fn build_bodys_on_beings(
     mut cmd: Commands,
     consumer_beings_query: Query<
-        (Entity, &BodyTreeRef, ),
-        (With<Being>, Added<BodyTreeRef>, Without<Templ>, Without<Race>, Without<BeingInstTemplate>),
+        (Entity, &BodyRef, ),
+        (With<Being>, Added<BodyRef>, Without<Templ>, Without<Race>, Without<BeingInstTemplate>),
     >,
     templ_tree_bodyparts_query: Query<(&BodypartChildrenBodyparts, ), (With<Templ>,)>,
     root_bodypart_query: Query<(), (With<TreeRoot>, )>,
@@ -30,14 +30,14 @@ pub fn build_body_trees_on_beings(
         )).id();
 
         let Ok((templ_bodyparts, )) = templ_tree_bodyparts_query.get(tree_to_build.0) else {
-            error!(target: BODY_BUILD, "BodyTree {:?} has no BodyRootPart; skipping source clone for owner {:?}", tree_to_build.0, being_ent);
+            error!(target: BODY_BUILD, "Body {:?} has no BodyRootPart; skipping source clone for owner {:?}", tree_to_build.0, being_ent);
             continue;
         };
         let root_templ_bodypart = templ_bodyparts
             .iter()
             .find(|&templ_bodypart| root_bodypart_query.get(templ_bodypart).is_ok());
         let Some(root_templ_bodypart) = root_templ_bodypart else {
-            error!(target: BODY_BUILD, "BodyTree {} has no valid BodyRootPart; skipping source clone for owner {}", entity_dbg(tree_to_build.0, &display_name_query), entity_dbg(being_ent, &display_name_query));
+            error!(target: BODY_BUILD, "Body {} has no valid BodyRootPart; skipping source clone for owner {}", entity_dbg(tree_to_build.0, &display_name_query), entity_dbg(being_ent, &display_name_query));
             continue;
         };
         trace!(target: BODY_BUILD, "Selected root source body part {} for being {} from body tree {}", entity_dbg(root_templ_bodypart, &display_name_query), entity_dbg(being_ent, &display_name_query), entity_dbg(tree_to_build.0, &display_name_query));

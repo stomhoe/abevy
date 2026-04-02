@@ -72,7 +72,7 @@ pub fn plugin(app: &mut App) {
         .replicate_filtered::<ChildOf, With<OperationList>>()
         .replicate_filtered::<ChildOf, With<FnlNoiseComp>>()
         .replicate_filtered::<ChildOf, With<FailedSearchOplistFilterHolder>>()
-        .replicate_filtered::<OplistSize, With<OperationList>>()
+        .replicate_once_filtered::<OplistSize, With<OperationList>>()
 
 
         .replicate::<GlobalGenSettings>()

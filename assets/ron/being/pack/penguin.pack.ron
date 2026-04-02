@@ -1,0 +1,13 @@
+pack {
+    id: "penguin",
+    spawn_being_count_normal_dist: { min_dev: 6, max_dev: 6, mean: 12, std_dev: 3 },
+    ids: {
+        penguin: 1.0,
+    },
+    biome_affinity: {
+        artic: 1.0,
+        ocean: 1.2,
+        beach: 0.5,
+    },
+    pack_spawn_radius: 7,
+}

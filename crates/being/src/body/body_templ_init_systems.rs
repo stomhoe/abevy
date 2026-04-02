@@ -14,22 +14,22 @@ use crate::being_interaction_zone_helper::build_being_interaction_zones;
 
 use crate::body::body_hp_systems::UserBodypartInstances;
 use crate::body::{
-    body_tree_components::*, bodypart::bodypart_resources::*,
-    body_tree_resources::*,
+    body_components::*, bodypart::bodypart_resources::*,
+    body_resources::*,
 };
 
 const STAT_BLEED_RATE: HashId = HashId::hash("bleed_rate");
 
 #[allow(unused_parens)]
-pub fn init_templ_body_trees(
+pub fn init_templ_bodys(
     mut cmd: Commands,
-    body_map: Res<BodyTreeEntityMap>,
+    body_map: Res<BodyEntityMap>,
     part_map: Res<BodypartEntityMap>,
 ) {
     if !body_map.0.is_empty() {
         return;
     }
-    for mut seri in load_body_tree_seri_defs() {
+    for mut seri in load_body_seri_defs() {
 
         let body_id = match StrId::new_with_result(seri.id, 3) {
             Ok(id) => id,
@@ -39,10 +39,10 @@ pub fn init_templ_body_trees(
                 continue;
             }
         };
-        let body_tree_ent = cmd.spawn_empty().id();
-        cmd.entity(body_tree_ent).insert((
+        let body_ent = cmd.spawn_empty().id();
+        cmd.entity(body_ent).insert((
             body_id.clone(),
-            BodyTree,
+            Body,
             Templ,
             build_being_interaction_zones(
                 seri.melee_interaction_zone.clone(),
@@ -51,15 +51,15 @@ pub fn init_templ_body_trees(
         ));
 
         if seri.name.trim().is_empty() {
-            cmd.entity(body_tree_ent)
+            cmd.entity(body_ent)
                 .insert(DisplayName::trunc(body_id.as_str()));
         } else {
-            cmd.entity(body_tree_ent)
+            cmd.entity(body_ent)
                 .insert(DisplayName::trunc(seri.name));
         }
 
         if !seri.tags.is_empty() {
-            cmd.entity(body_tree_ent).insert(TagSet::new(&seri.tags));
+            cmd.entity(body_ent).insert(TagSet::new(&seri.tags));
         }
 
         let mut totals = HashIdMap::default();
@@ -85,22 +85,22 @@ pub fn init_templ_body_trees(
             totals.overwrite(BodypartStat::STAT_WALK_SPEED, 300.);
         }
         if !totals.contains_key(BodypartStat::STAT_MASS_KG) {
-            error!(target: BODY_BUILD, "BodyTree '{}' is missing distributed_totals.mass_kg; skipping", body_id);
+            error!(target: BODY_BUILD, "Body '{}' is missing distributed_totals.mass_kg; skipping", body_id);
             continue;
         }
-        let totals_to_distribute = StatBudgetsToDistributeAmongBodyPartsOfTemplBodyTree(totals.clone());
-        cmd.entity(body_tree_ent).insert((
+        let totals_to_distribute = StatBudgetsToDistributeAmongBodyPartsOfTemplBody(totals.clone());
+        cmd.entity(body_ent).insert((
             totals_to_distribute.clone(),
-            BodyTreeSexes(seri.sexes.clone()),
+            BodySexes(seri.sexes.clone()),
             CaloricBurnRateMultiplier(seri.caloric_burn_rate_multiplier),
         ));
         let root_node = std::mem::take(&mut seri.root);
         let root_id = StrId::trunc(root_node.part_id.as_str());
 
-        let root_ent = rec_build_templ_body_tree(
+        let root_ent = rec_build_templ_body(
             &mut cmd,
             &part_map,
-            body_tree_ent,
+            body_ent,
             &body_id,
             root_node,
             None,
@@ -116,7 +116,7 @@ pub fn init_templ_body_trees(
     }
 }
 
-fn rec_build_templ_body_tree(
+fn rec_build_templ_body(
     cmd: &mut Commands,
     part_map: &Res<BodypartEntityMap>,
     templ_body_ent: Entity,
@@ -154,7 +154,7 @@ fn rec_build_templ_body_tree(
     }
 
     for child in node.children {
-        rec_build_templ_body_tree(cmd, part_map, templ_body_ent, body_id, child, Some(node_ent));
+        rec_build_templ_body(cmd, part_map, templ_body_ent, body_id, child, Some(node_ent));
     }
 
     Some(node_ent)
@@ -163,34 +163,34 @@ fn rec_build_templ_body_tree(
 
 
 #[allow(unused_parens, )]
-pub fn distribute_templ_body_tree_modifiers(
+pub fn distribute_templ_body_modifiers(
     mut cmd: Commands,
-    body_tree_query: Query<(Entity, &StrId, &StatBudgetsToDistributeAmongBodyPartsOfTemplBodyTree, &Children), (With<BodyTree>, With<Templ>, )>,
+    body_query: Query<(Entity, &StrId, &StatBudgetsToDistributeAmongBodyPartsOfTemplBody, &Children), (With<Body>, With<Templ>, )>,
     forced_query: Query<&BodypartForcedStats, >,
     weighted_query: Query<&BodypartWeightedDistribution, >,
     synergy_query: Query<&ModifierSynergies, >,
     templ_bodypart_refs_query: Query<&TemplEntiRef, ()>,
     mut templs_mapped_to_bodyparts: Local<Vec<(Entity, Entity)>>,
 ) {
-    for (body_tree_ent, body_id, budgets_to_distribute, bodyparts_list) in body_tree_query.iter() {
+    for (body_ent, body_id, budgets_to_distribute, bodyparts_list) in body_query.iter() {
 
         templs_mapped_to_bodyparts.clear();
         for bodypart_ent in bodyparts_list.iter() {
             let Ok(templ_ref) = templ_bodypart_refs_query.get(bodypart_ent) else {
-                error!(target: BODY_BUILD, "BodyTree {} bodypart node {:?} is missing TemplEntiRef; skipping node", body_id, bodypart_ent);
+                error!(target: BODY_BUILD, "Body {} bodypart node {:?} is missing TemplEntiRef; skipping node", body_id, bodypart_ent);
                 continue;
             };
             templs_mapped_to_bodyparts.push((bodypart_ent, templ_ref.0));
         }
         if templs_mapped_to_bodyparts.is_empty() {
-            error!(target: BODY_BUILD, "BodyTree {} produced zero templ bodypart references; skipping distribution", body_id);
+            error!(target: BODY_BUILD, "Body {} produced zero templ bodypart references; skipping distribution", body_id);
             continue;
         }
         distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
             &mut cmd,
             body_id,
             &templs_mapped_to_bodyparts,
-            body_tree_ent,
+            body_ent,
             budgets_to_distribute,
             &forced_query,
             &weighted_query,
@@ -204,13 +204,13 @@ fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
     body_id: &StrId,
     parts: &[(Entity, Entity)],
     body_ent: Entity,
-    totals: &StatBudgetsToDistributeAmongBodyPartsOfTemplBodyTree,
+    totals: &StatBudgetsToDistributeAmongBodyPartsOfTemplBody,
     forced_query: &Query<&BodypartForcedStats>,
     weighted_query: &Query<&BodypartWeightedDistribution>,
     synergy_query: &Query<&ModifierSynergies>,
 ) {
     if parts.is_empty() {
-        error!(target: BODY_BUILD, "BodyTree {} has no parts to distribute stats onto", body_id);
+        error!(target: BODY_BUILD, "Body {} has no parts to distribute stats onto", body_id);
         return;
     }
 
@@ -285,11 +285,11 @@ fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
 
     for &(part, source_part) in parts {
         let Ok(forced_stats) = forced_query.get(source_part) else {
-            error!(target: BODY_BUILD, "BodyTree {} source part {:?} is missing BodypartForcedStats", body_id, source_part);
+            error!(target: BODY_BUILD, "Body {} source part {:?} is missing BodypartForcedStats", body_id, source_part);
             continue;
         };
         let Ok(weighted_stats) = weighted_query.get(source_part) else {
-            error!(target: BODY_BUILD, "BodyTree {} source part {:?} is missing BodypartWeightedDistribution", body_id, source_part);
+            error!(target: BODY_BUILD, "Body {} source part {:?} is missing BodypartWeightedDistribution", body_id, source_part);
             continue;
         };
         let forced = &forced_stats.0;
@@ -382,9 +382,9 @@ fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
         }
 
         if spawned_modifiers == 0 {
-            error!(target: BODY_BUILD, "BodyTree {} source part {:?} produced no modifiers; forced and weighted distributions may be empty", body_id, source_part);
+            error!(target: BODY_BUILD, "Body {} source part {:?} produced no modifiers; forced and weighted distributions may be empty", body_id, source_part);
         } else {
-            trace!(target: BODY_BUILD, "BodyTree {} source part {:?} spawned {} modifiers", body_id, source_part, spawned_modifiers);
+            trace!(target: BODY_BUILD, "Body {} source part {:?} spawned {} modifiers", body_id, source_part, spawned_modifiers);
         }
     }
 }

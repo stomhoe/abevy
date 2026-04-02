@@ -12,7 +12,7 @@ use ::sprite_shared::*;
 use ::tilemap_shared::*;
 
 use crate::{
-    body::{BodyTreeRef, body_sampler::body_sampler_resources::BodyWeightedSamplerRef},
+    body::{BodyRef, body_sampler::body_sampler_resources::BodyWeightedSamplerRef},
     sex::sex_resources::SexRef,
 };
 
@@ -28,7 +28,7 @@ pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
     sexes_sampler_query: Query<'w, 's, &'static SexesSampler>,
     sample_sprite_ents_query: Query<'w, 's, &'static SampleSpritesamplers>,
     body_weighted_sampler_query: Query<'w, 's, &'static BodyWeightedSamplerRef>,
-    body_tree_ref_query: Query<'w, 's, &'static BodyTreeRef>,
+    body_ref_query: Query<'w, 's, &'static BodyRef>,
     race_ref_query: Query<'w, 's, &'static RaceRef>,
     bit_ref_query: Query<'w, 's, &'static BitRef>,
     dont_extend_from_bit_spawn_whitelist_query: Query<'w, 's, (), With<DontExtendBitSpawnWhitelist>>,
@@ -62,7 +62,7 @@ pub fn build_beings_from_refs(
 ) {
     let mut sample_sprites_to_ins = Vec::new();
     let mut body_sampler_to_ins = Vec::new();
-    let mut body_tree_refs_to_ins = Vec::new();
+    let mut body_refs_to_ins = Vec::new();
     let mut faction_refs_to_ins = Vec::new();
     let mut sex_refs_to_ins = Vec::new();
 
@@ -200,7 +200,7 @@ pub fn build_beings_from_refs(
         }
 
         let mut has_sample_sprites_now = queries.sample_sprite_ents_query.get(being_ent).is_ok() || queries.scs_to_build_query.get(being_ent).is_ok();
-        let mut has_body_tree_ref_now = queries.body_weighted_sampler_query.get(being_ent).is_ok() || queries.body_tree_ref_query.get(being_ent).is_ok();
+        let mut has_body_ref_now = queries.body_weighted_sampler_query.get(being_ent).is_ok() || queries.body_ref_query.get(being_ent).is_ok();
 
         if let Some(bit_ref) = bit_ref {
             let Ok((template, )) = queries.bit_query.get(bit_ref.0) else {
@@ -211,13 +211,13 @@ pub fn build_beings_from_refs(
                 sample_sprites_to_ins.push((being_ent, sample_sprites.clone()));
                 has_sample_sprites_now = true;
             }
-            if !has_body_tree_ref_now {
-                if let Ok(&sample_body_body_tree) = queries.body_weighted_sampler_query.get(bit_ref.0) {
-                    body_sampler_to_ins.push((being_ent, sample_body_body_tree));
-                    has_body_tree_ref_now = true;
-                } else if let Ok(&body_tree_ref) = queries.body_tree_ref_query.get(bit_ref.0) {
-                    body_tree_refs_to_ins.push((being_ent, body_tree_ref));
-                    has_body_tree_ref_now = true;
+            if !has_body_ref_now {
+                if let Ok(&sample_body_body) = queries.body_weighted_sampler_query.get(bit_ref.0) {
+                    body_sampler_to_ins.push((being_ent, sample_body_body));
+                    has_body_ref_now = true;
+                } else if let Ok(&body_ref) = queries.body_ref_query.get(bit_ref.0) {
+                    body_refs_to_ins.push((being_ent, body_ref));
+                    has_body_ref_now = true;
                 }
             }
             if let Ok(&faction_ref) = queries.faction_ref_query.get(bit_ref.0) {
@@ -237,13 +237,13 @@ pub fn build_beings_from_refs(
         }
 
         if let Some(race_ref) = race_ref {
-            if !has_body_tree_ref_now {
-                if let Ok(&sample_body_body_tree) = queries.body_weighted_sampler_query.get(race_ref.0) {
-                    body_sampler_to_ins.push((being_ent, sample_body_body_tree));
-                    has_body_tree_ref_now = true;
-                } else if let Ok(&body_tree_ref) = queries.body_tree_ref_query.get(race_ref.0) {
-                    body_tree_refs_to_ins.push((being_ent, body_tree_ref));
-                    has_body_tree_ref_now = true;
+            if !has_body_ref_now {
+                if let Ok(&sample_body_body) = queries.body_weighted_sampler_query.get(race_ref.0) {
+                    body_sampler_to_ins.push((being_ent, sample_body_body));
+                    has_body_ref_now = true;
+                } else if let Ok(&body_ref) = queries.body_ref_query.get(race_ref.0) {
+                    body_refs_to_ins.push((being_ent, body_ref));
+                    has_body_ref_now = true;
                 }
             }
 
@@ -271,7 +271,7 @@ pub fn build_beings_from_refs(
     }
     cmd.try_insert_batch(sample_sprites_to_ins);
     cmd.try_insert_batch(body_sampler_to_ins);
-    cmd.try_insert_batch(body_tree_refs_to_ins);
+    cmd.try_insert_batch(body_refs_to_ins);
     cmd.try_insert_batch_if_new(faction_refs_to_ins);
     cmd.try_insert_batch_if_new(sex_refs_to_ins);
 }

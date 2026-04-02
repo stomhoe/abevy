@@ -41,6 +41,7 @@ rustc*.txt
 *.bak
 *.old
 *.orig
+tools/__pycache__/
 
 **.lnk.dual-graph/
 .dual-graph/

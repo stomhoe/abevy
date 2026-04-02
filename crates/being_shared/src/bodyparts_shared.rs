@@ -7,7 +7,7 @@ use item_shared::item_components::SlottedItemHolder;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-#[require(Replicated, Prefix::trunc("Bodypart"), )]
+#[require(Prefix::trunc("Bodypart"), )]
 pub struct Bodypart;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]

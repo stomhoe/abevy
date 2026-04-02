@@ -14,7 +14,7 @@ pub struct BodypartNodeSeri {
 
 #[derive(serde::Deserialize, Asset, TypePath, Default, Debug)]
 #[serde(default)]
-pub struct BodyTreeSeri {
+pub struct BodySeri {
     pub id: String,
     pub name: String,
     #[serde(default)]

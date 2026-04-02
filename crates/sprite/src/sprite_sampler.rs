@@ -1,12 +1,21 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::HostSystems;
 
 
-common::define_entity_map_systems!(
-    SpriteWeightedSampler,
-    SpriteWeightedSamplerSeri, "seri.sprite.weighted_sampler", "ssampler.ron",
+common::define_entity_map_systems_no_replicate!(
+    main_component: SpriteWeightedSampler,
+    with_filters: (),
+    abbreviation: SpriteWeightedSampler,
+    target: common::log_targets::ENTITY_MAP_SYSTEM,
+    entity_prefix: "SpriteWeightedSampler",
+    despawn_trigger: SpriteWeightedSampler,
+    id_type: common::common_components::StrId,
+    assets: [(
+        SpriteWeightedSamplerSeri,
+        "seri.sprite.weighted_sampler",
+        "ssampler.ron"
+    )],
 );
 
 pub type SpriteWeightedSamplerHandles = SpriteWeightedSamplerSerisHandles;
@@ -25,8 +34,6 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             (init_sprite_weighted_samplers, map_sprite_weighted_sampler_id_to_entity, init_sprite_weighted_samplers_refs,)
         ).chain().in_set(SpriteSamplerSystems))
-        .replicate::<EguiSpriteSamplerHolder>()
-        .replicate::<SpriteWeightedSampler>()
         ;
 
 }

@@ -8,7 +8,7 @@
         "hp_regen_rate": 7.4,
         "blood_capacity": 85.5,
         "bleed_rate": 9.6,
-        "walk_speed": 3.0,
+        "walk_speed": 10.0,
         "swim_speed": 0.9,
         "manip_dex": 0.9,
         "manip_str": 0.4,

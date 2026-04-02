@@ -6,7 +6,7 @@
     scs_samplers: ["ogre"],
     sprites_scale_ranges: {},
     health_multiplier: 1.0,
-    body_tree: "ogre",
+    body: "ogre",
 
     recruitment_difficulty: None,
 

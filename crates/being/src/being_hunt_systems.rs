@@ -116,7 +116,7 @@ pub struct UpdatePredatorHuntingTargetsQueries<'w, 's> {
     >,
     pub beings_query: Query<'w, 's, Entity, (With<Being>, )>,
     pub pos_dim_query: Query<'w, 's, (&'static ::tilemap_shared::DimensionRef, &'static GlobalTilePos), >,
-    pub body_tree_weight_query: Query<'w, 's, &'static BodyTreeWeightSum, >,
+    pub body_weight_query: Query<'w, 's, &'static BodyWeightSum, >,
     pub tagset_query: Query<'w, 's, &'static TagSet, >,
     pub squad_member_of_query: Query<'w, 's, &'static SquadMemberOf, >,
     pub squad_members_query: Query<'w, 's, &'static SquadMembers, (With<Predator>, )>,
@@ -158,7 +158,7 @@ pub fn update_predator_hunting_targets(
             cmd.entity(pred_ent).try_remove::<Hunting>();
             continue;
         };
-        let pred_weight_newtons = params.body_tree_weight_query.get(pred_ent).map(|sum| sum.0).unwrap_or_default();
+        let pred_weight_newtons = params.body_weight_query.get(pred_ent).map(|sum| sum.0).unwrap_or_default();
 
         let mut closest: Option<(Entity, f32)> = None;
         for prey_ent in params.beings_query.iter() {
@@ -177,7 +177,7 @@ pub fn update_predator_hunting_targets(
                 }
             }
 
-            let prey_weight_newtons = params.body_tree_weight_query.get(prey_ent).map(|sum| sum.0).unwrap_or_default();
+            let prey_weight_newtons = params.body_weight_query.get(prey_ent).map(|sum| sum.0).unwrap_or_default();
             if predator_cfg.prey_body_size_ratio_tolerance > 0.0
                 && pred_weight_newtons > 0.0
                 && prey_weight_newtons > pred_weight_newtons * predator_cfg.prey_body_size_ratio_tolerance

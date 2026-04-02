@@ -100,8 +100,8 @@ pub fn add_movement_components_to_beings(
 #[allow(unused_parens, )]
 pub fn update_facing_dir(
     mut query: Query<(Entity, &FinalNormMoveDir, Option<&GridLockedMovement>, &mut CardinalDirection), (With<ComputedLocally>)>,
-    mut writer: MessageWriter<MirrorHolderStateForSprite>,
     mut messages: Local<Vec<MirrorHolderStateForSprite>>,
+    mut writer: MessageWriter<MirrorHolderStateForSprite>,
 ) {
     for (being_ent, norm_move_dir, glm, mut facing_dir) in query.iter_mut() {
         let dir = glm
@@ -122,8 +122,8 @@ pub fn update_facing_dir(
 }
 #[allow(unused_parens, )]
 pub fn copy_client_move_input_to_controlled_beings(
-    move_action_query: Query<&Action<DcWasdAction>>,
     player_query: Query<(&Actions<BeingDirectControlInputContext>, &ComputedBeings), (With<Mine>, With<Player>)>,
+    move_action_query: Query<&Action<DcWasdAction>>,
     mut beings: Query<(&ComputedBy, &mut InputMoveDir), (LocalHumanControlled)>,
 ) {
     let mut found_player = false;
@@ -163,13 +163,12 @@ pub fn copy_client_move_input_to_controlled_beings(
         );
     }
 }
-/// Emits a `UpdateSpriteAnimState` message when the speed magnitude changes.
 #[allow(unused_parens, )]
 pub fn emit_move_state_on_movevecmag_speed_mag_change(
     query: Query<(Entity, &SpeedMagnitude), (Changed<SpeedMagnitude>, )>,
-    mut writer: MessageWriter<MirrorHolderStateForSprite>,
     mut prev_by_ent: Local<EntityHashMap<SpeedMagnitude>>,
     mut messages: Local<Vec<MirrorHolderStateForSprite>>,
+    mut writer: MessageWriter<MirrorHolderStateForSprite>,
 ) {
     for (ent, &speed_magnitude) in query.iter() {
         let Some(&prev) = prev_by_ent.get(&ent) else {

@@ -42,7 +42,7 @@ pub fn plugin(app: &mut App) {
                 sync_ai_nav_grids,
                 rebuild_goto_nav_plans,
                 goto_behavior,
-            ).chain(),
+            ),
 
             make_chunk_snapshot_for_hunter
                 .after(on_chunk_with_beings_attempt_unload_system)

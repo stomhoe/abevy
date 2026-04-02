@@ -1,4 +1,5 @@
-only cargo check crates you altered.
+
+IMPORTANT: when implementing a SystemParam structonly cargo check crates you altered.
 never create .md files unless instructed. avoid creating code with redundancies, avoid defining an excessive amount of new bevy Components or Resources (verbosity). if you do so, put them into their respective _components or _resources or _seris files. follow preexistent code style, avoid definying queries which conflict with each other. 
 if a queried component has no fields, use Has<ComponentName> instead of Option<&ComponentName>, the former returns a bool directly. Try to make code easy to understand. 
 Prefer let Ok/Some(...) else {continue;} over if let Ok/Some(...){}. Use
@@ -57,3 +58,7 @@ VERY IMPORTANT: if you got requested implicitely or explicitely to fix/generate 
 try to use dereference with & as soon as you can to avoid putting * each time you pass the var as an argument for a parameter which needs an owned type. specially for types which derive Copy
 
 if using BlockedTileParamSet in a system, use its inner gpos query instead of querying for gpos in the consumer system, otherwise query conflict will hapen
+
+IMPORTANT: when you exceed bevy's parameter count limit, put all Locals into a SystemParam called [Something]Locals, and all queries in pub struct [Something]Queries. define these structs right above the subject system.
+
+IMPORTANT: when implementing a #[derive(SystemParam)] struct, take a look at previous implementations of SystemParam in codebase to see how lifetime specifiers are placed

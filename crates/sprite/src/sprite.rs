@@ -81,9 +81,9 @@ pub fn plugin(app: &mut App) {
 
     .replicate::<YSortOrigin>()
     .replicate::<BaseHolderRef>()
-    .replicate::<MovementBased>()
-    .replicate::<GroundingBased>()
-    .replicate::<ExcludedFromNormalSizeModifier>()
+    .replicate_once::<MovementBased>()
+    .replicate_once::<GroundingBased>()
+    .replicate_once::<ExcludedFromNormalSizeModifier>()
 
     .replicate_filtered::<ChildOf, With<SpriteConfig>>()
     .replicate_filtered::<Transform, With<SpriteConfig>>()

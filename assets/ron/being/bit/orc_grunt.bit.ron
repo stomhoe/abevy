@@ -6,7 +6,7 @@
     scs_samplers: ["orc_grunt"],
     sprites_scale_ranges: {},
     health_multiplier: 1.0,
-    body_tree: "orc_grunt",
+    body: "orc_grunt",
 
     recruitment_difficulty: None,
 

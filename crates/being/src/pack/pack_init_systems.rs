@@ -7,7 +7,8 @@ use game_common::{
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 use tilemap_shared::CappedNormalDist;
 
-use crate::pack::pack_resources::*;
+use crate::pack::pack_seris::load_pack_seri_defs;
+
 
 pub fn init_packs(
     mut cmd: Commands,

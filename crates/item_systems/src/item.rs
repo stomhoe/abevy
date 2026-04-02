@@ -32,7 +32,8 @@ pub fn plugin(app: &mut App) {
                 readjust_child_of_for_items,
                 sync_items_at_gpos,
                 on_being_held_items_changed,
-            ).chain().in_set(GameplaySystems),
+                generate_items_on_deaths,
+            ).in_set(GameplaySystems),
         )
         .add_message::<ItemOperation>()
         .replicate::<Item>()

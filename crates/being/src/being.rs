@@ -69,9 +69,9 @@ pub fn plugin(app: &mut App) {
             sync_player_being_chunk_ranges,
             assign_uncomputed_beings_to_host,
             sync_group_members_from_member_of,
-            assign_member_ranks_on_joined_squad.before(refresh_leader_on_member_rank_change),
-            rebuild_portal_crossing_index,
+            assign_member_ranks_on_joined_squad,
             refresh_leader_on_member_rank_change,
+            rebuild_portal_crossing_index,
             cross_portal,
             cull_loaded_beings_far_from_humans.run_if(on_timer(Duration::from_secs(10))),
             faithful_sim_being.run_if(on_message::<FaithfulSimBeing>),
@@ -80,6 +80,7 @@ pub fn plugin(app: &mut App) {
             on_chunk_with_beings_attempt_unload
                 .in_set(tilemap_shared::PreChunkDespawnSystems)
                 .run_if(on_message::<ChunkWithBeingsWantsDespawn>),
+
             instance_pack_entities.run_if(on_message::<InstantiateTemplPackEntity>),
         ).in_set(HostSystems),
     ))
@@ -90,7 +91,7 @@ pub fn plugin(app: &mut App) {
         tick_hunger,
         update_predator_hunting_targets,
         sync_chasing_to_hunt.after(update_predator_hunting_targets),
-    ).chain())
+    ))
     .add_systems(
         Update,
         (
@@ -118,11 +119,11 @@ pub fn plugin(app: &mut App) {
     .replicate::<DirectControllable>()
     .replicate::<Chasing>()
     .replicate_once::<WanderState>()
-    .replicate::<Fleeing>()
+    .replicate_once::<Fleeing>()
     .replicate::<DoAvoidBlacklistedSpawnTilesForWander>()
-    .replicate::<GoTo>()
     .replicate_filtered::<GlobalTilePos, Without<Being>>()
-    .replicate::<being_shared::BgSimulatedIn>()
+    .replicate::<BgSimulatedIn>()
+    .replicate::<BodyWeightSum>()
 
     .replicate::<MemberRanks>()
     .replicate::<Predator>()
@@ -137,7 +138,6 @@ pub fn plugin(app: &mut App) {
     .register_type::<WanderState>()
     .replicate::<FactionRef>()
     .replicate::<SquadMemberOf>()
-    .replicate::<crate::pack::pack_components::SquadAvgCenterPerDim>()
 
 
 

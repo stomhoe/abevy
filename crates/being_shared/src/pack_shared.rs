@@ -1,11 +1,10 @@
 use bevy::{ecs::entity::{EntityHashMap, MapEntities}, platform::collections::HashMap, prelude::*};
-use bevy_replicon::prelude::Replicated;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::*;
 
-#[derive(Component, serde::Serialize, serde::Deserialize, Clone)]
-#[require(Replicated, Prefix::trunc("Pack"), AssetScoped, HotReload)]
+#[derive(Component, Serialize, Deserialize, Clone)]
+#[require(Prefix::trunc("Pack"), AssetScoped, HotReload)]
 pub struct Pack;
 
 
@@ -75,7 +74,7 @@ impl PackSpawnRadius {
     }
 }
 
-#[derive(Component, Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Component, Debug, Clone, Default, )]
 pub struct SquadAvgCenterPerDim(pub HashMap<DimensionRef, GlobalTilePos>);
 
 #[derive(Component, Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -103,3 +102,13 @@ impl NextPendingNaturalSpawnGroupId {
         id
     }
 }
+
+common::define_entity_map_systems_no_replicate!(
+    main_component: Pack,
+    with_filters: (With<game_common::game_common_components::Templ>, ),
+    abbreviation: Pack,
+    target: common::log_targets::ENTITY_MAP_SYSTEM,
+    entity_prefix: "Pack",
+    despawn_trigger: (Pack, game_common::game_common_components::Templ),
+    id_type: common::common_components::StrId,
+);

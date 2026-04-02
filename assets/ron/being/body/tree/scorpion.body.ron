@@ -28,8 +28,8 @@
             (part_id: "brain", label_override: "Brain", children: []),
             (part_id: "eye", label_override: "Front Left Eye", children: []),
             (part_id: "eye", label_override: "Front Right Eye", children: []),
-            (part_id: "fang", label_override: "Left Fang", children: []),
-            (part_id: "fang", label_override: "Right Fang", children: []),
+            (part_id: "pincer", label_override: "Left Pincer", children: []),
+            (part_id: "pincer", label_override: "Right Pincer", children: []),
             (part_id: "leg", label_override: "Front Left Leg", children: []),
             (part_id: "leg", label_override: "Front Right Leg", children: []),
             (part_id: "leg", label_override: "Mid Front Left Leg", children: []),
@@ -38,7 +38,11 @@
             (part_id: "leg", label_override: "Mid Rear Right Leg", children: []),
             (part_id: "leg", label_override: "Rear Left Leg", children: []),
             (part_id: "leg", label_override: "Rear Right Leg", children: []),
-            (part_id: "abdomen", label_override: "Abdomen", children: []),
+            (part_id: "abdomen", label_override: "Abdomen", children: [
+                (part_id: "tail", label_override: "Tail", children: [
+                    (part_id: "stinger", label_override: "Stinger", children: []),
+                ]),
+            ]),
         ],
     ),
 )

@@ -6,7 +6,7 @@
     scs_samplers: ["goblin_merchant"],
     sprites_scale_ranges: {},
     health_multiplier: 1.0,
-    body_tree: "goblin_merchant",
+    body: "goblin_merchant",
 
     recruitment_difficulty: None,
 

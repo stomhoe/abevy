@@ -221,33 +221,33 @@ macro_rules! __insert_markers_from_template {
 macro_rules! __replicate_marker_components {
     ($app:ident, $mode:ident, ) => {};
     ($app:ident, repli, serialize $name:ident $(($vis:vis $ty:ty))?, $($rest:tt)*) => {
-        $app.replicate::<$name>();
+        $app.replicate_once::<$name>();
         $crate::__replicate_marker_components!($app, repli, $($rest)*);
     };
     ($app:ident, no_repli, serialize $name:ident $(($vis:vis $ty:ty))?, $($rest:tt)*) => {
-        $app.replicate::<$name>();
+        $app.replicate_once::<$name>();
         $crate::__replicate_marker_components!($app, no_repli, $($rest)*);
     };
     ($app:ident, $mode:ident, local $name:ident $(($vis:vis $ty:ty))?, $($rest:tt)*) => {
         $crate::__replicate_marker_components!($app, $mode, $($rest)*);
     };
     ($app:ident, repli, $name:ident $(($vis:vis $ty:ty))?, $($rest:tt)*) => {
-        $app.replicate::<$name>();
+        $app.replicate_once::<$name>();
         $crate::__replicate_marker_components!($app, repli, $($rest)*);
     };
     ($app:ident, no_repli, $name:ident $(($vis:vis $ty:ty))?, $($rest:tt)*) => {
         $crate::__replicate_marker_components!($app, no_repli, $($rest)*);
     };
     ($app:ident, repli, serialize $name:ident $(($vis:vis $ty:ty))?) => {
-        $app.replicate::<$name>();
+        $app.replicate_once::<$name>();
     };
     ($app:ident, no_repli, serialize $name:ident $(($vis:vis $ty:ty))?) => {
-        $app.replicate::<$name>();
+        $app.replicate_once::<$name>();
     };
     ($app:ident, repli, local $name:ident $(($vis:vis $ty:ty))?) => {};
     ($app:ident, no_repli, local $name:ident $(($vis:vis $ty:ty))?) => {};
     ($app:ident, repli, $name:ident $(($vis:vis $ty:ty))?) => {
-        $app.replicate::<$name>();
+        $app.replicate_once::<$name>();
     };
     ($app:ident, no_repli, $name:ident $(($vis:vis $ty:ty))?) => {};
 }

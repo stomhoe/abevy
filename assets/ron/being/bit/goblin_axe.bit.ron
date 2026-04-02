@@ -6,7 +6,7 @@
     scs_samplers: ["goblin_axe"],
     sprites_scale_ranges: {},
     health_multiplier: 1.0,
-    body_tree: "goblin_axe",
+    body: "goblin_axe",
 
     recruitment_difficulty: None,
 

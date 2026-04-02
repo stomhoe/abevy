@@ -1,15 +1,16 @@
 
 
-use crate::pack::pack_components::SquadAvgCenterPerDim;
 use crate::being_messages::NavOrder;
 use ::being_shared::*;
 use bevy::{
     ecs::entity::{EntityHashMap, EntityHashSet},
+    ecs::system::SystemParam,
     prelude::*,
 };
 use common::common_tag_components::TagSet;
 use common::log_targets::WANDER_SYSTEM;
 use movement::movement_components::FinalNormMoveDir;
+use sprite_animation_shared::MirrorHolderStateForSprite;
 use ::param_sets::*;
 use std::time::Duration;
 use ::tilemap_shared::*;
@@ -199,40 +200,150 @@ fn orbit_target_allowed_for_pack_members(
     true
 }
 
+fn pick_clear_cardinal_dir(
+    rng: &mut impl rand::Rng,
+    blocking_tiles: &mut BlockingTileParamSet,
+    dim_ref: DimensionRef,
+    being_ent: Entity,
+    gpos: GlobalTilePos,
+    skip_dir: Option<CardinalDirection>,
+) -> Option<CardinalDirection> {
+    const CANDIDATE_DIRS: [CardinalDirection; 4] = [
+        CardinalDirection::South,
+        CardinalDirection::West,
+        CardinalDirection::North,
+        CardinalDirection::East,
+    ];
+    let start = rng.random_range(0..CANDIDATE_DIRS.len());
+    for offset in 0..CANDIDATE_DIRS.len() {
+        let candidate_dir = CANDIDATE_DIRS[(start + offset) % CANDIDATE_DIRS.len()];
+        if skip_dir.is_some_and(|skip_dir| skip_dir == candidate_dir) {
+            continue;
+        }
+        let candidate_gpos = GlobalTilePos(gpos.0 + candidate_dir.to_dir_vec());
+        if !blocking_tiles.is_blocked_at_tiles_only(dim_ref, candidate_gpos, being_ent) {
+            return Some(candidate_dir);
+        }
+    }
+    None
+}
+
+fn pick_detour_axis_around_blocker(
+    rng: &mut impl rand::Rng,
+    blocking_tiles: &mut BlockingTileParamSet,
+    dim_ref: DimensionRef,
+    being_ent: Entity,
+    gpos: GlobalTilePos,
+    forward_axis: IVec2,
+) -> Option<IVec2> {
+    if forward_axis == IVec2::ZERO {
+        return None;
+    }
+    let left_axis = IVec2::new(-forward_axis.y, forward_axis.x);
+    let right_axis = IVec2::new(forward_axis.y, -forward_axis.x);
+    let left_first = rng.random_bool(0.5);
+    let side_axes = if left_first {
+        [left_axis, right_axis]
+    } else {
+        [right_axis, left_axis]
+    };
+    let mut best_axis = None;
+    let mut best_score = i32::MIN;
+    for side_axis in side_axes {
+        let side_gpos = GlobalTilePos(gpos.0 + side_axis);
+        if blocking_tiles.is_blocked_at_tiles_only(dim_ref, side_gpos, being_ent) {
+            continue;
+        }
+        let side_then_forward_gpos = GlobalTilePos(side_gpos.0 + forward_axis);
+        let side_then_forward_clear = !blocking_tiles.is_blocked_at_tiles_only(
+            dim_ref,
+            side_then_forward_gpos,
+            being_ent,
+        );
+        let score = if side_then_forward_clear { 2 } else { 1 };
+        if score > best_score {
+            best_score = score;
+            best_axis = Some(side_axis);
+        }
+    }
+    best_axis
+}
+
 #[allow(unused_parens, )]
-pub fn wander_behavior(
-    mut writer: MessageWriter<NavOrder>,
-    time: Res<Time>,
-    mut blocking_tiles: BlockingTileParamSet,
-    mut beings: Query<
+#[derive(SystemParam)]
+pub struct WanderBehaviorQueryParams<'w, 's> {
+    blocking_tiles: BlockingTileParamSet<'w, 's>,
+    beings: Query<
+        'w,
+        's,
         (
             Entity,
-            &DimensionRef,
-            &mut WanderState,
-            Option<&SquadMemberOf>,
+            &'static DimensionRef,
+            &'static mut WanderState,
+            Option<&'static SquadMemberOf>,
             Has<DoAvoidBlacklistedSpawnTilesForWander>,
         ),
-        (With<Being>, Without<Fleeing>, LocalAiControlled),
+        (
+            With<Being>,
+            Without<Fleeing>,
+            LocalAiControlled,
+        ),
     >,
-    wander_cfg_query: Query<&WanderSeri>,
-    blacklisted_spawn_tile_tags_query: Query<&BlacklistedSpawnTileTags>,
+    wander_cfg_query: Query<'w, 's, &'static WanderSeri>,
+    blacklisted_spawn_tile_tags_query: Query<'w, 's, &'static BlacklistedSpawnTileTags>,
     threat_query: Query<
+        'w,
+        's,
         (
             Entity,
-            &DimensionRef,
-            Option<&SquadMemberOf>,
+            &'static DimensionRef,
+            Option<&'static SquadMemberOf>,
         ),
         (With<Being>, ),
     >,
-    activators_query: Query<(Entity, &DimensionRef), (With<LoadChunksAround>, )>,
-    beings_at_gpos: Res<BeingsAtGpos>,
-    tag_query: Query<&TagSet>,
-    pack_center_query: Query<&SquadAvgCenterPerDim>,
-    mut nearby_threats: Local<EntityHashSet>,
-    mut activator_positions_by_dim: Local<EntityHashMap<Vec<GlobalTilePos>>>,
-    mut pack_members_by_squad: Local<EntityHashMap<Vec<(Entity, DimensionRef, bool)>>>,
-    mut messages: Local<Vec<NavOrder>>,
+    activators_query: Query<'w, 's, (Entity, &'static DimensionRef), (With<LoadChunksAround>, )>,
+    beings_at_gpos: Res<'w, BeingsAtGpos>,
+    tag_query: Query<'w, 's, &'static TagSet>,
+    pack_center_query: Query<'w, 's, &'static SquadAvgCenterPerDim>,
+}
+
+#[allow(unused_parens, )]
+#[derive(SystemParam)]
+pub struct WanderBehaviorLocals<'s> {
+    nearby_threats: Local<'s, EntityHashSet>,
+    activator_positions_by_dim: Local<'s, EntityHashMap<Vec<GlobalTilePos>>>,
+    pack_members_by_squad: Local<'s, EntityHashMap<Vec<(Entity, DimensionRef, bool)>>>,
+    messages: Local<'s, Vec<NavOrder>>,
+    facing_messages: Local<'s, Vec<MirrorHolderStateForSprite>>,
+}
+
+#[allow(unused_parens, )]
+pub fn wander_behavior(
+    mut writer: MessageWriter<NavOrder>,
+    mut facing_writer: MessageWriter<MirrorHolderStateForSprite>,
+    time: Res<Time>,
+    queries: WanderBehaviorQueryParams,
+    locals: WanderBehaviorLocals,
 ) {
+    let WanderBehaviorQueryParams {
+        mut blocking_tiles,
+        mut beings,
+        wander_cfg_query,
+        blacklisted_spawn_tile_tags_query,
+        threat_query,
+        activators_query,
+        beings_at_gpos,
+        tag_query,
+        pack_center_query,
+    } = queries;
+    let WanderBehaviorLocals {
+        mut nearby_threats,
+        mut activator_positions_by_dim,
+        mut pack_members_by_squad,
+        mut messages,
+        mut facing_messages,
+    } = locals;
+
     let mut rng = rand::rng();
     let dt = time.delta_secs();
     let mut evaluated_wanderers = 0usize;
@@ -253,7 +364,7 @@ pub fn wander_behavior(
     {
         let pack_member_iter = beings.iter_mut();
         pack_members_by_squad.reserve(pack_member_iter.size_hint().1.unwrap_or(pack_member_iter.size_hint().0));
-        for (member_ent, &member_dim, _, member_of, has_avoid_blacklisted_spawn_tiles) in pack_member_iter {
+    for (member_ent, &member_dim, _, member_of, has_avoid_blacklisted_spawn_tiles) in pack_member_iter {
             let Some(member_of) = member_of else {
                 continue;
             };
@@ -407,9 +518,67 @@ pub fn wander_behavior(
                 }
             }
         }
+        if lod_level == 0 && input_dir != Vec2::ZERO {
+            let axis = FinalNormMoveDir(input_dir).normalize_to_axis_dir();
+            if axis != IVec2::ZERO {
+                let next = GlobalTilePos(gpos.0 + axis);
+                if blocking_tiles.is_blocked_at_tiles_only(dim_ref, next, pred_ent) {
+                    if let Some(detour_axis) = pick_detour_axis_around_blocker(
+                        &mut rng,
+                        &mut blocking_tiles,
+                        dim_ref,
+                        pred_ent,
+                        gpos,
+                        axis,
+                    ) {
+                        input_dir = detour_axis.as_vec2() * state.current_speed_mult_or_zero();
+                    } else {
+                        let current_dir = CardinalDirection::from_dir_vec(axis);
+                        if let Some(next_dir) = pick_clear_cardinal_dir(
+                            &mut rng,
+                            &mut blocking_tiles,
+                            dim_ref,
+                            pred_ent,
+                            gpos,
+                            Some(current_dir),
+                        ) {
+                            state.set_motion_dir(next_dir, &mut rng, cfg);
+                            input_dir = next_dir.to_dir_vec().as_vec2() * state.current_speed_mult_or_zero();
+                        } else {
+                            state.expire_motion_dir();
+                            input_dir = Vec2::ZERO;
+                        }
+                    }
+                }
+            }
+        }
         let throttle = state.current_speed_mult_or_zero().clamp(0.0, 1.0);
         let axis = FinalNormMoveDir(input_dir).normalize_to_axis_dir();
         if axis == IVec2::ZERO {
+            if state.should_adjust_halt_facing_once() {
+                if let Ok(facing_dir) = blocking_tiles.cardinal_direction_query().get_mut(pred_ent) {
+                    let current_facing = *facing_dir;
+                    let facing_gpos = GlobalTilePos(gpos.0 + current_facing.to_dir_vec());
+                    if blocking_tiles.is_blocked_at_tiles_only(dim_ref, facing_gpos, pred_ent) {
+                        let next_facing = pick_clear_cardinal_dir(
+                            &mut rng,
+                            &mut blocking_tiles,
+                            dim_ref,
+                            pred_ent,
+                            gpos,
+                            Some(current_facing),
+                        )
+                        .unwrap_or(current_facing);
+                        if next_facing != current_facing {
+                            if let Ok(mut facing_dir) = blocking_tiles.cardinal_direction_query().get_mut(pred_ent) {
+                                *facing_dir = next_facing;
+                                facing_messages.push(MirrorHolderStateForSprite(pred_ent));
+                            }
+                        }
+                    }
+                }
+                state.mark_halt_facing_adjusted();
+            }
             messages.push(NavOrder::with_speed_throttle(
                 pred_ent,
                 10,
@@ -457,4 +626,5 @@ pub fn wander_behavior(
         );
     }
     writer.write_batch(messages.drain(..));
+    facing_writer.write_batch(facing_messages.drain(..));
 }

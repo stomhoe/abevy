@@ -1,8 +1,9 @@
+use ::being_shared::*;
 use bevy::{
     platform::collections::HashSet,
     prelude::*,
 };
-use being::pack::pack_components::*;
+
 use tilemap_shared::*;
 
 const SEPARATION_BETWEEN_PACKS_ANCHOR_CPOS: u8 = 1;

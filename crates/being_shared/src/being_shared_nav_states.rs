@@ -4,7 +4,7 @@ use superstate::SuperstateInfo;
 use tilemap_shared::{DimensionRef, GlobalTilePos};
 
 #[derive(Component, Debug, Default, Clone)]
-#[require(SuperstateInfo<BehavorialNavState>, )]//you need to add a plugin look at superstate crate i git cloned for example
+#[require(SuperstateInfo<BehavorialNavState>, )]
 pub struct BehavorialNavState;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, MapEntities)]
@@ -75,9 +75,9 @@ impl NavOrderSource {
     }
 }
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Default)]
+#[derive(Component, Debug, Copy, Clone, Default)]
 pub struct GoTo {
-    pub pos: Option<GlobalTilePos>,
+    pub pos: GlobalTilePos,
     pub stop_distance: f32,
     pub source: Option<NavOrderSource>,
     pub updated_tick: u32,
@@ -85,7 +85,7 @@ pub struct GoTo {
 impl GoTo {
     pub fn new(pos: GlobalTilePos, stop_distance: f32) -> Self {
         Self {
-            pos: Some(pos),
+            pos,
             stop_distance: stop_distance.max(0.0),
             source: None,
             updated_tick: 0,
@@ -94,7 +94,7 @@ impl GoTo {
 
     pub fn with_source(pos: GlobalTilePos, stop_distance: f32, source: NavOrderSource, updated_tick: u32) -> Self {
         Self {
-            pos: Some(pos),
+            pos,
             stop_distance: stop_distance.max(0.0),
             source: Some(source),
             updated_tick,

@@ -6,10 +6,10 @@ use modifier_shared::modifier_item_types::MassKg;
 use modifier_shared::modifier_components::*;
 use tilemap_shared::{Dimension, DimensionRef, Gravity};
 
-use crate::body::{body_tree_components::*,};
+use crate::body::{body_components::*,};
 use ::being_shared::*;
 
-pub fn update_body_tree_weight_sum(
+pub fn update_body_weight_sum(
     mut cmd: Commands,
     body_changed_query: Query<Entity, (With<BodyOf>, Or<(Added<BodyOf>, Changed<BodypartChildrenBodyparts>)>)>,
     being_dim_changed_query: Query<Entity, (With<Being>, Changed<DimensionRef>)>,
@@ -21,7 +21,7 @@ pub fn update_body_tree_weight_sum(
     mass_markers_query: Query<(), With<MassKg>>,
     body_of_query: Query<(Entity, &BodyOf), With<BodyOf>>,
     being_dim_query: Query<&DimensionRef, With<Being>>,
-    being_weight_query: Query<&BodyTreeWeightSum, With<Being>>,
+    mut being_weight_query: Query<&mut BodyWeightSum, With<Being>>,
     gravity_changed_query: Query<Entity, (With<Dimension>, Changed<Gravity>)>,
     gravity_query: Query<&Gravity, With<Dimension>>,
     mut removed_missing: RemovedComponents<Missing>,
@@ -98,12 +98,12 @@ pub fn update_body_tree_weight_sum(
         let gravity = gravity_query.get(dim_ref.0).copied().unwrap_or_default();
         let total_mass = mass_per_body.get(body_ent).copied().unwrap_or_default().max(0.0);
         let total_weight = gravity.mass_to_newtons(total_mass).max(0.0);
-        let Ok(prev_weight) = being_weight_query.get(body_of.being) else {
-            cmd.entity(body_of.being).try_insert(BodyTreeWeightSum(total_weight));
+        let Ok(mut prev_weight) = being_weight_query.get_mut(body_of.being) else {
+            cmd.entity(body_of.being).try_insert(BodyWeightSum(total_weight));
             continue;
         };
         if (prev_weight.0 - total_weight).abs() > f32::EPSILON {
-            cmd.entity(body_of.being).try_insert(BodyTreeWeightSum(total_weight));
+            prev_weight.0 = total_weight;
         }
     }
 }

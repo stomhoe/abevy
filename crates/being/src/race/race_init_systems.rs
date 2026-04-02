@@ -8,13 +8,11 @@ use sprite_systems::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::Sp
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 
 use sex::sex_resources::SexEntityMap;
-use crate::body::BodyTreeEntityMap;
-use crate::body::BodyTreeRef;
-use crate::body::body_tree_components::*;
+use crate::body::BodyEntityMap;
+use crate::body::BodyRef;
+use crate::body::body_components::*;
 use crate::body::body_sampler::body_sampler_resources::*;
 use crate::being_interaction_zone_helper::build_being_interaction_zones_with_fallback;
-use crate::pack::pack_components::PackInitialSizeSampler;
-use crate::pack::pack_components::PackSpawnRadius;
 use crate::{sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use ::being_shared::*;
@@ -25,8 +23,8 @@ pub fn init_races(
     sprite_map: Res<SpriteConfigEntityMap>,
     sampler_map: Option<Res<SpriteWeightedSamplerEntityMap>>,
     sexes_map: Res<SexEntityMap>,
-    body_tree_map: Res<BodyTreeEntityMap>,
-    body_tree_source_query: Query<(&BodyTreeSexes, Option<&InteractionZones>), With<BodyTree>>,
+    body_map: Res<BodyEntityMap>,
+    body_source_query: Query<(&BodySexes, Option<&InteractionZones>), With<Body>>,
     body_sampler_map:Res<BodyWeightedSamplerEntityMap>,
     biome_emap: Res<BiomeEntityMap>,
     mut biome_pack_samplers: Query<&mut CreatureSampler>,
@@ -126,20 +124,20 @@ pub fn init_races(
             }
         };
         let mut entity_cmds = cmd.spawn((Race, Templ, str_id.clone(), ingame_name, singular, plural));
-        let body_tree_str_id = StrId::trunc(&race_seri.body_or_sampler);
-        let mut body_tree_ent = None;
+        let body_str_id = StrId::trunc(&race_seri.body_or_sampler);
+        let mut body_ent = None;
 
-        if let Ok(body_sampler_ent) = body_sampler_map.0.get_cloned(&body_tree_str_id) {
+        if let Ok(body_sampler_ent) = body_sampler_map.0.get_cloned(&body_str_id) {
             entity_cmds.insert(BodyWeightedSamplerRef(body_sampler_ent));
-        } else if let Ok(tree_ent) = body_tree_map.0.get_cloned(&body_tree_str_id) {
-            entity_cmds.insert(BodyTreeRef(tree_ent));
-            body_tree_ent = Some(tree_ent);
+        } else if let Ok(tree_ent) = body_map.0.get_cloned(&body_str_id) {
+            entity_cmds.insert(BodyRef(tree_ent));
+            body_ent = Some(tree_ent);
         }
-        let body_tree_zones = body_tree_ent
-            .and_then(|body_tree_ent| body_tree_source_query.get(body_tree_ent).ok())
+        let body_zones = body_ent
+            .and_then(|body_ent| body_source_query.get(body_ent).ok())
             .and_then(|(_, zones)| zones);
         entity_cmds.insert(build_being_interaction_zones_with_fallback(
-            body_tree_zones,
+            body_zones,
             race_seri.melee_interaction_zone.clone(),
             race_seri.collision_zone.clone(),
         ));
@@ -201,14 +199,14 @@ pub fn init_races(
             ));
         }
 
-        let body_tree_sexes = body_tree_ent
-            .and_then(|body_tree_ent| body_tree_source_query.get(body_tree_ent).ok())
+        let body_sexes = body_ent
+            .and_then(|body_ent| body_source_query.get(body_ent).ok())
             .map(|(sexes, _)| sexes);
 
-        if let Some(body_tree_sexes) = body_tree_sexes {
+        if let Some(body_sexes) = body_sexes {
             let mut sex_entities_weights: Vec<(Entity, f32)> = Vec::new();
             let mut sex_size_variations = bevy::ecs::entity::EntityHashMap::default();
-            for (sex_id, sex_cfg) in &body_tree_sexes.0 {
+            for (sex_id, sex_cfg) in &body_sexes.0 {
                 match sexes_map.0.get_cloned(sex_id) {
                     Ok(sex_entity) => {
                         sex_entities_weights.push((sex_entity, sex_cfg.weight as f32));
@@ -250,7 +248,7 @@ pub fn init_races(
                 cmd.entity(entity).insert(SexSizeVariationsBySex(sex_size_variations));
             }
         } else {
-            warn!(target: "race_init", "BodyTree '{}' has no BodyTreeSexes; race '{}' will not get sex sampler data", body_tree_str_id, str_id);
+            warn!(target: "race_init", "Body '{}' has no BodySexes; race '{}' will not get sex sampler data", body_str_id, str_id);
         }
         if race_seri.scale_hp_and_strength_with_size {
             cmd.entity(entity).insert(ScaleHpAndStrengthWithSampledSize);

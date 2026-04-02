@@ -1,0 +1,8 @@
+(
+    id: "bear_cub",
+    points: 0,
+
+    race: "bear",
+    scs_samplers: ["bear_cub"],
+    body: "bear_cub",
+)

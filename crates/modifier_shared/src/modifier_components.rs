@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 #[require(
     AssetScoped,
     SparedFromHotReloading,
-    Replicated,
 )]
 pub struct ModifierTarget(
     #[relationship]

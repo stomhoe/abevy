@@ -30,9 +30,23 @@ pub struct PendingTileCorrection {
     pub secs_left: f32,
 }
 
+#[derive(Component, Debug, Clone, Copy, Deserialize, Serialize, PartialEq)]
+pub struct InputInvMul(pub f32);
+impl InputInvMul {
+    pub fn is_non_default(&self) -> bool {
+        self != &Self::default()
+    }
+}
+impl Default for InputInvMul {
+    fn default() -> Self {Self(1.0)}
+}
+
 #[derive(Component, Debug, Default, Clone, Copy)]
 pub struct FinalNormMoveDir(pub Vec2);
 impl FinalNormMoveDir {
+    pub fn new_val_is_different(&self, new_val: Vec2) -> bool {
+        self.0 != new_val
+    }
     pub fn normalize_to_axis_dir(self) -> IVec2 {
         if self.0 == Vec2::ZERO {
             IVec2::ZERO

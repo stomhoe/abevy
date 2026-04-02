@@ -1,5 +1,5 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
-use being::pack::pack_components::*;
+
 #[allow(unused_imports, )]
 use ::being_shared::*;
 use common::log_targets::WILDLIFE_SYSTEM;

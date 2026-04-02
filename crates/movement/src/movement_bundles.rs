@@ -9,6 +9,7 @@ use crate::movement_components::*;
 #[derive(Bundle, Debug, Default, Clone)]
 pub struct GridLockedMovementRequirementsBundle(
     pub InputMoveDir,
+    pub InputInvMul,
     pub FinalNormMoveDir,
     pub SpeedMagnitude,
     pub AppliedModifiers,

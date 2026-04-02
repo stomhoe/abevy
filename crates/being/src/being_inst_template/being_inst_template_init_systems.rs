@@ -8,10 +8,8 @@ use ::sprite_shared::*;
 use tilemap_shared::tilemap_shared_samplers::*;
 
 
-use crate::pack::pack_components::PackInitialSizeSampler;
-use crate::pack::pack_components::PackSpawnRadius;
 use crate::being_interaction_zone_helper::build_being_interaction_zones_with_fallback;
-use crate::body::{BodyTreeRef, body_tree_resources::BodyTreeEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
+use crate::body::{BodyRef, body_resources::BodyEntityMap, body_sampler::body_sampler_resources::{BodyWeightedSamplerEntityMap, BodyWeightedSamplerRef}};
 use faction::faction_resources::{FactionStrIdRef};
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
@@ -21,7 +19,7 @@ pub fn init_being_templates(
     mut cmd: Commands,
     race_emap: Option<Res<RaceEntityMap>>,
     bit_map: Res<BeingInstTemplateEntityMap>,
-    body_tree_map: Res<BodyTreeEntityMap>,
+    body_map: Res<BodyEntityMap>,
     body_sampler_map: Res<BodyWeightedSamplerEntityMap>,
     biome_emap: Res<BiomeEntityMap>,
     mut biome_pack_samplers: Query<&mut CreatureSampler>,
@@ -29,8 +27,8 @@ pub fn init_being_templates(
     if !bit_map.0.is_empty(){
         return;
     }
-    if body_tree_map.0.is_empty() {
-        error!(target: "being_template_init", "BodyTreeEntityMap is empty");
+    if body_map.0.is_empty() {
+        error!(target: "being_template_init", "BodyEntityMap is empty");
     }
     if body_sampler_map.0.is_empty() {
         warn!(target: "being_template_init", "BodyWeightedSamplerEntityMap is empty (may be ok if none are used)");
@@ -69,14 +67,14 @@ pub fn init_being_templates(
             let faction_str_id = StrId::trunc(&template_seri.fallback_faction);
             faction_refs_to_insert.push((bit_entity, FactionStrIdRef(faction_str_id)));
         }
-        if !template_seri.body_tree.trim().is_empty() {
-            let body_tree_str_id = StrId::trunc(&template_seri.body_tree);
-            if let Ok(body_sampler_ent) = body_sampler_map.0.get_cloned(&body_tree_str_id) {
+        if !template_seri.body.trim().is_empty() {
+            let body_str_id = StrId::trunc(&template_seri.body);
+            if let Ok(body_sampler_ent) = body_sampler_map.0.get_cloned(&body_str_id) {
                 cmd.entity(bit_entity).insert(BodyWeightedSamplerRef(body_sampler_ent));
-            } else if let Ok(body_tree_ent) = body_tree_map.0.get_cloned(&body_tree_str_id) {
-                cmd.entity(bit_entity).insert(BodyTreeRef(body_tree_ent));
+            } else if let Ok(body_ent) = body_map.0.get_cloned(&body_str_id) {
+                cmd.entity(bit_entity).insert(BodyRef(body_ent));
             } else{
-                error!(target: "being_template_init", "Body tree/sampler '{}' not found for BeingInstTemplate '{}'", body_tree_str_id, str_id);
+                error!(target: "being_template_init", "Body tree/sampler '{}' not found for BeingInstTemplate '{}'", body_str_id, str_id);
             }
         }
         if let Some(size_variation) = template_seri.size_variation.filter(|v| !v.is_sentinel()) {
