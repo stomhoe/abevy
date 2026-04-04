@@ -71,7 +71,6 @@ pub fn add_spritechildren_and_comps(
                 }
             }
             let sprite = cmd.spawn((
-                str_id.clone(),
                 TemplEntiRef(spritecfg_ent),
                 Visibility::default(),
                 Transform::default(),
@@ -100,22 +99,21 @@ pub fn add_spritechildren_and_comps(
 
 #[allow(unused_parens)]
 pub fn remap_broken_sprite_config_refs_after_hotreload(
-    mut sprites_query: Query<
-        (&StrId, &mut TemplEntiRef),
-        (Without<SpriteConfig>, With<BaseHolderRef>),
-    >,
-    sprite_cfg_query: Query<(), With<SpriteConfig>>,
+    mut cmd: Commands,
+    sprites_query: Query<(Entity, &TemplEntiRef), (Without<SpriteConfig>, With<BaseHolderRef>)>,
+    str_id_query: Query<&StrId>,
     sprite_map: Res<SpriteConfigEntityMap>,
 ) {
-    for (sprite_id, mut templ_ref) in sprites_query.iter_mut() {
-        if sprite_cfg_query.get(templ_ref.0).is_ok() {
+    for (sprite_ent, templ_ref) in sprites_query.iter() {
+        let Ok(sprite_id) = str_id_query.get(templ_ref.0)
+        else {
             continue;
-        }
-        let Ok(new_cfg_ent) = sprite_map.0.get_cloned(sprite_id) else {
+        };
+        let Ok(new_cfg_ent) = sprite_map.0.get_cloned(&sprite_id) else {
             continue;
         };
         if new_cfg_ent != templ_ref.0 {
-            templ_ref.0 = new_cfg_ent;
+            cmd.entity(sprite_ent).insert(TemplEntiRef(new_cfg_ent));
         }
     }
 }
@@ -124,12 +122,9 @@ pub fn remap_broken_sprite_config_refs_after_hotreload(
 pub fn become_child_of_sprite_with_tag(
     mut cmd: Commands,
     changed_new_sprites: Query<Entity, (Without<SpriteConfig>, Changed<TemplEntiRef>)>,
-    new_sprites: Query<
-        (&BaseHolderRef, &TemplEntiRef),
-        (Without<SpriteConfig>, common::AnyDisabling),
-    >,
+    new_sprite_baseholder_query: Query<&BaseHolderRef, (Without<SpriteConfig>, common::AnyDisabling)>,
+    sprite_config_ref_query: Query<&TemplEntiRef, (Without<SpriteConfig>, common::AnyDisabling)>,
     sprite_holder: Query<&HeldSprites>,
-    other_sprites: Query<(Entity, &TemplEntiRef), (Without<SpriteConfig>,)>,
     becomes_query: Query<(&BecomeChildOfSpriteWithTag), (common::AnyDisabling)>,
     other_cats: Query<&TagSet, (common::AnyDisabling)>,
     mut removed_disabled: RemovedComponents<Disabled>,
@@ -143,7 +138,10 @@ pub fn become_child_of_sprite_with_tag(
 
 
     for new_ent in sprites_to_process.drain() {
-        let Ok((&sprite_holder_ref, &new_sprite_cfg_ref)) = new_sprites.get(new_ent) else {
+        let Ok(sprite_holder_ref) = new_sprite_baseholder_query.get(new_ent) else {
+            continue;
+        };
+        let Ok(new_sprite_cfg_ref) = sprite_config_ref_query.get(new_ent) else {
             continue;
         };
         let Ok(becomes_child_of_sprite_with_cat) = becomes_query.get(new_sprite_cfg_ref.0) else {
@@ -155,11 +153,14 @@ pub fn become_child_of_sprite_with_tag(
             continue;
         };
 
-        for (other_ent, o_spritecfg_ref) in other_sprites.iter_many(held_sprites.iter()) {
+        for other_ent in held_sprites.iter() {
             if new_ent == other_ent {
                 continue;
             }
 
+            let Ok(o_spritecfg_ref) = sprite_config_ref_query.get(other_ent) else {
+                continue;
+            };
             let other_cats = match other_cats.get(o_spritecfg_ref.0) {
                 Ok(cats) => cats,
                 Err(_) => {

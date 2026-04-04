@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
-player = { path = "../player" }
+player_shared = { path = "../player_shared" }
 faction = { path = "../faction" }
 faction_shared = { path = "../faction_shared" }
 

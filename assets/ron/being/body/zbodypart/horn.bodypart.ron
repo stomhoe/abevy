@@ -1,0 +1,17 @@
+(
+    id: "horn",
+    name: "Horn",
+    weighted_stats:
+    {
+        "coverage": 3,
+        "mass_kg": 0.08,
+        "hp_capacity": 4.0,
+        "hp_regen_rate": 0.6,
+        "blood_capacity": 1.4,
+        "pain_sensitivity": 0.9,
+        "caloric_burn_rate": 0.1,
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.4,
+)

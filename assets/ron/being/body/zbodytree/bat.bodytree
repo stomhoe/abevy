@@ -1,0 +1,22 @@
+id: bat
+tree:
+body
+  neck
+    head
+      brain
+      eye lbl"Left Eye"
+      eye lbl"Right Eye"
+      nose lbl"Beak"
+      jaw
+  chest
+    heart
+    lung lbl"Left Lung"
+    lung lbl"Right Lung"
+  abdomen
+    stomach
+    liver
+  wing lbl"Left Wing"
+  wing lbl"Right Wing"
+  leg lbl"Left Leg"
+  leg lbl"Right Leg"
+  tail

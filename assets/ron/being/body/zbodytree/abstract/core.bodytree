@@ -1,0 +1,24 @@
+id: core
+abstract: true
+tree:
+body
+  neck
+    head
+      brain
+      eye lbl"Left Eye"
+      eye lbl"Right Eye"
+      ear lbl"Left Ear"
+      ear lbl"Right Ear"
+      nose
+      jaw
+  chest
+    heart
+    lung lbl"Left Lung"
+    lung lbl"Right Lung"
+  abdomen
+    stomach
+    liver
+    kidney lbl"Left Kidney"
+    kidney lbl"Right Kidney"
+  spine
+  pelvis

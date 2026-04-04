@@ -1,0 +1,71 @@
+anim elemental_fire_ancient_south_idle {
+    img_path: "texture/being/npc/monster/elemental_fire_ancient.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim elemental_fire_ancient_south_move {
+    img_path: "texture/being/npc/monster/elemental_fire_ancient.png"
+    rows_cols: 4 6
+    clips {
+        row 0 start_frame 1
+    }
+}
+
+anim elemental_fire_ancient_north_idle {
+    img_path: "texture/being/npc/monster/elemental_fire_ancient.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 1 partial 0 0
+    }
+}
+
+anim elemental_fire_ancient_north_move {
+    img_path: "texture/being/npc/monster/elemental_fire_ancient.png"
+    rows_cols: 4 6
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim elemental_fire_ancient_west_idle {
+    img_path: "texture/being/npc/monster/elemental_fire_ancient.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 2 partial 0 0
+    }
+}
+
+anim elemental_fire_ancient_west_move {
+    img_path: "texture/being/npc/monster/elemental_fire_ancient.png"
+    rows_cols: 4 6
+    clips {
+        row 2 start_frame 1
+    }
+}
+
+anim elemental_fire_ancient_east_idle {
+    img_path: "texture/being/npc/monster/elemental_fire_ancient.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 3 partial 0 0
+    }
+}
+
+anim elemental_fire_ancient_east_move {
+    img_path: "texture/being/npc/monster/elemental_fire_ancient.png"
+    rows_cols: 4 6
+    clips {
+        row 3 partial 0 3 start_frame 1
+    }
+}

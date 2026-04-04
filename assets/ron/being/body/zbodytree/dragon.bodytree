@@ -1,0 +1,35 @@
+id: dragon
+tree:
+torso
+  neck
+    head
+      brain
+      eye lbl"Left Eye"
+      eye lbl"Right Eye"
+      ear lbl"Left Ear"
+      ear lbl"Right Ear"
+      nose
+      jaw
+        mouth
+  chest
+    heart
+    lung lbl"Left Lung"
+    lung lbl"Right Lung"
+    wing lbl"Left Wing"
+    wing lbl"Right Wing"
+  abdomen
+    stomach
+    liver
+    kidney lbl"Left Kidney"
+    kidney lbl"Right Kidney"
+  spine
+  pelvis
+  leg lbl"Front Left Leg"
+    clawed_paw lbl"Front Left Claw"
+  leg lbl"Front Right Leg"
+    clawed_paw lbl"Front Right Claw"
+  leg lbl"Hind Left Leg"
+    clawed_paw lbl"Hind Left Claw"
+  leg lbl"Hind Right Leg"
+    clawed_paw lbl"Hind Right Claw"
+  tail

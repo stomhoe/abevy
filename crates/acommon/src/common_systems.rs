@@ -1,5 +1,7 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy_replicon::prelude::*;
+use crate::log_targets::ENTITY_MAP_SYSTEM;
 use crate::{
     common_components::*, common_resources::ImageSizeMap,
 //    common_resources::*,
@@ -40,5 +42,50 @@ pub fn update_img_sizes_on_load(mut messages: MessageReader<AssetEvent<Image>>, 
             },
             _ => {}
         }
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn clone_and_tell_server(
+    mut cmd: Commands,
+    query: Query<
+        Entity,
+        (
+            With<Replicated>,
+            Added<RemoveReplicatedAfterClone>,
+        ),
+    >,
+    mut writer: MessageWriter<RemoveReplicated>,
+    mut local_msgs: Local<Vec<RemoveReplicated>>,
+) {
+    for entity in query.iter() {
+        let cloned = cmd.entity(entity).clone_and_spawn_with_opt_out(|builder| {
+            builder.deny::<Replicated>();
+            builder.deny::<RemoveReplicatedAfterClone>();
+        }).id();
+        debug!(
+            target: ENTITY_MAP_SYSTEM,
+            "Cloned replicated entity {:?} locally as {:?} and requested server removal",
+            entity,
+            cloned
+        );
+        local_msgs.push(RemoveReplicated(entity));
+    }
+    writer.write_batch(local_msgs.drain(..));
+}
+
+#[allow(unused_parens, )]
+pub fn remove_replicated_after_clone_from_client(
+    mut cmd: Commands,
+    mut remove_requests: MessageReader<FromClient<RemoveReplicated>>,
+) {
+    for from_client in remove_requests.read() {
+        let RemoveReplicated(being_ent) = from_client.message.clone();
+        debug!(
+            target: ENTITY_MAP_SYSTEM,
+            "Server removing Replicated from entity {:?} on client request",
+            being_ent
+        );
+        cmd.entity(being_ent).try_remove::<Replicated>();
     }
 }

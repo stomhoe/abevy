@@ -3,12 +3,12 @@ use common::{common_tag_components::TagSet};
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
 
-use crate::{sprite_systems::SpriteChanged};
+use crate::{sprite_systems::SpriteChangedScaleOrOffsetOrParent};
 use ::tilemap_shared::directions::*;
 
 #[allow(unused_parens, )]
 pub fn apply_offsets(
-    mut reader: MessageReader<SpriteChanged>,
+    mut reader: MessageReader<SpriteChangedScaleOrOffsetOrParent>,
     mut sprite_query: Query<(
         &mut Transform,
         &BaseHolderRef,

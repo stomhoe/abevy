@@ -1,0 +1,14 @@
+id: werewolf
+extends: humanoid
+replace:
+  body > shoulder[0] > arm > hand -> clawed_paw lbl"Left Claw"
+  body > shoulder[1] > arm > hand -> clawed_paw lbl"Right Claw"
+  body > leg[0] > foot -> paw lbl"Left Paw"
+  body > leg[1] > foot -> paw lbl"Right Paw"
+remove:
+  body > neck > head > nose
+add:
+  body > neck > head > snout
+    nose
+    jaw
+      mouth

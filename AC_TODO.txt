@@ -11,8 +11,7 @@ cambiar textura de agua por una parecida a los que tienen los del IAO en banderb
 
 decorar mas interior de dungeons (rocas, chests, cadaveres, zombies)
 
-spawnear npcs en dungeons
-
+poner decals en el piso como hizo el tipo de Torp
 
 cuando te muevas con plate armor hacer que haga ruido real de plate armor moviendose
 
@@ -31,6 +30,7 @@ mecanica flanqueo: más damage si pegas desde el costado, más damage aun si peg
 
 hacer que puedas hablar con NPCs que usen un LLM (como el mod de rimworld) https://player2.game/
 
+hacer q npcs tomen decisiones mediante llm
 
 hacer textura sand desde 0
 
@@ -39,14 +39,30 @@ hacer q los prey animal intenten escapar en direccion opuesta a los depredadores
 antes de freezear beings hacer registrar hasta donde pueden llegar con su pathfinding, perdon, registrar con que beings puede interactuar. hay q hacerlo antes de q despawnee el chunnk con todas sus tiles
 
 
-hacer q el sprite o sampler se ponga por body
+hacer q el sprite o sampler se pueda poner por body
 
 hacer q el damage sea como los damagedefs de rimworld (fuente identificable)
-
-hacer q bichos spawneen en dungeons
 
 
 para los tmap tiles, solo cargar las tiles visibles como entities. intentar usar los u16index para todos los sistemas
 de interaccion asi se pueden tener como 50 beings en nuestra faction muy dispersos en el mundo. sin que todos los tilemaps cargados por estos bajen el fps a 10 por todo el rendering q hacen.
 
 hacer q ghosts peudan transpasar beings y walls pero q no puedan agarrar nada
+
+posibilidad de anclar wanderers a posiciones así n
+
+mejorar caza de depredadores
+
+hacer q algunos sean hostil a todo lo q vean
+
+generar sprites de animales para desierto
+
+mejorar hunger y waste mechanic
+
+hacer q hunters vuelvan a cazar para demo
+
+poner thirst y water mechanics
+
+clonar con  .clone tile templs replicadas en client y desp mandar un mensaje para avisar al host q puede borrar el Replicate de la entity al host. se puede hacer un sistema general basdo en marker components o un macro para esto y q se haga auto y q no haya definir un monton de sistemas
+
+problema no se puede latejoinear sin complicar

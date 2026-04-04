@@ -169,7 +169,7 @@ fn render_spritetiles_grid(
     chunk_pos: ChunkPos,
     child_entities: &[Entity],
     tile_storage_query: &Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
-    spritetile_gpos_query: &Query<(Entity, &GlobalTilePos, Option<&TemplEntiRef>, Option<&StrId>)>,
+    spritetile_gpos_query: &Query<(Entity, &GlobalTilePos, Option<&TemplEntiRef>)>,
     id_query: &Query<&StrId>,
     selected_sprite: &mut Option<Entity>,
     camera_tile_pos: Option<GlobalTilePos>,
@@ -182,7 +182,7 @@ fn render_spritetiles_grid(
         if tile_storage_query.get(child_entity).is_ok() {
             continue;
         }
-        let Ok((ent, gpos, templ_ref, maybe_str_id)) = spritetile_gpos_query.get(child_entity) else {
+        let Ok((ent, gpos, templ_ref)) = spritetile_gpos_query.get(child_entity) else {
             continue;
         };
         if ChunkPos::from(*gpos) != chunk_pos {
@@ -192,9 +192,7 @@ fn render_spritetiles_grid(
         if local.x < 0 || local.y < 0 || local.x >= size.x as i32 || local.y >= size.y as i32 {
             continue;
         }
-        let display_str = if let Some(str_id) = maybe_str_id {
-            str_id.as_str().to_string()
-        } else if let Some(templ_ref) = templ_ref
+        let display_str = if let Some(templ_ref) = templ_ref
             && let Ok(str_id) = id_query.get(templ_ref.0)
         {
             str_id.as_str().to_string()
@@ -319,7 +317,7 @@ pub fn debug_chunking_window(
     // Query for child entities to check their components
     tile_storage_query: Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
     tile_query: Query<(Entity, &TemplEntiRef, Option<&InitialPos>), With<Tile>>,
-    spritetile_gpos_query: Query<(Entity, &GlobalTilePos, Option<&TemplEntiRef>, Option<&StrId>)>,
+    spritetile_gpos_query: Query<(Entity, &GlobalTilePos, Option<&TemplEntiRef>)>,
     templ_query: Query<&TileStrId, With<Templ>>,
     id_query: Query<&StrId>,
 ) {

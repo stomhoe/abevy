@@ -1,0 +1,19 @@
+(
+    id: "clawed_paw",
+    name: "Clawed Paw",
+    weighted_stats:
+    {
+        "coverage": 15,
+        "mass_kg": 0.95,
+        "hp_capacity": 18.0,
+        "hp_regen_rate": 0.8,
+        "blood_capacity": 9.5,
+        "walk_strength": 1.3,
+        "swim_strength": 1.0,
+        "pain_sensitivity": 1.2,
+        "caloric_burn_rate": 1.7,
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.8,
+)

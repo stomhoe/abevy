@@ -1,0 +1,24 @@
+(
+    id: "basilisk",
+    name: "Basilisk Body",
+    tags: ["quadruped"],
+    distributed_totals: {
+        "mass_kg": 160.0,
+        "hp_capacity": 220.0,
+        "hp_regen_rate": 10.0,
+        "blood_capacity": 80.0,
+        "bleed_rate": 8.0,
+        "walk_strength": 18.0,
+        "swim_strength": 6.0,
+        "manip_dex": 0.8,
+        "vision": 2.0,
+        "pain_sensitivity": 10.0,
+        "caloric_burn_rate": 22.0,
+    },
+    sexes: {
+        "male": (weight: 1, sprites: []),
+        "female": (weight: 1, sprites: []),
+    },
+    caloric_burn_rate_multiplier: 0.0,
+    bodytree_id: "basilisk",
+)

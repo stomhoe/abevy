@@ -15,7 +15,7 @@ use ::tilemap_shared::directions::*;
 
 
 #[derive(Message, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct SpriteChanged(pub Entity);
+pub struct SpriteChangedScaleOrOffsetOrParent(pub Entity);
 
 
 
@@ -26,14 +26,14 @@ pub fn sprite_change_detection(
     baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>, Changed<Visibility>)>, Without<Unloaded>, Without<Disabled>)>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut removed_unloaded: RemovedComponents<Unloaded>,
-    mut writer: MessageWriter<SpriteChanged>,
-    mut changed: Local<HashSet<SpriteChanged>>,
+    mut writer: MessageWriter<SpriteChangedScaleOrOffsetOrParent>,
+    mut changed: Local<HashSet<SpriteChangedScaleOrOffsetOrParent>>,
 )
 {
-    changed.extend(sprite_query.iter().map(SpriteChanged));
-    changed.extend(removed_disabled.read().map(SpriteChanged));
-    changed.extend(baseholder_query.iter().flat_map(|held_sprites| held_sprites.iter().map(|sprite_ent| SpriteChanged(sprite_ent))));
-    changed.extend(removed_unloaded.read().map(|removed| SpriteChanged(removed)));
+    changed.extend(sprite_query.iter().map(SpriteChangedScaleOrOffsetOrParent));
+    changed.extend(removed_disabled.read().map(SpriteChangedScaleOrOffsetOrParent));
+    changed.extend(baseholder_query.iter().flat_map(|held_sprites| held_sprites.iter().map(|sprite_ent| SpriteChangedScaleOrOffsetOrParent(sprite_ent))));
+    changed.extend(removed_unloaded.read().map(|removed| SpriteChangedScaleOrOffsetOrParent(removed)));
     writer.write_batch(changed.drain());
 }
 
@@ -69,14 +69,13 @@ pub fn z_sort_system(
     changed_query: Query<Entity,
         (Or<(Changed<TemplEntiRef>, Changed<GlobalTilePos>, Changed<YSortOrigin>, Changed<AcZ>, Changed<ChildOf>, Added<Sprite>, Added<Mesh2d>,)>,
         Zsortable)>,
-    mut process_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&YSortOrigin>,
-        Option<&AcZ>, Option<&TemplEntiRef>, Has<TilemapAnchor>, &ChildOf, ),>,
+    mut process_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&TemplEntiRef>, Has<TilemapAnchor>, &ChildOf, ),>,
+    acz_query: Query<&AcZ, ()>,
+    y_sort_query: Query<&YSortOrigin, ()>,
 
     parent_sprite_query: Query<&Sprite, (common::AnyDisabling,)>,
     camera_query: Query<Ref<GlobalTilePos>, With<Camera>>,
     all_spriteable_query: Query<Entity, (Zsortable)>,
-
-    templ_query: Query<(&AcZ, Option<&YSortOrigin>), ()>,
 
     mut mw_draw_tmap: MessageWriter<DrawTilemap>,
     mut draw_tmaps: Local<Vec<DrawTilemap>>,
@@ -91,15 +90,23 @@ pub fn z_sort_system(
         ents_to_process.extend(all_spriteable_query.iter());
     }
     let mut iter = process_query.iter_many_mut(ents_to_process.drain());
-    while let Some((ent, mut transform, global_transform, ysort_origin, maybe_z_index, templ_ref, is_tilemap, child_of)) = iter.fetch_next() {
+    while let Some((ent, mut transform, global_transform, templ_ref, is_tilemap, child_of)) = iter.fetch_next() {
         let has_parent_sprite = parent_sprite_query.get(child_of.parent()).is_ok();
+        let ent_ysort_origin = y_sort_query.get(ent).ok();
+        let ent_ac_z = acz_query.get(ent).ok();
 
         let (base_z, maybe_ysort_origin) = if let Some(templ_ref) = templ_ref
-            && let Ok((templ_z_index, templ_ysort_origin)) = templ_query.get(templ_ref.0)
         {
-            (templ_z_index.used_float(), templ_ysort_origin.copied().or(ysort_origin.copied()))
+            let templ_ac_z = acz_query.get(templ_ref.0).ok();
+            let templ_ysort_origin = y_sort_query.get(templ_ref.0).ok();
+            let base_z = templ_ac_z
+                .or(ent_ac_z)
+                .cloned()
+                .unwrap_or_default()
+                .used_float();
+            (base_z, ent_ysort_origin.copied().or(templ_ysort_origin.copied()))
         } else {
-            (maybe_z_index.cloned().unwrap_or_default().used_float(), ysort_origin.copied())
+            (ent_ac_z.cloned().unwrap_or_default().used_float(), ent_ysort_origin.copied())
         };
 
         let y = global_transform.translation().y;

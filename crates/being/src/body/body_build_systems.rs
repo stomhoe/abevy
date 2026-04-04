@@ -34,10 +34,11 @@ pub fn build_bodys_on_beings(
             error!(target: BODY_BUILD, "Body template {} is missing distributed totals; skipping build for {}", entity_dbg(body_templ_ent, &display_name_query), entity_dbg(being_ent, &display_name_query));
             continue;
         };
-        let source_tree_ent = bodytree_ref_query
-            .get(body_templ_ent)
-            .map(|bodytree_ref| bodytree_ref.0)
-            .unwrap_or(body_templ_ent);
+        let Ok(bodytree_ref) = bodytree_ref_query.get(body_templ_ent) else {
+            error!(target: BODY_BUILD, "Body template {} is missing BodyTreeRef; skipping build for {}", entity_dbg(body_templ_ent, &display_name_query), entity_dbg(being_ent, &display_name_query));
+            continue;
+        };
+        let source_tree_ent = bodytree_ref.0;
         trace!(target: BODY_BUILD, "Building body '{}' for being {} using source tree {}", body_id, entity_dbg(being_ent, &display_name_query), entity_dbg(source_tree_ent, &display_name_query));
 
         let body_ent = cmd.spawn((

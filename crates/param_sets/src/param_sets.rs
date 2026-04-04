@@ -11,6 +11,7 @@ use std::ops::{Deref, DerefMut};
 
 use ::being_shared::*;
 use game_common::game_common_components::*;
+use player_shared::player_components::*;
 use ::tilemap_shared::{BlacklistedSpawnTileTagsRef, WhitelistedSpawnTileTagsRef};
 use tilemap::chunking::*;
 use tilemap::tile::*;
@@ -90,6 +91,8 @@ pub struct BlockingTileParamSet<'w, 's> {
     walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop, common::AnyDisabling>,
     race_ref_query: Query<'w, 's, &'static RaceRef, common::AnyDisabling>,
     bit_ref_query: Query<'w, 's, &'static BitRef, common::AnyDisabling>,
+    controlled_by_query: Query<'w, 's, &'static ComputedBy, common::AnyDisabling>,
+    host_player_query: Query<'w, 's, Entity, (With<Player>, With<HostPlayer>)>,
     tags: Query<'w, 's, &'static TagSet, >,
     interaction_zones: Query<'w, 's, &'static InteractionZones, common::AnyDisabling>,
     macro_chunk_tile_indices: Query<'w, 's, &'static MacroChunkTileIndices, common::AnyDisabling>,
@@ -408,6 +411,11 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         }
         if all_tiles_failed {
             trace!("No tile found at position {:?} in dimension {:?} for movement blocking check.", gpos, dim_ref);
+            if let Ok(controlled_by) = self.controlled_by_query.get(being) {
+                if self.host_player_query.get(controlled_by.client_ent).is_ok() {
+                    return false;
+                }
+            }
             return true;
         }
         false

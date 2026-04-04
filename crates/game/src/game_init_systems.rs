@@ -6,7 +6,7 @@ use faction::{faction_resources::*};
 use ::being_shared::JoinedGroups;
 use faction_shared::Faction;
 use movement::movement_components::{GridLockedMovement, GridLockedMovementVisual};
-use player::player_components::*;
+use player_shared::player_components::*;
 use tilemap::{
     terrain::{
         terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_resources::TerrProbeTemplEntityMap},

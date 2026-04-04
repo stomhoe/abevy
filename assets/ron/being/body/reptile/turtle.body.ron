@@ -1,0 +1,22 @@
+(
+    id: "turtle",
+    name: "Turtle Body",
+    tags: ["quadruped"],
+    distributed_totals: {
+        "mass_kg": 180.0,
+        "hp_capacity": 508.0,
+        "hp_regen_rate": 24.2,
+        "blood_capacity": 297.5,
+        "bleed_rate": 30.9,
+        "walk_strength": 14.0,
+        "vision": 2.0,
+        "pain_sensitivity": 28.1,
+        "caloric_burn_rate": 54.1,
+    },
+    sexes: {
+        "male": (weight: 1, sprites: []),
+        "female": (weight: 1, sprites: []),
+    },
+    caloric_burn_rate_multiplier: 0.0,
+    bodytree_id: "turtle",
+)

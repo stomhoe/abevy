@@ -1,0 +1,71 @@
+anim evil_crow_south_idle {
+    img_path: "texture/being/npc/bird/evil_crow.png"
+    rows_cols: 4 5
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim evil_crow_south_move {
+    img_path: "texture/being/npc/bird/evil_crow.png"
+    rows_cols: 4 5
+    clips {
+        row 0 start_frame 1
+    }
+}
+
+anim evil_crow_north_idle {
+    img_path: "texture/being/npc/bird/evil_crow.png"
+    rows_cols: 4 5
+    paused: true
+    speed: 1.0
+    clips {
+        row 1 partial 0 0
+    }
+}
+
+anim evil_crow_north_move {
+    img_path: "texture/being/npc/bird/evil_crow.png"
+    rows_cols: 4 5
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim evil_crow_west_idle {
+    img_path: "texture/being/npc/bird/evil_crow.png"
+    rows_cols: 4 5
+    paused: true
+    speed: 1.0
+    clips {
+        row 2 partial 0 0
+    }
+}
+
+anim evil_crow_west_move {
+    img_path: "texture/being/npc/bird/evil_crow.png"
+    rows_cols: 4 5
+    clips {
+        row 2 start_frame 1
+    }
+}
+
+anim evil_crow_east_idle {
+    img_path: "texture/being/npc/bird/evil_crow.png"
+    rows_cols: 4 5
+    paused: true
+    speed: 1.0
+    clips {
+        row 3 partial 0 0
+    }
+}
+
+anim evil_crow_east_move {
+    img_path: "texture/being/npc/bird/evil_crow.png"
+    rows_cols: 4 5
+    clips {
+        row 3 start_frame 1
+    }
+}

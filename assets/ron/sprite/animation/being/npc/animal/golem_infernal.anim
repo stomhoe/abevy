@@ -1,0 +1,71 @@
+anim golem_infernal_south_idle {
+    img_path: "texture/being/npc/monster/golem_infernal.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim golem_infernal_south_move {
+    img_path: "texture/being/npc/monster/golem_infernal.png"
+    rows_cols: 4 8
+    clips {
+        row 0 start_frame 1
+    }
+}
+
+anim golem_infernal_north_idle {
+    img_path: "texture/being/npc/monster/golem_infernal.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 1 partial 0 0
+    }
+}
+
+anim golem_infernal_north_move {
+    img_path: "texture/being/npc/monster/golem_infernal.png"
+    rows_cols: 4 8
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim golem_infernal_west_idle {
+    img_path: "texture/being/npc/monster/golem_infernal.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 2 partial 0 0
+    }
+}
+
+anim golem_infernal_west_move {
+    img_path: "texture/being/npc/monster/golem_infernal.png"
+    rows_cols: 4 8
+    clips {
+        row 2 start_frame 1
+    }
+}
+
+anim golem_infernal_east_idle {
+    img_path: "texture/being/npc/monster/golem_infernal.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 3 partial 0 0
+    }
+}
+
+anim golem_infernal_east_move {
+    img_path: "texture/being/npc/monster/golem_infernal.png"
+    rows_cols: 4 8
+    clips {
+        row 3 start_frame 1
+    }
+}

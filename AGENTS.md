@@ -40,7 +40,7 @@ use ::something::{ChunkPos, DimensionRef, GlobalTilePos};
 Then, turn it into this:
 use ::something::*;
 
-in mono-queries (queries for a single component T), NEVER wrap the queried component in Option<&T> or Has<T>; with let Ok(t) else continue or .is_ok() you can handle any need.
+IMPORTANT: In mono-queries (queries for a single component T), NEVER wrap the queried component in Option<&T> or Has<T>; with let Ok(t) else continue or .is_ok() you can handle any need to check presence.
 
 AVOID putting conflicting queries in system params, queries must be disjoint. To fix overlapping queried components, extract said overlapping &Component into a new shared monoquery
 
@@ -55,10 +55,14 @@ try to use .reserve()/with_capacity() for collections in which you know how many
 VERY IMPORTANT: if you got requested implicitely or explicitely to fix/generate some code, first check if you are in read mode (can't edit files), dont read/explore/generate any code, instead immediately tell the user to change your authorization level before beginning.
 
 
-try to use dereference with & as soon as you can to avoid putting * each time you pass the var as an argument for a parameter which needs an owned type. specially for types which derive Copy
+try to use dereference via destructure with & as soon as you can to avoid putting * each time you pass the var as an argument for a parameter which needs an owned type. specially for types which derive Copy
 
 if using BlockedTileParamSet in a system, use its inner gpos query instead of querying for gpos in the consumer system, otherwise query conflict will hapen
 
 IMPORTANT: when you exceed bevy's parameter count limit, put all Locals into a SystemParam called [Something]Locals, and all queries in pub struct [Something]Queries. define these structs right above the subject system.
 
 IMPORTANT: when implementing a #[derive(SystemParam)] struct, take a look at previous implementations of SystemParam in codebase to see how lifetime specifiers are placed
+
+NEVER ADD .chain() yourself when registering systems unless it is to specifically fix a bug.
+
+AFTER YOUR CHANGES, MAKE SURE THAT THERE AREN'T DUPLICATED QUERIES QUERYING FOR THE SAME COMPONENT

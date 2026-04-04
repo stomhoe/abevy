@@ -1,0 +1,15 @@
+id: humanoid
+extends: core
+add:
+  body > neck > head > jaw
+    mouth
+  body > shoulder lbl"Left Shoulder"
+    arm lbl"Left Arm"
+      hand lbl"Left Hand"
+  body > shoulder lbl"Right Shoulder"
+    arm lbl"Right Arm"
+      hand lbl"Right Hand"
+  body > leg lbl"Left Leg"
+    foot lbl"Left Foot"
+  body > leg lbl"Right Leg"
+    foot lbl"Right Foot"

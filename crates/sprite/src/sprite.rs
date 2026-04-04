@@ -38,10 +38,10 @@ pub fn plugin(app: &mut App) {
             (
                 apply_offsets
                     .after(sprite_change_detection)
-                    .run_if(on_message::<SpriteChanged>),
+                    .run_if(on_message::<SpriteChangedScaleOrOffsetOrParent>),
                 apply_scales
                     .after(sprite_change_detection)
-                    .run_if(on_message::<SpriteChanged>),
+                    .run_if(on_message::<SpriteChangedScaleOrOffsetOrParent>),
             ),
             z_sort_system,
             (
@@ -89,8 +89,9 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered::<Transform, With<SpriteConfig>>()
 
     .replicate_filtered::<ChildOf, With<BaseHolderRef>>()
+    .register_type::<YSortOrigin>()
 
-    .add_message::<SpriteChanged>()
+    .add_message::<SpriteChangedScaleOrOffsetOrParent>()
 
     ;
 }

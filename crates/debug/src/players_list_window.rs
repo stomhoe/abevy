@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
 use common::common_components::StrId;
-use player::player_components::{Mine, Player};
+use player_shared::player_components::{Mine, Player};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 

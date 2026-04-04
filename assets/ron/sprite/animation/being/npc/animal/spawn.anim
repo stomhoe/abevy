@@ -1,0 +1,71 @@
+anim spawn_south_idle {
+    img_path: "texture/being/npc/monster/spawn.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim spawn_south_move {
+    img_path: "texture/being/npc/monster/spawn.png"
+    rows_cols: 4 8
+    clips {
+        row 0 partial 1 5 start_frame 1
+    }
+}
+
+anim spawn_north_idle {
+    img_path: "texture/being/npc/monster/spawn.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 1 partial 0 0
+    }
+}
+
+anim spawn_north_move {
+    img_path: "texture/being/npc/monster/spawn.png"
+    rows_cols: 4 8
+    clips {
+        row 1 partial 1 5 start_frame 1
+    }
+}
+
+anim spawn_west_idle {
+    img_path: "texture/being/npc/monster/spawn.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 3 partial 0 0
+    }
+}
+
+anim spawn_west_move {
+    img_path: "texture/being/npc/monster/spawn.png"
+    rows_cols: 4 8
+    clips {
+        row 3 partial 0 4 start_frame 1
+    }
+}
+
+anim spawn_east_idle {
+    img_path: "texture/being/npc/monster/spawn.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 2 partial 0 0
+    }
+}
+
+anim spawn_east_move {
+    img_path: "texture/being/npc/monster/spawn.png"
+    rows_cols: 4 8
+    clips {
+        row 2 partial 0 4 start_frame 1
+    }
+}

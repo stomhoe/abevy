@@ -64,8 +64,8 @@ macro_rules! define_player_action_request_module {
                         &being_shared::ComputedBeings,
                     ),
                     (
-                        bevy::prelude::With<player::player_components::Mine>,
-                        bevy::prelude::With<player::player_components::Player>,
+                        bevy::prelude::With<player_shared::player_components::Mine>,
+                        bevy::prelude::With<player_shared::player_components::Player>,
                     ),
                 >,
                 controlled_beings: bevy::prelude::Query<(&being_shared::ComputedBy, $extra_query_ty)>,

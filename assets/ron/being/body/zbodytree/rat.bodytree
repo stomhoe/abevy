@@ -1,0 +1,12 @@
+id: rat
+extends: humanoid
+remove:
+  body > neck > head > nose
+replace:
+  body > shoulder[0] > arm > hand -> foothand lbl"Left Foothand"
+  body > shoulder[1] > arm > hand -> foothand lbl"Right Foothand"
+add:
+  body > neck > head > snout
+    nose
+    jaw
+      mouth

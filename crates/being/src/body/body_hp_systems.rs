@@ -563,6 +563,7 @@ pub fn update_body_health_from_parts(
         let pain = total_pain.max(0.0);
         let delta = time.delta_secs();
 
+        let bloodless_nonbleeding = blood_capacity == 0.0 && bleed_rate == 0.0;
         let mut curr_blood = match queries.body_sums_query.get_mut(body) {
             Ok(health) => health.blood,
             Err(_) => blood_capacity,
@@ -571,7 +572,7 @@ pub fn update_body_health_from_parts(
         if blood_capacity < 0.0 {
             curr_blood = 0.0;
         } else if blood_capacity == 0.0 {
-            curr_blood = 1.0;
+            curr_blood = 0.0;
         } else {
             if curr_blood.is_nan() {
                 curr_blood = blood_capacity;
@@ -581,13 +582,15 @@ pub fn update_body_health_from_parts(
 
         let curr_blood_ratio = if blood_capacity > 0.0 {
             curr_blood / blood_capacity
+        } else if bloodless_nonbleeding {
+            1.0
         } else {
             0.0
         };
         let consciousness = (base_consciousness * curr_blood_ratio).clamp(0.0, 1.0);
 
-        let has_initialized_vitals = total_max_hp > 0.0 || blood_capacity > 0.0;
-        let dead = has_initialized_vitals && (consciousness < 0.01 || curr_blood <= 0.0);
+        let has_initialized_vitals = total_max_hp > 0.0 || blood_capacity > 0.0 || bleed_rate > 0.0;
+        let dead = has_initialized_vitals && !bloodless_nonbleeding && (consciousness < 0.01 || curr_blood <= 0.0);
         if dead {
             let being_ent = body_of.being;
             error!(

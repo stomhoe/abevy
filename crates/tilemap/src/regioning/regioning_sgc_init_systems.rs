@@ -153,6 +153,7 @@ pub fn init_structured_gen_configs(
         let sgc_id = StrId::trunc(seri_id.clone());
 
         gen_cfg.max_per_region = structured_gen_seri.max_per_region;
+        gen_cfg.max_being_count = structured_gen_seri.max_being_count;
         gen_cfg.whitelisted_tags = TagSet::new(structured_gen_seri.whitelisted_tags.iter().map(String::as_str));
         gen_cfg.blacklisted_tags = TagSet::new(structured_gen_seri.blacklisted_tags.iter().map(String::as_str));
         gen_cfg.typed_args = structured_gen_seri.args.clone();

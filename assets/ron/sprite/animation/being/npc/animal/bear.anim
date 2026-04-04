@@ -1,0 +1,71 @@
+anim bear_south_idle {
+    img_path: "texture/being/npc/bear/bear_south.png"
+    rows_cols: 2 4
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim bear_south_move {
+    img_path: "texture/being/npc/bear/bear_south.png"
+    rows_cols: 2 4
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim bear_north_idle {
+    img_path: "texture/being/npc/bear/bear_north.png"
+    rows_cols: 2 4
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim bear_north_move {
+    img_path: "texture/being/npc/bear/bear_north.png"
+    rows_cols: 2 4
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim bear_west_idle {
+    img_path: "texture/being/npc/bear/bear_west.png"
+    rows_cols: 2 4
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim bear_west_move {
+    img_path: "texture/being/npc/bear/bear_west.png"
+    rows_cols: 2 4
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim bear_east_idle {
+    img_path: "texture/being/npc/bear/bear_east.png"
+    rows_cols: 2 4
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim bear_east_move {
+    img_path: "texture/being/npc/bear/bear_east.png"
+    rows_cols: 2 4
+    clips {
+        row 1 start_frame 1
+    }
+}

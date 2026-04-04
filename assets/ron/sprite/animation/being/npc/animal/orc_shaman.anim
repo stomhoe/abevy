@@ -1,0 +1,71 @@
+anim orc_shaman_south_idle {
+    img_path: "texture/being/npc/orc/orc_shaman.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim orc_shaman_south_move {
+    img_path: "texture/being/npc/orc/orc_shaman.png"
+    rows_cols: 4 6
+    clips {
+        row 0 start_frame 1
+    }
+}
+
+anim orc_shaman_north_idle {
+    img_path: "texture/being/npc/orc/orc_shaman.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 1 partial 0 0
+    }
+}
+
+anim orc_shaman_north_move {
+    img_path: "texture/being/npc/orc/orc_shaman.png"
+    rows_cols: 4 6
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim orc_shaman_west_idle {
+    img_path: "texture/being/npc/orc/orc_shaman.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 2 partial 0 0
+    }
+}
+
+anim orc_shaman_west_move {
+    img_path: "texture/being/npc/orc/orc_shaman.png"
+    rows_cols: 4 6
+    clips {
+        row 2 partial 0 4 start_frame 1
+    }
+}
+
+anim orc_shaman_east_idle {
+    img_path: "texture/being/npc/orc/orc_shaman.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 3 partial 0 0
+    }
+}
+
+anim orc_shaman_east_move {
+    img_path: "texture/being/npc/orc/orc_shaman.png"
+    rows_cols: 4 6
+    clips {
+        row 3 partial 0 4 start_frame 1
+    }
+}

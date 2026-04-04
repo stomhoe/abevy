@@ -19,7 +19,8 @@ use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::*;
 use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker, resolve_modifier_component};
 use movement::movement_components::*;
-use player::{player_components::*, };
+use player_shared::{player_components::*, };
+use ::sprite_shared::*;
 use tilemap_shared::{CardinalDirection, GlobalTilePos, InteractionZone, InteractionZones};
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
@@ -425,6 +426,184 @@ fn format_value_pair(values: StatSummary) -> String {
     }
 }
 
+fn format_resolved_f32(label: &str, entity_value: Option<f32>, templ_value: Option<f32>) -> String {
+    if let Some(value) = entity_value {
+        return format!("{}: {:.3} (anim's)", label, value);
+    }
+    if let Some(value) = templ_value {
+        return format!("{}: {:.3} (SpriteConfig's)", label, value);
+    }
+    format!("{}: missing", label)
+}
+
+fn render_held_sprite_entry(
+    ui: &mut egui::Ui,
+    world: &World,
+    sprite_ent: Entity,
+) {
+    let Ok(sprite_ref) = world.get_entity(sprite_ent) else {
+        ui.label(format!("{:?}: missing entity", sprite_ent));
+        return;
+    };
+
+    let Some(templ_ref) = sprite_ref.get::<TemplEntiRef>().copied() else {
+        ui.label(format!("{:?}: TemplEntiRef missing", sprite_ent));
+        return;
+    };
+
+    let Ok(templ_ref_entity) = world.get_entity(templ_ref.0) else {
+        ui.label(format!("{:?}: TemplEntiRef.0 entity missing", sprite_ent));
+        return;
+    };
+
+    let templ_display_name = templ_ref_entity.get::<DisplayName>().cloned();
+    let templ_str_id = templ_ref_entity.get::<StrId>().cloned();
+
+    let sprite_label = part_label(
+        sprite_ent,
+        templ_display_name.as_ref(),
+        templ_str_id.as_ref(),
+    );
+
+    egui::CollapsingHeader::new(sprite_label)
+        .default_open(true)
+        .show(ui, |ui| {
+        let sprite_visibility = sprite_ref.get::<Visibility>().copied();
+        let sprite_acz = sprite_ref.get::<AcZ>().copied().map(|value| value.0);
+        let sprite_y_sort_origin = sprite_ref.get::<YSortOrigin>().copied().map(|value| value.0);
+        let sprite_transform = sprite_ref.get::<Transform>();
+        let sprite_global_transform = sprite_ref.get::<GlobalTransform>();
+        let sprite_flip = sprite_ref.get::<Sprite>();
+        let base_holder_ref = sprite_ref.get::<BaseHolderRef>().copied();
+        ui.label(format!(
+            "Visibility: {}",
+            sprite_visibility.map_or_else(|| "missing".to_string(), |visibility| format!("{:?}", visibility))
+        ));
+        ui.label(format!(
+            "Transform: {}",
+            sprite_transform
+                .map(|transform| format!(
+                    "x={:.1} y={:.1} z={}",
+                    transform.translation.x,
+                    transform.translation.y,
+                    transform.translation.z,
+                ))
+                .unwrap_or_else(|| "missing".to_string())
+        ));
+        ui.label(format!(
+            "GlobalTransform: {}",
+            sprite_global_transform
+                .map(|transform| format!(
+                    "x={:.1} y={:.1} z={}",
+                    transform.translation().x,
+                    transform.translation().y,
+                    transform.translation().z,
+                ))
+                .unwrap_or_else(|| "missing".to_string())
+        ));
+        ui.label(format!(
+            "flip: {}",
+            sprite_flip
+                .map(|sprite| format!("x={} y={}", sprite.flip_x, sprite.flip_y))
+                .unwrap_or_else(|| "missing".to_string())
+        ));
+        ui.label(format!(
+            "StrId: {}",
+            templ_str_id.map_or_else(|| "missing".to_string(), |str_id| str_id.to_string())
+        ));
+        ui.label(format!(
+            "DisplayName: {}",
+            templ_display_name.map_or_else(|| "missing".to_string(), |display_name| display_name.0)
+        ));
+        if let Some(base_holder_ref) = base_holder_ref {
+            ui.label(format!("BaseHolderRef.base: {:?}", base_holder_ref.base));
+        }
+        ui.label(format!("TemplEntiRef.0: {:?}", templ_ref.0));
+
+        let templ_str_id = templ_ref_entity.get::<StrId>().cloned();
+        let templ_acz = templ_ref_entity.get::<AcZ>().copied().map(|value| value.0);
+        let templ_y_sort_origin = templ_ref_entity.get::<YSortOrigin>().copied().map(|value| value.0);
+
+        ui.label(format!(
+            "TemplEntiRef.0 StrId: {}",
+            templ_str_id.map_or_else(|| "missing".to_string(), |str_id| str_id.to_string())
+        ));
+        ui.label(format_resolved_f32("AcZ", sprite_acz, templ_acz));
+        ui.label(format_resolved_f32("YSortOrigin", sprite_y_sort_origin, templ_y_sort_origin));
+
+        let mut template_flags = Vec::with_capacity(8);
+        if templ_ref_entity.get::<SpriteConfig>().is_some() {
+            template_flags.push("SpriteConfig");
+        }
+        if templ_ref_entity.get::<MovementBased>().is_some() {
+            template_flags.push("MovementBased");
+        }
+        if templ_ref_entity.get::<GroundingBased>().is_some() {
+            template_flags.push("GroundingBased");
+        }
+        if templ_ref_entity.get::<UseFallbackSprite>().is_some() {
+            template_flags.push("UseFallbackSprite");
+        }
+        if templ_ref_entity.get::<Exclusive>().is_some() {
+            template_flags.push("Exclusive");
+        }
+        if templ_ref_entity.get::<ExcludedFromBaseAnimPickingSystem>().is_some() {
+            template_flags.push("ExcludedFromBaseAnimPickingSystem");
+        }
+        if templ_ref_entity.get::<ExcludedFromNormalSizeModifier>().is_some() {
+            template_flags.push("ExcludedFromNormalSizeModifier");
+        }
+        if !template_flags.is_empty() {
+            ui.label(format!("Template markers: {}", template_flags.join(", ")));
+        }
+
+        if let Some(base_movement_speed) = templ_ref_entity.get::<BaseMovementSpeed>() {
+            ui.label(format!("BaseMovementSpeed: {:.3}", base_movement_speed.0));
+        }
+        if let Some(flip_horiz_if_dir) = templ_ref_entity.get::<FlipHorizIfDir>() {
+            ui.label(format!("FlipHorizIfDir: {:?}", flip_horiz_if_dir));
+        }
+        if let Some(color_holder) = templ_ref_entity.get::<ColorHolder>() {
+            ui.label(format!("ColorHolder: {:?}", color_holder.0));
+        }
+        if let Some(become_child_of_sprite_with_tag) = templ_ref_entity.get::<BecomeChildOfSpriteWithTag>() {
+            ui.label(format!(
+                "BecomeChildOfSpriteWithTag: {:?}",
+                become_child_of_sprite_with_tag.0
+            ));
+        }
+        if let Some(offset_for_children) = templ_ref_entity.get::<OffsetForChildren>() {
+            ui.label(format!("OffsetForChildren: {} tags", offset_for_children.0.len()));
+        }
+        if let Some(mapped_anims) = templ_ref_entity.get::<MappedAnimations>() {
+            ui.label(format!("MappedAnimations: {} entries", mapped_anims.0.len()));
+        }
+        if let Some(sprite_anim_sfx) = templ_ref_entity.get::<SpriteAnimSfx>() {
+            ui.label(format!(
+                "SpriteAnimSfx: {} paths, every_n_frame_changes {:.3}",
+                sprite_anim_sfx.sound_paths.len(),
+                sprite_anim_sfx.every_n_frame_changes
+            ));
+        }
+        if let Some(sprite_loop_sfx) = templ_ref_entity.get::<SpriteLoopSfx>() {
+            ui.label(format!(
+                "SpriteLoopSfx: {} paths, condition {:?}",
+                sprite_loop_sfx.sound_paths.len(),
+                sprite_loop_sfx.condition
+            ));
+        }
+        if let Some(sprite_timed_sfx) = templ_ref_entity.get::<SpriteTimedSfx>() {
+            ui.label(format!(
+                "SpriteTimedSfx: {} paths, condition {:?}, interval {:.3}, scale_with_animation_speed {}",
+                sprite_timed_sfx.sound_paths.len(),
+                sprite_timed_sfx.condition,
+                sprite_timed_sfx.time_interval_secs,
+                sprite_timed_sfx.scale_interval_with_animation_speed
+            ));
+        }
+    });
+}
+
 #[allow(unused_parens)]
 pub fn being_details_inspector(world: &mut World) {
     let Some(window_visible) = world.get_resource::<DubugWindowsVisibility>() else {
@@ -461,6 +640,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut bodyparts_query = world.query::<&BodypartChildrenBodyparts>();
     let mut bodypart_damage_query = world.query::<&AccuDamage>();
     let mut held_items_query = world.query::<&HeldItems>();
+    let mut held_sprites_query = world.query::<&HeldSprites>();
     let mut slot_holder_query = world.query::<&SlottedItemHolder>();
     let mut norm_move_dir_query = world.query::<&FinalNormMoveDir>();
     let mut speed_magnitude_query = world.query::<&SpeedMagnitude>();
@@ -966,6 +1146,57 @@ pub fn being_details_inspector(world: &mut World) {
                             });
                         }
                     });
+                }
+            });
+            ui.separator();
+
+            ui.collapsing("Held Sprites", |ui| {
+                let Some((held_sprites_owner, held_sprites)) = held_sprites_query
+                    .get(world, body_entity)
+                    .ok()
+                    .map(|held_sprites| (body_entity, held_sprites))
+                    .or_else(|| {
+                        held_sprites_query
+                            .get(world, selected_being_entity)
+                            .ok()
+                            .map(|held_sprites| (selected_being_entity, held_sprites))
+                    })
+                else {
+                    ui.label("HeldSprites: missing on body and being.");
+                    return;
+                };
+
+                let owner_global_transform = world
+                    .get_entity(held_sprites_owner)
+                    .ok()
+                    .and_then(|entity| entity.get::<GlobalTransform>())
+                    .copied();
+                ui.label(format!(
+                    "SpriteHolder: {}",
+                    owner_global_transform
+                        .map(|transform| format!(
+                            "x={:.1} y={:.1} z={}",
+                            transform.translation().x,
+                            transform.translation().y,
+                            transform.translation().z,
+                        ))
+                        .unwrap_or_else(|| "missing".to_string())
+                ));
+                if held_sprites.is_empty() {
+                    ui.label("HeldSprites: empty");
+                    return;
+                }
+
+                let mut held_sprite_entities = Vec::with_capacity(held_sprites.len());
+                for &held_sprite_ent in held_sprites {
+                    held_sprite_entities.push(held_sprite_ent);
+                }
+                for held_sprite_ent in held_sprite_entities {
+                    render_held_sprite_entry(
+                        ui,
+                        world,
+                        held_sprite_ent,
+                    );
                 }
             });
             ui.separator();

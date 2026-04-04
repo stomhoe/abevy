@@ -7,7 +7,7 @@ use common::common_states::{AssetLoading, GamePhase} ;
 use faction::faction_resources::FactionRef;
 use faction_shared::Faction;
 use multiplayer_shared::multiplayer_events::{SendUsername, AttemptHostServer, StartServerFailed};
-use player::player_components::{Mine, Player};
+use player_shared::player_components::{Mine, Player};
 
 use crate::host_functions::host_server;
 

@@ -9,7 +9,7 @@ use ::tilemap_shared::*;
 
 use ::being_shared::*;
 use ac_input::ac_input_actions::*;
-use player::player_components::{Mine, Player};
+use player_shared::player_components::{Mine, Player};
 
 use crate::{movement_bundles::*, movement_components::*};
 

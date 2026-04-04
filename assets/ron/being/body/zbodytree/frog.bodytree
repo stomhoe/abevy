@@ -1,0 +1,32 @@
+id: frog
+tree:
+torso
+  neck
+    head
+      brain
+      eye lbl"Left Eye"
+      eye lbl"Right Eye"
+      ear lbl"Left Ear"
+      ear lbl"Right Ear"
+      nose
+      jaw
+        mouth
+  chest
+    heart
+    lung lbl"Left Lung"
+    lung lbl"Right Lung"
+  abdomen
+    stomach
+    liver
+    kidney lbl"Left Kidney"
+    kidney lbl"Right Kidney"
+  spine
+  pelvis
+  shoulder lbl"Left Shoulder"
+    arm lbl"Left Arm"
+      hand lbl"Left Hand"
+  shoulder lbl"Right Shoulder"
+    arm lbl"Right Arm"
+      hand lbl"Right Hand"
+  leg lbl"Left Leg"
+  leg lbl"Right Leg"

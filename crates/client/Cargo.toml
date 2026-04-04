@@ -10,7 +10,7 @@ multiplayer_shared = { path = "../multiplayer_shared" }
 #tilemap = { path = "../tilemap" }
 #sprite = { path = "../sprite" }
 #dimension = { path = "../dimension" }
-player = { path = "../player" }
+player_shared = { path = "../player_shared" }
 #being_shared = { path = "../being_shared" }
 
 

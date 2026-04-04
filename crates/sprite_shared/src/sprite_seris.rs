@@ -62,6 +62,8 @@ pub struct SpriteConfigSeri {
     pub movement_based: bool,
     #[serde(default)]
     pub grounding_based: bool,
+    #[serde(default)]
+    pub is_being_root_sprite: bool,
     pub visibility: Option<u8>,
     #[serde(default)]
     pub offset4children: HashMap<String, (f32, f32, String)>,

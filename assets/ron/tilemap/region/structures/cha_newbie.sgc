@@ -4,6 +4,7 @@ sgc {
     weight = 1.0
     tags = [dungeon]
     whitelisted_tags = [dungeon, river]
+    max_being_count = 40
     args {
         floor_tile_id = dunewbie
         wall_tile_id = nw
@@ -26,6 +27,31 @@ sgc {
         corridor_wiggle_step_max = 1
         corridor_detour_chance = 0.0
         corridor_detour_max_offset = 0
+        external_doorway_frequency = 0.018
+        external_doorway_width_min = 1
+        external_doorway_width_max = 2
+        external_doorway_wall_axis_preference = horizontal
+        room_spawn.rectangle = [
+            { source_id = goblin, override_being_count = 1, pack_spawn_radius = 0, weight = 3.0 },
+            { source_id = skeleton, override_being_count = 1, pack_spawn_radius = 0, weight = 2.5 },
+            { source_id = golem_bronze, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
+            { source_id = ghost, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+        ]
+        room_spawn.circle = [
+            { source_id = medusa, override_being_count = 1, pack_spawn_radius = 0, weight = 2.0 },
+            { source_id = goblin, override_being_count = 1, pack_spawn_radius = 0, weight = 2.0 },
+            { source_id = skeleton, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
+        ]
+        room_spawn.triangle = [
+            { source_id = ogre, override_being_count = 1, pack_spawn_radius = 0, weight = 2.0 },
+            { source_id = spawn, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+            { source_id = golem_gold, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
+        ]
+        room_spawn.regular_polygon = [
+            { source_id = beholder, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
+            { source_id = golem, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
+            { source_id = cyclops, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+        ]
         disable_terrgen.floor_tile_id = true
     }
 }

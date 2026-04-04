@@ -4,7 +4,9 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
+
+from anim_format import extract_anim_blocks, get_field_value, parse_clip_line, parse_header, parse_text_value
 
 """
 Inspect a spritesheet image and report both its coarse grid shape and the
@@ -174,43 +176,48 @@ def _row_column_occupancy(
     return occupancy
 
 
-def _split_anim_entries(source: str) -> list[str]:
-    stripped = source.strip()
-    if stripped.startswith("([("):
-        stripped = stripped[3:]
-    if stripped.endswith(")])"):
-        stripped = stripped[:-3]
-    return [chunk.strip() for chunk in re.split(r"\n\),\n\(", stripped) if chunk.strip()]
-
-
 def _parse_anim_entry(entry: str) -> AnimEntry:
-    id_match = re.search(r'^\s*id:\s*"([^"]+)"', entry, re.M)
-    rows_cols_match = re.search(r"^\s*rows_cols:\s*\((\d+),\s*(\d+)\)", entry, re.M)
-    img_match = re.search(r'^\s*img_path:\s*"([^"]+)"', entry, re.M)
-    if id_match is None or rows_cols_match is None or img_match is None:
+    header = parse_header(entry)
+    img_path = get_field_value(entry, "img_path")
+    rows_cols = get_field_value(entry, "rows_cols")
+    if img_path is None or rows_cols is None:
+        raise ValueError("could not parse animation entry")
+    img_path = parse_text_value(img_path)
+
+    rows_cols_parts = rows_cols.replace(",", " ").replace("(", " ").replace(")", " ").split()
+    if len(rows_cols_parts) != 2:
         raise ValueError("could not parse animation entry")
 
     clips: list[AnimClip] = []
-    for clip_match in re.finditer(
-        r"\(\s*target:\s*(\d+),\s*\n\s*is_row:\s*(true|false),\s*(.*?)\n\s*\),",
-        entry,
-        re.S,
-    ):
-        clip_body = clip_match.group(3)
-        partial_match = re.search(r"partial:\s*Some\(\((\d+),\s*(\d+)\)\)", clip_body)
-        start_frame_match = re.search(r"start_frame:\s*Some\((\d+)\)", clip_body)
-        clips.append({
-            "target": int(clip_match.group(1)),
-            "is_row": clip_match.group(2) == "true",
-            "partial": None if partial_match is None else (int(partial_match.group(1)), int(partial_match.group(2))),
-            "start_frame": None if start_frame_match is None else int(start_frame_match.group(1)),
-        })
+    in_clips = False
+    depth = 0
+    for line in entry.splitlines():
+        stripped = line.strip()
+        if stripped == "clips {":
+            in_clips = True
+            depth = 1
+            continue
+        if in_clips:
+            depth += line.count("{") - line.count("}")
+            if depth <= 0:
+                break
+            if not stripped.startswith(("row ", "col ", "column ", "clip ")):
+                continue
+            clip = cast(AnimClip, parse_clip_line(stripped))
+            partial = clip["partial"]
+            start_frame = clip["start_frame"]
+            clips.append({
+                "target": int(clip["target"]),
+                "is_row": bool(clip["is_row"]),
+                "partial": None if partial is None else (int(partial[0]), int(partial[1])),
+                "start_frame": None if start_frame is None else int(start_frame),
+            })
 
     return {
-        "id": id_match.group(1),
-        "rows": int(rows_cols_match.group(1)),
-        "cols": int(rows_cols_match.group(2)),
-        "img_path": img_match.group(1),
+        "id": header.anim_id,
+        "rows": int(rows_cols_parts[0]),
+        "cols": int(rows_cols_parts[1]),
+        "img_path": img_path,
         "clips": clips,
     }
 
@@ -223,7 +230,7 @@ def _validate_anim_against_sheet(
     row_bands: list[tuple[int, int]],
     row_occupancy: list[list[bool]],
 ) -> None:
-    # LLM guidance: when this script is run with both a PNG and an anim.ron, treat the PNG as
+    # LLM guidance: when this script is run with both a PNG and an anim file, treat the PNG as
     # the source of truth for the actual sprite layout and use the detected alpha mask to verify
     # the animation metadata. The goal is not to guess artistic intent, but to catch concrete
     # mistakes such as wrong row/column counts, clip targets that exceed the sheet, or a row clip
@@ -231,9 +238,9 @@ def _validate_anim_against_sheet(
     # occupied, do not invent a partial range just because the clip is missing one; only report
     # issues when the file clearly conflicts with the sheet.
     try:
-        entries: list[AnimEntry] = [_parse_anim_entry(entry) for entry in _split_anim_entries(anim_source)]
+        entries: list[AnimEntry] = [_parse_anim_entry(entry) for entry in extract_anim_blocks(anim_source)]
     except ValueError as exc:
-        print(f"{anim_path}: could not parse anim.ron: {exc}")
+        print(f"{anim_path}: could not parse anim file: {exc}")
         return
 
     print(f"{anim_path}: validating {len(entries)} animation entries against the spritesheet")
@@ -304,7 +311,7 @@ def _validate_anim_against_sheet(
 
 def main() -> int:
     if len(sys.argv) not in (2, 3):
-        print("usage: inspect_spritesheet.py <png> [anim.ron]", file=sys.stderr)
+        print("usage: inspect_spritesheet.py <png> [anim]", file=sys.stderr)
         return 2
 
     path = Path(sys.argv[1])

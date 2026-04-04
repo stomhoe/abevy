@@ -1,0 +1,71 @@
+anim goblin_grunt_south_idle {
+    img_path: "texture/being/npc/goblin/goblin_grunt.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim goblin_grunt_south_move {
+    img_path: "texture/being/npc/goblin/goblin_grunt.png"
+    rows_cols: 4 8
+    clips {
+        row 0 start_frame 1
+    }
+}
+
+anim goblin_grunt_north_idle {
+    img_path: "texture/being/npc/goblin/goblin_grunt.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 1 partial 0 0
+    }
+}
+
+anim goblin_grunt_north_move {
+    img_path: "texture/being/npc/goblin/goblin_grunt.png"
+    rows_cols: 4 8
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim goblin_grunt_west_idle {
+    img_path: "texture/being/npc/goblin/goblin_grunt.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 2 partial 0 0
+    }
+}
+
+anim goblin_grunt_west_move {
+    img_path: "texture/being/npc/goblin/goblin_grunt.png"
+    rows_cols: 4 8
+    clips {
+        row 2 start_frame 1
+    }
+}
+
+anim goblin_grunt_east_idle {
+    img_path: "texture/being/npc/goblin/goblin_grunt.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 3 partial 0 0
+    }
+}
+
+anim goblin_grunt_east_move {
+    img_path: "texture/being/npc/goblin/goblin_grunt.png"
+    rows_cols: 4 8
+    clips {
+        row 3 start_frame 1
+    }
+}

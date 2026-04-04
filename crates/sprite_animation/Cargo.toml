@@ -10,7 +10,7 @@ sprite_shared = { path = "../sprite_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 game_common = { path = "../agame_common" }
 being_shared = { path = "../being_shared" }
-player = { path = "../player" }
+player_shared = { path = "../player_shared" }
 tilemap_shared = { path = "../tilemap_shared" }
 movement = { path = "../movement" }
 ac_audio = { path = "../ac_audio" }

@@ -68,3 +68,6 @@ pub struct SquadMembers(Vec<Entity>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct NoSpawnSquadEntity;
+
+#[derive(Component, Debug, Copy, Clone)]
+pub struct PreventCleanup;

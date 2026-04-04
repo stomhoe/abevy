@@ -87,15 +87,20 @@ pub fn plugin(app: &mut App) {
     .add_observer(cleanup_being_from_BeingsInCpos_on_despawn)
     .add_systems(Update, (
         on_control_change,
+        sync_ai_melee_targets,
         sync_predator_squad_marker,
         tick_hunger,
         update_predator_hunting_targets,
+        sync_ai_melee_targets_to_hunt.after(update_predator_hunting_targets),
         sync_chasing_to_hunt.after(update_predator_hunting_targets),
     ))
     .add_systems(
         Update,
         (
-            apply_melee_attack.in_set(HostSystems),
+            (
+                emit_ai_melee_attack_requests.run_if(on_timer(Duration::from_millis(30))),
+                apply_melee_attack,
+            ).in_set(HostSystems),
             validate_added_beings_have_gpos,
 
         )

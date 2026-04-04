@@ -173,7 +173,7 @@ pub fn resolve_overlapping_beings(
 pub fn start_grid_locked_steps(
     fixed_time: Res<Time<Fixed>>,
     client_state: Res<State<ClientState>>,
-    connected: Query<&player::player_components::Player, Without<player::player_components::Mine>>,
+    connected: Query<&player_shared::player_components::Player, Without<player_shared::player_components::Mine>>,
     mut blocking_tiles: BlockingTileParamSet,
     mut beings: Query<(
         Entity,

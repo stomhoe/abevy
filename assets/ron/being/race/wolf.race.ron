@@ -16,7 +16,7 @@
     blacklisted_tiles_for_spawning: [],
     predator: (
         do_not_hunt_tags: ["wolf"],
-        min_hunger_to_hunt: 40.0,
+        min_hunger_to_hunt: 0.0,
     ),
     wander: (
         dir_secs_min: 1.0,
@@ -25,8 +25,8 @@
         move_secs_max: 1.8,
         halt_secs_min: 0.7,
         halt_secs_max: 2.0,
-        speed_min: 0.10,
-        speed_max: 0.28,
+        speed_min: 0.4,
+        speed_max: 0.6,
         avoid_tile_tags: ["liquid"],
     ),
     body_or_sampler: "wolf",

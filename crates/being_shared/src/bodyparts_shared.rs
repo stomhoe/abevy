@@ -35,9 +35,9 @@ impl BodypartStat {
     pub const STAT_HP_REGEN_RATE: HashId = HashId::hash("hp_regen_rate");
     pub const STAT_BLOOD_CAPACITY: HashId = HashId::hash("blood_capacity");
     pub const STAT_BLOOD_PUMPING: HashId = HashId::hash("blood_pumping");
-    pub const STAT_WALK_SPEED: HashId = HashId::hash("walk_speed");
-    pub const STAT_SWIM_SPEED: HashId = HashId::hash("swim_speed");
-    pub const STAT_FLY_SPEED: HashId = HashId::hash("fly_speed");
+    pub const STAT_WALK_STRENGTH: HashId = HashId::hash("walk_strength");
+    pub const STAT_SWIM_STRENGTH: HashId = HashId::hash("swim_strength");
+    pub const STAT_FLY_STRENGTH: HashId = HashId::hash("fly_strength");
     pub const STAT_MANIPULATION_DEXTERITY: HashId = HashId::hash("manip_dex");
     pub const STAT_MANIPULATION_STRENGTH: HashId = HashId::hash("manip_str");
     pub const STAT_VISION: HashId = HashId::hash("vision");

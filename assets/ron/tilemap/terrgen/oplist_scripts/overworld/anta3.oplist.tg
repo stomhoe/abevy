@@ -15,5 +15,5 @@ let riverness = clamp(riverness, 0.0, 0.6)
 out = idxmax(continent_threshold, lakeness, )
 
 bif anta4 -> [snow]
-bif "" -> [ice]
+bif "" -> [ice] biomes: [ice=1.5(1.0,0.35)]
 bif "" -> [orange]

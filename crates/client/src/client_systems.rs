@@ -5,7 +5,7 @@
 use bevy_replicon_renet::{RenetClient, netcode::{NetcodeClientTransport, NetcodeDisconnectReason::{self, }} };
 use common::{common_states::*};
 use multiplayer_shared::{multiplayer_events::*, multiplayer_resources::TargetJoinServer, };
-use player::{player_components::*, player_resources::PlayerData};
+use player_shared::{player_components::*, player_resources::PlayerData};
 
 // Import CameraTarget if it exists in your project, adjust the path as necessary
 use crate::client_functions::join_server;

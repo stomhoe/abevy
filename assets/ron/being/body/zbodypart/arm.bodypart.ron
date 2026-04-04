@@ -1,0 +1,22 @@
+(
+    id: "arm",
+    name: "Arm",
+    weighted_stats:
+    {
+        "coverage": 30,
+        "mass_kg": 3.5,
+        "hp_capacity": 20.0,
+        "hp_regen_rate": 0.8,
+        "blood_capacity": 12.0,
+        "manip_dex": 1.0,
+        "manip_str": 1.2,
+        "pain_sensitivity": 1.0,
+        "caloric_burn_rate": 1.8,
+    },
+    synergies: {
+        "manip_strength_limb": CopyFrac(0.2),
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.7,
+)

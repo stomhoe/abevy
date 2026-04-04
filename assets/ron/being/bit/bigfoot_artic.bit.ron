@@ -1,0 +1,10 @@
+(
+    id: "bigfoot_artic",
+    points: 0,
+
+    race: "bigfoot",
+    scs_samplers: ["bigfoot_artic"],
+    health_multiplier: 1.0,
+    body: "bigfoot",
+    pack_spawn_radius: 7,
+)

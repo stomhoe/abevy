@@ -5,7 +5,7 @@ use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use ::being_shared::*;
 use common::log_targets::FACTION_SYSTEM;
 use game_common::Templ;
-use player::player_components::*;
+use player_shared::player_components::*;
 
 #[allow(unused_imports, )]use faction_shared::*;
 #[allow(unused_imports, )]use crate::{faction_resources::*, };

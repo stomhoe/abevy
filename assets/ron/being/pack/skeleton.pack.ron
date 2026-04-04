@@ -1,6 +1,6 @@
 pack {
     id: "skeleton",
-    spawn_being_count_normal_dist: { min_dev: 1.0, max_dev: 2.0, mean: 4.0, std_dev: 2.0 },
+    spawn_being_count_normal_dist: { min_dev: 1.0, max_dev: 2.0, mean: 3.0, std_dev: 2.0 },
     ids: {
         skeleton: { weight: 0.75, rank: { min_dev: 0.10, max_dev: 0.10, mean: 0.20, std_dev: 0.10 }, min: 1 },
         skeleton_armed: { weight: 0.25, rank: { min_dev: 0.20, max_dev: 0.20, mean: 1.35, std_dev: 0.20 }, max: 1 },

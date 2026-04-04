@@ -12,7 +12,7 @@ multiplayer_shared = { path = "../multiplayer_shared" }
 #tilemap = { path = "../tilemap" }
 faction = { path = "../faction" }
 faction_shared = { path = "../faction_shared" }
-player = { path = "../player" }
+player_shared = { path = "../player_shared" }
 #being = { path = "../being" }
 
 bevy = { workspace = true }

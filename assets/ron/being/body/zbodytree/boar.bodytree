@@ -1,0 +1,5 @@
+id: boar
+extends: hooved
+add:
+  neck > head > jaw > tusk lbl"Left Tusk"
+  neck > head > jaw > tusk lbl"Right Tusk"

@@ -1,0 +1,24 @@
+(
+    id: "spider",
+    name: "Spider Body",
+    tags: ["arachnid"],
+    distributed_totals: {
+        "mass_kg": 150.0,
+        "hp_capacity": 259.0,
+        "hp_regen_rate": 11.0,
+        "blood_capacity": 146.4,
+        "bleed_rate": 12.0,
+        "walk_strength": 40.0,
+        "swim_strength": 6.4,
+        "manip_dex": 2.2,
+        "vision": 1.0,
+        "pain_sensitivity": 16.0,
+        "caloric_burn_rate": 27.4,
+    },
+    sexes: {
+        "male": (weight: 1, sprites: []),
+        "female": (weight: 1, sprites: []),
+    },
+    caloric_burn_rate_multiplier: 0.0,
+    bodytree_id: "spider",
+)

@@ -73,7 +73,6 @@ pub fn activate_beings_in_first_time_loaded_chunks(
     let mut touched_chunks = 0usize;
     for built_chunk in built_chunks.read() {
         let Ok((&dim_ref, &chunk_pos)) = queries.built_chunk_query.get(built_chunk.chunk_ent) else {
-            error!(target: BEING_SYSTEM, "Natural spawn unfreeze got ChunkTerrainBuilt for missing chunk entity {:?}", built_chunk.chunk_ent);
             continue;
         };
         let Some(being_ents) = pending_enable_by_cpos.by_chunk.get_mut(&(dim_ref, chunk_pos)) else {

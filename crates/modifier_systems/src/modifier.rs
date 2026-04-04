@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use game_common::{HostSystems, game_common::ModifierSystems};
-use item_systems::generate_items_on_deaths;
 use {
     crate::modifier_hp_systems::*,
     crate::modifier_manip_systems::*,

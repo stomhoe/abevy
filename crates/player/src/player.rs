@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::{AppRuleExt};
 
-use crate::{player_components::*, player_resources::*};
+use player_shared::*;
 
 
 

@@ -8,7 +8,7 @@ common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 movement = { path = "../movement" }
 modifier_shared = { path = "../modifier_shared" }
-player = { path = "../player" }
+player_shared = { path = "../player_shared" }
 ac_input = { path = "../ac_input" }
 being = { path = "../being" }
 being_shared = { path = "../being_shared" }

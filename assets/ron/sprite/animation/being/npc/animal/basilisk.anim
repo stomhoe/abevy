@@ -1,0 +1,71 @@
+anim basilisk_south_idle {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_south.png"
+    rows_cols: 2 4
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim basilisk_south_move {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_south.png"
+    rows_cols: 2 4
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim basilisk_north_idle {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_north.png"
+    rows_cols: 2 4
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim basilisk_north_move {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_north.png"
+    rows_cols: 2 4
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim basilisk_west_idle {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_west.png"
+    rows_cols: 2 4
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim basilisk_west_move {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_west.png"
+    rows_cols: 2 4
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim basilisk_east_idle {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_east.png"
+    rows_cols: 2 4
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim basilisk_east_move {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_east.png"
+    rows_cols: 2 4
+    clips {
+        row 1 start_frame 1
+    }
+}

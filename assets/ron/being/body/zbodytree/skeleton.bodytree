@@ -1,0 +1,19 @@
+id: skeleton
+tree:
+torso
+  neck
+    head
+  chest
+  abdomen
+  spine
+  pelvis
+  shoulder lbl"Left Shoulder"
+    arm lbl"Left Arm"
+      hand lbl"Left Hand"
+  shoulder lbl"Right Shoulder"
+    arm lbl"Right Arm"
+      hand lbl"Right Hand"
+  leg lbl"Left Leg"
+    foot lbl"Left Foot"
+  leg lbl"Right Leg"
+    foot lbl"Right Foot"

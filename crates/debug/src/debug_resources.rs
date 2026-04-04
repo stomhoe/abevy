@@ -132,6 +132,8 @@ pub struct WorldTileClickInspectorState {
     pub clicked_dim: Option<Entity>,
     pub clicked_gpos: Option<tilemap_shared::GlobalTilePos>,
     pub entities_at_gpos: Vec<Entity>,
+    pub click_generation: u64,
+    pub last_opened_click_generation: u64,
 }
 
 #[derive(Resource)]

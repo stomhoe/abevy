@@ -27,8 +27,5 @@ pub struct BodySeri {
     pub caloric_burn_rate_multiplier: f32,
     pub melee_interaction_zone: InteractionZoneSeri,
     pub collision_zone: InteractionZoneSeri,
-    #[serde(default)]
     pub bodytree_id: String,
-    #[serde(default)]
-    pub root: BodypartNodeSeri,
 }

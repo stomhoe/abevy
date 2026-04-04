@@ -1,8 +1,5 @@
-pub mod player;
-pub use player::*;
-pub use player_components::*;
-pub use player_resources::*;
+pub use player_shared::*;
 
-pub mod player_components;
-pub mod player_resources;
+pub mod player;
+pub use player::plugin;
 mod player_systems;

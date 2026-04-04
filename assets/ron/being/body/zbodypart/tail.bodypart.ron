@@ -1,0 +1,17 @@
+(
+    id: "tail",
+    name: "Tail",
+    weighted_stats:
+    {
+        "coverage": 10,
+        "mass_kg": 0.6,
+        "hp_capacity": 10.0,
+        "hp_regen_rate": 0.8,
+        "blood_capacity": 6.0,
+        "pain_sensitivity": 1.1,
+        "caloric_burn_rate": 0.4,
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.6,
+)

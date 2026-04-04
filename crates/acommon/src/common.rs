@@ -13,7 +13,8 @@ pub use crate::log_targets::*;
 pub use crate::marker_macros::*;
 
 use bevy::ecs::entity_disabling::Disabled;
-use bevy_replicon::prelude::AppRuleExt;
+use bevy::ecs::schedule::common_conditions::on_message;
+use bevy_replicon::prelude::*;
 
 use crate::{common_systems::*, common_tag_systems::*, };
 
@@ -27,6 +28,15 @@ pub fn plugin(app: &mut App) {
             (update_img_sizes_on_load,
                 add_hash_id_from_str_id,
                 add_hashed_tags, ))
+        .add_systems(
+            Update,
+            (
+                clone_and_tell_server.run_if(in_state(ClientState::Connected)),
+                remove_replicated_after_clone_from_client
+                    .run_if(in_state(ServerState::Running))
+                    .run_if(on_message::<FromClient<RemoveReplicated>>)
+            ),
+        )
         .add_plugins(())
         .insert_state::<AppState>(AppState::NoSession)
         .init_state::<PreGameState>()
@@ -49,6 +59,8 @@ pub fn plugin(app: &mut App) {
         .replicate::<Tag>()//.register_type_data::<Tag, InspectorEguiImpl>()
         .replicate::<TagSet>()
         .replicate::<VisibilityGameState>()
+        .replicate::<RemoveReplicatedAfterClone>()
+        .add_mapped_client_message::<RemoveReplicated>(Channel::Unordered)
 
 
 

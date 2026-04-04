@@ -56,6 +56,7 @@ pub fn capture_world_tile_click_selection(
     state.entities_at_gpos.extend(tile_gathering.gather_tiles(dim_ref, clicked_gpos).iter().copied());
     state.entities_at_gpos.sort_unstable_by_key(|entity| entity.index());
     state.entities_at_gpos.dedup();
+    state.click_generation = state.click_generation.wrapping_add(1);
 }
 
 #[allow(unused_parens)]
@@ -71,6 +72,7 @@ pub fn world_tile_click_picker_window(
 ) {
     if !window_visible.world_tile_click_picker {
         state.enabled = false;
+        state.last_opened_click_generation = state.click_generation;
         return;
     }
     state.enabled = true;
@@ -105,6 +107,18 @@ pub fn world_tile_click_picker_window(
                     .then_with(|| left.index().cmp(&right.index()))
             });
 
+            if state.last_opened_click_generation != state.click_generation {
+                if let Some(&entity) = state.entities_at_gpos.first() {
+                    select_click_picker_entity(
+                        entity,
+                        &mut selected_entities,
+                        &mut window_visible,
+                        &being_query,
+                    );
+                }
+                state.last_opened_click_generation = state.click_generation;
+            }
+
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for &entity in &state.entities_at_gpos {
                     let name_label = if let Ok(name) = name_query.get(entity) {
@@ -121,23 +135,7 @@ pub fn world_tile_click_picker_window(
                     let is_selected = selected_entities.selected_exempted_entity == Some(entity);
                     let row = format!("{}  ({:?})", name_label, entity);
                     if ui.selectable_label(is_selected, row).clicked() {
-                        let Ok((_, is_being)) = being_query.get(entity) else {
-                            continue;
-                        };
-                        if is_being {
-                            selected_entities.selected_being = Some(entity);
-                            selected_entities.selected_being_bodypart = None;
-                            selected_entities.show_full_being_components = false;
-                            selected_entities.selected_exempted_entity = None;
-                            selected_entities.selected_tile = None;
-                            window_visible.tile_details = false;
-                            window_visible.being_details = true;
-                        } else {
-                            selected_entities.selected_exempted_entity = Some(entity);
-                            selected_entities.selected_tile = None;
-                            window_visible.being_details = false;
-                            window_visible.tile_details = true;
-                        }
+                        select_click_picker_entity(entity, &mut selected_entities, &mut window_visible, &being_query);
                     }
                 }
             });
@@ -163,4 +161,29 @@ fn acz_for_entity(
                 .and_then(|templ_ref| acz_query.get(templ_ref.0).ok().map(|acz| acz.0))
         })
         .unwrap_or(f32::NEG_INFINITY)
+}
+
+fn select_click_picker_entity(
+    entity: Entity,
+    selected_entities: &mut DebugSelectedEntities,
+    window_visible: &mut DubugWindowsVisibility,
+    being_query: &Query<(Entity, Has<Being>)>,
+) {
+    let Ok((_, is_being)) = being_query.get(entity) else {
+        return;
+    };
+    if is_being {
+        selected_entities.selected_being = Some(entity);
+        selected_entities.selected_being_bodypart = None;
+        selected_entities.show_full_being_components = false;
+        selected_entities.selected_exempted_entity = None;
+        selected_entities.selected_tile = None;
+        window_visible.tile_details = false;
+        window_visible.being_details = true;
+    } else {
+        selected_entities.selected_exempted_entity = Some(entity);
+        selected_entities.selected_tile = None;
+        window_visible.being_details = false;
+        window_visible.tile_details = true;
+    }
 }

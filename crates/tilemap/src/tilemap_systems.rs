@@ -35,6 +35,8 @@ pub struct SystemLocals<'s> {
     pub terrbl_debug_budget: Local<'s, u32>,
 }
 
+
+
 #[derive(SystemParam)]
 pub struct SystemResources<'w> {
     pub collected_tiles: ResMut<'w, MassCollectedTiles>,

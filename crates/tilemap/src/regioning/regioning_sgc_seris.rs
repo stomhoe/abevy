@@ -196,6 +196,7 @@ pub struct SgcSeri {
     pub whitelisted_tags: HashSet<String>,
     pub blacklisted_tags: HashSet<String>,
     pub max_per_region: u32,
+    pub max_being_count: Option<u32>,
 }
 
 fn default_max_per_region() -> u32 {
@@ -634,6 +635,8 @@ fn parse_sgc_seri(content: &str, _path: &Path) -> Result<SgcSeri, String> {
     let whitelisted_tags = HashSet::from_iter(take_string_list(&mut fields, "whitelisted_tags"));
     let blacklisted_tags = HashSet::from_iter(take_string_list(&mut fields, "blacklisted_tags"));
     let max_per_region = take_u32(&mut fields, "max_per_region").unwrap_or_else(default_max_per_region);
+    let max_being_count = take_u32(&mut fields, "max_being_count")
+        .or_else(|| take_u32(&mut fields, "max_spawn_being_count"));
 
     Ok(SgcSeri {
         id,
@@ -651,6 +654,7 @@ fn parse_sgc_seri(content: &str, _path: &Path) -> Result<SgcSeri, String> {
         whitelisted_tags,
         blacklisted_tags,
         max_per_region,
+        max_being_count,
     })
 }
 

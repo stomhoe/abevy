@@ -4,12 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-common = { path = "../acommon" }
-#game_common = { path = "../agame_common" }
-
 bevy = { workspace = true }
-nano-id = { workspace = true }
-serde = { workspace = true }
+player_shared = { path = "../player_shared" }
 bevy_replicon = { workspace = true }
-bevy_common_assets = { workspace = true }
-bevy_asset_loader = { workspace = true }

@@ -18,6 +18,9 @@ pub struct HotReload;
 #[derive(Component, Clone, Default)]
 pub struct SparedFromHotReloading;
 
+#[derive(Component, Debug, Default, Clone, Copy, Serialize, Deserialize)]
+pub struct RemoveReplicatedAfterClone;
+
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
 pub struct DisplayName(pub String);
 
@@ -114,6 +117,9 @@ impl MultiplePathsHolder {
 }
 #[derive(Component, Debug, Clone, )]
 pub struct SampleSpritesamplers(pub Vec<Entity>);
+
+#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
+pub struct RemoveReplicated(#[entities] pub Entity);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Eq, Clone, Copy, Hash, PartialEq)]
 pub enum Grounding {

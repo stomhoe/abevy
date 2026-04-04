@@ -5,6 +5,7 @@ sgc {
     priority = 1000.0
     tags = [river]
     whitelisted_tags = [river, dungeon]
+    max_being_count = 40
     max_per_region = 1
     args {
         river_tile_id = blue

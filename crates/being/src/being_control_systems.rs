@@ -4,7 +4,7 @@ use common::log_targets::BEING_CONTROL;
 use faction_shared::BelongsToAPlayerFaction;
 use game_common::game_common_components::CameraTarget;
 use movement::movement_components::{InputMaxSpeed, InputMoveDir, InputSpeedThrottleMult};
-use player::player_components::{HostPlayer, Mine, MyPlayer, Player};
+use player_shared::player_components::{HostPlayer, Mine, MyPlayer, Player};
 use tilemap::chunking::chunking_components::ActivatingChunks;
 use tilemap_shared::LoadChunksAround;
 
@@ -88,6 +88,23 @@ pub fn on_control_change(
     }
     for (being_ent, controlled_by, is_camera_target) in changed_query.iter() {
         apply_control_change(being_ent, controlled_by, is_camera_target);
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn sync_ai_melee_targets(
+    mut commands: Commands,
+    ai_controlled_beings: Query<
+        Entity,
+        (With<Being>, LocalAiControlled, Without<AiMeleeTargets>, ),
+    >,
+    ceased_tob_ai_controlled: Query<Entity, Added<HumanControlled>>,
+) {
+    for being_ent in ai_controlled_beings.iter() {
+        commands.entity(being_ent).try_insert_if_new(AiMeleeTargets::default());
+    }
+    for being_ent in ceased_tob_ai_controlled.iter() {
+        commands.entity(being_ent).try_remove::<AiMeleeTargets>();
     }
 }
 

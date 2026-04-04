@@ -1,6 +1,7 @@
 SpriteConfigSeri(
     id: "tiger",
     name: "Tiger",
+    z: 1000,
     mapped_anims: {
         ("south", "idle", "g", "") : "tiger_south_idle",
         ("south", "move", "g", "") : "tiger_south_move",
@@ -16,6 +17,7 @@ SpriteConfigSeri(
     directionable: true,
     movement_based: true,
     grounding_based: false,
+    is_being_root_sprite: true,
     baseline_move_speed: 60.0,
     offset: (-6., 6.),
     scale: (1.2, 1.2),

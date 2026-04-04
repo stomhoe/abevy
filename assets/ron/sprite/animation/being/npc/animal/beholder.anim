@@ -1,0 +1,79 @@
+anim beholder_south_idle {
+    img_path: "texture/being/npc/monster/beholder/beholder_south.png"
+    rows_cols: 2 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+        row 1 partial 0 0
+    }
+}
+
+anim beholder_south_move {
+    img_path: "texture/being/npc/monster/beholder/beholder_south.png"
+    rows_cols: 2 3
+    clips {
+        row 0
+        row 1
+    }
+}
+
+anim beholder_north_idle {
+    img_path: "texture/being/npc/monster/beholder/beholder_north.png"
+    rows_cols: 2 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+        row 1 partial 0 0
+    }
+}
+
+anim beholder_north_move {
+    img_path: "texture/being/npc/monster/beholder/beholder_north.png"
+    rows_cols: 2 3
+    clips {
+        row 0
+        row 1
+    }
+}
+
+anim beholder_west_idle {
+    img_path: "texture/being/npc/monster/beholder/beholder_west.png"
+    rows_cols: 2 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+        row 1 partial 0 0
+    }
+}
+
+anim beholder_west_move {
+    img_path: "texture/being/npc/monster/beholder/beholder_west.png"
+    rows_cols: 2 3
+    clips {
+        row 0
+        row 1
+    }
+}
+
+anim beholder_east_idle {
+    img_path: "texture/being/npc/monster/beholder/beholder_east.png"
+    rows_cols: 2 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+        row 1 partial 0 0
+    }
+}
+
+anim beholder_east_move {
+    img_path: "texture/being/npc/monster/beholder/beholder_east.png"
+    rows_cols: 2 3
+    clips {
+        row 0
+        row 1
+    }
+}

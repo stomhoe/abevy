@@ -1,0 +1,10 @@
+id: cobra_siamese
+extends: snake
+add:
+  body > head lbl"Second Head"
+    brain
+    eye lbl"Left Eye"
+    eye lbl"Right Eye"
+    nose
+    jaw
+      mouth

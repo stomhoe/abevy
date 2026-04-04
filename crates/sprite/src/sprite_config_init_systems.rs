@@ -82,6 +82,16 @@ pub fn init_sprite_configs(
             let offset_2d = seri.offset;
             cmd.entity(spritecfg_ent).insert(Offset2D::from(offset_2d));
         }
+        let y_sort_origin = if seri.y_sort.is_finite() {
+            Some(seri.y_sort)
+        } else if seri.offset != (0.0, 0.0) {
+            Some(seri.offset.1)
+        } else {
+            None
+        };
+        if let Some(y_sort_origin) = y_sort_origin {
+            cmd.entity(spritecfg_ent).insert(YSortOrigin(y_sort_origin));
+        }
         if seri.scale_up_down != (1.0, 1.0) {
             let scale_look_up_down = seri.scale_up_down;
             cmd.entity(spritecfg_ent)
@@ -147,12 +157,11 @@ pub fn init_sprite_configs(
                 continue;
             };
             cmd.entity(spritecfg_ent).insert((UseFallbackSprite, img_path_holder));
-            if seri.z.is_finite() {
-                cmd.entity(spritecfg_ent).insert(AcZ(seri.z));
-            }
-            if seri.y_sort.is_finite() {
-                cmd.entity(spritecfg_ent).insert(YSortOrigin(seri.y_sort));
-            }
+        }
+        if seri.z.is_finite() {
+            cmd.entity(spritecfg_ent).insert(AcZ(seri.z));
+        } else if seri.is_being_root_sprite {
+            cmd.entity(spritecfg_ent).insert(AcZ(1000.0));
         }
 
         if !seri.mapped_anims.is_empty() {

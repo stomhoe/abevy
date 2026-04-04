@@ -1,0 +1,71 @@
+anim dragon_yellow_south_idle {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_south.png"
+    rows_cols: 4 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim dragon_yellow_south_move {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_south.png"
+    rows_cols: 4 3
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim dragon_yellow_north_idle {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_north.png"
+    rows_cols: 4 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim dragon_yellow_north_move {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_north.png"
+    rows_cols: 4 3
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim dragon_yellow_west_idle {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_west.png"
+    rows_cols: 4 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim dragon_yellow_west_move {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_west.png"
+    rows_cols: 4 3
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim dragon_yellow_east_idle {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_east.png"
+    rows_cols: 4 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim dragon_yellow_east_move {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_east.png"
+    rows_cols: 4 3
+    clips {
+        row 1 start_frame 1
+    }
+}

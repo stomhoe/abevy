@@ -1,0 +1,17 @@
+id: spider
+tree:
+torso lbl"Cephalothorax"
+  brain
+  eye lbl"Front Left Eye"
+  eye lbl"Front Right Eye"
+  fang lbl"Left Fang"
+  fang lbl"Right Fang"
+  leg lbl"Front Left Leg"
+  leg lbl"Front Right Leg"
+  leg lbl"Mid Front Left Leg"
+  leg lbl"Mid Front Right Leg"
+  leg lbl"Mid Rear Left Leg"
+  leg lbl"Mid Rear Right Leg"
+  leg lbl"Rear Left Leg"
+  leg lbl"Rear Right Leg"
+  abdomen

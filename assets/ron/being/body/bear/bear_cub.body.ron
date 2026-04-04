@@ -1,0 +1,24 @@
+(
+    id: "bear_cub",
+    name: "Bear Cub Body",
+    tags: ["quadruped"],
+    distributed_totals: {
+        "mass_kg": 90.0,
+        "hp_capacity": 516.0,
+        "hp_regen_rate": 24.2,
+        "blood_capacity": 301.5,
+        "bleed_rate": 31.3,
+        "walk_strength": 60.0,
+        "swim_strength": 8.1,
+        "manip_dex": 4.0,
+        "vision": 2.0,
+        "pain_sensitivity": 28.1,
+        "caloric_burn_rate": 54.5,
+    },
+    sexes: {
+        "male": (weight: 1, sprites: []),
+        "female": (weight: 1, sprites: []),
+    },
+    caloric_burn_rate_multiplier: 0.0,
+    bodytree_id: "pawed",
+)

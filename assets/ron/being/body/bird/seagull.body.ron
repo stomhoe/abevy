@@ -1,0 +1,25 @@
+(
+    id: "seagull",
+    name: "Seagull Body",
+    tags: ["bird"],
+    distributed_totals: {
+        "mass_kg": 8.0,
+        "hp_capacity": 402.0,
+        "hp_regen_rate": 18.0,
+        "blood_capacity": 235.5,
+        "bleed_rate": 24.2,
+        "walk_strength": 3.0,
+        "swim_strength": 4.3,
+        "fly_strength": 2.8,
+        "manip_dex": 2.3,
+        "vision": 2.0,
+        "pain_sensitivity": 22.3,
+        "caloric_burn_rate": 42.8,
+    },
+    sexes: {
+        "male": (weight: 1, sprites: []),
+        "female": (weight: 1, sprites: []),
+    },
+    caloric_burn_rate_multiplier: 0.0,
+    bodytree_id: "bird",
+)

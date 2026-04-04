@@ -1,0 +1,13 @@
+id: demon
+extends: humanoid
+add:
+  body > neck > head > horn lbl"Left Horn"
+  body > neck > head > horn lbl"Right Horn"
+  body > wing lbl"Left Wing"
+  body > wing lbl"Right Wing"
+remove:
+  body > leg[0] > foot
+  body > leg[1] > foot
+add:
+  body > leg[0] > foot lbl"Left Hoof"
+  body > leg[1] > foot lbl"Right Hoof"

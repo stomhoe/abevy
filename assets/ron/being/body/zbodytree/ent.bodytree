@@ -1,0 +1,6 @@
+id: ent
+extends: golem
+add:
+  torso > neck > head
+    eye lbl"Left Eye"
+    eye lbl"Right Eye"

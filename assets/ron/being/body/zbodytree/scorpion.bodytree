@@ -1,0 +1,19 @@
+id: scorpion
+tree:
+torso lbl"Cephalothorax"
+  brain
+  eye lbl"Front Left Eye"
+  eye lbl"Front Right Eye"
+  pincer lbl"Left Pincer"
+  pincer lbl"Right Pincer"
+  leg lbl"Front Left Leg"
+  leg lbl"Front Right Leg"
+  leg lbl"Mid Front Left Leg"
+  leg lbl"Mid Front Right Leg"
+  leg lbl"Mid Rear Left Leg"
+  leg lbl"Mid Rear Right Leg"
+  leg lbl"Rear Left Leg"
+  leg lbl"Rear Right Leg"
+  abdomen
+    tail
+      stinger

@@ -75,7 +75,7 @@ fn build_filter() -> String {
         (log_targets::BODY_BUILD, DEBUG),
         (log_targets::GAME_INIT, DEBUG),
 
-        (log_targets::SPRITE_ANIMATION_INIT, WARN),
+        (log_targets::SPRITE_ANIMATION_INIT, DEBUG),
         (log_targets::SPRITE_ANIMATION_SYSTEM, DEBUG),
         (log_targets::ENTITY_ZERO_SYSTEM, INFO),
         (log_targets::DUNGEONING_SYSTEM, DEBUG),
@@ -149,7 +149,7 @@ fn main() {
         .add_plugins((
             game::plugin,
             being::plugin,
-            player::plugin,
+            player::player::plugin,
             faction::plugin,
             dimension::plugin,
             camera::plugin,

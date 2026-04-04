@@ -6,17 +6,20 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypedDict, cast
+
+from anim_format import extract_anim_blocks, format_clip_line, get_field_value, parse_clip_line, parse_header, parse_text_value
 
 """
-Reorder spritesheet rows and rewrite matching row targets in an .anim.ron file.
+Reorder spritesheet rows and rewrite matching row targets in an .anim file.
 
 The script expects a spritesheet animation definition with one or more animation
-records. It reorders the sheet's row bands according to the requested order,
+blocks. It reorders the sheet's row bands according to the requested order,
 then remaps every row clip target so it continues to point at the same visual
 row after the shuffle.
 
 Example:
-    reorder_rows.py assets/ron/sprite/animation/being/npc/animal/tiama.anim.ron \
+    reorder_rows.py assets/ron/sprite/animation/being/npc/animal/tiama.anim \
         --order 2,3,0,1
 
 This moves the first two rows to the end while preserving their internal order.
@@ -31,12 +34,6 @@ except ImportError as exc:  # pragma: no cover - local utility
 ROOT_DIR = Path(__file__).resolve().parents[1]
 ASSETS_DIR = ROOT_DIR / "assets"
 
-RECORD_START_RE = re.compile(r"\(\s*id:\s*\"")
-ID_RE = re.compile(r'id:\s*"([^"]+)"')
-IMG_RE = re.compile(r'img_path:\s*"([^"]+)"')
-ROWS_COLS_RE = re.compile(r"rows_cols:\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)")
-CLIP_RE = re.compile(r"\(\s*target:\s*(\d+),\s*is_row:\s*(true|false)(?P<body>.*?)\n\s*\),", re.S)
-
 
 @dataclass(frozen=True)
 class AnimRecord:
@@ -47,41 +44,32 @@ class AnimRecord:
     cols: int
 
 
-def _extract_record_blocks(text: str) -> list[str]:
-    blocks: list[str] = []
-    for match in RECORD_START_RE.finditer(text):
-        start = match.start()
-        depth = 0
-        end = None
-        for idx in range(start, len(text)):
-            char = text[idx]
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0:
-                    end = idx + 1
-                    break
-        if end is not None:
-            blocks.append(text[start:end])
-    return blocks
+class AnimClip(TypedDict):
+    target: int
+    is_row: bool
+    partial: tuple[int, int] | None
+    start_frame: int | None
 
 
 def _parse_records(text: str) -> list[AnimRecord]:
     records: list[AnimRecord] = []
-    for block in _extract_record_blocks(text):
-        id_match = ID_RE.search(block)
-        img_match = IMG_RE.search(block)
-        rows_cols_match = ROWS_COLS_RE.search(block)
-        if not (id_match and img_match and rows_cols_match):
+    for block in extract_anim_blocks(text):
+        header = parse_header(block)
+        img_path = get_field_value(block, "img_path")
+        rows_cols = get_field_value(block, "rows_cols")
+        if img_path is None or rows_cols is None:
+            continue
+        img_path = parse_text_value(img_path)
+        rows_cols_parts = rows_cols.replace(",", " ").replace("(", " ").replace(")", " ").split()
+        if len(rows_cols_parts) != 2:
             continue
         records.append(
             AnimRecord(
                 block=block,
-                anim_id=id_match.group(1),
-                img_path=img_match.group(1),
-                rows=int(rows_cols_match.group(1)),
-                cols=int(rows_cols_match.group(2)),
+                anim_id=header.anim_id,
+                img_path=img_path,
+                rows=int(rows_cols_parts[0]),
+                cols=int(rows_cols_parts[1]),
             )
         )
     return records
@@ -136,22 +124,38 @@ def _reorder_rows(img: Image.Image, order: list[int], rows: int) -> Image.Image:
 
 
 def _remap_targets(block: str, mapping: list[int]) -> str:
-    def clip_replacer(match: re.Match[str]) -> str:
-        target = int(match.group(1))
-        is_row = match.group(2) == "true"
-        if is_row:
-            if target < 0 or target >= len(mapping):
-                raise ValueError(f"row target {target} is out of bounds for mapping size {len(mapping)}")
-            target = mapping[target]
-        clip_text = match.group(0)
-        return re.sub(
-            r"(target:\s*)\d+",
-            lambda m: f"{m.group(1)}{target}",
-            clip_text,
-            count=1,
-        )
+    lines = block.splitlines()
+    out: list[str] = []
+    in_clips = False
+    depth = 0
 
-    return CLIP_RE.sub(clip_replacer, block)
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "clips {":
+            in_clips = True
+            depth = 1
+            out.append(line)
+            continue
+
+        if in_clips:
+            depth += line.count("{") - line.count("}")
+            if depth <= 0:
+                in_clips = False
+                out.append(line)
+                continue
+            if stripped.startswith(("row ", "col ", "column ", "clip ")):
+                clip = cast(AnimClip, parse_clip_line(stripped))
+                if clip["is_row"]:
+                    target = int(clip["target"])
+                    if target < 0 or target >= len(mapping):
+                        raise ValueError(f"row target {target} is out of bounds for mapping size {len(mapping)}")
+                    clip["target"] = mapping[target]
+                out.append(format_clip_line(clip, indent=line[: len(line) - len(line.lstrip())]))
+                continue
+
+        out.append(line)
+
+    return "\n".join(out)
 
 
 def _rewrite_anim_file(input_path: Path, order: list[int], dry_run: bool = False) -> None:
@@ -198,7 +202,7 @@ def main() -> int:
         prog="reorder_rows.py",
         description="Reorder a spritesheet's rows and update matching animation targets.",
     )
-    parser.add_argument("anim_ron", type=Path, help="Path to the input .anim.ron file")
+    parser.add_argument("anim_ron", type=Path, help="Path to the input .anim file")
     parser.add_argument(
         "--order",
         required=True,

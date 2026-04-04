@@ -1,0 +1,17 @@
+(
+    id: "neck",
+    name: "Neck",
+    weighted_stats:
+    {
+        "coverage": 8,
+        "mass_kg": 1.2,
+        "hp_capacity": 12.0,
+        "hp_regen_rate": 0.8,
+        "blood_capacity": 10.0,
+        "pain_sensitivity": 1.6,
+        "caloric_burn_rate": 1.2,
+    },
+    depth: "surface",
+    vital: true,
+    bleed_rate: 1.5,
+)

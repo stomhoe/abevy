@@ -77,16 +77,20 @@ pub fn init_being_templates(
                 error!(target: "being_template_init", "Body tree/sampler '{}' not found for BeingInstTemplate '{}'", body_str_id, str_id);
             }
         }
-        if let Some(size_variation) = template_seri.size_variation.filter(|v| !v.is_sentinel()) {
+        if !template_seri.size_variation.is_sentinel() {
+            let size_variation = template_seri.size_variation.clone();
             cmd.entity(bit_entity).insert(SpriteGlobalNormalDist::new(size_variation));
         }
-        if let Some(hori_variation) = template_seri.hori_variation.filter(|v| !v.is_sentinel()) {
+        if !template_seri.hori_variation.is_sentinel() {
+            let hori_variation = template_seri.hori_variation.clone();
             cmd.entity(bit_entity).insert(SpriteHoriNormalDist::new(hori_variation));
         }
-        if let Some(vert_variation) = template_seri.vert_variation.filter(|v| !v.is_sentinel()) {
+        if !template_seri.vert_variation.is_sentinel() {
+            let vert_variation = template_seri.vert_variation.clone();
             cmd.entity(bit_entity).insert(SpriteVertNormalDist::new(vert_variation));
         }
-        if let Some(spawn_pack_size_normal_dist) = template_seri.spawn_pack_size_normal_dist.filter(|v| !v.is_sentinel()) {
+        if !template_seri.spawn_pack_size_normal_dist.is_sentinel() {
+            let spawn_pack_size_normal_dist = template_seri.spawn_pack_size_normal_dist.clone();
             cmd.entity(bit_entity).insert(PackInitialSizeSampler(CappedNormalDist::from_seri(
                 spawn_pack_size_normal_dist,
             )));

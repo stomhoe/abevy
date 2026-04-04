@@ -1,0 +1,10 @@
+id: kraken
+tree:
+head
+  brain
+  eye lbl"Left Eye"
+  eye lbl"Right Eye"
+  tentacle lbl"Tentacle A"
+  tentacle lbl"Tentacle B"
+  tentacle lbl"Tentacle C"
+  tentacle lbl"Tentacle D"

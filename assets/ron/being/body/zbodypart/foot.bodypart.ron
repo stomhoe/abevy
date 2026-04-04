@@ -1,0 +1,19 @@
+(
+    id: "foot",
+    name: "Foot",
+    weighted_stats:
+    {
+        "coverage": 12,
+        "mass_kg": 0.6,
+        "hp_capacity": 14.0,
+        "hp_regen_rate": 0.8,
+        "blood_capacity": 8.0,
+        "walk_strength": 1.3,
+        "swim_strength": 0.9,
+        "pain_sensitivity": 1.1,
+        "caloric_burn_rate": 1.5,
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.6,
+)

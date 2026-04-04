@@ -1,0 +1,16 @@
+id: hooved
+extends: quadruped
+remove:
+  body > leg[0] > foot
+  body > leg[1] > foot
+  body > leg[2] > foot
+  body > leg[3] > foot
+add:
+  body > leg[0] lbl"Front Left Leg"
+    foot lbl"Front Left Foot"
+  body > leg[1] lbl"Front Right Leg"
+    foot lbl"Front Right Foot"
+  body > leg[2] lbl"Hind Left Leg"
+    foot lbl"Hind Left Foot"
+  body > leg[3] lbl"Hind Right Leg"
+    foot lbl"Hind Right Foot"

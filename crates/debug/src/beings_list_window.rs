@@ -29,7 +29,19 @@ fn being_list_entry_label(
     let main_name = display_name
         .map(|dn| dn.0.as_str())
         .or_else(|| name.map(|n| n.as_str()))
-        .filter(|s| !s.is_empty() && *s != "Being");
+        .map(|s| s.trim())
+        .and_then(|s| {
+            let stripped = s
+                .strip_prefix("Being ")
+                .or_else(|| s.strip_prefix("being "))
+                .unwrap_or(s)
+                .trim();
+            if stripped.is_empty() {
+                None
+            } else {
+                Some(stripped)
+            }
+        });
 
     if let Some(n) = main_name {
         parts.push(n.to_string());
@@ -88,7 +100,7 @@ pub fn beings_list_window(
     let camera_dim_ref = camera_info.map(|(dim_ref, _)| dim_ref);
 
     // Group beings by dimension
-    let mut beings_by_dimension: BTreeMap<String, Vec<(Entity, String, Vec2, f32)>> = BTreeMap::new();
+    let mut beings_by_dimension: BTreeMap<String, Vec<(Entity, String, GlobalTilePos, Vec2, f32)>> = BTreeMap::new();
 
     for (entity, display_name, name, _, race_ref, bit_ref, dim_ref, global_pos) in being_query.iter() {
         let dim_name = if let Ok(n) = dimension_query.get(dim_ref.0) {
@@ -111,7 +123,7 @@ pub fn beings_list_window(
         beings_by_dimension
             .entry(dim_name)
             .or_insert_with(Vec::new)
-            .push((entity, label, direction, distance));
+            .push((entity, label, *global_pos, direction, distance));
     }
 
     // Sort dimensions with camera dimension first
@@ -140,7 +152,7 @@ pub fn beings_list_window(
             for dim_key in sorted_dims.iter() {
                 if let Some(mut beings) = beings_by_dimension.remove(dim_key) {
                     beings.sort_by(|a, b| {
-                        a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal)
+                        a.4.partial_cmp(&b.4).unwrap_or(std::cmp::Ordering::Equal)
                     });
 
                     let is_camera_dim = camera_dim_ref.map_or(false, |camera_ref| {
@@ -153,12 +165,13 @@ pub fn beings_list_window(
                     egui::CollapsingHeader::new(format!("{} ({})", dim_key, beings.len()))
                         .default_open(is_camera_dim)
                         .show(ui, |ui| {
-                            for (entity, base_label, direction, distance) in beings.iter() {
+                            for (entity, base_label, gpos, direction, distance) in beings.iter() {
                                 let label = format!(
-                                    "{} {} [{:?}] [{}]",
+                                    "{} @ [{}, {}] {} [{}]",
                                     base_label,
+                                    gpos.0.x,
+                                    gpos.0.y,
                                     direction_arrow(*direction),
-                                    entity,
                                     distance.round() as i32
                                 );
                                 let is_selected = selected_entities.selected_being == Some(*entity);

@@ -16,6 +16,7 @@ pub struct StructuredGenConfig{
     /// the structure's HaId, not the sgc's
     structure_hash_id: HashId,
     pub max_per_region: u32,
+    pub max_being_count: Option<u32>,
     pub args: ArgsDict,
     pub typed_args: SgcArgsDict,
     pub whitelisted_tags: TagSet,
@@ -27,6 +28,7 @@ impl StructuredGenConfig {
             structure_id: StrId::trunc(structure_id.as_ref()),
             structure_hash_id: HashId::hash(structure_id.as_ref()),
             max_per_region: 1024,
+            max_being_count: None,
             args: ArgsDict::default(),
             typed_args: SgcArgsDict::default(),
             whitelisted_tags: TagSet::default(),

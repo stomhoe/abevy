@@ -1,11 +1,11 @@
-pub mod drunkwalk;
-pub mod cha;
-pub mod spiral;
-pub mod archimedes_spiral;
-pub mod maze;
+pub mod sg_drunkwalk;
+pub mod sg_cha;
+pub mod sg_spiral;
+pub mod sg_archimedes_spiral;
+pub mod sg_maze;
 
-pub use archimedes_spiral::archimedes_spiral_building_system;
-pub use cha::corridor_dungeon_building_system;
-pub use drunkwalk::drunkwalk_dungeon_building_system;
-pub use maze::maze_dungeon_building_system;
-pub use spiral::spiral_dungeon_building_system;
+pub use sg_archimedes_spiral::archimedes_spiral_building_system;
+pub use sg_cha::corridor_dungeon_building_system;
+pub use sg_drunkwalk::drunkwalk_dungeon_building_system;
+pub use sg_maze::maze_dungeon_building_system;
+pub use sg_spiral::spiral_dungeon_building_system;

@@ -1,0 +1,17 @@
+(
+    id: "spine",
+    name: "Spine",
+    weighted_stats:
+    {
+        "coverage": 12,
+        "mass_kg": 0.7,
+        "hp_capacity": 18.0,
+        "hp_regen_rate": 0.8,
+        "blood_capacity": 8.0,
+        "pain_sensitivity": 0.0,
+        "caloric_burn_rate": 1.5,
+    },
+    depth: "inside",
+    vital: true,
+    bleed_rate: 1.0,
+)

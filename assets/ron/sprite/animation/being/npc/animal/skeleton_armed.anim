@@ -1,0 +1,71 @@
+anim skeleton_armed_south_idle {
+    img_path: "texture/being/npc/skeleton/skeleton_armed.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim skeleton_armed_south_move {
+    img_path: "texture/being/npc/skeleton/skeleton_armed.png"
+    rows_cols: 4 6
+    clips {
+        row 0 start_frame 1
+    }
+}
+
+anim skeleton_armed_north_idle {
+    img_path: "texture/being/npc/skeleton/skeleton_armed.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 1 partial 0 0
+    }
+}
+
+anim skeleton_armed_north_move {
+    img_path: "texture/being/npc/skeleton/skeleton_armed.png"
+    rows_cols: 4 6
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim skeleton_armed_west_idle {
+    img_path: "texture/being/npc/skeleton/skeleton_armed.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 2 partial 0 0
+    }
+}
+
+anim skeleton_armed_west_move {
+    img_path: "texture/being/npc/skeleton/skeleton_armed.png"
+    rows_cols: 4 6
+    clips {
+        row 2 partial 0 4 start_frame 1
+    }
+}
+
+anim skeleton_armed_east_idle {
+    img_path: "texture/being/npc/skeleton/skeleton_armed.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 3 partial 0 0
+    }
+}
+
+anim skeleton_armed_east_move {
+    img_path: "texture/being/npc/skeleton/skeleton_armed.png"
+    rows_cols: 4 6
+    clips {
+        row 3 partial 0 4 start_frame 1
+    }
+}

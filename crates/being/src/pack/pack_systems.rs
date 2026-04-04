@@ -7,13 +7,21 @@ use ::being_shared::*;
 #[allow(unused_parens, )]
 pub fn despawn_empty_squads(
     mut cmd: Commands,
-    query: Query<(), (Without<Templ>, Without<SquadMembers>, Without<faction_shared::Faction>)>,
+    query: Query<(), (Without<Templ>, Without<SquadMembers>, Without<faction_shared::Faction>, Without<PreventCleanup>)>,
     mut removed_squad_members: RemovedComponents<SquadMembers>,
+    pack_query: Query<(Entity, &SquadMembers), (Without<Templ>, Without<faction_shared::Faction>, Without<PreventCleanup>)>,
 ) {
     for squad_ent in removed_squad_members.read() {
         if query.get(squad_ent).is_ok() {
             cmd.entity(squad_ent).try_despawn();
         }
+    }
+
+    for (pack_ent, members) in pack_query.iter() {
+        if members.len() > 1 {
+            continue;
+        }
+        cmd.entity(pack_ent).try_despawn();
     }
 }
 

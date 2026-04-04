@@ -240,10 +240,6 @@ pub fn init_tiles(
                 };
                 cmd.entity(tile_enti).insert(TileShaderRef(shader_ent));
             }
-            if let Some(y_sort_origin) = seri.y_sort {
-                cmd.entity(tile_enti).insert(YSortOrigin(seri.offset.1 + y_sort_origin - 10.0));
-            }
-
             cmd.entity(tile_enti).insert_if_new((TileColor::from(color), ));
         } else {
             cmd.entity(tile_enti).insert((
@@ -251,6 +247,7 @@ pub fn init_tiles(
                 Visibility::default(),
                 SpriteTile
             ));
+            let sprite_tile_y_sort_origin = seri.sprite_tile_y_sort_origin();
             let mut sprite_cfgs = Vec::new();
             let mut processing_as_sprite_cfgs = None;
 
@@ -281,8 +278,8 @@ pub fn init_tiles(
                     if seri.offset != (0.0, 0.0) {
                         cmd.entity(child_sprite).insert(Offset2D::from(seri.offset));
                     }
-                    if let Some(y_sort_origin) = seri.y_sort {
-                        cmd.entity(child_sprite).insert(YSortOrigin(seri.offset.1 + y_sort_origin - 10.0));
+                    if let Some(y_sort_origin) = sprite_tile_y_sort_origin {
+                        cmd.entity(child_sprite).insert(YSortOrigin(y_sort_origin));
                     }
                     processing_as_sprite_cfgs = Some(false);
                 }
@@ -296,7 +293,6 @@ pub fn init_tiles(
     cmd.spawn((tile_indexing,));
     cmd.insert_resource(res_tile_tags);
 }
-
 fn gather_step_sfx_paths_from_dir(directory: &str) -> Vec<String> {
     let directory = directory.trim().trim_matches('/');
     if directory.is_empty() {

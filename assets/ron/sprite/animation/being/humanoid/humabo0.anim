@@ -1,0 +1,119 @@
+anim mahubo0_east_idle {
+    img_path: "texture/being/body/human/humabo0.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 3 partial 0 0
+    }
+}
+
+anim mahubo0_north_idle {
+    img_path: "texture/being/body/human/humabo0.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 1 partial 0 0
+    }
+}
+
+anim mahubo0_south_idle {
+    img_path: "texture/being/body/human/humabo0.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim mahubo0_west_idle {
+    img_path: "texture/being/body/human/humabo0.png"
+    rows_cols: 4 6
+    paused: true
+    speed: 1.0
+    clips {
+        row 2 partial 0 0
+    }
+}
+
+anim mahubo0_east_move {
+    img_path: "texture/being/body/human/humabo0.png"
+    rows_cols: 4 6
+    alternating_start_frames: 1 3
+    clips {
+        row 3 partial 0 4
+    }
+}
+
+anim mahubo0_north_move {
+    img_path: "texture/being/body/human/humabo0.png"
+    rows_cols: 4 6
+    alternating_start_frames: 1 4
+    clips {
+        row 1
+    }
+}
+
+anim mahubo0_south_move {
+    img_path: "texture/being/body/human/humabo0.png"
+    rows_cols: 4 6
+    alternating_start_frames: 1 4
+    clips {
+        row 0
+    }
+}
+
+anim mahubo0_west_move {
+    img_path: "texture/being/body/human/humabo0.png"
+    rows_cols: 4 6
+    alternating_start_frames: 1 3
+    clips {
+        row 2 partial 0 4
+    }
+}
+
+anim mahuhe0_east_idle {
+    img_path: "texture/being/head/human/0.png"
+    rows_cols: 1 4
+    z: 0
+    paused: true
+    speed: 1.0
+    clips {
+        col 1
+    }
+}
+
+anim mahuhe0_north_idle {
+    img_path: "texture/being/head/human/0.png"
+    rows_cols: 1 4
+    z: 0
+    paused: true
+    speed: 1.0
+    clips {
+        col 3
+    }
+}
+
+anim mahuhe0_south_idle {
+    img_path: "texture/being/head/human/0.png"
+    rows_cols: 1 4
+    z: 0
+    paused: true
+    speed: 1.0
+    clips {
+        col 0
+    }
+}
+
+anim mahuhe0_west_idle {
+    img_path: "texture/being/head/human/0.png"
+    rows_cols: 1 4
+    z: 0
+    paused: true
+    speed: 1.0
+    clips {
+        col 2
+    }
+}

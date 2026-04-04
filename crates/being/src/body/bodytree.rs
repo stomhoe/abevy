@@ -75,6 +75,8 @@ struct RawBodyTreeDef {
     root: Option<BodypartNodeSeri>,
     add_nodes: Vec<BodyTreeAddNodeSpec>,
     remove_paths: Vec<BodyTreePathSpec>,
+    label_overrides: Vec<BodyTreeLabelOverrideSpec>,
+    replace_nodes: Vec<BodyTreeReplaceNodeSpec>,
 }
 
 #[derive(Debug, Clone)]
@@ -86,6 +88,18 @@ struct BodyTreeAddNodeSpec {
 #[derive(Debug, Clone)]
 struct BodyTreeAddNodeFrame {
     parent_path: Option<BodyTreePathSpec>,
+    node: BodypartNodeSeri,
+}
+
+#[derive(Debug, Clone)]
+struct BodyTreeLabelOverrideSpec {
+    target_path: BodyTreePathSpec,
+    label_override: String,
+}
+
+#[derive(Debug, Clone)]
+struct BodyTreeReplaceNodeSpec {
+    target_path: BodyTreePathSpec,
     node: BodypartNodeSeri,
 }
 
@@ -253,8 +267,12 @@ fn load_bodytree_defs() -> Vec<ParsedBodyTreeDef> {
         let Some(raw) = raw_by_id.get(&id) else {
             continue;
         };
-        let Ok(root) = resolve_bodytree_root(&id, &raw_by_id, &mut resolved, &mut resolving) else {
-            continue;
+        let root = match resolve_bodytree_root(&id, &raw_by_id, &mut resolved, &mut resolving) {
+            Ok(root) => root,
+            Err(err) => {
+                error!(target: BODY_BUILD, "Failed resolving bodytree '{}': {}", id, err);
+                continue;
+            }
         };
         ordered.push(ParsedBodyTreeDef {
             id: id.clone(),
@@ -274,6 +292,8 @@ fn parse_bodytree_def(content: &str, rel_path: &str) -> Result<RawBodyTreeDef, S
     let mut root_lines = Vec::new();
     let mut add_lines = Vec::new();
     let mut remove_lines = Vec::new();
+    let mut label_lines = Vec::new();
+    let mut replace_lines = Vec::new();
     let mut section = BodyTreeParseSection::Tree;
     let mut saw_inheritance = false;
 
@@ -340,6 +360,16 @@ fn parse_bodytree_def(content: &str, rel_path: &str) -> Result<RawBodyTreeDef, S
                 saw_inheritance = true;
                 continue;
             }
+            "label:" | "labels:" | "rename:" => {
+                section = BodyTreeParseSection::Label;
+                saw_inheritance = true;
+                continue;
+            }
+            "replace:" => {
+                section = BodyTreeParseSection::Replace;
+                saw_inheritance = true;
+                continue;
+            }
             _ => {}
         }
 
@@ -347,6 +377,8 @@ fn parse_bodytree_def(content: &str, rel_path: &str) -> Result<RawBodyTreeDef, S
             BodyTreeParseSection::Tree => root_lines.push((line_no, line_without_comment.to_string())),
             BodyTreeParseSection::Add => add_lines.push((line_no, line_without_comment.to_string())),
             BodyTreeParseSection::Remove => remove_lines.push((line_no, line_without_comment.to_string())),
+            BodyTreeParseSection::Label => label_lines.push((line_no, line_without_comment.to_string())),
+            BodyTreeParseSection::Replace => replace_lines.push((line_no, line_without_comment.to_string())),
         }
     }
 
@@ -365,6 +397,8 @@ fn parse_bodytree_def(content: &str, rel_path: &str) -> Result<RawBodyTreeDef, S
             root: Some(root),
             add_nodes: Vec::new(),
             remove_paths: Vec::new(),
+            label_overrides: Vec::new(),
+            replace_nodes: Vec::new(),
         });
     }
 
@@ -379,6 +413,32 @@ fn parse_bodytree_def(content: &str, rel_path: &str) -> Result<RawBodyTreeDef, S
         remove_paths.push(parse_bodytree_path(line_body, rel_path, line_no)?);
     }
 
+    let mut label_overrides = Vec::new();
+    for (line_no, raw_line) in label_lines {
+        let line_body = strip_list_item_prefix(&raw_line);
+        if line_body.is_empty() {
+            continue;
+        }
+        let (path_raw, label_raw) = split_path_and_optional_label(line_body);
+        let target_path = parse_bodytree_path(path_raw, rel_path, line_no)?;
+        let label_override = parse_lbl_value(label_raw);
+        label_overrides.push(BodyTreeLabelOverrideSpec { target_path, label_override });
+    }
+
+    let mut replace_nodes = Vec::new();
+    for (line_no, raw_line) in replace_lines {
+        let line_body = strip_list_item_prefix(&raw_line);
+        if line_body.is_empty() {
+            continue;
+        }
+        let (path_raw, node_raw) = line_body
+            .rsplit_once("->")
+            .ok_or_else(|| format!("{rel_path}:{line_no} replace entry must contain a target path and node spec separated by '->'"))?;
+        let target_path = parse_bodytree_path(path_raw, rel_path, line_no)?;
+        let node = parse_bodytree_node_spec(node_raw, rel_path, line_no)?;
+        replace_nodes.push(BodyTreeReplaceNodeSpec { target_path, node });
+    }
+
     Ok(RawBodyTreeDef {
         id,
         rel_path: rel_path.to_string(),
@@ -387,6 +447,8 @@ fn parse_bodytree_def(content: &str, rel_path: &str) -> Result<RawBodyTreeDef, S
         root: None,
         add_nodes,
         remove_paths,
+        label_overrides,
+        replace_nodes,
     })
 }
 
@@ -395,6 +457,8 @@ enum BodyTreeParseSection {
     Tree,
     Add,
     Remove,
+    Label,
+    Replace,
 }
 
 fn resolve_bodytree_root(
@@ -432,6 +496,12 @@ fn resolve_bodytree_root(
     for add_node in &raw.add_nodes {
         apply_bodytree_add(&mut root, add_node)?;
     }
+    for label_override in &raw.label_overrides {
+        apply_bodytree_label_override(&mut root, label_override, &raw.rel_path)?;
+    }
+    for replace_node in &raw.replace_nodes {
+        apply_bodytree_replace(&mut root, replace_node, &raw.rel_path)?;
+    }
 
     resolving.remove(id);
     resolved.insert(id.to_string(), root.clone());
@@ -465,6 +535,40 @@ fn apply_bodytree_add(
 ) -> Result<(), String> {
     let parent = resolve_bodytree_node_mut(root, &add_node.parent_path)?;
     parent.children.push(add_node.node.clone());
+    Ok(())
+}
+
+fn apply_bodytree_label_override(
+    root: &mut BodypartNodeSeri,
+    label_override: &BodyTreeLabelOverrideSpec,
+    rel_path: &str,
+) -> Result<(), String> {
+    let node = resolve_bodytree_node_mut(root, &label_override.target_path)?;
+    if label_override.label_override.trim().is_empty() {
+        return Err(format!("{rel_path} has an empty label override for '{}'", format_bodytree_path(&label_override.target_path)));
+    }
+    node.label_override = label_override.label_override.clone();
+    Ok(())
+}
+
+fn apply_bodytree_replace(
+    root: &mut BodypartNodeSeri,
+    replace_node: &BodyTreeReplaceNodeSpec,
+    rel_path: &str,
+) -> Result<(), String> {
+    let Some((target_segment, parent_indices)) = replace_node.target_path.segments.split_last() else {
+        return Err(format!("{rel_path} has an empty replace path"));
+    };
+    let parent = resolve_bodytree_node_mut(root, &BodyTreePathSpec {
+        segments: parent_indices.to_vec(),
+    })?;
+    let Some(replace_idx) = nth_matching_child_index(&parent.children, target_segment) else {
+        return Err(format!(
+            "{rel_path} could not replace '{}': node not found",
+            format_bodytree_path(&replace_node.target_path)
+        ));
+    };
+    parent.children[replace_idx] = replace_node.node.clone();
     Ok(())
 }
 
@@ -505,7 +609,7 @@ fn parse_indented_bodytree_add_nodes(
         }
 
         let relative_depth = depth - base_depth;
-        while stack.len() > relative_depth + 1 {
+        while stack.len() > relative_depth {
             attach_last_bodytree_add_node(&mut stack, &mut roots);
         }
 
@@ -582,7 +686,7 @@ fn resolve_bodytree_node_mut<'a>(
     let mut start_idx = 0usize;
     if let Some(first) = path.segments.first()
         && first.part_id == current.part_id
-        && first.nth == 1
+        && first.nth == 0
     {
         start_idx = 1;
     }
@@ -608,10 +712,10 @@ fn nth_matching_child_index(
         if child.part_id != segment.part_id {
             continue;
         }
-        seen += 1;
         if seen == segment.nth {
             return Some(idx);
         }
+        seen += 1;
     }
     None
 }
@@ -712,7 +816,7 @@ fn parse_bodytree_path_segment(
     }
 
     let mut part_id = token.to_string();
-    let mut nth = 1usize;
+    let mut nth = 0usize;
 
     if let Some(open_idx) = token.rfind('[')
         && token.ends_with(']')
@@ -745,17 +849,33 @@ fn parse_bodytree_node_spec(
     if node_body.is_empty() {
         return Err(format!("{rel_path}:{line_no} has an empty bodytree node"));
     }
-    let (part_raw, label_raw) = node_body.split_once('|').unwrap_or((node_body, ""));
-    let part_id = parse_text_value(part_raw);
+    let (part_raw, label_raw) = split_part_and_label(node_body);
+    let part_id = parse_bodytree_part_id(part_raw);
     if part_id.is_empty() {
         return Err(format!("{rel_path}:{line_no} has an empty part_id"));
     }
-    let label_override = parse_text_value(label_raw);
+    let label_override = parse_lbl_value(label_raw);
     Ok(BodypartNodeSeri {
         part_id,
         label_override,
         children: Vec::new(),
     })
+}
+
+fn parse_bodytree_part_id(raw: &str) -> String {
+    let token = parse_text_value(raw);
+    if let Some(open_idx) = token.rfind('[')
+        && token.ends_with(']')
+    {
+        if token[open_idx + 1..token.len() - 1].parse::<usize>().is_ok() {
+            return token[..open_idx].trim().to_string();
+        }
+    } else if let Some(hash_idx) = token.rfind('#') {
+        if token[hash_idx + 1..].parse::<usize>().is_ok() {
+            return token[..hash_idx].trim().to_string();
+        }
+    }
+    token
 }
 
 fn format_bodytree_path(path: &BodyTreePathSpec) -> String {
@@ -765,7 +885,7 @@ fn format_bodytree_path(path: &BodyTreePathSpec) -> String {
             out.push_str(" > ");
         }
         out.push_str(&segment.part_id);
-        if segment.nth != 1 {
+        if segment.nth != 0 {
             out.push('[');
             out.push_str(&segment.nth.to_string());
             out.push(']');
@@ -790,6 +910,28 @@ fn parse_text_value(raw: &str) -> String {
         return quoted.to_string();
     }
     raw.to_string()
+}
+
+fn split_part_and_label(raw: &str) -> (&str, &str) {
+    split_path_and_optional_label(raw)
+}
+
+fn split_path_and_optional_label(raw: &str) -> (&str, &str) {
+    let trimmed = raw.trim();
+    if let Some(lbl_idx) = trimmed.find(" lbl") {
+        let part = trimmed[..lbl_idx].trim();
+        let label = trimmed[lbl_idx + 1..].trim();
+        return (part, label);
+    }
+    (trimmed, "")
+}
+
+fn parse_lbl_value(raw: &str) -> String {
+    let raw = raw.trim();
+    let Some(raw) = raw.strip_prefix("lbl") else {
+        return String::new();
+    };
+    parse_text_value(raw)
 }
 
 fn id_from_rel_path(rel_path: &str) -> String {

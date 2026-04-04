@@ -1,4 +1,0 @@
-id: unicorn
-extends: hooved
-add:
-  neck > head > horn | Horn

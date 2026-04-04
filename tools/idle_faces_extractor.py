@@ -6,16 +6,19 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypedDict, cast
+
+from anim_format import extract_anim_blocks, get_field_value, parse_clip_line, parse_header, parse_text_value
 
 """
 Extract the idle facing frames from a spritesheet animation definition.
 
-The script reads an .anim.ron file, finds the animations whose ids end in
+The script reads an .anim file, finds the animations whose ids end in
 _north_idle, _south_idle, _west_idle, or _east_idle, and writes one PNG per
 facing direction using the common id prefix.
 
 Usage:
-    idle_faces_extractor.py <input.anim.ron> [output_dir]
+    idle_faces_extractor.py <input.anim> [output_dir]
 """
 
 try:
@@ -28,13 +31,6 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 ASSETS_DIR = ROOT_DIR / "assets"
 DIRECTIONS = ("north", "south", "west", "east")
 IDLE_ID_RE = re.compile(r"^(?P<prefix>.+)_(?P<direction>north|south|west|east)_idle$")
-RECORD_START_RE = re.compile(r'\(\s*id:\s*"')
-ID_RE = re.compile(r'id:\s*"([^"]+)"')
-IMG_RE = re.compile(r'img_path:\s*"([^"]+)"')
-ROWS_COLS_RE = re.compile(r"rows_cols:\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)")
-CLIP_RE = re.compile(r"\(\s*target:\s*(\d+),\s*is_row:\s*(true|false)(?P<body>.*?)\n\s*\),", re.S)
-PARTIAL_RE = re.compile(r"partial:\s*Some\(\(\s*(\d+)\s*,\s*(\d+)\s*\)\)")
-START_FRAME_RE = re.compile(r"start_frame:\s*Some\(\s*(\d+)\s*\)")
 
 
 @dataclass(frozen=True)
@@ -51,62 +47,69 @@ class IdleFaceSpec:
     start_frame: int
 
 
-def _extract_record_blocks(text: str) -> list[str]:
-    blocks: list[str] = []
-    for match in RECORD_START_RE.finditer(text):
-        start = match.start()
-        depth = 0
-        end = None
-        for idx in range(start, len(text)):
-            char = text[idx]
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0:
-                    end = idx + 1
-                    break
-        if end is not None:
-            blocks.append(text[start:end])
-    return blocks
+class IdleFaceClip(TypedDict):
+    target: int
+    is_row: bool
+    partial: tuple[int, int] | None
+    start_frame: int | None
 
 
 def _parse_idle_face_specs(text: str) -> list[IdleFaceSpec]:
     specs: list[IdleFaceSpec] = []
-    for block in _extract_record_blocks(text):
-        id_match = ID_RE.search(block)
-        img_match = IMG_RE.search(block)
-        rows_cols_match = ROWS_COLS_RE.search(block)
-        clip_match = CLIP_RE.search(block)
-        if not (id_match and img_match and rows_cols_match and clip_match):
+    for block in extract_anim_blocks(text):
+        header = parse_header(block)
+        img_path = get_field_value(block, "img_path")
+        rows_cols = get_field_value(block, "rows_cols")
+        if img_path is None or rows_cols is None:
+            continue
+        img_path = parse_text_value(img_path)
+        rows_cols_parts = rows_cols.replace(",", " ").replace("(", " ").replace(")", " ").split()
+        if len(rows_cols_parts) != 2:
             continue
 
-        anim_id = id_match.group(1)
+        clips_section = []
+        in_clips = False
+        depth = 0
+        for line in block.splitlines():
+            stripped = line.strip()
+            if stripped == "clips {":
+                in_clips = True
+                depth = 1
+                continue
+            if in_clips:
+                depth += line.count("{") - line.count("}")
+                if depth <= 0:
+                    break
+                if stripped.startswith(("row ", "col ", "column ", "clip ")):
+                    clips_section.append(stripped)
+        if not clips_section:
+            continue
+
+        anim_id = header.anim_id
         idle_match = IDLE_ID_RE.fullmatch(anim_id)
         if idle_match is None:
             continue
 
         prefix = idle_match.group("prefix")
         direction = idle_match.group("direction")
-        rows = int(rows_cols_match.group(1))
-        cols = int(rows_cols_match.group(2))
+        rows = int(rows_cols_parts[0])
+        cols = int(rows_cols_parts[1])
 
-        target = int(clip_match.group(1))
-        is_row = clip_match.group(2) == "true"
-        clip_body = clip_match.group("body")
+        clip = cast(IdleFaceClip, parse_clip_line(clips_section[0]))
+        target = int(clip["target"])
+        is_row = bool(clip["is_row"])
 
-        partial_match = PARTIAL_RE.search(clip_body)
-        partial_start = int(partial_match.group(1)) if partial_match else 0
+        partial = clip["partial"]
+        partial_start = partial[0] if partial is not None else 0
 
-        start_frame_match = START_FRAME_RE.search(clip_body)
-        start_frame = int(start_frame_match.group(1)) if start_frame_match else 0
+        start_frame = clip["start_frame"] if clip["start_frame"] is not None else 0
 
         specs.append(
             IdleFaceSpec(
                 anim_id=anim_id,
                 prefix=prefix,
                 direction=direction,
-                img_path=img_match.group(1),
+                img_path=img_path,
                 rows=rows,
                 cols=cols,
                 target=target,
@@ -188,9 +191,9 @@ def _write_faces(specs: list[IdleFaceSpec], output_dir: Path) -> list[Path]:
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="idle_faces_extractor.py",
-        description="Extract idle facing frames from an .anim.ron spritesheet definition.",
+        description="Extract idle facing frames from an .anim spritesheet definition.",
     )
-    parser.add_argument("anim_ron", type=Path, help="Path to the input .anim.ron file")
+    parser.add_argument("anim_ron", type=Path, help="Path to the input .anim file")
     parser.add_argument(
         "output_dir",
         type=Path,

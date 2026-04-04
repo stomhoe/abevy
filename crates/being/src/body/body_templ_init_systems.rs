@@ -14,7 +14,6 @@ use crate::being_interaction_zone_helper::build_being_interaction_zones;
 
 use crate::body::{
     body_components::*,
-    bodypart::bodypart_resources::*,
     body_resources::*,
     bodytree::*,
 };
@@ -25,14 +24,13 @@ const STAT_BLEED_RATE: HashId = HashId::hash("bleed_rate");
 pub fn init_templ_bodys(
     mut cmd: Commands,
     body_map: Res<BodyEntityMap>,
-    part_map: Res<BodypartEntityMap>,
     bodytree_map: Res<BodyTreeTemplateEntityMap>,
     bodytree_abstract_query: Query<Has<BodyTreeAbstract>, (With<Templ>, )>,
 ) {
     if !body_map.0.is_empty() {
         return;
     }
-    for mut seri in load_body_seri_defs() {
+    for seri in load_body_seri_defs() {
 
         let body_id = match StrId::new_with_result(seri.id, 3) {
             Ok(id) => id,
@@ -84,8 +82,8 @@ pub fn init_templ_bodys(
         if !totals.contains_key(BodypartStat::STAT_CALORIC_BURN_RATE) {
             totals.overwrite(BodypartStat::STAT_CALORIC_BURN_RATE, 1.0);
         }
-        if !totals.contains_key(BodypartStat::STAT_WALK_SPEED) {
-            totals.overwrite(BodypartStat::STAT_WALK_SPEED, 300.);
+        if !totals.contains_key(BodypartStat::STAT_WALK_STRENGTH) {
+            totals.overwrite(BodypartStat::STAT_WALK_STRENGTH, 300.);
         }
         if !totals.contains_key(BodypartStat::STAT_MASS_KG) {
             error!(target: BODY_BUILD, "Body '{}' is missing distributed_totals.mass_kg; skipping", body_id);
@@ -98,51 +96,31 @@ pub fn init_templ_bodys(
             CaloricBurnRateMultiplier(seri.caloric_burn_rate_multiplier),
         ));
         let bodytree_id = seri.bodytree_id.trim();
-        if !bodytree_id.is_empty() {
-            let bodytree_str_id = match StrId::new_with_result(bodytree_id.to_string(), 3) {
-                Ok(id) => id,
-                Err(err) => {
-                    error!(target: BODY_BUILD, "Body '{}' has invalid bodytree_id '{}': {}", body_id, bodytree_id, err);
-                    continue;
-                }
-            };
-            let Ok(bodytree_ent) = bodytree_map.0.get_cloned(&bodytree_str_id) else {
-                error!(target: BODY_BUILD, "Body '{}' references missing bodytree '{}'", body_id, bodytree_str_id);
-                continue;
-            };
-            let Ok(is_abstract) = bodytree_abstract_query.get(bodytree_ent) else {
-                error!(target: BODY_BUILD, "Body '{}' could not inspect bodytree '{}'", body_id, bodytree_str_id);
-                continue;
-            };
-            if is_abstract {
-                error!(target: BODY_BUILD, "Body '{}' references abstract bodytree '{}'; use a derived concrete tree instead", body_id, bodytree_str_id);
+        if bodytree_id.is_empty() {
+            error!(target: BODY_BUILD, "Body '{}' is missing bodytree_id", body_id);
+            continue;
+        }
+        let bodytree_str_id = match StrId::new_with_result(bodytree_id.to_string(), 3) {
+            Ok(id) => id,
+            Err(err) => {
+                error!(target: BODY_BUILD, "Body '{}' has invalid bodytree_id '{}': {}", body_id, bodytree_id, err);
                 continue;
             }
-            cmd.entity(body_ent).insert(BodyTreeRef(bodytree_ent));
-            debug!(target: BODY_BUILD, "Body '{}' uses shared bodytree '{}'", body_id, bodytree_str_id);
-            continue;
-        }
-
-        let root_node = std::mem::take(&mut seri.root);
-        if root_node.part_id.trim().is_empty() {
-            error!(target: BODY_BUILD, "Body '{}' is missing both bodytree_id and root definition", body_id);
-            continue;
-        }
-        let root_id = StrId::trunc(root_node.part_id.as_str());
-        let root_ent = rec_build_templ_body_tree_nodes(
-            &mut cmd,
-            &part_map,
-            body_ent,
-            &body_id,
-            root_node,
-            None,
-        );
-        let Some(root_ent) = root_ent else {
-            warn!(target: BODY_BUILD, "Body '{}' root part '{}' was not found", body_id, root_id);
+        };
+        let Ok(bodytree_ent) = bodytree_map.0.get_cloned(&bodytree_str_id) else {
+            error!(target: BODY_BUILD, "Body '{}' references missing bodytree '{}'", body_id, bodytree_str_id);
             continue;
         };
-        cmd.entity(root_ent).insert(TreeRoot);
-        debug!(target: BODY_BUILD, "Body '{}' built local root tree from root '{}'", body_id, root_id);
+        let Ok(is_abstract) = bodytree_abstract_query.get(bodytree_ent) else {
+            error!(target: BODY_BUILD, "Body '{}' could not inspect bodytree '{}'", body_id, bodytree_str_id);
+            continue;
+        };
+        if is_abstract {
+            error!(target: BODY_BUILD, "Body '{}' references abstract bodytree '{}'; use a derived concrete tree instead", body_id, bodytree_str_id);
+            continue;
+        }
+        cmd.entity(body_ent).insert(BodyTreeRef(bodytree_ent));
+        debug!(target: BODY_BUILD, "Body '{}' uses shared bodytree '{}'", body_id, bodytree_str_id);
     }
 }
 
@@ -166,9 +144,9 @@ pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
     let mut sum_w_hp = 0.0;
     let mut sum_w_regen = 0.0;
     let mut sum_w_blood = 0.0;
-    let mut sum_w_walk = 0.0;
-    let mut sum_w_swim = 0.0;
-    let mut sum_w_fly = 0.0;
+    let mut sum_w_walk_strength = 0.0;
+    let mut sum_w_swim_strength = 0.0;
+    let mut sum_w_fly_strength = 0.0;
     let mut sum_w_manip = 0.0;
     let mut sum_w_manip_strength = 0.0;
     let mut sum_w_vision = 0.0;
@@ -179,9 +157,9 @@ pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
     let mut forced_hp = 0.0;
     let mut forced_regen = 0.0;
     let mut forced_blood = 0.0;
-    let mut forced_walk = 0.0;
-    let mut forced_swim = 0.0;
-    let mut forced_fly = 0.0;
+    let mut forced_walk_strength = 0.0;
+    let mut forced_swim_strength = 0.0;
+    let mut forced_fly_strength = 0.0;
     let mut forced_manip = 0.0;
     let mut forced_manip_strength = 0.0;
     let mut forced_vision = 0.0;
@@ -199,12 +177,12 @@ pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
         if regen > 0.0 { forced_regen += regen; } else { sum_w_regen += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_HP_REGEN_RATE); }
         let blood = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_BLOOD_CAPACITY);
         if blood > 0.0 { forced_blood += blood; } else { sum_w_blood += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_BLOOD_CAPACITY); }
-        let walk = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_WALK_SPEED);
-        if walk > 0.0 { forced_walk += walk; } else { sum_w_walk += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_WALK_SPEED); }
-        let swim = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_SWIM_SPEED);
-        if swim > 0.0 { forced_swim += swim; } else { sum_w_swim += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_SWIM_SPEED); }
-        let fly = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_FLY_SPEED);
-        if fly > 0.0 { forced_fly += fly; } else { sum_w_fly += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_FLY_SPEED); }
+        let walk_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_WALK_STRENGTH);
+        if walk_strength > 0.0 { forced_walk_strength += walk_strength; } else { sum_w_walk_strength += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_WALK_STRENGTH); }
+        let swim_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_SWIM_STRENGTH);
+        if swim_strength > 0.0 { forced_swim_strength += swim_strength; } else { sum_w_swim_strength += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_SWIM_STRENGTH); }
+        let fly_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_FLY_STRENGTH);
+        if fly_strength > 0.0 { forced_fly_strength += fly_strength; } else { sum_w_fly_strength += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_FLY_STRENGTH); }
         let manip = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_DEXTERITY);
         if manip > 0.0 { forced_manip += manip; } else { sum_w_manip += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_MANIPULATION_DEXTERITY); }
         let manip_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_STRENGTH);
@@ -221,9 +199,9 @@ pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
     let free_hp = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_HP_CAPACITY) - forced_hp).max(0.0);
     let free_regen = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_HP_REGEN_RATE) - forced_regen).max(0.0);
     let free_blood = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_BLOOD_CAPACITY) - forced_blood).max(0.0);
-    let free_walk = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_WALK_SPEED) - forced_walk).max(0.0);
-    let free_swim = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_SWIM_SPEED) - forced_swim).max(0.0);
-    let free_fly = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_FLY_SPEED) - forced_fly).max(0.0);
+    let free_walk_strength = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_WALK_STRENGTH) - forced_walk_strength).max(0.0);
+    let free_swim_strength = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_SWIM_STRENGTH) - forced_swim_strength).max(0.0);
+    let free_fly_strength = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_FLY_STRENGTH) - forced_fly_strength).max(0.0);
     let free_manip = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_MANIPULATION_DEXTERITY) - forced_manip).max(0.0);
     let free_manip_strength = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_MANIPULATION_STRENGTH) - forced_manip_strength).max(0.0);
     let free_vision = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_VISION) - forced_vision).max(0.0);
@@ -273,23 +251,23 @@ pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
             spawned_modifiers += 1;
             cmd.spawn((ModifierTarget(part), BaseValue(blood), CurrEffectiveValue(blood), ApplyMode::Add, BloodCapacity, ChildOf(part)));
         }
-        let forced_walk_speed = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_WALK_SPEED);
-        let walk = forced_or_weighted(forced_walk_speed, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_WALK_SPEED), free_walk, sum_w_walk);
-        if walk > 0.0 {
+        let forced_walk_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_WALK_STRENGTH);
+        let walk_strength = forced_or_weighted(forced_walk_strength, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_WALK_STRENGTH), free_walk_strength, sum_w_walk_strength);
+        if walk_strength > 0.0 {
             spawned_modifiers += 1;
-            cmd.spawn((ModifierTarget(body_ent), BaseValue(walk), CurrEffectiveValue(walk), ApplyMode::Add, WalkSpeed, ChildOf(part)));
+            cmd.spawn((ModifierTarget(body_ent), BaseValue(walk_strength), CurrEffectiveValue(walk_strength), ApplyMode::Add, WalkSpeed, ChildOf(part)));
         }
-        let forced_swim_speed = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_SWIM_SPEED);
-        let swim = forced_or_weighted(forced_swim_speed, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_SWIM_SPEED), free_swim, sum_w_swim);
-        if swim > 0.0 {
+        let forced_swim_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_SWIM_STRENGTH);
+        let swim_strength = forced_or_weighted(forced_swim_strength, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_SWIM_STRENGTH), free_swim_strength, sum_w_swim_strength);
+        if swim_strength > 0.0 {
             spawned_modifiers += 1;
-            cmd.spawn((ModifierTarget(body_ent), BaseValue(swim), CurrEffectiveValue(swim), ApplyMode::Add, SwimSpeed, ChildOf(part)));
+            cmd.spawn((ModifierTarget(body_ent), BaseValue(swim_strength), CurrEffectiveValue(swim_strength), ApplyMode::Add, SwimSpeed, ChildOf(part)));
         }
-        let forced_fly_speed = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_FLY_SPEED);
-        let fly = forced_or_weighted(forced_fly_speed, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_FLY_SPEED), free_fly, sum_w_fly);
-        if fly > 0.0 {
+        let forced_fly_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_FLY_STRENGTH);
+        let fly_strength = forced_or_weighted(forced_fly_strength, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_FLY_STRENGTH), free_fly_strength, sum_w_fly_strength);
+        if fly_strength > 0.0 {
             spawned_modifiers += 1;
-            cmd.spawn((ModifierTarget(body_ent), BaseValue(fly), CurrEffectiveValue(fly), ApplyMode::Add, FlySpeed, ChildOf(part)));
+            cmd.spawn((ModifierTarget(body_ent), BaseValue(fly_strength), CurrEffectiveValue(fly_strength), ApplyMode::Add, FlySpeed, ChildOf(part)));
         }
         let forced_manipulation = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_DEXTERITY);
         let manip = forced_or_weighted(forced_manipulation, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_MANIPULATION_DEXTERITY), free_manip, sum_w_manip);

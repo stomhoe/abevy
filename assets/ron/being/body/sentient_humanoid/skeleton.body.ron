@@ -1,0 +1,24 @@
+(
+    id: "skeleton",
+    name: "Skeleton Body",
+    tags: ["humanoid"],
+    distributed_totals: {
+        "mass_kg": 20.0,
+        "hp_capacity": 491.0,
+        "hp_regen_rate": 23.5,
+        "blood_capacity": 0.0,
+        "bleed_rate": 0.0,
+        "walk_strength": 10.0,
+        "manip_dex": 7.3,
+        "manip_str": 4.4,
+        "vision": 2.0,
+        "pain_sensitivity": 27.4,
+        "caloric_burn_rate": 52.5,
+    },
+    sexes: {
+        "male": (weight: 1, sprites: []),
+        "female": (weight: 1, sprites: []),
+    },
+    caloric_burn_rate_multiplier: 0.0,
+    bodytree_id: "skeleton",
+)

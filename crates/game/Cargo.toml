@@ -17,7 +17,7 @@ modifier_shared = { path = "../modifier_shared" }
 movement = { path = "../movement" }
 #dimension = { path = "../dimension" }
 faction = { path = "../faction" }
-player = { path = "../player" }
+player_shared = { path = "../player_shared" }
 being = { path = "../being" }
 being_shared = { path = "../being_shared" }
 faction_shared = { path = "../faction_shared" }

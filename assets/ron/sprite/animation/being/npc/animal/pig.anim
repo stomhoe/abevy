@@ -1,0 +1,72 @@
+anim pig_south_idle {
+    img_path: "texture/being/npc/boar/pig.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim pig_south_move {
+    img_path: "texture/being/npc/boar/pig.png"
+    rows_cols: 4 8
+    alternating_start_frames: 1 5
+    clips {
+        row 0 start_frame 1
+    }
+}
+
+anim pig_north_idle {
+    img_path: "texture/being/npc/boar/pig.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 1 partial 0 0
+    }
+}
+
+anim pig_north_move {
+    img_path: "texture/being/npc/boar/pig.png"
+    rows_cols: 4 8
+    alternating_start_frames: 1 5
+}
+
+anim pig_west_idle {
+    img_path: "texture/being/npc/boar/pig.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 2 partial 0 0
+    }
+}
+
+anim pig_west_move {
+    img_path: "texture/being/npc/boar/pig.png"
+    rows_cols: 4 8
+    alternating_start_frames: 1 5
+    clips {
+        row 2 start_frame 1
+    }
+}
+
+anim pig_east_idle {
+    img_path: "texture/being/npc/boar/pig.png"
+    rows_cols: 4 8
+    paused: true
+    speed: 1.0
+    clips {
+        row 3 partial 0 0
+    }
+}
+
+anim pig_east_move {
+    img_path: "texture/being/npc/boar/pig.png"
+    rows_cols: 4 8
+    alternating_start_frames: 1 5
+    clips {
+        row 3 start_frame 1
+    }
+}

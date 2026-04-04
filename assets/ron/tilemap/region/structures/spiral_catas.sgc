@@ -4,6 +4,7 @@ sgc {
     weight = 1.0
     tags = [dungeon]
     whitelisted_tags = [dungeon, river]
+    max_being_count = 40
     args {
         floor_tile_id = ducatas
         wall_tile_id = nw
@@ -15,6 +16,13 @@ sgc {
         spiral_corridor_width_min = 3
         spiral_corridor_width_max = 5
         spiral_room_radius = 6
+        external_doorway_frequency = 0.02
+        external_doorway_width_min = 1
+        external_doorway_width_max = 2
+        external_doorway_wall_axis_preference = vertical
+        room_spawn.center_circle.source_id = demon
+        room_spawn.center_circle.override_being_count = 1
+        room_spawn.center_circle.pack_spawn_radius = 0
         disable_terrgen.floor_tile_id = true
     }
 }

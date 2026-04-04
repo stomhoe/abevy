@@ -1,0 +1,4 @@
+anim elf_bush0 {
+    img_path: "texture/world/veg/bush/elf/elf_bush0.png"
+    z: 1000
+}

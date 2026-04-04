@@ -49,7 +49,7 @@ dependencies = [
  "common",
  "game_common",
  "paste",
- "player",
+ "player_shared",
  "serde",
  "tilemap_shared",
 ]
@@ -593,7 +593,7 @@ dependencies = [
  "movement",
  "param_sets",
  "paste",
- "player",
+ "player_shared",
  "rand 0.9.2",
  "serde",
  "sprite_animation_shared",
@@ -3886,7 +3886,7 @@ dependencies = [
  "bevy_replicon_renet",
  "common",
  "multiplayer_shared",
- "player",
+ "player_shared",
 ]
 
 [[package]]
@@ -4364,7 +4364,7 @@ dependencies = [
  "modifier_shared",
  "movement",
  "param_sets",
- "player",
+ "player_shared",
  "rand 0.9.2",
  "serde",
  "sprite_shared",
@@ -4765,7 +4765,7 @@ dependencies = [
  "faction_shared",
  "game_common",
  "paste",
- "player",
+ "player_shared",
  "serde",
 ]
 
@@ -5039,7 +5039,7 @@ dependencies = [
  "game_common",
  "modifier_shared",
  "movement",
- "player",
+ "player_shared",
  "rand 0.9.2",
  "serde",
  "tilemap",
@@ -5559,7 +5559,7 @@ dependencies = [
  "faction_shared",
  "game_common",
  "multiplayer_shared",
- "player",
+ "player_shared",
 ]
 
 [[package]]
@@ -6054,7 +6054,7 @@ dependencies = [
  "game_common",
  "modifier_shared",
  "param_sets",
- "player",
+ "player_shared",
  "rand 0.9.2",
  "ron 0.12.0",
  "serde",
@@ -6855,6 +6855,7 @@ dependencies = [
  "common",
  "game_common",
  "paste",
+ "player_shared",
  "tilemap",
  "tilemap_shared",
 ]
@@ -7049,8 +7050,15 @@ name = "player"
 version = "0.1.0"
 dependencies = [
  "bevy 0.18.0",
- "bevy_asset_loader",
- "bevy_common_assets",
+ "bevy_replicon",
+ "player_shared",
+]
+
+[[package]]
+name = "player_shared"
+version = "0.1.0"
+dependencies = [
+ "bevy 0.18.0",
  "bevy_replicon",
  "common",
  "nano-id",
@@ -7813,7 +7821,7 @@ dependencies = [
  "common",
  "game_common",
  "multiplayer_shared",
- "player",
+ "player_shared",
  "serde",
  "ui_shared",
 ]
@@ -8008,7 +8016,7 @@ dependencies = [
  "game_common",
  "movement",
  "paste",
- "player",
+ "player_shared",
  "ron 0.12.0",
  "serde",
  "sprite_animation_shared",

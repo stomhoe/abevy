@@ -139,17 +139,22 @@ macro_rules! define_entity_map_systems {
             pub fn [<map_ $main_component:snake _id_to_entity>](
                 mut cmd: Commands,
                 map: Option<ResMut<[<$main_component EntityMap>]>>,
-                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type), (Changed<$id_type>, With<$main_component>, $with_filters)>,
+                client_state: Res<State<bevy_replicon::prelude::ClientState>>,
+                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type, Has<common::common_components::RemoveReplicatedAfterClone>), (Changed<$id_type>, With<$main_component>, $with_filters)>,
             ) {
+                let am_i_client = *client_state.get() == bevy_replicon::prelude::ClientState::Connected;
                 if let Some(mut map) = map {
-                    for (entity, prefix, id) in query.iter() {
+                    for (entity, prefix, id, remove_after_clone) in query.iter() {
+                        if am_i_client && remove_after_clone {
+                            continue;
+                        }
                         if let Err(prev_ent) = map.0.insert(id, entity) {
                             if prev_ent.0 == entity {
                                 continue;
                             }
                             error!(
                                 target: $target,
-                                "{} '{}' already in {} with entity {:?}, cannot insert entity {:?}",
+                                "{} '{}' alre ady in {} with entity {:?}, cannot insert entity {:?}",
                                 prefix.cloned().unwrap_or_default(),
                                 id,
                                 stringify!($main_component),

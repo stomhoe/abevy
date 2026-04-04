@@ -6,6 +6,8 @@
     img_paths: [
         ("", "texture/world/terr/dungeon/newbie_wall.png"),
     ],
+    is_spritetile: true,
+
     //shader: "nw",
     color: Some((255, 255, 255, 255)),
 

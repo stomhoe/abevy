@@ -2,17 +2,6 @@ use bevy::{ecs::entity::MapEntities, platform::collections::HashSet, prelude::*}
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Debug, Deserialize, Serialize, Clone)]
-pub struct PredatorCfg {
-    pub territorialism: f32,
-    pub pack_size_min: u32,
-    pub pack_size_max: u32,
-    pub do_not_hunt_tags: TagSet,
-    pub prey_body_size_ratio_tolerance: f32,
-    pub min_hunger_to_hunt: f32,
-    pub min_hp_ratio_to_hunt: f32,
-}
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(default)]
 pub struct PredatorSeri {
@@ -24,7 +13,6 @@ pub struct PredatorSeri {
     pub min_hunger_to_hunt: f32,
     pub min_hp_ratio_to_hunt: f32,
 }
-
 impl PredatorSeri {
     pub const SERI_UNINITIALIZED: f32 = f32::NEG_INFINITY;
 
@@ -47,20 +35,16 @@ impl Default for PredatorSeri {
     }
 }
 
-impl Default for PredatorCfg {
-    fn default() -> Self {
-        Self {
-            territorialism: 0.0,
-            pack_size_min: 1,
-            pack_size_max: 1,
-            do_not_hunt_tags: TagSet::default(),
-            prey_body_size_ratio_tolerance: -1.0,
-            min_hunger_to_hunt: 40.0,
-            min_hp_ratio_to_hunt: 0.0,
-        }
-    }
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
+pub struct PredatorCfg {
+    pub territorialism: f32,
+    pub pack_size_min: u32,
+    pub pack_size_max: u32,
+    pub do_not_hunt_tags: TagSet,
+    pub prey_body_size_ratio_tolerance: f32,
+    pub min_hunger_to_hunt: f32,
+    pub min_hp_ratio_to_hunt: f32,
 }
-
 impl PredatorCfg {
     pub fn from_seri(seri: &PredatorSeri) -> Option<Self> {
         if seri.is_uninitialized() {
@@ -83,6 +67,20 @@ impl PredatorCfg {
             min_hunger_to_hunt: seri.min_hunger_to_hunt.max(0.0),
             min_hp_ratio_to_hunt: seri.min_hp_ratio_to_hunt.clamp(0.0, 1.0),
         })
+    }
+}
+
+impl Default for PredatorCfg {
+    fn default() -> Self {
+        Self {
+            territorialism: 0.0,
+            pack_size_min: 1,
+            pack_size_max: 1,
+            do_not_hunt_tags: TagSet::default(),
+            prey_body_size_ratio_tolerance: -1.0,
+            min_hunger_to_hunt: 40.0,
+            min_hp_ratio_to_hunt: 0.0,
+        }
     }
 }
 

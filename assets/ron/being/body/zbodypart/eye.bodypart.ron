@@ -1,0 +1,18 @@
+(
+    id: "eye",
+    name: "Eye",
+    weighted_stats:
+    {
+        "coverage": 5,
+        "mass_kg": 0.008,
+        "hp_capacity": 8.0,
+        "hp_regen_rate": 0.6,
+        "blood_capacity": 4.0,
+        "vision": 0.5,
+        "pain_sensitivity": 2.0,
+        "caloric_burn_rate": 0.5,
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.8,
+)

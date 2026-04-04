@@ -208,7 +208,7 @@ impl From<&str> for AppliesOnSpriteDirection {
     }
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
 pub struct YSortOrigin(pub f32);
 impl YSortOrigin {
     pub const Y_SORT_DIV: f32 = 1e-6;

@@ -1,0 +1,19 @@
+id: ant
+tree:
+body
+  head
+    brain
+    eye lbl"Left Eye"
+    eye lbl"Right Eye"
+    antenna lbl"Left Antenna"
+    antenna lbl"Right Antenna"
+    mandible lbl"Left Mandible"
+    mandible lbl"Right Mandible"
+  torso lbl"Thorax"
+    leg lbl"Front Left Leg"
+    leg lbl"Front Right Leg"
+    leg lbl"Mid Left Leg"
+    leg lbl"Mid Right Leg"
+    leg lbl"Rear Left Leg"
+    leg lbl"Rear Right Leg"
+  abdomen

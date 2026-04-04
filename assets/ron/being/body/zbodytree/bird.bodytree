@@ -1,0 +1,25 @@
+id: bird
+tree:
+body
+  neck
+    head
+      brain
+      eye lbl"Left Eye"
+      eye lbl"Right Eye"
+      nose lbl"Beak"
+      jaw
+        mouth
+  chest
+    heart
+    lung lbl"Left Lung"
+    lung lbl"Right Lung"
+  abdomen
+    stomach
+    liver
+  wing lbl"Left Wing"
+  wing lbl"Right Wing"
+  leg lbl"Left Leg"
+    foot lbl"Left Foot"
+  leg lbl"Right Leg"
+    foot lbl"Right Foot"
+  tail

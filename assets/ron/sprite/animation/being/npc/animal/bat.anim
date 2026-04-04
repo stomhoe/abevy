@@ -1,0 +1,71 @@
+anim bat_south_idle {
+    img_path: "texture/being/npc/monster/bat.png"
+    rows_cols: 4 2
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim bat_south_move {
+    img_path: "texture/being/npc/monster/bat.png"
+    rows_cols: 4 2
+    clips {
+        row 0 start_frame 1
+    }
+}
+
+anim bat_north_idle {
+    img_path: "texture/being/npc/monster/bat.png"
+    rows_cols: 4 2
+    paused: true
+    speed: 1.0
+    clips {
+        row 1 partial 0 0
+    }
+}
+
+anim bat_north_move {
+    img_path: "texture/being/npc/monster/bat.png"
+    rows_cols: 4 2
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim bat_west_idle {
+    img_path: "texture/being/npc/monster/bat.png"
+    rows_cols: 4 2
+    paused: true
+    speed: 1.0
+    clips {
+        row 2 partial 0 0
+    }
+}
+
+anim bat_west_move {
+    img_path: "texture/being/npc/monster/bat.png"
+    rows_cols: 4 2
+    clips {
+        row 2 start_frame 1
+    }
+}
+
+anim bat_east_idle {
+    img_path: "texture/being/npc/monster/bat.png"
+    rows_cols: 4 2
+    paused: true
+    speed: 1.0
+    clips {
+        row 3 partial 0 0
+    }
+}
+
+anim bat_east_move {
+    img_path: "texture/being/npc/monster/bat.png"
+    rows_cols: 4 2
+    clips {
+        row 3 start_frame 1
+    }
+}

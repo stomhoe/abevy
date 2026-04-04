@@ -1,0 +1,19 @@
+id: quadruped
+abstract: true
+extends: core
+remove:
+  body > neck > head > nose
+add:
+  body > neck > head > snout
+    nose
+    jaw
+      mouth
+  body > leg[0] lbl"Front Left Leg"
+    foot
+  body > leg[1] lbl"Front Right Leg"
+    foot
+  body > leg[2] lbl"Hind Left Leg"
+    foot
+  body > leg[3] lbl"Hind Right Leg"
+    foot
+  body > tail

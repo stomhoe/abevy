@@ -125,6 +125,9 @@ pub type AliveBeing = (With<Being>, Without<Dead>);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct HumanControlled;
 
+#[derive(Component, Debug, Default, Clone)]
+pub struct AiMeleeTargets(pub Vec<Entity>);
+
 pub type LocalAiControlled = (With<ComputedLocally>, Without<HumanControlled>);
 pub type LocalHumanControlled = (With<ComputedLocally>, With<HumanControlled>);
 

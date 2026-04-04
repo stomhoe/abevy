@@ -1,0 +1,17 @@
+id: tree
+tree:
+torso lbl"Trunk"
+  head lbl"Crown"
+    eye lbl"Left Eye"
+    eye lbl"Right Eye"
+    mouth
+  shoulder lbl"Left Branch"
+    arm lbl"Branch"
+      hand lbl"Leaf Cluster"
+  shoulder lbl"Right Branch"
+    arm lbl"Branch"
+      hand lbl"Leaf Cluster"
+  leg lbl"Left Root"
+    foot lbl"Root"
+  leg lbl"Right Root"
+    foot lbl"Root"

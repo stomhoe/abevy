@@ -3,45 +3,12 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::prelude::*;
 use common::common_components::*;
-use common::def_db::discover_assets_files_by_suffixes;
 use common::log_targets::SPRITE_ANIMATION_INIT;
 use ::sprite_shared::*;
 use sprite_animation_shared::EguiAcAnimationsHolder;
 use sprite_systems::EguiScsHolder;
 use ::sprite_animation_shared::*;
-
-fn load_animation_defs_from_filesystem() -> Vec<AnimationSeri> {
-    let mut out = Vec::new();
-    let Ok(files) = discover_assets_files_by_suffixes(&["anim.ron"]) else {
-        return out;
-    };
-    let mut failed = 0usize;
-    for (_source, path) in files {
-        let Ok(content) = std::fs::read_to_string(&path) else {
-            continue;
-        };
-        if let Ok(multi) = ron::from_str::<MultipleAnimationSeri>(&content) {
-            out.extend(multi.0);
-            continue;
-        }
-        if let Ok(one) = ron::from_str::<AnimationSeri>(&content) {
-            out.push(one);
-            continue;
-        }
-        if let Ok(many) = ron::from_str::<Vec<AnimationSeri>>(&content) {
-            out.extend(many);
-            continue;
-        }
-        failed += 1;
-        warn!(target: SPRITE_ANIMATION_INIT, "Failed to parse animation defs in '{}'", path.to_string_lossy());
-    }
-    if out.is_empty() {
-        error!(target: SPRITE_ANIMATION_INIT, "No animation defs loaded from filesystem ({} file parse failures)", failed);
-    } else if failed > 0 {
-        warn!(target: SPRITE_ANIMATION_INIT, "Loaded {} animation defs with {} file parse failures", out.len(), failed);
-    }
-    out
-}
+use crate::sprite_animation_anim_parser::*;
 
 #[allow(unused_parens)]
 pub fn init_animations(
@@ -71,34 +38,39 @@ pub fn init_animations(
     cmd.entity(anim_holder).try_insert_if_new(ChildOf(sc_holder));
 
     let mut main_comps = Vec::new();
+    let mut merged_seris_vec = Vec::new();
+    let loaded_defs = load_animation_defs_from_filesystem();
+    merged_seris_vec.reserve(loaded_defs.len());
+    main_comps.reserve(loaded_defs.len());
 
-    let mut merged_seris_vec: Vec<(Entity, AnimationSeri)> =
-        load_animation_defs_from_filesystem()
-            .into_iter()
-            .map(|seri| (Entity::PLACEHOLDER, seri))
-            .collect();
-
-    let mut i = 0;
-    while i < merged_seris_vec.len() {
-        let (ent, seri) = &mut merged_seris_vec[i];
-
+    for def in loaded_defs {
+        if def.is_abstract {
+            debug!(target: SPRITE_ANIMATION_INIT, "Skipping abstract animation '{}' from '{}'", def.seri.id, def.rel_path);
+            continue;
+        }
+        let mut seri = def.seri;
         if let Err(bevy_err) = PathHolder::validate_path_exists(&seri.img_path) {
             let err = BevyError::from(format!("Animation {} {}", seri.id, bevy_err));
             error!(target: SPRITE_ANIMATION_INIT, "{}", err);
-            merged_seris_vec.remove(i);
+            continue;
+        }
+        if seri.id.trim().is_empty() {
+            error!(target: SPRITE_ANIMATION_INIT, "Skipping animation with empty id from '{}'", def.rel_path);
             continue;
         }
         let str_id = StrId::trunc(std::mem::take(&mut seri.id));
 
-        let y_sort = seri.y_sort.clone();
+        let y_sort = seri.y_sort();
 
-        *ent = cmd.spawn_empty().id();
-        let ent = *ent;
+        let ent = cmd.spawn_empty().id();
 
-        main_comps.push((ent, (AcAnimation, str_id.clone(), ChildOf(anim_holder), AcZ(seri.z))));
+        main_comps.push((ent, (AcAnimation, str_id.clone(), ChildOf(anim_holder))));
 
         if let Some(y_sort) = y_sort {
             cmd.entity(ent).insert(YSortOrigin(y_sort));
+        }
+        if seri.z.is_finite() {
+            cmd.entity(ent).insert(AcZ(seri.z));
         }
         if seri.offset != [0.0, 0.0] {
             let offset = seri.offset;
@@ -112,14 +84,14 @@ pub fn init_animations(
         if (seri.speed - default_speed).abs() > f32::EPSILON {
             cmd.entity(ent).insert(PlayingSpeed(seri.speed));
         }
-        if let Some(color) = seri.color {
+        if let Some(color) = seri.color() {
             let (red, green, blue, alpha) = color.into();
             cmd.entity(ent).insert(ColorHolder(Color::srgba_u8(red, green, blue, alpha)));
         }
         if seri.save_animation_progress {
             cmd.entity(ent).insert(SaveAnimationProgress);
         }
-        i += 1;
+        merged_seris_vec.push((ent, seri));
     }
     cmd.try_insert_batch(merged_seris_vec);
     cmd.try_insert_batch(main_comps);
@@ -130,7 +102,6 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
     mut animation_assets: ResMut<Assets<Animation>>,
     query: Query<(Entity, &StrId, &AnimationSeri),(With<AnimationSeri>, Without<AnimationHandle>)>,
 ) {
-    //trace!(target: SPRITE_ANIMATION_INIT, "Initializing animation sheets and handles...");
     for (entity, str_id, seri) in query.iter() {
         debug!(
             target: SPRITE_ANIMATION_INIT,
@@ -167,20 +138,20 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
         let mut animation = sheet
             .create_animation()
             .set_repetitions(
-                match seri.reps {
+                match seri.reps() {
                     None => AnimationRepeat::Loop,
                     Some(n) => AnimationRepeat::Times(n),
                 }
             )
             .set_direction(
-                match seri.dir {
+                match seri.dir() {
                     None => AnimationDirection::Forwards,
                     Some(true) => AnimationDirection::Backwards,
                     Some(false) => AnimationDirection::PingPong,
                 }
             )
             .set_duration(
-                match (seri.dur_frame, seri.dur_rep) {
+                match (seri.dur_frame(), seri.dur_rep()) {
                     (None, None) => AnimationDuration::default(),
                     (None, Some(rep_dur)) => AnimationDuration::PerRepetition(rep_dur),
                     (Some(frame_dur), None) => AnimationDuration::PerFrame(frame_dur),
@@ -197,7 +168,7 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
         if clips_len == 0 {
             animation = animation.add_row(0);
             clip_start_frames.push(0);
-            alternating_start_frames_config.push(seri.alternating_start_frames);
+            alternating_start_frames_config.push(seri.alternating_start_frames());
             alternating_start_frames_state.push(0);
             valid_clip_count = 1;
         } else {
@@ -206,30 +177,30 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
                     continue;
                 };
                 valid_clip_count += 1;
-                clip_start_frames.push(cfg.start_frame.unwrap_or(0));
-                alternating_start_frames_config.push(seri.alternating_start_frames);
+                clip_start_frames.push(cfg.start_frame().unwrap_or(0));
+                alternating_start_frames_config.push(seri.alternating_start_frames());
                 alternating_start_frames_state.push(0);
                 animation = if cfg.is_row {
-                    match cfg.partial {
+                    match cfg.partial() {
                         Some((start, end)) => animation.add_partial_row(cfg.target, start..=end),
                         None => animation.add_row(cfg.target),
                     }
                 } else {
-                    match cfg.partial {
+                    match cfg.partial() {
                         Some((start, end)) => animation.add_partial_column(cfg.target, start..=end),
                         None => animation.add_column(cfg.target),
                     }
                 };
-                animation = match cfg.dir {
+                animation = match cfg.dir() {
                     None => animation.set_direction(AnimationDirection::Forwards),
                     Some(true) => animation.set_direction(AnimationDirection::Backwards),
                     Some(false) => animation.set_direction(AnimationDirection::PingPong),
                 };
-                animation = match cfg.reps {
+                animation = match cfg.reps() {
                     None => animation.set_repetitions(AnimationRepeat::Loop),
                     Some(n) => animation.set_repetitions(AnimationRepeat::Times(n)),
                 };
-                animation = match (cfg.dur_frame, cfg.dur_rep) {
+                animation = match (cfg.dur_frame(), cfg.dur_rep()) {
                     (None, None) => animation,
                     (None, Some(rep_dur)) => animation.set_duration(AnimationDuration::PerRepetition(rep_dur)),
                     (Some(frame_dur), None) => animation.set_duration(AnimationDuration::PerFrame(frame_dur)),
@@ -248,7 +219,7 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
             );
             animation = animation.add_row(0);
             clip_start_frames.push(0);
-            alternating_start_frames_config.push(seri.alternating_start_frames);
+            alternating_start_frames_config.push(seri.alternating_start_frames());
             alternating_start_frames_state.push(0);
         }
         let handle: Handle<Animation> = animation_assets.add(animation.build());
@@ -277,7 +248,7 @@ fn validate_clip_bounds(
         );
         return None;
     }
-    let frame_count = match cfg.partial {
+    let frame_count = match cfg.partial() {
         Some((start, end)) => {
             if start > end {
                 error!(
@@ -305,9 +276,7 @@ fn validate_clip_bounds(
         }
         None => frame_len,
     };
-    if let Some(start_frame) = cfg.start_frame
-        && start_frame >= frame_count
-    {
+    if let Some(start_frame) = cfg.start_frame() && start_frame >= frame_count {
         error!(
             target: SPRITE_ANIMATION_INIT,
             "Animation '{}' clip start_frame {} is out of bounds for clip frame count {}",

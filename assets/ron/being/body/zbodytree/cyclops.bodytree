@@ -1,0 +1,6 @@
+id: cyclops
+extends: humanoid
+remove:
+  body > neck > head > eye[1]
+label:
+  body > neck > head > eye[0] lbl"Eye"

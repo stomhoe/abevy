@@ -1,0 +1,25 @@
+(
+    id: "werewolf",
+    name: "Werewolf Body",
+    tags: ["humanoid"],
+    distributed_totals: {
+        "mass_kg": 95.0,
+        "hp_capacity": 491.0,
+        "hp_regen_rate": 23.5,
+        "blood_capacity": 285.5,
+        "bleed_rate": 30.4,
+        "walk_strength": 85.0,
+        "swim_strength": 6.3,
+        "manip_dex": 7.3,
+        "manip_str": 4.4,
+        "vision": 2.0,
+        "pain_sensitivity": 27.4,
+        "caloric_burn_rate": 52.5,
+    },
+    sexes: {
+        "male": (weight: 1, sprites: []),
+        "female": (weight: 1, sprites: []),
+    },
+    caloric_burn_rate_multiplier: 0.0,
+    bodytree_id: "werewolf",
+)

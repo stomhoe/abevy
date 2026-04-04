@@ -5,12 +5,12 @@ use tilemap_shared::tilemap_shared_samplers::*;
 use ::sprite_shared::*;
 use ::tilemap_shared::directions::*;
 
-use crate::sprite_systems::SpriteChanged;
+use crate::sprite_systems::SpriteChangedScaleOrOffsetOrParent;
 
 
 #[allow(unused_parens)]
 pub fn apply_scales(
-    mut reader: MessageReader<SpriteChanged>,
+    mut reader: MessageReader<SpriteChangedScaleOrOffsetOrParent>,
     //puede ser un meshtexture2d en vez de un sprite(para aplicar shaders)
     mut sprite_que: Query<(&mut Transform, Option<&mut Sprite>, &BaseHolderRef, &TemplEntiRef,
         Option<&Scale2D>, Option<&ScaleLookUpDown>, Option<&ScaleSideways>,

@@ -1,0 +1,33 @@
+id: croc
+tree:
+body
+  neck
+    head
+      brain
+      eye lbl"Left Eye"
+      eye lbl"Right Eye"
+      ear lbl"Left Ear"
+      ear lbl"Right Ear"
+      snout
+        nose
+        jaw
+          mouth
+  chest
+    heart
+    lung lbl"Left Lung"
+    lung lbl"Right Lung"
+  abdomen
+    stomach
+    liver
+    kidney lbl"Left Kidney"
+    kidney lbl"Right Kidney"
+  leg lbl"Front Left Leg"
+    foot lbl"Front Left Foot"
+  leg lbl"Front Right Leg"
+    foot lbl"Front Right Foot"
+  leg lbl"Hind Left Leg"
+    foot lbl"Hind Left Foot"
+  leg lbl"Hind Right Leg"
+    foot lbl"Hind Right Foot"
+  tail
+  spine

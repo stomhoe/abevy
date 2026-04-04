@@ -31,7 +31,7 @@ impl AcZ {
     pub fn used_float(&self) -> f32 {
         self.0 * Self::Z_MULT
     }
-    const Z_MULT: f32 = 1e-3;
+    const Z_MULT: f32 = 1e-5;
 
     pub const Z_SORT_MULT: f32 = 1e-6;
 }

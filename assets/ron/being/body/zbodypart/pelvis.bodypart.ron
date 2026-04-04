@@ -1,0 +1,17 @@
+(
+    id: "pelvis",
+    name: "Pelvis",
+    weighted_stats:
+    {
+        "coverage": 15,
+        "mass_kg": 1.0,
+        "hp_capacity": 20.0,
+        "hp_regen_rate": 0.9,
+        "blood_capacity": 12.0,
+        "pain_sensitivity": 1.0,
+        "caloric_burn_rate": 1.5,
+    },
+    depth: "inside",
+    vital: false,
+    bleed_rate: 0.7,
+)

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 use game_common::game_common_states::SimulationState;
-use player::player_components::{Mine, Player};
+use player_shared::player_components::{Mine, Player};
 
 use crate::ac_input_actions::*;
 

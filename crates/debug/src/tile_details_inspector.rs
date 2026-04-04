@@ -3,6 +3,7 @@ use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
 use common::common_tag_components::TagSet;
 use game_common::game_common_components::TemplEntiRef;
+use bevy_ecs_tilemap::map::TilemapId;
 use tilemap::tile::tile_components::{TileStrId};
 use tilemap_shared::DeleteOtherTilesInSamePos;
 
@@ -48,9 +49,13 @@ pub fn tile_details_inspector(world: &mut World) {
     let mut tags_here = None;
     let mut tags_templ = None;
     let mut referenced_templ_entity = None;
+    let mut referenced_tilemap_entity = None;
     if let Ok(entity_ref) = world.get_entity(selected_tile_entity) {
         delete_other_tiles_here = entity_ref.get::<DeleteOtherTilesInSamePos>().cloned();
         tags_here = entity_ref.get::<TagSet>().cloned();
+        if let Some(tilemap_id) = entity_ref.get::<TilemapId>() {
+            referenced_tilemap_entity = Some(tilemap_id.0);
+        }
         if let Some(templ_ref) = entity_ref.get::<TemplEntiRef>() {
             referenced_templ_entity = Some(templ_ref.0);
             if let Ok(templ_entity_ref) = world.get_entity(templ_ref.0) {
@@ -114,6 +119,20 @@ pub fn tile_details_inspector(world: &mut World) {
                     "DeleteOtherTilesInSamePos on EntityZero",
                     delete_other_tiles_templ.as_ref(),
                 );
+            }
+
+            if let Some(tilemap_entity) = referenced_tilemap_entity {
+                ui.separator();
+                ui.collapsing("Tilemap Entity Details", |ui| {
+                    ui.label(format!("TilemapId target: {:?}", tilemap_entity));
+                    if world.get_entity(tilemap_entity).is_ok() {
+                        unsafe {
+                            bevy_inspector::ui_for_entity(&mut *world_ptr, tilemap_entity, ui);
+                        }
+                    } else {
+                        ui.label("TilemapId target entity missing");
+                    }
+                });
             }
 
             ui.separator();

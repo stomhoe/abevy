@@ -1,0 +1,23 @@
+(
+    id: "kraken",
+    name: "Kraken Body",
+    tags: ["tentacled"],
+    distributed_totals: {
+        "mass_kg": 10000.0,
+        "hp_capacity": 128.0,
+        "hp_regen_rate": 5.7,
+        "blood_capacity": 67.0,
+        "bleed_rate": 8.0,
+        "swim_strength": 300.6,
+        "manip_dex": 3.4,
+        "vision": 2.0,
+        "pain_sensitivity": 9.9,
+        "caloric_burn_rate": 13.5,
+    },
+    sexes: {
+        "male": (weight: 1, sprites: []),
+        "female": (weight: 1, sprites: []),
+    },
+    caloric_burn_rate_multiplier: 0.0,
+    bodytree_id: "kraken",
+)

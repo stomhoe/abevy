@@ -1,0 +1,71 @@
+anim kraken_south_idle {
+    img_path: "texture/being/npc/monster/kraken.png"
+    rows_cols: 4 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 0 partial 0 0
+    }
+}
+
+anim kraken_south_move {
+    img_path: "texture/being/npc/monster/kraken.png"
+    rows_cols: 4 3
+    clips {
+        row 0 start_frame 1
+    }
+}
+
+anim kraken_north_idle {
+    img_path: "texture/being/npc/monster/kraken.png"
+    rows_cols: 4 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 1 partial 0 0
+    }
+}
+
+anim kraken_north_move {
+    img_path: "texture/being/npc/monster/kraken.png"
+    rows_cols: 4 3
+    clips {
+        row 1 start_frame 1
+    }
+}
+
+anim kraken_west_idle {
+    img_path: "texture/being/npc/monster/kraken.png"
+    rows_cols: 4 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 2 partial 0 0
+    }
+}
+
+anim kraken_west_move {
+    img_path: "texture/being/npc/monster/kraken.png"
+    rows_cols: 4 3
+    clips {
+        row 2 start_frame 1
+    }
+}
+
+anim kraken_east_idle {
+    img_path: "texture/being/npc/monster/kraken.png"
+    rows_cols: 4 3
+    paused: true
+    speed: 1.0
+    clips {
+        row 3 partial 0 0
+    }
+}
+
+anim kraken_east_move {
+    img_path: "texture/being/npc/monster/kraken.png"
+    rows_cols: 4 3
+    clips {
+        row 3 start_frame 1
+    }
+}

@@ -6,7 +6,7 @@ pack {
     },
     biome_affinity: {
         ocean: -2.5,
-        temp: 0.6,
+        temp: 9999999999990.6,
     },
     pack_spawn_radius: 7,
 }

@@ -15,6 +15,7 @@ use crate::body::{
 };
 
 const STAT_BLEED_RATE: HashId = HashId::hash("bleed_rate");
+const STAT_COVERAGE: HashId = HashId::hash("coverage");
 
 fn stats_to_hashid_map(map: &bevy::platform::collections::HashMap<String, f32>) -> HashIdMap<f32> {
     let mut out = HashIdMap::default();
@@ -103,15 +104,19 @@ pub fn init_bodyparts(
             cmd.entity(part_ent).insert(TagSet::new(&part.tags));
         }
 
-        if part.coverage_weight > 0 {
-            let weight = part.coverage_weight;
-            cmd.entity(part_ent).insert(BodypartCoverageWeight(weight));
-        }
         let mut forced_stats = stats_to_hashid_map(&part.forced_stats);
         if !forced_stats.contains_key(BodypartStat::STAT_PAIN_SENSITIVITY) {
             forced_stats.overwrite(BodypartStat::STAT_PAIN_SENSITIVITY, 1.0);
         }
         let mut weighted_stats = stats_to_hashid_map(&part.weighted_stats);
+        let coverage = if forced_stats.contains_key(STAT_COVERAGE) {
+            stat_from_hashid_map(&forced_stats, STAT_COVERAGE)
+        } else {
+            stat_from_hashid_map(&weighted_stats, STAT_COVERAGE)
+        } as u16;
+        if coverage > 0 {
+            cmd.entity(part_ent).insert(BodypartCoverageWeight(coverage));
+        }
         if part.bleed_rate > 0.0 {
             weighted_stats.overwrite(STAT_BLEED_RATE, part.bleed_rate);
         }

@@ -1,0 +1,17 @@
+(
+    id: "ear",
+    name: "Ear",
+    weighted_stats:
+    {
+        "coverage": 3,
+        "mass_kg": 1.0,
+        "hp_capacity": 6.0,
+        "hp_regen_rate": 0.7,
+        "blood_capacity": 3.0,
+        "pain_sensitivity": 1.2,
+        "caloric_burn_rate": 0.3,
+    },
+    depth: "surface",
+    vital: false,
+    bleed_rate: 0.6,
+)
