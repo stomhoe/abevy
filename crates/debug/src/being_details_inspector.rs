@@ -436,6 +436,19 @@ fn format_resolved_f32(label: &str, entity_value: Option<f32>, templ_value: Opti
     format!("{}: missing", label)
 }
 
+fn format_resolved_acz(
+    anim_value: Option<f32>,
+    templ_value: Option<f32>,
+    add_up_anim_and_sc_acz: bool,
+) -> String {
+    match (anim_value, templ_value, add_up_anim_and_sc_acz) {
+        (Some(anim), Some(templ), true) => format!("AcZ: {:.3} (anim+SpriteConfig)", anim + templ),
+        (Some(anim), _, _) => format!("AcZ: {:.3} (anim)", anim),
+        (None, Some(templ), _) => format!("AcZ: {:.3} (SpriteConfig)", templ),
+        (None, None, _) => "AcZ: missing".to_string(),
+    }
+}
+
 fn render_held_sprite_entry(
     ui: &mut egui::Ui,
     world: &World,
@@ -458,6 +471,7 @@ fn render_held_sprite_entry(
 
     let templ_display_name = templ_ref_entity.get::<DisplayName>().cloned();
     let templ_str_id = templ_ref_entity.get::<StrId>().cloned();
+    let templ_add_up_anim_and_sc_acz = templ_ref_entity.get::<AddUpAnimAndScAcZ>().is_some();
 
     let sprite_label = part_label(
         sprite_ent,
@@ -528,7 +542,7 @@ fn render_held_sprite_entry(
             "TemplEntiRef.0 StrId: {}",
             templ_str_id.map_or_else(|| "missing".to_string(), |str_id| str_id.to_string())
         ));
-        ui.label(format_resolved_f32("AcZ", sprite_acz, templ_acz));
+        ui.label(format_resolved_acz(sprite_acz, templ_acz, templ_add_up_anim_and_sc_acz));
         ui.label(format_resolved_f32("YSortOrigin", sprite_y_sort_origin, templ_y_sort_origin));
 
         let mut template_flags = Vec::with_capacity(8);

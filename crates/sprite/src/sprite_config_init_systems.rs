@@ -143,6 +143,9 @@ pub fn init_sprite_configs(
         if seri.grounding_based {
             cmd.entity(spritecfg_ent).insert(GroundingBased);
         }
+        if seri.add_up_z_with_anim {
+            cmd.entity(spritecfg_ent).insert(AddUpAnimAndScAcZ);
+        }
         cmd.entity(spritecfg_ent).insert(BaseMovementSpeed(seri.baseline_move_speed));
         if !seri.parent_cat.trim().is_empty() {
             let to_become_child = BecomeChildOfSpriteWithTag(Tag::trunc(seri.parent_cat.trim()));

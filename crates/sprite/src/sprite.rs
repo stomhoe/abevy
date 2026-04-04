@@ -80,6 +80,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<OffsetForChildren>()
 
     .replicate::<YSortOrigin>()
+    .replicate_once::<AddUpAnimAndScAcZ>()
     .replicate::<BaseHolderRef>()
     .replicate_once::<MovementBased>()
     .replicate_once::<GroundingBased>()

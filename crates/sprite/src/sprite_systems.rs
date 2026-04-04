@@ -71,6 +71,7 @@ pub fn z_sort_system(
         Zsortable)>,
     mut process_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&TemplEntiRef>, Has<TilemapAnchor>, &ChildOf, ),>,
     acz_query: Query<&AcZ, ()>,
+    add_up_anim_and_sc_acz_query: Query<Has<AddUpAnimAndScAcZ>, ()>,
     y_sort_query: Query<&YSortOrigin, ()>,
 
     parent_sprite_query: Query<&Sprite, (common::AnyDisabling,)>,
@@ -93,20 +94,25 @@ pub fn z_sort_system(
     while let Some((ent, mut transform, global_transform, templ_ref, is_tilemap, child_of)) = iter.fetch_next() {
         let has_parent_sprite = parent_sprite_query.get(child_of.parent()).is_ok();
         let ent_ysort_origin = y_sort_query.get(ent).ok();
-        let ent_ac_z = acz_query.get(ent).ok();
+        let anim_ac_z = acz_query.get(ent).ok();
 
         let (base_z, maybe_ysort_origin) = if let Some(templ_ref) = templ_ref
         {
             let templ_ac_z = acz_query.get(templ_ref.0).ok();
             let templ_ysort_origin = y_sort_query.get(templ_ref.0).ok();
-            let base_z = templ_ac_z
-                .or(ent_ac_z)
-                .cloned()
-                .unwrap_or_default()
-                .used_float();
+            let base_z = if add_up_anim_and_sc_acz_query.get(templ_ref.0).unwrap_or(false) {
+                anim_ac_z.copied().unwrap_or_default().used_float()
+                    + templ_ac_z.copied().unwrap_or_default().used_float()
+            } else {
+                anim_ac_z
+                    .copied()
+                    .or(templ_ac_z.copied())
+                    .unwrap_or_default()
+                    .used_float()
+            };
             (base_z, ent_ysort_origin.copied().or(templ_ysort_origin.copied()))
         } else {
-            (ent_ac_z.cloned().unwrap_or_default().used_float(), ent_ysort_origin.copied())
+            (anim_ac_z.cloned().unwrap_or_default().used_float(), ent_ysort_origin.copied())
         };
 
         let y = global_transform.translation().y;

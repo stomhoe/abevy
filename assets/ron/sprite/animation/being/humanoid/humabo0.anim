@@ -77,7 +77,6 @@ anim mahubo0_west_move {
 anim mahuhe0_east_idle {
     img_path: "texture/being/head/human/0.png"
     rows_cols: 1 4
-    z: 0
     paused: true
     speed: 1.0
     clips {
@@ -88,7 +87,6 @@ anim mahuhe0_east_idle {
 anim mahuhe0_north_idle {
     img_path: "texture/being/head/human/0.png"
     rows_cols: 1 4
-    z: 0
     paused: true
     speed: 1.0
     clips {
@@ -99,7 +97,6 @@ anim mahuhe0_north_idle {
 anim mahuhe0_south_idle {
     img_path: "texture/being/head/human/0.png"
     rows_cols: 1 4
-    z: 0
     paused: true
     speed: 1.0
     clips {
@@ -110,7 +107,6 @@ anim mahuhe0_south_idle {
 anim mahuhe0_west_idle {
     img_path: "texture/being/head/human/0.png"
     rows_cols: 1 4
-    z: 0
     paused: true
     speed: 1.0
     clips {

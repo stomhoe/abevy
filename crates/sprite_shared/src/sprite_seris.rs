@@ -63,6 +63,8 @@ pub struct SpriteConfigSeri {
     #[serde(default)]
     pub grounding_based: bool,
     #[serde(default)]
+    pub add_up_z_with_anim: bool,
+    #[serde(default)]
     pub is_being_root_sprite: bool,
     pub visibility: Option<u8>,
     #[serde(default)]

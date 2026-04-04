@@ -18,6 +18,9 @@ pub struct MovementBased;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct GroundingBased;
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
+pub struct AddUpAnimAndScAcZ;
+
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
 #[relationship(relationship_target = HeldSprites)]
 #[require(Prefix::trunc("Sprite"))]

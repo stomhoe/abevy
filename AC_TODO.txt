@@ -66,3 +66,6 @@ poner thirst y water mechanics
 clonar con  .clone tile templs replicadas en client y desp mandar un mensaje para avisar al host q puede borrar el Replicate de la entity al host. se puede hacer un sistema general basdo en marker components o un macro para esto y q se haga auto y q no haya definir un monton de sistemas
 
 problema no se puede latejoinear sin complicar
+
+
+hay demasiadas animation entities y son costosas de iterar por el bevy replicon. hay q hacer q una vez q el cliente las clone, dejen de tener Replicated
