@@ -15,22 +15,6 @@ use ::param_sets::*;
 use std::time::Duration;
 use ::tilemap_shared::*;
 
-const WANDER_LOD_NEAR_TILES: i32 = 72;
-const WANDER_LOD_MID_TILES: i32 = 144;
-const WANDER_LOD_FAR_TILES: i32 = 288;
-
-fn wander_lod_level_for_distance(closest_tile_distance_sq: i32) -> u8 {
-    if closest_tile_distance_sq <= WANDER_LOD_NEAR_TILES * WANDER_LOD_NEAR_TILES {
-        0
-    } else if closest_tile_distance_sq <= WANDER_LOD_MID_TILES * WANDER_LOD_MID_TILES {
-        1
-    } else if closest_tile_distance_sq <= WANDER_LOD_FAR_TILES * WANDER_LOD_FAR_TILES {
-        2
-    } else {
-        3
-    }
-}
-
 fn wander_lod_interval_for_level(level: u8) -> Duration {
     match level {
         0 => Duration::ZERO,
@@ -40,19 +24,36 @@ fn wander_lod_interval_for_level(level: u8) -> Duration {
     }
 }
 
-fn closest_activator_tile_distance_sq(
-    being_gpos: GlobalTilePos,
-    activators: &[GlobalTilePos],
-) -> i32 {
-    let mut closest_dist_sq = i32::MAX;
-    for &activator_gpos in activators.iter() {
-        let delta = activator_gpos.0 - being_gpos.0;
-        let dist_sq = delta.x.saturating_mul(delta.x).saturating_add(delta.y.saturating_mul(delta.y));
-        if dist_sq < closest_dist_sq {
-            closest_dist_sq = dist_sq;
-        }
+fn advance_wander_lod_tick(
+    being_ent: Entity,
+    dt: f32,
+    lod_level: u8,
+    lod_interval_secs: f32,
+    lod_secs_left_by_ent: &mut EntityHashMap<f32>,
+    lod_accum_secs_by_ent: &mut EntityHashMap<f32>,
+) -> Option<f32> {
+    let dt = dt.max(0.0);
+    let accum_secs = lod_accum_secs_by_ent.entry(being_ent).or_insert(0.0);
+    *accum_secs += dt;
+    if lod_level == 0 {
+        lod_secs_left_by_ent.insert(being_ent, 0.0);
+        let elapsed = *accum_secs;
+        *accum_secs = 0.0;
+        return Some(elapsed);
     }
-    closest_dist_sq
+    let lod_secs_left = lod_secs_left_by_ent
+        .entry(being_ent)
+        .or_insert(0.0);
+    if *lod_secs_left > 0.0 {
+        *lod_secs_left = (*lod_secs_left - dt).max(0.0);
+    }
+    if *lod_secs_left > 0.0 {
+        return None;
+    }
+    *lod_secs_left = lod_interval_secs.max(0.0);
+    let elapsed = *accum_secs;
+    *accum_secs = 0.0;
+    Some(elapsed)
 }
 
 fn collect_entity_avoidance(
@@ -280,6 +281,7 @@ pub struct WanderBehaviorQueryParams<'w, 's> {
             Entity,
             &'static DimensionRef,
             &'static mut WanderState,
+            Option<&'static LodLevel>,
             Option<&'static SquadMemberOf>,
             Has<DoAvoidBlacklistedSpawnTilesForWander>,
         ),
@@ -301,7 +303,6 @@ pub struct WanderBehaviorQueryParams<'w, 's> {
         ),
         (With<Being>, ),
     >,
-    activators_query: Query<'w, 's, (Entity, &'static DimensionRef), (With<LoadChunksAround>, )>,
     beings_at_gpos: Res<'w, BeingsAtGpos>,
     tag_query: Query<'w, 's, &'static TagSet>,
     pack_center_query: Query<'w, 's, &'static SquadAvgCenterPerDim>,
@@ -311,7 +312,9 @@ pub struct WanderBehaviorQueryParams<'w, 's> {
 #[derive(SystemParam)]
 pub struct WanderBehaviorLocals<'s> {
     nearby_threats: Local<'s, EntityHashSet>,
-    activator_positions_by_dim: Local<'s, EntityHashMap<Vec<GlobalTilePos>>>,
+    lod_secs_left_by_ent: Local<'s, EntityHashMap<f32>>,
+    lod_accum_secs_by_ent: Local<'s, EntityHashMap<f32>>,
+    seen_wanderers: Local<'s, EntityHashSet>,
     pack_members_by_squad: Local<'s, EntityHashMap<Vec<(Entity, DimensionRef, bool)>>>,
     messages: Local<'s, Vec<NavOrder>>,
     facing_messages: Local<'s, Vec<MirrorHolderStateForSprite>>,
@@ -331,14 +334,15 @@ pub fn wander_behavior(
         wander_cfg_query,
         blacklisted_spawn_tile_tags_query,
         threat_query,
-        activators_query,
         beings_at_gpos,
         tag_query,
         pack_center_query,
     } = queries;
     let WanderBehaviorLocals {
         mut nearby_threats,
-        mut activator_positions_by_dim,
+        mut lod_secs_left_by_ent,
+        mut lod_accum_secs_by_ent,
+        mut seen_wanderers,
         mut pack_members_by_squad,
         mut messages,
         mut facing_messages,
@@ -348,23 +352,12 @@ pub fn wander_behavior(
     let dt = time.delta_secs();
     let mut evaluated_wanderers = 0usize;
     let mut skipped_for_lod = 0usize;
-    activator_positions_by_dim.clear();
-    let activator_iter = activators_query.iter();
-    activator_positions_by_dim.reserve(activator_iter.size_hint().1.unwrap_or(activator_iter.size_hint().0));
-    for (activator_ent, &dim_ref) in activator_iter {
-        let Ok(&activator_gpos) = blocking_tiles.gpos_query.get(activator_ent) else {
-            continue;
-        };
-        activator_positions_by_dim
-            .entry(dim_ref.0)
-            .or_default()
-            .push(activator_gpos);
-    }
+    seen_wanderers.clear();
     pack_members_by_squad.clear();
     {
         let pack_member_iter = beings.iter_mut();
         pack_members_by_squad.reserve(pack_member_iter.size_hint().1.unwrap_or(pack_member_iter.size_hint().0));
-    for (member_ent, &member_dim, _, member_of, has_avoid_blacklisted_spawn_tiles) in pack_member_iter {
+    for (member_ent, &member_dim, _, _, member_of, has_avoid_blacklisted_spawn_tiles) in pack_member_iter {
             let Some(member_of) = member_of else {
                 continue;
             };
@@ -374,7 +367,8 @@ pub fn wander_behavior(
                 .push((member_ent, member_dim, has_avoid_blacklisted_spawn_tiles));
         }
     }
-    for (pred_ent, &dim_ref, mut state, member_of, has_avoid_blacklisted_spawn_tiles, ) in beings.iter_mut() {
+    for (pred_ent, &dim_ref, mut state, lod_level, member_of, has_avoid_blacklisted_spawn_tiles, ) in beings.iter_mut() {
+        seen_wanderers.insert(pred_ent);
         evaluated_wanderers += 1;
         let Ok(&gpos) = blocking_tiles.gpos_query.get(pred_ent) else {
             continue;
@@ -401,120 +395,126 @@ pub fn wander_behavior(
         let empty_whitelist = WhitelistedTags::default();
         let empty_whitelist = WhitelistedSpawnTileTagsRef(&empty_whitelist);
         let avoid_spawn_tile_tags = BlacklistedSpawnTileTagsRef(&avoid_tile_tags);
-        let lod_level = activator_positions_by_dim
-            .get(&dim_ref.0)
-            .map(|activators| wander_lod_level_for_distance(closest_activator_tile_distance_sq(gpos, activators)))
-            .unwrap_or(3);
-        let Some(elapsed_secs) = state.advance_lod(dt, lod_level, wander_lod_interval_for_level(lod_level).as_secs_f32()) else {
+        let lod_level = lod_level.map_or(0, |lod_level| lod_level.0);
+        let Some(elapsed_secs) = advance_wander_lod_tick(
+            pred_ent,
+            dt,
+            lod_level,
+            wander_lod_interval_for_level(lod_level).as_secs_f32(),
+            &mut lod_secs_left_by_ent,
+            &mut lod_accum_secs_by_ent,
+        ) else {
             skipped_for_lod += 1;
             continue;
         };
         let mut input_dir = state.advance_motion(elapsed_secs, &mut rng, cfg);
 
-        if let Some(member_of) = member_of {
-            if let Some(pack_center) = pack_center_query
-                .get(member_of.0)
-                .ok()
-                .and_then(|pack_center| pack_center.0.get(&dim_ref).copied())
-            {
-                let pack_delta = pack_center.0 - gpos.0;
-                let pack_distance = pack_delta.as_vec2().length();
-                if cfg.max_drift.is_finite() && pack_distance > cfg.max_drift {
-                    if let Some(return_dir) = state.maybe_apply_pack_drift_return(
-                        &mut rng,
-                        cfg,
-                        gpos,
-                        pack_center,
-                    ) {
-                        trace!(
-                            target: WANDER_SYSTEM,
-                            "wander_behavior: max_drift return correction being={:?} dim={:?} gpos={:?} pack_center={:?} hard_flip={} pending_return={:?}",
-                            pred_ent,
-                            dim_ref.0,
+        if lod_level <= 1 {
+            if let Some(member_of) = member_of {
+                if let Some(pack_center) = pack_center_query
+                    .get(member_of.0)
+                    .ok()
+                    .and_then(|pack_center| pack_center.0.get(&dim_ref).copied())
+                {
+                    let pack_delta = pack_center.0 - gpos.0;
+                    let pack_distance = pack_delta.as_vec2().length();
+                    if cfg.max_drift.is_finite() && pack_distance > cfg.max_drift {
+                        if let Some(return_dir) = state.maybe_apply_pack_drift_return(
+                            &mut rng,
+                            cfg,
                             gpos,
                             pack_center,
-                            cfg.allow_hard_flips_to_return,
-                            state.has_pack_return_dir(),
+                        ) {
+                            trace!(
+                                target: WANDER_SYSTEM,
+                                "wander_behavior: max_drift return correction being={:?} dim={:?} gpos={:?} pack_center={:?} hard_flip={} pending_return={:?}",
+                                pred_ent,
+                                dim_ref.0,
+                                gpos,
+                                pack_center,
+                                cfg.allow_hard_flips_to_return,
+                                state.has_pack_return_dir(),
+                            );
+                            input_dir = return_dir;
+                        }
+                    } else if cfg.pack_orbit_radius > 0.0 {
+                        let pack_members = pack_members_by_squad
+                            .get(&member_of.0)
+                            .map(Vec::as_slice)
+                            .unwrap_or(&[]);
+                        input_dir += state.pack_orbit_pull(
+                            elapsed_secs,
+                            &mut rng,
+                            cfg,
+                            pack_center,
+                            gpos,
+                            |target_gpos| {
+                                orbit_target_allowed_for_pack_members(
+                                    &mut blocking_tiles,
+                                    &wander_cfg_query,
+                                    &blacklisted_spawn_tile_tags_query,
+                                    member_of.0,
+                                    pack_members,
+                                    dim_ref,
+                                    target_gpos,
+                                )
+                            },
                         );
-                        input_dir = return_dir;
                     }
-                } else if cfg.pack_orbit_radius > 0.0 {
-                    let pack_members = pack_members_by_squad
-                        .get(&member_of.0)
-                        .map(Vec::as_slice)
-                        .unwrap_or(&[]);
-                    input_dir += state.pack_orbit_pull(
-                        elapsed_secs,
-                        &mut rng,
-                        cfg,
-                        pack_center,
-                        gpos,
-                        |target_gpos| {
-                            orbit_target_allowed_for_pack_members(
-                                &mut blocking_tiles,
-                                &wander_cfg_query,
-                                &blacklisted_spawn_tile_tags_query,
-                                member_of.0,
-                                pack_members,
-                                dim_ref,
-                                target_gpos,
-                            )
-                        },
-                    );
                 }
             }
-        }
 
-        input_dir += collect_entity_avoidance(
-            &mut blocking_tiles,
-            pred_ent,
-            &dim_ref,
-            &cfg,
-            state.current_speed_mult_or_zero(),
-            &beings_at_gpos,
-            &threat_query,
-            &tag_query,
-            &mut nearby_threats,
-        );
-
-        // Check if currently in an undesirable tile, and if so, scan for nearby desirable tile
-        if !avoid_tile_tags.is_empty() {
-            if !blocking_tiles.allowed_at_refs(
-                dim_ref,
-                gpos,
+            input_dir += collect_entity_avoidance(
+                &mut blocking_tiles,
                 pred_ent,
-                &empty_whitelist,
-                &avoid_spawn_tile_tags,
-            ) {
-                if let Some(target_pos) = blocking_tiles.find_closest_allowed_gpos_refs(
+                &dim_ref,
+                &cfg,
+                state.current_speed_mult_or_zero(),
+                &beings_at_gpos,
+                &threat_query,
+                &tag_query,
+                &mut nearby_threats,
+            );
+
+            // Check if currently in an undesirable tile, and if so, scan for nearby desirable tile
+            if !avoid_tile_tags.is_empty() {
+                if !blocking_tiles.allowed_at_refs(
                     dim_ref,
                     gpos,
                     pred_ent,
-                    GposSearchConfig::wander(),
                     &empty_whitelist,
                     &avoid_spawn_tile_tags,
                 ) {
-                    let delta = target_pos.0 - gpos.0;
-                    input_dir = delta.as_vec2().normalize_or_zero() * (state.current_speed_mult_or_zero() * 2.0);
-                } else {
-                    input_dir = Vec2::ZERO;
-                }
-            } else if input_dir != Vec2::ZERO {
-                // Normal avoidance logic for movement
-                let step = if input_dir.x.abs() >= input_dir.y.abs() {
-                    IVec2::new(input_dir.x.signum() as i32, 0)
-                } else {
-                    IVec2::new(0, input_dir.y.signum() as i32)
-                };
-                let next = GlobalTilePos(gpos.0 + step);
-                if !blocking_tiles.allowed_at_refs(
-                    dim_ref,
-                    next,
-                    pred_ent,
-                    &empty_whitelist,
-                    &avoid_spawn_tile_tags,
-                ) {
-                    input_dir = Vec2::ZERO;
+                    if let Some(target_pos) = blocking_tiles.find_closest_allowed_gpos_refs(
+                        dim_ref,
+                        gpos,
+                        pred_ent,
+                        GposSearchConfig::wander(),
+                        &empty_whitelist,
+                        &avoid_spawn_tile_tags,
+                    ) {
+                        let delta = target_pos.0 - gpos.0;
+                        input_dir = delta.as_vec2().normalize_or_zero() * (state.current_speed_mult_or_zero() * 2.0);
+                    } else {
+                        input_dir = Vec2::ZERO;
+                    }
+                } else if input_dir != Vec2::ZERO {
+                    // Normal avoidance logic for movement
+                    let step = if input_dir.x.abs() >= input_dir.y.abs() {
+                        IVec2::new(input_dir.x.signum() as i32, 0)
+                    } else {
+                        IVec2::new(0, input_dir.y.signum() as i32)
+                    };
+                    let next = GlobalTilePos(gpos.0 + step);
+                    if !blocking_tiles.allowed_at_refs(
+                        dim_ref,
+                        next,
+                        pred_ent,
+                        &empty_whitelist,
+                        &avoid_spawn_tile_tags,
+                    ) {
+                        input_dir = Vec2::ZERO;
+                    }
                 }
             }
         }
@@ -555,7 +555,7 @@ pub fn wander_behavior(
         let throttle = state.current_speed_mult_or_zero().clamp(0.0, 1.0);
         let axis = FinalNormMoveDir(input_dir).normalize_to_axis_dir();
         if axis == IVec2::ZERO {
-            if state.should_adjust_halt_facing_once() {
+            if lod_level <= 1 && state.should_adjust_halt_facing_once() {
                 if let Ok(facing_dir) = blocking_tiles.cardinal_direction_query().get_mut(pred_ent) {
                     let current_facing = *facing_dir;
                     let facing_gpos = GlobalTilePos(gpos.0 + current_facing.to_dir_vec());
@@ -616,6 +616,8 @@ pub fn wander_behavior(
             throttle,
         ));
     }
+    lod_secs_left_by_ent.retain(|being_ent, _| seen_wanderers.contains(being_ent));
+    lod_accum_secs_by_ent.retain(|being_ent, _| seen_wanderers.contains(being_ent));
     if evaluated_wanderers > 0 {
         trace!(
             target: WANDER_SYSTEM,

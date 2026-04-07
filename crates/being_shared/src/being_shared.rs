@@ -128,6 +128,9 @@ pub struct HumanControlled;
 #[derive(Component, Debug, Default, Clone)]
 pub struct AiMeleeTargets(pub Vec<Entity>);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct LodLevel(pub u8);
+
 pub type LocalAiControlled = (With<ComputedLocally>, Without<HumanControlled>);
 pub type LocalHumanControlled = (With<ComputedLocally>, With<HumanControlled>);
 

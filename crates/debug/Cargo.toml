@@ -14,6 +14,8 @@ being = { path = "../being" }
 being_shared = { path = "../being_shared" }
 item_shared = { path = "../item_shared" }
 camera = { path = "../camera" }
+faction = { path = "../faction" }
+faction_shared = { path = "../faction_shared" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 sprite_shared = { path = "../sprite_shared" }

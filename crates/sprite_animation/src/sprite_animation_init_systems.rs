@@ -103,7 +103,7 @@ pub fn init_animation_sheet_and_handle(mut cmd: Commands,
     query: Query<(Entity, &StrId, &AnimationSeri),(With<AnimationSeri>, Without<AnimationHandle>)>,
 ) {
     for (entity, str_id, seri) in query.iter() {
-        debug!(
+        trace!(
             target: SPRITE_ANIMATION_INIT,
             "Initializing sheet and handle for {:?}, {:?}, {}",
             entity, str_id, seri.img_path

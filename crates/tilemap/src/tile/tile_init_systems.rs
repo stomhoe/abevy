@@ -44,7 +44,7 @@ pub fn init_tiles(
     let egui_portal_holder = cmd.spawn((PortalsZeroEguiHolder, ChildOf(holder))).id();
 
     let mut res_tile_tags = TemplTileEntsWithinTag::default();
-    let mut tile_indexing = TileIndexing::default();
+    let mut tile_indexing = TileU16IndexHashIdMapping::default();
 
     let mut tile_seris = load_tile_seri_defs();
     let mut dropped_on_death_seris = std::collections::HashMap::new();
@@ -290,7 +290,7 @@ pub fn init_tiles(
             }
         }
     }
-    cmd.spawn((tile_indexing,));
+    cmd.spawn((tile_indexing, Replicated));
     cmd.insert_resource(res_tile_tags);
 }
 fn gather_step_sfx_paths_from_dir(directory: &str) -> Vec<String> {

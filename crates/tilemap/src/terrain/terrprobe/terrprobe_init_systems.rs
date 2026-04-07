@@ -2,6 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_tag_components::HashedTagsVec;
+use common::log_targets::TERRPROBE_INIT;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 
 use crate::terrain::{
@@ -13,36 +14,41 @@ use crate::terrain::{
     },
 };
 use crate::{regioning::regioning_resources::StructuredGenConfigEntityMap, tile::tile_resources::TemplTileEntsWithinTag};
-#[allow(unused_parens)]
+#[allow(unused_parens, )]
 pub fn init_terrain_probes(
     mut cmd: Commands,
     map: Res<TerrProbeTemplEntityMap>,
     sgc_entity_map: Res<StructuredGenConfigEntityMap>,
     opfilter_entity_map: Res<OpFilterEntityMap>,
-    opfilter_query: Query<&OpFilter>,
+    opfilter_query: Query<(&OpFilter, ), (),>,
     tile_ents_with_tag: Res<TemplTileEntsWithinTag>,
-    entity_zeroes: Query<&Templ>,
-    egui_holder_query: Query<Entity, With<EguiTptsHolder>>,
+    entity_zeroes: Query<(&Templ, ), (),>,
+    egui_holder_query: Query<(Entity, ), (With<EguiTptsHolder>, ),>,
 ) {
     if !map.0.is_empty() { return; }
 
-    let egui_ent = if let Ok(egui_ent) = egui_holder_query.single() {
+    let egui_ent = if let Ok((egui_ent,)) = egui_holder_query.single() {
         egui_ent
     } else {
         cmd.spawn(EguiTptsHolder).id()
     };
 
     let mut comps = Vec::new();
-    for seri in load_terrain_probe_seri_defs() {
+    for def in load_terrain_probe_seri_defs() {
+        if def.is_abstract {
+            debug!(target: TERRPROBE_INIT, "Skipping abstract terrain probe '{}' from '{}'", def.seri.id, def.rel_path);
+            continue;
+        }
+        let seri = def.seri;
         let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 1) else {
-            error!(target: "terrprobe_init", "Failed to create StrId for terrain probe id '{}'", seri.id);
+            error!(target: TERRPROBE_INIT, "Failed to create StrId for terrain probe id '{}'", seri.id);
             continue;
         };
         let opfilter_id = seri.opfilter_id.trim();
         let opfilter_var_name = seri.opfilter_var_name.trim();
         let opfilter_ent = if !opfilter_id.is_empty() {
             let Ok(opfilter_ent) = opfilter_entity_map.0.get_cloned(opfilter_id) else {
-                error!(target: "terrprobe_init", "Failed to resolve opfilter '{}' for terrain probe '{}'", seri.opfilter_id, seri.id);
+                error!(target: TERRPROBE_INIT, "Failed to resolve opfilter '{}' for terrain probe '{}'", seri.opfilter_id, seri.id);
                 continue;
             };
             Some(opfilter_ent)
@@ -55,21 +61,21 @@ pub fn init_terrain_probes(
             || seri.opfilter_min_val != f32::NEG_INFINITY
             || seri.opfilter_max_val != f32::INFINITY;
         if opfilter_ent.is_none() && !has_inline_overrides {
-            error!(target: "terrprobe_init", "Terrain probe '{}' requires either opfilter_id or inline opfilter_* fields", seri.id);
+            error!(target: TERRPROBE_INIT, "Terrain probe '{}' requires either opfilter_id or inline opfilter_* fields", seri.id);
             continue;
         }
         let opfilter_ref = match (opfilter_ent, has_inline_overrides) {
             (Some(opfilter_ent), false) => {
-                let Ok(_) = opfilter_query.get(opfilter_ent) else {
-                    error!(target: "terrprobe_init", "OpFilter entity {:?} missing OpFilter component for terrain probe '{}'", opfilter_ent, seri.id);
+                let Ok((_,)) = opfilter_query.get(opfilter_ent) else {
+                    error!(target: TERRPROBE_INIT, "OpFilter entity {:?} missing OpFilter component for terrain probe '{}'", opfilter_ent, seri.id);
                     continue;
                 };
                 OpFilterRef(opfilter_ent)
             }
             (opfilter_ent, _) => {
                 let mut opfilter = if let Some(opfilter_ent) = opfilter_ent {
-                    let Ok(opfilter) = opfilter_query.get(opfilter_ent) else {
-                        error!(target: "terrprobe_init", "OpFilter entity {:?} missing OpFilter component for terrain probe '{}'", opfilter_ent, seri.id);
+                    let Ok((opfilter,)) = opfilter_query.get(opfilter_ent) else {
+                        error!(target: TERRPROBE_INIT, "OpFilter entity {:?} missing OpFilter component for terrain probe '{}'", opfilter_ent, seri.id);
                         continue;
                     };
                     opfilter.clone()
@@ -100,7 +106,7 @@ pub fn init_terrain_probes(
         let mut structuregen_whitelist = Vec::with_capacity(seri.structuregen_whitelist.len());
         for sgc_id in &seri.structuregen_whitelist {
             let Ok(sgc_ent) = sgc_entity_map.0.get_cloned(sgc_id) else {
-                error!(target: "terrprobe_init", "Failed to resolve SGC '{}' for terrain probe '{}'", sgc_id, seri.id);
+                error!(target: TERRPROBE_INIT, "Failed to resolve SGC '{}' for terrain probe '{}'", sgc_id, seri.id);
                 continue;
             };
             structuregen_whitelist.push(sgc_ent);
@@ -108,7 +114,7 @@ pub fn init_terrain_probes(
         let mut structuregen_blacklist = Vec::with_capacity(seri.structuregen_blacklist.len());
         for sgc_id in &seri.structuregen_blacklist {
             let Ok(sgc_ent) = sgc_entity_map.0.get_cloned(sgc_id) else {
-                error!(target: "terrprobe_init", "Failed to resolve SGC '{}' for terrain probe '{}'", sgc_id, seri.id);
+                error!(target: TERRPROBE_INIT, "Failed to resolve SGC '{}' for terrain probe '{}'", sgc_id, seri.id);
                 continue;
             };
             structuregen_blacklist.push(sgc_ent);
@@ -120,7 +126,7 @@ pub fn init_terrain_probes(
                 continue;
             };
             for &tile_ent in tile_ents {
-                let Ok(_) = entity_zeroes.get(tile_ent) else {
+                let Ok((_,)) = entity_zeroes.get(tile_ent) else {
                     continue;
                 };
                 let templ_ref = TemplEntiRef(tile_ent);
@@ -131,11 +137,11 @@ pub fn init_terrain_probes(
         }
 
         let Some(parsed_probe_pattern) = ProbePatternSeri::parse(&seri.probe_pattern) else {
-            error!(
-                target: "terrprobe_init",
-                "Invalid probe_pattern '{}' for terrain probe '{}'. Expected 'concentric' (alias: 'conc'), 'chunk' or 'region'",
-                seri.probe_pattern,
-                seri.id
+                error!(
+                    target: TERRPROBE_INIT,
+                    "Invalid probe_pattern '{}' for terrain probe '{}'. Expected 'concentric' (alias: 'conc'), 'chunk' or 'region'",
+                    seri.probe_pattern,
+                    seri.id
             );
             continue;
         };

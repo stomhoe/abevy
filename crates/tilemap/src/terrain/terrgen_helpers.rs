@@ -1,6 +1,5 @@
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
 use common::{common_components::{HashId, HashIdMap, StrId}, common_tag_components::HashedTagsVec};
-use debug_unwraps::DebugUnwrapExt;
 
 use crate::{
     chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk,
@@ -150,7 +149,7 @@ pub(crate) fn process_pending_ops_batch(
     let mut last_success_idx_for_requester: EntityHashMap<usize> = EntityHashMap::new();
     let mut sampled_matrices_by_requester: EntityHashMap<SampledValues> = EntityHashMap::new();
 
-    while let Some(ev) = pending_queue.pop() { unsafe {
+    while let Some(ev) = pending_queue.pop() {
         upsert_sample_matrix_for_pending(&ev, &mut sampled_matrices_by_requester);
         if !context.oplists.contains_key(&ev.oplist.0) {
             error!(target: "terrgen_systems", "Oplist entity {:?} not found in terrgen_process_pending_ops", ev.oplist);
@@ -173,33 +172,6 @@ pub(crate) fn process_pending_ops_batch(
             None
         };
         let has_filter = filtered_op != Entity::PLACEHOLDER;
-
-        if let Some(compiled_root) = context
-            .oplists
-            .get(&ev.oplist.0)
-            .and_then(|o| o.compiled_branch_ast.as_ref())
-            .cloned()
-        {
-            process_compiled_branch_node(
-                &compiled_root,
-                ev.gpos(),
-                my_oplist_size,
-                &HashIdMap::new(),
-                &ev,
-                &context,
-                &gen_settings,
-                dimension_hash,
-                filter,
-                has_filter,
-                &mut emitted_per_probe,
-                &mut last_success_idx_for_requester,
-                &mut sampled_matrices_by_requester,
-                &mut result,
-                capture_debug,
-            );
-            mark_pending_op_complete(&ev, &mut result);
-            continue;
-        }
 
         let mut frame_stack = vec![EvalFrame {
             oplist: ev.oplist.0,
@@ -251,7 +223,7 @@ pub(crate) fn process_pending_ops_batch(
                 &mut result,
             );
 
-            let bifurcation = oplist.bifurcations.get(destination_i).debug_unwrap_unchecked();
+            let Some(bifurcation) = oplist.bifurcations.get(destination_i) else { continue; };
             collect_branch_outputs(
                 &mut result,
                 &ev,
@@ -271,7 +243,7 @@ pub(crate) fn process_pending_ops_batch(
             }
         }
         mark_pending_op_complete(&ev, &mut result);
-    }}
+    }
 
     for (_, sample_idx) in last_success_idx_for_requester.drain() {
         let Some(sample) = result.sampled_value_events.get_mut(sample_idx) else { continue; };
@@ -337,103 +309,6 @@ fn collect_noise_entities(oplist: &OperationList) -> Vec<Entity> {
     }
     oplist.expr_tree.output.collect_noise_entities(&mut out);
     out
-}
-
-fn process_compiled_branch_node(
-    node: &CompiledBranchNode,
-    gpos: GlobalTilePos,
-    oplist_size: OplistSize,
-    inherited_vars: &HashIdMap<f32>,
-    source_ev: &PendingOp,
-    context: &TerrGenTaskContext,
-    gen_settings: &GlobalGenSettings,
-    dimension_hash: HashId,
-    filter: Option<&OpFilter>,
-    has_filter: bool,
-    emitted_per_probe: &mut EntityHashMap<u32>,
-    last_success_idx_for_requester: &mut EntityHashMap<usize>,
-    sampled_matrices_by_requester: &mut EntityHashMap<SampledValues>,
-    result: &mut TerrGenOpTaskResult,
-    capture_debug: bool,
-) {
-    use crate::terrain::terrgen_expression::EvalContext;
-
-    if node.branches.is_empty() {
-        return;
-    }
-
-    let eval_context = EvalContext {
-        global_pos: gpos,
-        dimension_hash,
-        gen_settings,
-        oplist_size,
-        noises: &context.noises,
-        variables: inherited_vars,
-    };
-    let (output_value, computed_vars) = node.expr_tree.eval(inherited_vars, &eval_context);
-    if capture_debug {
-        push_debug_sample(
-            result,
-            context,
-            source_ev.dimension_ref(),
-            gpos,
-            node.source_oplist,
-            output_value,
-            &computed_vars,
-        );
-    }
-
-    let destination_i = (output_value as usize).min(node.branches.len() - 1);
-    try_emit_filter_match(
-        source_ev,
-        context,
-        node.source_oplist,
-        gpos,
-        output_value,
-        &computed_vars,
-        filter,
-        has_filter,
-        emitted_per_probe,
-        last_success_idx_for_requester,
-        sampled_matrices_by_requester,
-        result,
-    );
-
-    let branch = &node.branches[destination_i];
-    collect_branch_outputs(
-        result,
-        source_ev,
-        node.source_oplist,
-        gpos,
-        oplist_size,
-        dimension_hash,
-        &branch.biome_tags,
-        &branch.tiles,
-    );
-
-    if let Some(child) = branch.child.as_ref()
-        && let Some(child_oplist_size) = branch.child_size
-    {
-        for child_gpos in child_positions(gpos, oplist_size, child_oplist_size) {
-            process_compiled_branch_node(
-                child,
-                child_gpos,
-                child_oplist_size,
-                &computed_vars,
-                source_ev,
-                context,
-                gen_settings,
-                dimension_hash,
-                filter,
-                has_filter,
-                emitted_per_probe,
-                last_success_idx_for_requester,
-                sampled_matrices_by_requester,
-                result,
-                capture_debug,
-            );
-        }
-    }
 }
 
 fn push_debug_sample(

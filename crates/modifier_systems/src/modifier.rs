@@ -38,6 +38,7 @@ pub fn plugin(app: &mut App) {
     .register_type::<ModifierTarget>()
 
     .replicate::<ModifierTarget>()
+    .replicate::<ModifierTags>()
     .replicate::<BaseValue>()
     .replicate_once::<CurrEffectiveValue>()
     .replicate::<MitigatingOnly>()

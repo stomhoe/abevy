@@ -78,6 +78,11 @@ macro_rules! define_fixedstr_id {
                 Self(FixedStr::<$len>::trunc(s.trim()))
             }
         }
+        impl From<&$ty> for $ty {
+            fn from(value: &$ty) -> Self {
+                Self(FixedStr::<$len>::trunc(value.as_ref()))
+            }
+        }
         impl Default for $ty {
             fn default() -> Self {
                 Self(FixedStr::<$len>::default())

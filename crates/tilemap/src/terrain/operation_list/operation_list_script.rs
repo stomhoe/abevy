@@ -211,7 +211,7 @@ pub fn parse_tg_script_to_expr_tree(
                 output_expr = Some(expr);
             } else {
                 assignments.push(Assignment {
-                    name: StrId::trunc(var_name.clone()),
+                    name: HashId::from(var_name.as_str()),
                     expr,
                 });
                 aliases.insert(var_name.clone(), var_name);

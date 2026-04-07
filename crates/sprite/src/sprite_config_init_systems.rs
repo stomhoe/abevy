@@ -63,6 +63,7 @@ pub fn init_sprite_configs(
             spritecfg_ent,
             (
                 str_id.clone(),
+                AddHashIdFromStrId,
                 SpriteConfig,
                 visib,
                 offset4children_cats,

@@ -1,7 +1,8 @@
 use being_shared::BeingInstTemplate;
 use bevy::ecs::{entity::EntityHashSet, entity_disabling::Disabled};
+use bevy::platform::collections::HashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
-use common::{AnyDisabling, common_components::StrId, };
+use common::{AnyDisabling, common_components::{HashId, StrId}, };
 
 use game_common::game_common_components::Templ;
 use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
@@ -78,12 +79,13 @@ pub fn sample_from_sprite_entities(
     changed_beings: Query<Entity, (Changed<SampleSpritesamplers>, Without<BeingInstTemplate>, Without<Templ>)>,
     being_query: Query<(&SampleSpritesamplers, Has<ScsToBuild>), (Without<BeingInstTemplate>, Without<Templ>, AnyDisabling)>,
     samplers_query: Query<&EntityWeightedSampler>,
+    sprite_hash_query: Query<&HashId, (With<SpriteConfig>, AnyDisabling)>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut beings_to_process: Local<Vec<Entity>>,
     mut visited: Local<EntityHashSet>,
 ) {
     let mut configs_to_build = Vec::new();
-    let mut sampled_configs = EntityHashSet::new();
+    let mut sampled_configs = HashSet::new();
     beings_to_process.clear();
     visited.clear();
 
@@ -109,6 +111,7 @@ pub fn sample_from_sprite_entities(
             sample_from_entity_recursive(
                 *entity,
                 &samplers_query,
+                &sprite_hash_query,
                 &mut sampled_configs,
                 &mut visited,
             );
@@ -146,7 +149,8 @@ fn resolve_sampler_id_no_sample(
 fn sample_from_entity_recursive(
     ent: Entity,
     sampler_query: &Query<&EntityWeightedSampler>,
-    sampled_configs: &mut EntityHashSet,
+    sprite_hash_query: &Query<&HashId, (With<SpriteConfig>, AnyDisabling)>,
+    sampled_configs: &mut HashSet<HashId>,
     visited: &mut EntityHashSet,
 ) {
     if let Ok(weighted_sampler) = sampler_query.get(ent) {
@@ -154,21 +158,26 @@ fn sample_from_entity_recursive(
             warn!(target: "sprite_sampler_systems", "Detected cycle while sampling sprite sampler graph at entity {:?}", ent);
             return;
         }
-        let mut rng = rand::rng();
-        if let Some(sampled_ent) = weighted_sampler.sample_with_rng(&mut rng) {
-            debug!(target: "sprite_sampler_systems", "Sampled entity {:?} from sampler {:?}", sampled_ent, ent);
-            sample_from_entity_recursive(
-                sampled_ent,
-                sampler_query,
-                sampled_configs,
-                visited,
-            );
-        } else {
-            error!(target: "sprite_sampler_systems", "Failed to sample from sampler {:?}, sampler has no valid entries", ent);
+            let mut rng = rand::rng();
+            if let Some(sampled_ent) = weighted_sampler.sample_with_rng(&mut rng) {
+                debug!(target: "sprite_sampler_systems", "Sampled entity {:?} from sampler {:?}", sampled_ent, ent);
+                sample_from_entity_recursive(
+                    sampled_ent,
+                    sampler_query,
+                    sprite_hash_query,
+                    sampled_configs,
+                    visited,
+                );
+            } else {
+                error!(target: "sprite_sampler_systems", "Failed to sample from sampler {:?}, sampler has no valid entries", ent);
         }
         visited.remove(&ent);
     } else {
-        debug!(target: "sprite_sampler_systems", "Resolved entity {:?} to sprite config", ent);
-        sampled_configs.insert(ent);
+        let Ok(hash_id) = sprite_hash_query.get(ent) else {
+            error!(target: "sprite_sampler_systems", "Resolved entity {:?} to sprite config but it has no HashId", ent);
+            return;
+        };
+        debug!(target: "sprite_sampler_systems", "Resolved entity {:?} to sprite config hash {}", ent, hash_id);
+        sampled_configs.insert(*hash_id);
     }
 }

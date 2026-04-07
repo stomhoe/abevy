@@ -304,7 +304,7 @@ pub struct EvalContext<'a> {
 /// Variable assignment in an oplist
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Assignment {
-    pub name: StrId,
+    pub name: HashId,
     pub expr: Expr,
 }
 
@@ -330,7 +330,7 @@ impl ExprOpList {
                 ..*context
             };
             let value = assignment.expr.eval(&local_context);
-            let _ = variables.overwrite(HashId::from(assignment.name.as_str()), value);
+            let _ = variables.overwrite(assignment.name, value);
         }
 
         // Evaluate output expression

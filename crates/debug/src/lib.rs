@@ -2,6 +2,7 @@
 pub use debug::*;
 pub use beings_list_window::*;
 pub use being_details_inspector::*;
+pub use faction_details_inspector::*;
 pub use chunk_details_inspector::*;
 pub use debug_chunking_window::*;
 pub use debug_fonts::*;
@@ -35,6 +36,7 @@ mod chunk_details_inspector;
 mod region_details_inspector;
 mod tilemap_details_inspector;
 mod being_details_inspector;
+mod faction_details_inspector;
 mod player_details_inspector;
 mod regions_list_window;
 mod beings_list_window;

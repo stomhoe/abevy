@@ -2,6 +2,8 @@ use being_shared::BeingInstTemplate;
 #[allow(unused_imports)]
 use bevy::{
     ecs::{entity::EntityHashSet, entity_disabling::Disabled},
+    platform::collections::HashMap,
+    platform::collections::HashSet,
     prelude::*,
 };
 #[allow(unused_imports)]
@@ -33,11 +35,12 @@ pub fn add_spritechildren_and_comps(
         ),
     >,
     spritecfgs_query: Query<
-        (Entity, &StrId, Option<&ScsToBuild>),
+        (Entity, &StrId, &HashId, Option<&ScsToBuild>),
         (With<SpriteConfig>, common::AnyDisabling),
     >,
+    sprite_map: Res<SpriteConfigEntityMap>,
     held_sprites_query: Query<&HeldSprites, common::AnyDisabling>,
-    sprite_config_ref_query: Query<&TemplEntiRef, common::AnyDisabling>,
+    sprite_config_hash_query: Query<&HashId, (With<SpriteConfig>, common::AnyDisabling)>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut removed_unloaded: RemovedComponents<being_shared::Unloaded>,
     mut fathers_to_build: Local<Vec<Entity>>,
@@ -53,22 +56,36 @@ pub fn add_spritechildren_and_comps(
         };
         let baseholder_ref = baseholder_ref.cloned().unwrap_or(BaseHolderRef { base: parent_of_sprite });
         let is_reenabled_only = changed_fathers.get(parent_of_sprite).is_err();
-        if is_reenabled_only && !needs_sprite_build(to_build, &baseholder_ref, &held_sprites_query, &sprite_config_ref_query) {
+        if is_reenabled_only && !needs_sprite_build(to_build, &baseholder_ref, &held_sprites_query, &sprite_config_hash_query) {
             return;
         }
-        spritecfgs_query.iter_many(to_build.0.iter()).for_each(|(spritecfg_ent, str_id, extra_to_build)| {
+        for cfg_hash_id in to_build.0.iter() {
+            let Ok(&spritecfg_ent) = sprite_map.0.get(*cfg_hash_id) else {
+                warn!(target: "sprite_building", "SpriteConfig hash {} missing from SpriteConfigEntityMap while building {:?}", cfg_hash_id, parent_of_sprite);
+                continue;
+            };
+            let Ok((_, str_id, _, extra_to_build)) = spritecfgs_query.get(spritecfg_ent) else {
+                warn!(target: "sprite_building", "SpriteConfig entity {:?} for hash {} is missing during build", spritecfg_ent, cfg_hash_id);
+                continue;
+            };
             info!(target: "sprite_building", "Building sprite {}", str_id);
 
+            let mut already_built = false;
             if let Ok(held_sprites) = held_sprites_query.get(baseholder_ref.base) {
                 for sprite_ent in held_sprites.iter() {
-                    if let Ok(sprite_cfg_ref) = sprite_config_ref_query.get(sprite_ent) {
-                        if sprite_cfg_ref.0 == spritecfg_ent {
-                            debug!(target: "sprite_building", "SpriteConfig '{}' already present in HeldSprites of base holder {:?}, skipping.", str_id, baseholder_ref.base);
-                            //cmd.entity(parent_of_sprite).insert(DoNotRetryBuildScRef);
-                            return;
-                        }
+                    let Ok(sprite_cfg_ref) = sprite_config_hash_query.get(sprite_ent) else {
+                        continue;
+                    };
+                    if *sprite_cfg_ref == *cfg_hash_id {
+                        debug!(target: "sprite_building", "SpriteConfig '{}' already present in HeldSprites of base holder {:?}, skipping.", str_id, baseholder_ref.base);
+                        //cmd.entity(parent_of_sprite).insert(DoNotRetryBuildScRef);
+                        already_built = true;
+                        break;
                     }
                 }
+            }
+            if already_built {
+                continue;
             }
             let sprite = cmd.spawn((
                 TemplEntiRef(spritecfg_ent),
@@ -77,7 +94,7 @@ pub fn add_spritechildren_and_comps(
                 AcAnimationProgresses::default(),
 
                 ChildOf(parent_of_sprite),
-                Replicated,
+                //Replicated,
             )).id();
 
             cmd.entity(sprite).try_insert(baseholder_ref);
@@ -90,7 +107,7 @@ pub fn add_spritechildren_and_comps(
             // if let Some(excl) = &comps_to_build.exclusive {
             //     cmd.entity(child_sprite).insert(excl.clone());
             // }
-        });
+        }
 
         //cmd.entity(parent_of_sprite).remove::<SpriteCfgsToBuild>();
         //NO HACER ESO PORQ HACE FALTA PARA LA REPLICACIÓN ^^
@@ -121,7 +138,7 @@ pub fn remap_broken_sprite_config_refs_after_hotreload(
 #[allow(unused_parens)]
 pub fn become_child_of_sprite_with_tag(
     mut cmd: Commands,
-    changed_new_sprites: Query<Entity, (Without<SpriteConfig>, Changed<TemplEntiRef>)>,
+    changed_new_sprites: Query<Entity, (Without<SpriteConfig>, Changed<TemplEntiRef>,  common::AnyDisabling)>,
     new_sprite_baseholder_query: Query<&BaseHolderRef, (Without<SpriteConfig>, common::AnyDisabling)>,
     sprite_config_ref_query: Query<&TemplEntiRef, (Without<SpriteConfig>, common::AnyDisabling)>,
     sprite_holder: Query<&HeldSprites>,
@@ -129,6 +146,7 @@ pub fn become_child_of_sprite_with_tag(
     other_cats: Query<&TagSet, (common::AnyDisabling)>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut sprites_to_process: Local<EntityHashSet>,
+    mut parent_by_tag: Local<HashMap<Tag, Entity>>,
 ) {
     let mut childofs_to_add = Vec::new();
     let changed_iter = changed_new_sprites.iter();
@@ -141,6 +159,25 @@ pub fn become_child_of_sprite_with_tag(
         let Ok(sprite_holder_ref) = new_sprite_baseholder_query.get(new_ent) else {
             continue;
         };
+        let Ok(held_sprites) = sprite_holder.get(sprite_holder_ref.base) else {
+            warn!(target: "sprite_building", "Cannot get HeldSprites for base holder {:?} when processing become_child_of_sprite_with_tag for entity {:?}", sprite_holder_ref.base, new_ent);
+            continue;
+        };
+
+        parent_by_tag.clear();
+        parent_by_tag.reserve(held_sprites.len());
+        for other_ent in held_sprites.iter() {
+            let Ok(o_spritecfg_ref) = sprite_config_ref_query.get(other_ent) else {
+                continue;
+            };
+            let Ok(other_cats) = other_cats.get(o_spritecfg_ref.0) else {
+                continue;
+            };
+            for tag in other_cats.iter() {
+                parent_by_tag.entry(tag.clone()).or_insert(other_ent);
+            }
+        }
+
         let Ok(new_sprite_cfg_ref) = sprite_config_ref_query.get(new_ent) else {
             continue;
         };
@@ -148,31 +185,14 @@ pub fn become_child_of_sprite_with_tag(
             continue;
         };
 
-        let Ok(held_sprites) = sprite_holder.get(sprite_holder_ref.base) else {
-            warn!(target: "sprite_building", "Cannot get HeldSprites for base holder {:?} when processing become_child_of_sprite_with_tag for entity {:?}", sprite_holder_ref.base, new_ent);
+        let Some(&parent_ent) = parent_by_tag.get(&becomes_child_of_sprite_with_cat.0) else {
             continue;
         };
-
-        for other_ent in held_sprites.iter() {
-            if new_ent == other_ent {
-                continue;
-            }
-
-            let Ok(o_spritecfg_ref) = sprite_config_ref_query.get(other_ent) else {
-                continue;
-            };
-            let other_cats = match other_cats.get(o_spritecfg_ref.0) {
-                Ok(cats) => cats,
-                Err(_) => {
-                    break;
-                }
-            };
-            if other_cats.0.contains(&becomes_child_of_sprite_with_cat.0) {
-                debug!(target: "sprite_building", "Adding ChildOfTag to entity {:?} with id: {}", new_ent, becomes_child_of_sprite_with_cat.0);
-                childofs_to_add.push((new_ent, ChildOf(other_ent)));
-                break;
-            }
+        if parent_ent == new_ent {
+            continue;
         }
+        debug!(target: "sprite_building", "Adding ChildOfTag to entity {:?} with id: {}", new_ent, becomes_child_of_sprite_with_cat.0);
+        childofs_to_add.push((new_ent, ChildOf(parent_ent)));
     }
     cmd.try_insert_batch(std::mem::take(&mut childofs_to_add));
 }
@@ -181,18 +201,18 @@ fn needs_sprite_build(
     to_build: &ScsToBuild,
     baseholder_ref: &BaseHolderRef,
     held_sprites_query: &Query<&HeldSprites, common::AnyDisabling>,
-    sprite_config_ref_query: &Query<&TemplEntiRef, common::AnyDisabling>,
+    sprite_config_hash_query: &Query<&HashId, (With<SpriteConfig>, common::AnyDisabling)>,
 ) -> bool {
     let Ok(held_sprites) = held_sprites_query.get(baseholder_ref.base) else {
         return true;
     };
 
-    let mut built_cfgs = EntityHashSet::with_capacity(held_sprites.iter().len());
+    let mut built_cfgs = HashSet::with_capacity(held_sprites.iter().len());
     for sprite_ent in held_sprites.iter() {
-        let Ok(sprite_cfg_ref) = sprite_config_ref_query.get(sprite_ent) else {
+        let Ok(sprite_cfg_ref) = sprite_config_hash_query.get(sprite_ent) else {
             continue;
         };
-        built_cfgs.insert(sprite_cfg_ref.0);
+        built_cfgs.insert(*sprite_cfg_ref);
     }
 
     to_build.0.iter().any(|cfg_ent| !built_cfgs.contains(cfg_ent))

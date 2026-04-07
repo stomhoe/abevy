@@ -29,6 +29,44 @@ pub struct Room {
     h: i32,
 }
 
+impl Room {
+    fn sample_spawn_anchor(
+        &self,
+        floor_map: &[bool],
+        hazard_map: &[bool],
+        tile_width: usize,
+        tile_height: usize,
+        origin_tile: GlobalTilePos,
+        rng: &mut impl Rng,
+    ) -> Option<GlobalTilePos> {
+        let min_x = self.x.max(0);
+        let min_y = self.y.max(0);
+        let max_x = (self.x + self.w).min(tile_width as i32);
+        let max_y = (self.y + self.h).min(tile_height as i32);
+        if min_x >= max_x || min_y >= max_y {
+            return None;
+        }
+
+        let mut chosen = None;
+        let mut seen = 0u32;
+        for y in min_y..max_y {
+            for x in min_x..max_x {
+                let ux = x as usize;
+                let uy = y as usize;
+                let idx = uy * tile_width + ux;
+                if !floor_map.get(idx).copied().unwrap_or(false) || hazard_map.get(idx).copied().unwrap_or(false) {
+                    continue;
+                }
+                seen = seen.saturating_add(1);
+                if rng.random_range(0..seen) == 0 {
+                    chosen = Some(GlobalTilePos::new(origin_tile.x() + x, origin_tile.y() + y));
+                }
+            }
+        }
+        chosen
+    }
+}
+
 #[allow(unused_parens, )]
 pub fn corridor_dungeon_building_system(
     mut reader: MessageReader<SgcPrepareTilesOrder>,
@@ -41,7 +79,6 @@ pub fn corridor_dungeon_building_system(
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
-    mut room_spawn_anchors: Local<Vec<GlobalTilePos>>,
     mut rooms: Local<Vec<Room>>,
     mut tiles4chunk: Local<TilesFromBuilder>,
 ) {
@@ -50,7 +87,6 @@ pub fn corridor_dungeon_building_system(
         return;
     };
     compliances_to_emit.clear();
-    room_spawn_anchors.clear();
     room_pack_spawn.begin_pass();
     rooms.clear();
     tiles4chunk.clear();
@@ -315,22 +351,14 @@ pub fn corridor_dungeon_building_system(
         }
 
         // Carve rooms with configurable shapes
-        room_spawn_anchors.clear();
-        room_spawn_anchors.reserve(rooms.len());
         for rm in &rooms {
             let shape = same_shape.unwrap_or_else(|| pick_shape(&mut rng));
-            let anchor_gpos = GlobalTilePos::new(
-                origin_tile.x() + (rm.x + (rm.w / 2)),
-                origin_tile.y() + (rm.y + (rm.h / 2)),
-            );
             match shape {
                 RoomShape::Rectangle => {
                     carve_room_rectangle(&mut floor_map, tile_width, tile_height, rm.x, rm.y, rm.w, rm.h);
-                    room_spawn_anchors.push(anchor_gpos);
                 }
                 RoomShape::Circle => {
                     carve_room_circle(&mut floor_map, tile_width, tile_height, rm.x, rm.y, rm.w, rm.h);
-                    room_spawn_anchors.push(anchor_gpos);
                 }
                 RoomShape::Triangle => {
                     // Randomly choose triangle type
@@ -393,7 +421,6 @@ pub fn corridor_dungeon_building_system(
                         }
                     };
                     carve_room_triangle_vertices(&mut floor_map, tile_width, tile_height, v0, v1, v2);
-                    room_spawn_anchors.push(anchor_gpos);
                 }
                 RoomShape::RegularPolygon => {
                     let sides = if polygon_max_sides <= polygon_min_sides {
@@ -417,12 +444,30 @@ pub fn corridor_dungeon_building_system(
                         sides,
                         rotation_deg,
                     );
-                    room_spawn_anchors.push(anchor_gpos);
                 }
             }
         }
         let room_spawn_sampler = room_spawn_config.as_weighted_sampler();
-        for anchor_gpos in room_spawn_anchors.iter().copied() {
+        for room in rooms.iter() {
+            let Some(anchor_gpos) = room.sample_spawn_anchor(
+                &floor_map,
+                &hazard_map,
+                tile_width,
+                tile_height,
+                origin_tile,
+                &mut rng,
+            ) else {
+                trace!(
+                    target: DUNGEONING_SYSTEM,
+                    "Skipped room_spawn InstancePack for structure={} because room x={} y={} w={} h={} had no valid floor anchor",
+                    structured_gen_cfg.structure_id(),
+                    room.x,
+                    room.y,
+                    room.w,
+                    room.h,
+                );
+                continue;
+            };
             let Some(room_spawn_key) = room_spawn_sampler.sample_with_rng(&mut rng) else {
                 continue;
             };

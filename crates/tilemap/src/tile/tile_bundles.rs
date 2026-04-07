@@ -49,7 +49,7 @@ pub struct ToDenyOnTileClone(
     RotateTransform,
     TerrBlendParams,
     ItemsGeneratedOnDeath,
-    TileIndex,
+    U16TileIndex,
 
 );
 

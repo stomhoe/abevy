@@ -1,17 +1,15 @@
 use ::being_shared::*;
 use bevy::prelude::*;
 use common::log_targets::BEING_CONTROL;
-use faction_shared::BelongsToAPlayerFaction;
 use game_common::game_common_components::CameraTarget;
-use movement::movement_components::{InputMaxSpeed, InputMoveDir, InputSpeedThrottleMult};
+use movement::movement_components::*;
 use player_shared::player_components::{HostPlayer, Mine, MyPlayer, Player};
-use tilemap::chunking::chunking_components::ActivatingChunks;
-use tilemap_shared::LoadChunksAround;
+use ::tilemap_shared::*;
 
 pub fn add_activates_chunks(
     mut cmd: Commands,
-    query: Query<Entity, (With<Being>, Added<BelongsToAPlayerFaction>)>,
-    mut removed: RemovedComponents<BelongsToAPlayerFaction>,
+    query: Query<Entity, (With<Being>, Added<HumanControlled>)>,
+    mut removed: RemovedComponents<HumanControlled>,
     chunk_range: Res<LoadChunksAround>,
 ) {
     let iter = query.iter();
@@ -25,7 +23,7 @@ pub fn add_activates_chunks(
 
 pub fn sync_player_being_chunk_ranges(
     default_chunk_range_for_player_beings: Res<LoadChunksAround>,
-    mut query: Query<&mut LoadChunksAround, (With<Being>, With<BelongsToAPlayerFaction>)>,
+    mut query: Query<&mut LoadChunksAround, (With<Being>, With<HumanControlled>)>,
 ) {
     if !default_chunk_range_for_player_beings.is_changed() {
         return;
@@ -39,8 +37,8 @@ pub fn on_control_change(
     mut commands: Commands,
     self_player: Query<(Entity, Has<HostPlayer>), (MyPlayer)>,
     self_player_became_mine: Query<(), (MyPlayer, Added<Mine>)>,
-    changed_query: Query<(Entity, &ComputedBy, Has<CameraTarget>), (Changed<ComputedBy>, )>,
-    computed_by_query: Query<(Entity, &ComputedBy, Has<CameraTarget>)>,
+    changed_query: Query<(Entity, &ComputedBy), (Changed<ComputedBy>, )>,
+    computed_by_query: Query<(Entity, &ComputedBy)>,
     mut input_dirs: Query<&mut InputMoveDir>,
     mut input_speed_query: Query<(&mut InputSpeedThrottleMult, &mut InputMaxSpeed, ), (), >,
     mut removed_controlled_by: RemovedComponents<ComputedBy>,
@@ -49,11 +47,11 @@ pub fn on_control_change(
     for being_ent in removed_controlled_by.read() {
         commands.entity(being_ent).try_remove::<(ComputedLocally, HumanControlled, CameraTarget)>();
     }
-    let Ok((self_entity, is_host)) = self_player.single() else {
+    let Ok((self_entity, am_i_host)) = self_player.single() else {
         debug_once!(target: BEING_CONTROL, "Skipping control refresh until local player is marked Mine");
         return;
     };
-    let mut apply_control_change = |being_ent: Entity, controlled_by: &ComputedBy, is_camera_target: bool| {
+    let mut apply_control_change = |being_ent: Entity, controlled_by: &ComputedBy| {
         if let Ok(mut input_dir) = input_dirs.get_mut(being_ent) {
             input_dir.0 = Vec2::ZERO;
         }
@@ -66,28 +64,29 @@ pub fn on_control_change(
                     input_max_speed.0 = f32::MAX;
                 }
             } else {
-                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, )>();
+                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, LoadChunksAround, ActivatingChunks)>();
             }
         } else {
             commands.entity(being_ent).try_remove::<(ComputedLocally, CameraTarget)>();
-            if !is_host {
-                commands.entity(being_ent).try_remove::<HumanControlled>();
-                if !is_camera_target {
-                    commands.entity(being_ent).try_remove::<(LoadChunksAround, ActivatingChunks)>();
+            if am_i_host {
+                if controlled_by.human_dc_input {
+                    commands.entity(being_ent).try_insert((HumanControlled, *default_chunk_range_for_player_beings, ));
+                } else {
+                    commands.entity(being_ent).try_remove::<(HumanControlled, LoadChunksAround, ActivatingChunks)>();
                 }
             } else {
-                commands.entity(being_ent).try_insert(HumanControlled);
+                commands.entity(being_ent).try_remove::<(HumanControlled, LoadChunksAround, ActivatingChunks)>();
             }
         }
     };
     if !self_player_became_mine.is_empty() {
-        for (being_ent, controlled_by, is_camera_target) in computed_by_query.iter() {
-            apply_control_change(being_ent, controlled_by, is_camera_target);
+        for (being_ent, controlled_by) in computed_by_query.iter() {
+            apply_control_change(being_ent, controlled_by);
         }
         return;
     }
-    for (being_ent, controlled_by, is_camera_target) in changed_query.iter() {
-        apply_control_change(being_ent, controlled_by, is_camera_target);
+    for (being_ent, controlled_by) in changed_query.iter() {
+        apply_control_change(being_ent, controlled_by);
     }
 }
 

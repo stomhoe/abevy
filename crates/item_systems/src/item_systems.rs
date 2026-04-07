@@ -80,6 +80,7 @@ pub fn sync_items_at_gpos(
     mut tracked_pos: Local<EntityHashMap<(DimensionRef, GlobalTilePos)>>,
     query: Query<(Entity, &TemplEntiRef, Option<&DimensionRef>, Option<&Transform>, Option<&GlobalTilePos>, Has<ItemHeldIn>, Has<ScsToBuild>), (With<Item>, Without<Templ>)>,
     item_cfg_query: Query<&ItemSpritesConfig, (With<Item>, With<Templ>)>,
+    sprite_cfg_hash_query: Query<&common::common_components::HashId, (With<::sprite_shared::SpriteConfig>, common::AnyDisabling)>,
 ) {
     let Some(items_at_gpos) = items_at_gpos.as_mut() else {
         tracked_pos.clear();
@@ -134,21 +135,7 @@ pub fn sync_items_at_gpos(
             continue;
         };
         if !has_scs_to_build {
-            let dropped_sprite_cfg = item_cfg_query
-                .get(templ_ref.0)
-                .ok()
-                .and_then(|cfg| {
-                    if cfg.dropped_sprite_cfg.0 != Entity::PLACEHOLDER {
-                        return Some(cfg.dropped_sprite_cfg.0);
-                    }
-                    if cfg.icon_sprite_cfg.0 != Entity::PLACEHOLDER {
-                        return Some(cfg.icon_sprite_cfg.0);
-                    }
-                    None
-                });
-            if let Some(cfg_ent) = dropped_sprite_cfg {
-                let mut scs_to_build = ScsToBuild::with_capacity(1);
-                scs_to_build.0.insert(cfg_ent);
+            if let Some(scs_to_build) = dropped_scs_to_build(&item_cfg_query, &sprite_cfg_hash_query, *templ_ref) {
                 cmd.entity(item_ent).insert(scs_to_build);
             }
         }

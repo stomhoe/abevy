@@ -2,6 +2,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use common::log_targets;
+use common::common_components::HashId;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 use item_shared::{clone_item_from_templ, dropped_scs_to_build, Item, ItemHeldIn};
 use param_sets::BlockingTileParamSet;
@@ -12,6 +13,7 @@ use tilemap_shared::{DimensionRef, GlobalTilePos};
 pub struct ItemGroundMaterializeParamSet<'w, 's> {
     blocking_tiles: BlockingTileParamSet<'w, 's>,
     item_cfg_query: Query<'w, 's, &'static item_shared::ItemSpritesConfig, (With<Item>, With<Templ>)>,
+    sprite_cfg_hash_query: Query<'w, 's, &'static HashId, (With<::sprite_shared::SpriteConfig>, common::AnyDisabling)>,
     item_ground_query: Query<'w, 's, (&'static TemplEntiRef, &'static DimensionRef), (With<Item>, Without<Templ>)>,
     ac_z_query: Query<'w, 's, &'static AcZ>,
     occupied_nonstackable: Local<'s, HashSet<GlobalTilePos>>,
@@ -121,7 +123,7 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
             AcZ(z),
             ChildOf(dim_ref.0),
         ));
-        let Some(scs_to_build) = dropped_scs_to_build(&self.item_cfg_query, item_templ_ref) else {
+        let Some(scs_to_build) = dropped_scs_to_build(&self.item_cfg_query, &self.sprite_cfg_hash_query, item_templ_ref) else {
             return;
         };
         item_cmd.insert(scs_to_build);

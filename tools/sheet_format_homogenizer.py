@@ -159,6 +159,36 @@ def _component_center_x(comp: tuple[int, int, int, int, int]) -> float:
     return (x0 + x1) / 2.0
 
 
+def _component_center_y(comp: tuple[int, int, int, int, int]) -> float:
+    _, y0, _, y1, _ = comp
+    return (y0 + y1) / 2.0
+
+
+def _group_components_into_rows(
+    components: list[tuple[int, int, int, int, int]],
+) -> list[list[tuple[int, int, int, int, int]]]:
+    if not components:
+        return []
+
+    sorted_components = sorted(components, key=_component_center_y)
+    heights = [y1 - y0 for _, y0, _, y1, _ in sorted_components]
+    row_gap_threshold = max(2, int(round(median(heights) * 0.5)))
+
+    rows: list[list[tuple[int, int, int, int, int]]] = [[sorted_components[0]]]
+    for comp in sorted_components[1:]:
+        curr_row = rows[-1]
+        prev_center_y = _component_center_y(curr_row[-1])
+        curr_center_y = _component_center_y(comp)
+        if curr_center_y - prev_center_y > row_gap_threshold:
+            rows.append([comp])
+        else:
+            curr_row.append(comp)
+
+    for row in rows:
+        row.sort(key=_component_center_x)
+    return rows
+
+
 def _estimate_pitch(
     row_components: list[list[tuple[int, int, int, int, int]]],
     fallback_cell_w: int,
@@ -179,13 +209,22 @@ def _estimate_pitch(
     return max(pitch, max_comp_w + 2)
 
 
-def _estimate_row_pitch(row_bands: list[tuple[int, int]], fallback_cell_h: int) -> int:
-    if len(row_bands) < 2:
+def _estimate_row_pitch(
+    row_components: list[list[tuple[int, int, int, int, int]]],
+    fallback_cell_h: int,
+) -> int:
+    if len(row_components) < 2:
         return max(1, fallback_cell_h)
-    deltas = [next_y0 - y0 for (y0, _), (next_y0, _) in zip(row_bands, row_bands[1:]) if next_y0 > y0]
-    if not deltas:
-        return max(1, fallback_cell_h)
-    return max(1, int(round(median(deltas))))
+
+    centers = [_component_center_y(row[0]) for row in row_components if row]
+    deltas = [next_center - center for center, next_center in zip(centers, centers[1:]) if next_center > center]
+    max_comp_h = 0
+    for row in row_components:
+        for _, y0, _, y1, _ in row:
+            max_comp_h = max(max_comp_h, y1 - y0)
+
+    pitch = int(round(median(deltas))) if deltas else fallback_cell_h
+    return max(1, max(pitch, max_comp_h + 2, fallback_cell_h))
 
 
 def _estimate_band_pitch(bands: list[tuple[int, int]], fallback_cell: int) -> int:
@@ -230,35 +269,39 @@ def main() -> int:
     img = Image.open(input_path).convert("RGBA")
     cols, rows, cell_w, cell_h = _detect_grid(img)
     mask = _load_mask(img)
-    alpha = img.getchannel("A")
-    col_bands = _runs([max(alpha.crop((x, 0, x + 1, img.height)).getdata()) > 0 for x in range(img.width)])
-    row_bands = _row_bands(mask)
-    pitch = _estimate_band_pitch(col_bands, cell_w)
-    row_pitch = _estimate_band_pitch(row_bands, cell_h)
-    out_w = max(1, pitch * len(col_bands))
-    out_h = max(1, row_pitch * len(row_bands))
+    components = _connected_components(mask)
+    if not components:
+        img.save(output_path)
+        print(f"{input_path}: {img.width}x{img.height} -> empty sheet, output {output_path}")
+        return 0
+
+    row_components = _group_components_into_rows(components)
+    pitch = _estimate_pitch(row_components, cell_w)
+    row_pitch = _estimate_row_pitch(row_components, cell_h)
+    out_w = max(1, pitch * max((len(row) for row in row_components), default=1))
+    out_h = max(1, row_pitch * len(row_components))
 
     out = Image.new("RGBA", (out_w, out_h), (0, 0, 0, 0))
-    for row_idx, (row_y0, row_y1) in enumerate(row_bands):
-        for col_idx, (col_x0, col_x1) in enumerate(col_bands):
-            cell = img.crop((col_x0, row_y0, col_x1, row_y1))
+    for row_idx, row in enumerate(row_components):
+        for col_idx, (x0, y0, x1, y1, _) in enumerate(row):
+            cell = img.crop((x0, y0, x1, y1))
             match cell.getbbox():
                 case None:
                     continue
                 case cell_bbox:
                     cell = cell.crop(cell_bbox)
                     cell_x0, cell_y0, cell_x1, cell_y1 = cell_bbox
-                    cell_w = cell_x1 - cell_x0
-                    cell_h = cell_y1 - cell_y0
-                    slot_x0 = col_idx * pitch + (pitch - cell_w) // 2
-                    slot_y0 = row_idx * row_pitch + (row_pitch - cell_h) // 2
+                    comp_w = cell_x1 - cell_x0
+                    comp_h = cell_y1 - cell_y0
+                    slot_x0 = col_idx * pitch + (pitch - comp_w) // 2
+                    slot_y0 = row_idx * row_pitch + (row_pitch - comp_h) // 2
                     out.paste(cell, (slot_x0, slot_y0), cell)
 
     match out.getbbox():
         case None:
             pass
         case bbox:
-            out = out.crop(_snap_bounds_to_cells(bbox, max(1, cell_w), max(1, cell_h), out_w, out_h))
+            out = out.crop(bbox)
 
     out.save(output_path)
 
@@ -266,7 +309,7 @@ def main() -> int:
         f"{input_path}: {img.width}x{img.height} -> {cols} cols x {rows} rows, cell {cell_w}x{cell_h}"
     )
     print(
-        f"normalized: {len(row_bands)} sprite rows, {len(col_bands)} cells/row, pitch {pitch}px x {row_pitch}px, output {output_path}"
+        f"normalized: {len(row_components)} sprite rows, {max((len(row) for row in row_components), default=0)} cells/row, pitch {pitch}px x {row_pitch}px, output {output_path}"
     )
     return 0
 

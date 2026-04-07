@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
 use camera::camera_components::CameraTarget;
-use tilemap::chunking::MacroChunkTileIndices;
+use tilemap::chunking::MacroChunkU16IndexMatrix;
 use tilemap_shared::{DimensionRef, GlobalTilePos, LoadedMacroChunks};
 
 use crate::debug_resources::DubugWindowsVisibility;
@@ -31,7 +31,7 @@ impl Default for TileIndicesMapUiState {
 
 fn gather_tile_indices_u16_at(
     loaded_macro_chunks: &LoadedMacroChunks,
-    macro_chunk_tile_indices_query: &Query<&MacroChunkTileIndices, >,
+    macro_chunk_tile_indices_query: &Query<&MacroChunkU16IndexMatrix, >,
     dim_ref: DimensionRef,
     gpos: GlobalTilePos,
     out: &mut Vec<u16>,
@@ -59,7 +59,7 @@ pub fn tile_indices_map_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     loaded_macro_chunks: Res<LoadedMacroChunks>,
-    macro_chunk_tile_indices_query: Query<&MacroChunkTileIndices, >,
+    macro_chunk_tile_indices_query: Query<&MacroChunkU16IndexMatrix, >,
     camera_target_query: Query<(&DimensionRef, &GlobalTransform), (With<CameraTarget>, )>,
     mut ui_state: Local<TileIndicesMapUiState>,
     mut cell_indices: Local<Vec<u16>>,

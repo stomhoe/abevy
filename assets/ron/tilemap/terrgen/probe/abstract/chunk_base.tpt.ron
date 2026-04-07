@@ -1,0 +1,7 @@
+id: chunk_base
+abstract: true
+probe_pattern: chunk
+step_size: 1
+max_batches: 1
+iterations_per_batch: 1
+max_emitted_results: 1

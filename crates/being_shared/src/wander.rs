@@ -316,9 +316,6 @@ pub struct WanderState {
     #[serde(default)]
     #[reflect(ignore)]
     pub meet_facing: CardinalDirection,
-    pub lod_level: u8,
-    pub lod_secs_left: f32,
-    pub lod_accum_secs: f32,
 }
 impl WanderState {
     pub fn new(rng: &mut impl Rng, cfg: &WanderSeri) -> Self {
@@ -331,7 +328,6 @@ impl WanderState {
         self.dir_secs_left <= 0.0
             && self.phase_secs_left <= 0.0
             && self.pack_orbit_secs_left <= 0.0
-            && self.lod_secs_left <= 0.0
             && self.dir == Vec2::ZERO
             && self.speed_mult == 0.0
             && self.phase == WanderPhase::Move
@@ -354,9 +350,6 @@ impl WanderState {
         self.meet_anchor = None;
         self.meet_target = None;
         self.meet_facing = CardinalDirection::default();
-        self.lod_level = 0;
-        self.lod_secs_left = 0.0;
-        self.lod_accum_secs = 0.0;
     }
 
     pub fn current_cardinal_dir(&self) -> CardinalDirection {
@@ -453,33 +446,6 @@ impl WanderState {
             WanderPhase::Move => self.dir * self.speed_mult,
             WanderPhase::Halt | WanderPhase::Meet => Vec2::ZERO,
         }
-    }
-
-    pub fn advance_lod(&mut self, dt: f32, lod_level: u8, lod_interval_secs: f32) -> Option<f32> {
-        self.lod_accum_secs += dt.max(0.0);
-        if self.lod_level != lod_level {
-            self.lod_level = lod_level;
-            self.lod_secs_left = lod_interval_secs.max(0.0);
-            let elapsed = self.lod_accum_secs;
-            self.lod_accum_secs = 0.0;
-            return Some(elapsed);
-        }
-        if lod_level == 0 {
-            self.lod_secs_left = 0.0;
-            let elapsed = self.lod_accum_secs;
-            self.lod_accum_secs = 0.0;
-            return Some(elapsed);
-        }
-        if self.lod_secs_left > 0.0 {
-            self.lod_secs_left = (self.lod_secs_left - dt).max(0.0);
-        }
-        if self.lod_secs_left > 0.0 {
-            return None;
-        }
-        self.lod_secs_left = lod_interval_secs.max(0.0);
-        let elapsed = self.lod_accum_secs;
-        self.lod_accum_secs = 0.0;
-        Some(elapsed)
     }
 
     pub fn pack_orbit_pull(

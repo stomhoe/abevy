@@ -20,8 +20,4 @@ impl OpListSeri {
     pub fn is_root(&self) -> bool {
         self.root_in_dimensions.iter().any(|s| !s.is_empty())
     }
-
-    pub fn is_expr_based(&self) -> bool {
-        true
-    }
 }

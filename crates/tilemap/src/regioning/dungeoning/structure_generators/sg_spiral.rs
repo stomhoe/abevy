@@ -270,6 +270,8 @@ pub fn spiral_dungeon_building_system(
 
         let mut theta = 0.0f32;
         let mut radius = start_radius;
+        let estimated_path_points = ((max_theta / angle_step).ceil() as usize).saturating_add(1);
+        let mut carved_path_points: Vec<IVec2> = Vec::with_capacity(estimated_path_points);
 
         let mut out_of_bounds_steps = 0u32;
         while theta <= max_theta && radius <= max_radius as f32 {
@@ -280,6 +282,10 @@ pub fn spiral_dungeon_building_system(
 
             if can_step(xi, yi) {
                 out_of_bounds_steps = 0;
+                let point = IVec2::new(xi, yi);
+                if carved_path_points.last().copied() != Some(point) {
+                    carved_path_points.push(point);
+                }
                 for dy in -corridor_radius..=corridor_radius {
                     for dx in -corridor_radius..=corridor_radius {
                         let tx = xi + dx;
@@ -375,6 +381,76 @@ pub fn spiral_dungeon_building_system(
                 }
             }
         }
+
+        seal_structure_border_band(
+            &mut floor_map,
+            Some(&mut hazard_map),
+            tile_width,
+            tile_height,
+            border_seal_margin,
+        );
+
+        let mut spiral_arm_spawn_anchors: Vec<(GlobalTilePos, &'static str)> = Vec::with_capacity(2);
+        let entryway_margin = border_seal_margin.max(carve_margin);
+        let can_carve_entryway_at = |x: i32, y: i32| {
+            x >= entryway_margin as i32
+                && y >= entryway_margin as i32
+                && x < (tile_width - entryway_margin) as i32
+                && y < (tile_height - entryway_margin) as i32
+        };
+        let axis_direction = |from: IVec2, to: IVec2| {
+            let delta = to - from;
+            if delta.x.abs() >= delta.y.abs() {
+                IVec2::new(delta.x.signum(), 0)
+            } else {
+                IVec2::new(0, delta.y.signum())
+            }
+        };
+        let mut carve_tip_entryway = |tip: IVec2, outward: IVec2, depth: usize| {
+            if outward == IVec2::ZERO || depth == 0 {
+                return;
+            }
+            for step in 1..=depth as i32 {
+                let carve_pos = tip + outward * step;
+                if !can_carve_entryway_at(carve_pos.x, carve_pos.y) {
+                    break;
+                }
+                let idx = carve_pos.y as usize * tile_width + carve_pos.x as usize;
+                floor_map[idx] = true;
+                hazard_map[idx] = false;
+            }
+        };
+        if carved_path_points.len() >= 3 {
+            let first_tip = carved_path_points[0];
+            let first_next = carved_path_points[1];
+            let last_tip = carved_path_points[carved_path_points.len() - 1];
+            let last_prev = carved_path_points[carved_path_points.len() - 2];
+            let first_outward = -axis_direction(first_tip, first_next);
+            let last_outward = axis_direction(last_prev, last_tip);
+            carve_tip_entryway(first_tip, first_outward, 1);
+            carve_tip_entryway(last_tip, last_outward, 2);
+            let first_tip_idx = first_tip.y as usize * tile_width + first_tip.x as usize;
+            if floor_map[first_tip_idx] {
+                spiral_arm_spawn_anchors.push((
+                    GlobalTilePos::new(origin_tile.x() + first_tip.x, origin_tile.y() + first_tip.y),
+                    "arm_inner",
+                ));
+            }
+            let last_tip_idx = last_tip.y as usize * tile_width + last_tip.x as usize;
+            if floor_map[last_tip_idx] && first_tip != last_tip {
+                spiral_arm_spawn_anchors.push((
+                    GlobalTilePos::new(origin_tile.x() + last_tip.x, origin_tile.y() + last_tip.y),
+                    "arm_outer",
+                ));
+            }
+            trace!(
+                target: DUNGEONING_SYSTEM,
+                "structure={} carved_spiral_tip_entryways first_tip={} first_depth=1 last_tip={} last_depth=2",
+                structured_gen_cfg.structure_id(),
+                GlobalTilePos::new(origin_tile.x() + first_tip.x, origin_tile.y() + first_tip.y),
+                GlobalTilePos::new(origin_tile.x() + last_tip.x, origin_tile.y() + last_tip.y),
+            );
+        }
         let queued = super::super::dungeoning_utils::queue_room_spawn_instance_message(
             "center_circle",
             center_anchor_gpos,
@@ -394,14 +470,28 @@ pub fn spiral_dungeon_building_system(
                 center_anchor_gpos,
             );
         }
-
-        seal_structure_border_band(
-            &mut floor_map,
-            Some(&mut hazard_map),
-            tile_width,
-            tile_height,
-            border_seal_margin,
-        );
+        for (anchor_gpos, room_spawn_key) in spiral_arm_spawn_anchors.iter().copied() {
+            let queued = super::super::dungeoning_utils::queue_room_spawn_instance_message(
+                room_spawn_key,
+                anchor_gpos,
+                build_order.dimension_ref,
+                None,
+                &mut beings_remaining,
+                &room_spawn_config,
+                &room_pack_spawn.source_lookup,
+                &mut room_pack_spawn.pending_messages,
+                &mut rng,
+            );
+            if queued {
+                trace!(
+                    target: DUNGEONING_SYSTEM,
+                    "Queued room_spawn InstancePack for structure={} shape={} at {}",
+                    structured_gen_cfg.structure_id(),
+                    room_spawn_key,
+                    anchor_gpos,
+                );
+            }
+        }
 
         // Create wall outlines only (around floor tiles)
         let mut wall_map = vec![false; tile_map_size];

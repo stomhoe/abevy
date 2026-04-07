@@ -20,7 +20,7 @@ SpriteConfigSeri(
     is_being_root_sprite: true,
     add_up_z_with_anim: true,
     baseline_move_speed: 70.0,
-    offset: (0., 70.),
+    offset: (0., 80.),
     scale: (1.2, 1.2),
     tags: [],
 )

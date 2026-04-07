@@ -79,7 +79,6 @@ pub fn despawn_sprites_without_childof(
         .for_each(|sprite_ent| cmd.entity(sprite_ent).try_despawn());
 }
 
-/// DEACTIVATE THIS SYSTEM IN RELEASE BUILDS
 #[allow(unused_parens)]
 pub fn set_entity_name(
     templs_query: Query<
@@ -154,11 +153,13 @@ pub fn set_entity_name(
             new_name.push(' ');
             new_name.push_str(dn.0.as_str());
         }
-
         if !templ_id.is_empty() {
             new_name.push_str(&templ_id);
         }
 
+        if name.as_str() == new_name {
+            continue;
+        }
         name.set(new_name);
     }
 }

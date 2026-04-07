@@ -18,7 +18,7 @@ impl Tile {
 }
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TileIndex(pub u16);
+pub struct U16TileIndex(pub u16);
 
 
 pub type TileStrId = StrId;

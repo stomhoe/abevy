@@ -1,9 +1,3 @@
-(
-    id: "chlands",
-    opfilter_id: "land",
-    probe_pattern: "chunk",
-    step_size: 1,
-    max_batches: 1,
-    iterations_per_batch: 1,
-    max_emitted_results: 1,
-)
+id: chlands
+extends: chunk_base
+opfilter_id: land

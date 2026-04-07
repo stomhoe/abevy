@@ -1,0 +1,8 @@
+id: conc_base
+abstract: true
+probe_pattern: conc
+concentric_sample_spacing: 30.0
+step_size: 30
+max_batches: 300
+iterations_per_batch: 4
+max_emitted_results: 1

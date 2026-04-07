@@ -40,11 +40,6 @@ pub struct TilemapOf {
     #[relationship]
     pub chunk: Entity,
 }
-impl TilemapOf {
-    pub fn new(chunk: Entity) -> Self {
-        Self { chunk }
-    }
-}
 
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = TilemapOf)]

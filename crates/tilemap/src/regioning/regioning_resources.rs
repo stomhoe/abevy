@@ -64,7 +64,7 @@ impl SgcCommandRegistry {
             ],
         );
         registry.register_room_spawn_shapes("drunkwalk", ["chamber_circle"]);
-        registry.register_room_spawn_shapes("spiral", ["center_circle"]);
+        registry.register_room_spawn_shapes("spiral", ["center_circle", "arm_inner", "arm_outer"]);
         registry.register_room_spawn_shapes("archi", ["center_spiral"]);
         registry
     }

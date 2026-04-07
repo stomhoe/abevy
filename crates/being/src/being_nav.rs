@@ -1,4 +1,6 @@
 use bevy::prelude::*;
+use bevy::time::common_conditions::on_timer;
+use std::time::Duration;
 
 use game_common::HostSystems;
 use superstate::superstate_plugin;
@@ -34,6 +36,7 @@ pub fn plugin(app: &mut App) {
         (
             (
                 ensure_loaded_beings_have_nav_state,
+                update_being_lod_levels_from_camera.run_if(on_timer(Duration::from_millis(200))),
                 update_goto_from_chasing,
                 update_goto_from_fleeing,
                 wander_behavior,

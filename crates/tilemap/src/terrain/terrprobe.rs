@@ -2,6 +2,7 @@ pub mod terrprobe_components;
 pub mod terrprobe_init_systems;
 pub mod terrprobe_resources;
 pub mod terrprobe_seris;
+pub mod terrprobe_tpt_parser;
 pub mod terrprobe_messages;
 pub mod terrprobe_macros;
 pub mod terrprobe_systems;

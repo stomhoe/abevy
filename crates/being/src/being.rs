@@ -6,7 +6,6 @@ use bevy_replicon::prelude::*;
 use ::being_shared::*;
 use faction::faction_resources::FactionRef;
 use tilemap::terrain::terrgen_messages::ChunkTerrainBuilt;
-use tilemap_shared::{BeingsAtGpos, ChunkLoaded, ChunkWithBeingsWantsDespawn, GlobalTilePos};
 
 use common::common_states::AssetLoading;
 use game_common::{
@@ -15,7 +14,7 @@ use game_common::{
 };
 use sprite_systems::AcSpriteSystems;
 use crate::being_melee_systems::*;
-use crate::being_messages::{MakeChunkSnapshotForChaser, NavOrder};
+use crate::being_messages::*;
 use crate::being_cleanup_systems::*;
 use crate::being_on_chunk_despawn_systems::*;
 use crate::being_enable_systems::*;
@@ -26,7 +25,7 @@ use crate::being_hunt_systems::*;
 use crate::being_control_systems::*;
 use crate::being_build_systems::*;
 use crate::being_portal_systems::*;
-use tilemap_shared::NewMacrochunkLoaded;
+use ::tilemap_shared::*;
 
 use crate::{
     being_inst_template::BeingInstTemplateSystems,
@@ -123,9 +122,10 @@ pub fn plugin(app: &mut App) {
     .replicate::<CharacterCreatedBy>()
     .replicate::<DirectControllable>()
     .replicate::<Chasing>()
-    .replicate_once::<WanderState>()
-    .replicate_once::<Fleeing>()
+    .replicate::<WanderState>()
+    .replicate::<Fleeing>()
     .replicate::<DoAvoidBlacklistedSpawnTilesForWander>()
+    .replicate::<LodLevel>()
     .replicate_filtered::<GlobalTilePos, Without<Being>>()
     .replicate::<BgSimulatedIn>()
     .replicate::<BodyWeightSum>()

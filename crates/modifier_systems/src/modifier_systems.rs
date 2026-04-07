@@ -26,7 +26,7 @@ pub fn materialize_modifier_synergies(
         let mut mults = existing_mults.cloned().unwrap_or_default();
 
         for (tag, synergy) in &synergies.0 {
-            tags.insert(tag.clone());
+            tags.0.insert(HashId::from(tag.as_ref()));
             match synergy {
                 ModifierSynergy::Offset(value) => {
                     if *value != 0.0 {
@@ -65,6 +65,16 @@ pub struct TargetAggregate {
     antidote_sum: f32,
 }
 
+pub struct ResolvedModifier {
+    entity: Entity,
+    target: Entity,
+    time_based_value: f32,
+    tags: ModifierTags,
+    offsets: Option<OffsetValForSelf>,
+    copy_fracs: Option<CopyFracOfOthersIntoSelf>,
+    _antidote: Option<Antidote>,
+}
+
 #[allow(unused_parens)]
 pub fn update_modifier_effective_values(
     mut cmd: Commands,
@@ -82,74 +92,82 @@ pub fn update_modifier_effective_values(
     antidotes_query: Query<&Antidote>,
     mut effective_query: Query<&mut CurrEffectiveValue>,
 
+    mut resolved_modifiers: Local<Vec<ResolvedModifier>>,
     mut target_aggs: Local<EntityHashMap<HashIdMap<TargetAggregate>>>
 ) {
+    resolved_modifiers.clear();
     target_aggs.clear();
 
-    let mut count = 0;
     for (entity, target, templ_ref, ) in modifiers_query.iter() {
         let base_value = resolve_modifier_component(entity, templ_ref, &base_values_query);
         let time_multiplier = resolve_modifier_component(entity, templ_ref, &time_multipliers_query);
         let Some(raw_value) = compute_time_affected_value(base_value.as_ref(), time_multiplier.as_ref()) else { continue; };
-        count += 1;
         let tags = resolve_modifier_component(entity, templ_ref, &modifier_tags_query).unwrap_or_default();
+        let offsets = resolve_modifier_component(entity, templ_ref, &offset_vals_query);
+        let copy_fracs = resolve_modifier_component(entity, templ_ref, &copy_fracs_query);
+        let antidote = resolve_modifier_component(entity, templ_ref, &antidotes_query);
 
         let target_agg = target_aggs.entry(target.0).or_insert_with(|| HashIdMap::with_capacity(tags.len()));
         for tag in tags.iter() {
-            let tag_hash = HashId::from(tag.as_ref());
+            let tag_hash = *tag;
             let target_agg = target_agg.0.entry(tag_hash).or_default();
             target_agg.tag_count += 1;
             target_agg.tag_value_sum += raw_value;
         }
-        let antidote = resolve_modifier_component(entity, templ_ref, &antidotes_query);
-        if let Some(antidote) = antidote {
+        if let Some(antidote) = antidote.as_ref() {
             for (tag, effectiveness) in antidote.0.iter() {
                 let tag_hash = HashId::from(tag.as_ref());
                 let target_agg = target_agg.0.entry(tag_hash).or_default();
                 target_agg.antidote_sum += raw_value * effectiveness;
             }
         }
+
+        resolved_modifiers.push(ResolvedModifier {
+            entity,
+            target: target.0,
+            time_based_value: raw_value,
+            tags,
+            offsets,
+            copy_fracs,
+            _antidote: antidote,
+        });
     }
-    let mut computed_values: EntityHashMap<CurrEffectiveValue> = EntityHashMap::with_capacity(count);
 
-    for (modi_entity, target, templ_ref, ) in modifiers_query.iter() {
-        let Some(target_agg) = target_aggs.get(&target.0) else { continue; };
-        let base_value = resolve_modifier_component(modi_entity, templ_ref, &base_values_query);
-        let time_multiplier = resolve_modifier_component(modi_entity, templ_ref, &time_multipliers_query);
-        let Some(time_based_value) = compute_time_affected_value(base_value.as_ref(), time_multiplier.as_ref()) else { continue; };
-        let tags = resolve_modifier_component(modi_entity, templ_ref, &modifier_tags_query).unwrap_or_default();
+    let mut computed_values: EntityHashMap<CurrEffectiveValue> = EntityHashMap::with_capacity(resolved_modifiers.len());
 
-        let mut value = time_based_value;
+    for resolved in resolved_modifiers.iter() {
+        let Some(target_agg) = target_aggs.get(&resolved.target) else { continue; };
+        let mut value = resolved.time_based_value;
 
-        let offsets = resolve_modifier_component(modi_entity, templ_ref, &offset_vals_query);
-        if let Some(offsets) = offsets {
+        if let Some(offsets) = resolved.offsets.as_ref() {
             for (tag, offset) in offsets.0.iter() {
-                let Some(tag_agg) = target_agg.get_opt(HashId::from(tag.as_ref())) else { continue; };
-                let has_other = if tags.contains(tag.clone()) { tag_agg.tag_count > 1 } else { tag_agg.tag_count > 0 };
+                let tag_hash = HashId::from(tag.as_ref());
+                let Some(tag_agg) = target_agg.get_opt(tag_hash) else { continue; };
+                let has_other = if resolved.tags.contains(&tag_hash) { tag_agg.tag_count > 1 } else { tag_agg.tag_count > 0 };
                 if has_other {
                     value += offset;
                 }
             }
         }
-        let copy_fracs = resolve_modifier_component(modi_entity, templ_ref, &copy_fracs_query);
-        if let Some(copy_fracs) = copy_fracs {
+        if let Some(copy_fracs) = resolved.copy_fracs.as_ref() {
             for (tag, mult) in copy_fracs.0.iter() {
-                let Some(tag_agg) = target_agg.get_opt(HashId::from(tag.as_ref())) else { continue; };
+                let tag_hash = HashId::from(tag.as_ref());
+                let Some(tag_agg) = target_agg.get_opt(tag_hash) else { continue; };
                 let mut copy_value = tag_agg.tag_value_sum;
-                if tags.contains(tag.clone()) {
-                    copy_value -= time_based_value;
+                if resolved.tags.contains(&tag_hash) {
+                    copy_value -= resolved.time_based_value;
                 }
                 if copy_value != 0.0 {
                     value += copy_value * mult.clamp(0.0, 1.0);
                 }
             }
         }
-        for tag in tags.iter() {
-            if let Some(tag_agg) = target_agg.get_opt(HashId::from(tag.as_ref())) {
+        for tag in resolved.tags.iter() {
+            if let Some(tag_agg) = target_agg.get_opt(*tag) {
                 value -= tag_agg.antidote_sum;
             }
         }
-        computed_values.insert(modi_entity, CurrEffectiveValue(value));
+        computed_values.insert(resolved.entity, CurrEffectiveValue(value));
     }
     computed_values.retain(|entity, new_value| match effective_query.get_mut(*entity) {
         Ok(mut current) => {

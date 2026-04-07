@@ -3,10 +3,7 @@ use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
 use being_shared::FaithfulSimBeing;
 use ::tilemap_shared::*;
-use common::log_targets::CHUNK_ACTIVATION;
-
-use crate::tile::tile_messages::SavedTileHadChunkDespawn;
-
+use common::log_targets::{CHUNK_ACTIVATION, CHUNK_DESPAWN};
 
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
@@ -57,8 +54,9 @@ pub fn on_message_signal_despawn_all_chunks(
     }
     reader.clear();
     let iter = chunks_query.iter();
-    let mut evs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
-    for ent in chunks_query.iter() {
+    let (lower, upper) = iter.size_hint();
+    let mut evs = Vec::with_capacity(upper.unwrap_or(lower));
+    for ent in iter {
         evs.push(MakeChunkDespawn { chunk_ent: ent, reschedule_if_beings_present: false });
     }
 
@@ -69,7 +67,10 @@ pub fn periodically_check_despawn_unreferenced_chunks(
     chunks_query: Query<Entity, With<Chunk>,>,
     mut to_check: Local<Vec<CheckIfChunkShouldDespawn>>,
 ) {
-    for chunk_ent in chunks_query.iter() {
+    let iter = chunks_query.iter();
+    let (lower, upper) = iter.size_hint();
+    to_check.reserve(upper.unwrap_or(lower));
+    for chunk_ent in iter {
         to_check.push(CheckIfChunkShouldDespawn(chunk_ent));
     }
     ewriter.write_batch(to_check.drain(..));
@@ -79,101 +80,92 @@ pub fn periodically_check_despawn_unreferenced_chunks(
 pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE PUEDEN DESPAWNEAR LOS CHUNKS, PARA RESPETAR EL ORDEN DE SISTEMAS
     mut cmd: Commands,
     activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
-    chunks_query: Query<(&DimensionRef, &ChunkPos, Option<&Tilemaps>, Option<&TilesToSave>), >,
+    chunks_query: Query<(&DimensionRef, &ChunkPos, ), >,
     loaded_chunks: Res<LoadedChunks>,
     beings_within_chunk: Res<BeingsInCpos>,
     mut despawn_events: ResMut<Messages<CheckIfChunkShouldDespawn>>,
-    mut tosave_event_writer: MessageWriter<SavedTileHadChunkDespawn>,
     mut force_despawn_reader: MessageReader<MakeChunkDespawn>,
     mut referenced_chunks: Local<EntityHashSet>,
-    mut tosave_events: Local<Vec<SavedTileHadChunkDespawn>>,
+    mut chunks_to_check: Local<Vec<Entity>>,
     mut chunks_to_despawn: Local<Vec<MakeChunkDespawn>>,
     mut bcd_writer: MessageWriter<ChunkWithBeingsWantsDespawn>,
     mut bcd_msgs: Local<Vec<ChunkWithBeingsWantsDespawn>>,
 ) {
-    referenced_chunks.clear();
-    referenced_chunks.reserve(activator_query.iter().map(|(_, a)| a.0.len()).sum());
-    for (&dimension_ref, activates_chunks) in activator_query.iter() {
-        referenced_chunks.extend(
-            activates_chunks
-                .0
-                .iter()
-                .filter_map(|&chunk_pos| loaded_chunks.0.get(&(dimension_ref, chunk_pos)).copied())
-        );
-    }
-    tosave_events.clear();
-
+    chunks_to_despawn.clear();
+    chunks_to_check.clear();
+    chunks_to_despawn.extend(force_despawn_reader.read().cloned());
     for CheckIfChunkShouldDespawn(chunk_ent) in despawn_events.drain() {
+        chunks_to_check.push(chunk_ent);
+    }
+    if chunks_to_despawn.is_empty() && chunks_to_check.is_empty() {
+        return;
+    }
 
-        let referenced = referenced_chunks.contains(&chunk_ent);
+    if !chunks_to_check.is_empty() {
+        referenced_chunks.clear();
+        referenced_chunks.reserve(activator_query.iter().map(|(_, a)| a.0.len()).sum());
+        for (&dimension_ref, activates_chunks) in activator_query.iter() {
+            referenced_chunks.extend(
+                activates_chunks
+                    .0
+                    .iter()
+                    .filter_map(|&chunk_pos| loaded_chunks.0.get(&(dimension_ref, chunk_pos)).copied())
+            );
+        }
 
-        if !referenced {
-            chunks_to_despawn.push(MakeChunkDespawn::default(chunk_ent));
+        for chunk_ent in chunks_to_check.drain(..) {
+            if !referenced_chunks.contains(&chunk_ent) {
+                chunks_to_despawn.push(MakeChunkDespawn::default(chunk_ent));
+            }
         }
     }
-    chunks_to_despawn.extend(force_despawn_reader.read().cloned());
+    if chunks_to_despawn.is_empty() {
+        return;
+    }
 
     for MakeChunkDespawn { chunk_ent, reschedule_if_beings_present } in chunks_to_despawn.drain(..) {
-        let mut delegate_chunk_despawn_to_other_system = false;
-        let Ok((&chunk_dimension, &chunk_pos, tilemaps, _tiles_to_save)) = chunks_query.get(chunk_ent) else {
+        let Ok((&chunk_dimension, &chunk_pos, )) = chunks_query.get(chunk_ent) else {
             cmd.entity(chunk_ent).try_despawn();
             continue;
         };
-        let beings_within_chunk_count = beings_within_chunk
-            .beings_in_chunk(chunk_dimension, chunk_pos)
-            .map_or(0, |beings| beings.len());
-        if let Some(tilemaps) = tilemaps {
-            for _tmap_ent in tilemaps.iter() {
-                // if tiles_to_save.entities().contains(&child) {
-                //     cmd.entity(child).try_remove::<ChildOf>();//esto hace q el sistema limpiador la borre, hay q hacer algo
-                //     tosave_events.push(SavedTileHadChunkDespawn(child));
-                // } else{//HACE FALTA
-                //     cmd.entity(child).try_despawn();
-                // }
+
+        if reschedule_if_beings_present {
+            let beings_within_chunk_count = beings_within_chunk
+                .beings_in_chunk(chunk_dimension, chunk_pos)
+                .map_or(0, |beings| beings.len());
+            if beings_within_chunk_count > 0 {
+                bcd_msgs.push(ChunkWithBeingsWantsDespawn { chunk_ent });
+                debug!(target: CHUNK_ACTIVATION, "Delegated chunk {:?} despawn decision for {} beings", chunk_ent, beings_within_chunk_count);
+                continue;
             }
         }
-        if beings_within_chunk_count > 0 {
-            delegate_chunk_despawn_to_other_system = true;
-        }
-
-        if delegate_chunk_despawn_to_other_system && reschedule_if_beings_present {
-            bcd_msgs.push(ChunkWithBeingsWantsDespawn { chunk_ent });
-            debug!(target: CHUNK_ACTIVATION, "Delegated chunk {:?} despawn decision for {} beings", chunk_ent, beings_within_chunk_count);
-        } else {
-            cmd.entity(chunk_ent).try_despawn();
-        }
+        cmd.entity(chunk_ent).try_despawn();
     }
-    tosave_event_writer.write_batch(tosave_events.drain(..));
-
     bcd_writer.write_batch(bcd_msgs.drain(..));
 }
 #[allow(unused_parens)]
 pub fn on_chunk_despawn(
     trig: On<Despawn, (Chunk, )>,
     chunk_query: Query<(&DimensionRef, &ChunkPos), ()>,
-    mut ___________cmd: Commands,
     mut loaded_chunks: ResMut<LoadedChunks>,
-    mut ____________loaded_macro_chunks: ResMut<LoadedMacroChunks>,
     beings_within_chunk: Res<BeingsInCpos>,
     mut ub_writer: MessageWriter<FaithfulSimBeing>,
     mut ub_messages: Local<Vec<FaithfulSimBeing>>,
 ){
     let Ok((&chunk_dimension, &chunk_pos)) = chunk_query.get(trig.entity) else {
-        error!(target: "chunk_despawn", "Chunk entity {:?} despawned but its DimensionRef or ChunkPos component is missing", trig.entity);
-        loaded_chunks.0.retain(|_, chunk_entity| chunk_entity.clone() != trig.entity);
+        error!(target: CHUNK_DESPAWN, "Chunk entity {:?} despawned but its DimensionRef or ChunkPos component is missing", trig.entity);
+        loaded_chunks.0.retain(|_, chunk_entity| *chunk_entity != trig.entity);
 
         return;
     };
-    let Some(chunk_ent) = loaded_chunks.0.get(&(chunk_dimension, chunk_pos))
-    else {
+    if loaded_chunks.0.get(&(chunk_dimension, chunk_pos)).copied() != Some(trig.entity) {
         return;
-    };
-    if *chunk_ent == trig.entity {
-        loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
     }
+    loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
     let Some(beings) = beings_within_chunk.beings_in_chunk(chunk_dimension, chunk_pos) else {
         return;
     };
+    ub_messages.reserve(beings.len());
     for &being_ent in beings {
         ub_messages.push(FaithfulSimBeing(being_ent));
     }

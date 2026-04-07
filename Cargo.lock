@@ -4358,6 +4358,8 @@ dependencies = [
  "bevy_replicon",
  "camera",
  "common",
+ "faction",
+ "faction_shared",
  "fnl",
  "game_common",
  "item_shared",

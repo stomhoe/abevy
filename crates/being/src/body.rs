@@ -43,8 +43,8 @@ pub fn plugin(app: &mut App) {
             (
                 update_body_weight_sum,
                 apply_damage.run_if(on_message::<IncHealthDamageOrHeal>),
-                refresh_template_bodyparts_users_list.before(update_body_health_from_parts),
-                update_bodypart_max_hp_map,
+                refresh_template_bodyparts_users_list,
+                update_bodypart_max_hp_map.run_if(on_timer(core::time::Duration::from_millis(200))),
                 set_bodypart_as_missing_if_0_hp,
                 update_body_health_from_parts.run_if(on_timer(core::time::Duration::from_millis(200))),
                 apply_bodypart_hp_regen,

@@ -22,19 +22,19 @@ common::define_entity_map_systems!(
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 //hacer singleton entity pa replicar. esto se guardaría en la save.
-pub struct TileIndexing  {
-    map: HashMap<TileIndex, common::HashId>,
+pub struct TileU16IndexHashIdMapping  {
+    map: HashMap<U16TileIndex, common::HashId>,
     #[serde(skip)]
-    curr_i: TileIndex }
-impl TileIndexing {
-    pub fn register_templ_tile(&mut self, templ_hash_id: common::HashId) -> TileIndex {
+    curr_i: U16TileIndex }
+impl TileU16IndexHashIdMapping {
+    pub fn register_templ_tile(&mut self, templ_hash_id: common::HashId) -> U16TileIndex {
         let i = self.curr_i;
         self.curr_i.0 += 1;
         self.map.insert(i, templ_hash_id);
         i
     }
 
-    pub fn hash_id_for_index(&self, tile_index: TileIndex) -> Option<common::HashId> {
+    pub fn hash_id_for_index(&self, tile_index: U16TileIndex) -> Option<common::HashId> {
         self.map.get(&tile_index).copied()
     }
 }

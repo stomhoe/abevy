@@ -43,16 +43,13 @@ pub fn plugin(app: &mut App) {
                     .after(sprite_change_detection)
                     .run_if(on_message::<SpriteChangedScaleOrOffsetOrParent>),
             ),
+            become_child_of_sprite_with_tag,
+            add_spritechildren_and_comps,
             z_sort_system,
             (
-                become_child_of_sprite_with_tag,
-                add_spritechildren_and_comps,
                 remap_broken_sprite_config_refs_after_hotreload,
             )
-            .run_if(
-                in_state(ClientState::Disconnected)
-                    .and(in_state(AppState::StatefulGameSession)),
-            ),
+            .run_if(in_state(ClientState::Disconnected)),
         )
             .in_set(AcSpriteSystems),
     )
@@ -78,6 +75,8 @@ pub fn plugin(app: &mut App) {
     .replicate::<SpriteLoopSfx>()
     .replicate::<SpriteTimedSfx>()
     .replicate::<OffsetForChildren>()
+    .replicate::<ScsToBuild>()
+    .replicate::<BecomeChildOfSpriteWithTag>()
 
     .replicate::<YSortOrigin>()
     .replicate_once::<AddUpAnimAndScAcZ>()

@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use ::being_shared::*;
 use common::common_components::StrId;
 use common::common_components::HashId;
-use common::log_targets::SGC_INIT;
+use common::log_targets::{DUNGEONING_SYSTEM, SGC_INIT};
 use game_common::game_common_components::ArgsDict;
 use game_common::game_common_components::Templ;
 use rand::{seq::SliceRandom, Rng};
@@ -709,7 +709,13 @@ impl DungeonRoomPackSpawnConfig {
             }
         }
         if matching_weights.is_empty() {
-            return None;
+            debug!(
+                target: DUNGEONING_SYSTEM,
+                "room_spawn key={} has no spec matching radius_pct={}, falling back to unfiltered sampling",
+                room_spawn_key,
+                radius_pct,
+            );
+            return sampler.sample_with_rng(rng);
         }
         DungeonRoomPackSpawnSampler::new(&matching_weights).sample_with_rng(rng)
     }

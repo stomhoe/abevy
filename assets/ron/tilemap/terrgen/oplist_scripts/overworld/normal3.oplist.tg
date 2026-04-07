@@ -1,13 +1,12 @@
 id: normal3
 size: (1, 1)
-debug: [continentness, riverness]
+debug: [continentness]
 
 
 
 let lakeness = max(fnl.lakesmol, fnl.lakebig)
 let lakeness = *(lakeness, inlandness, 0.3)
 let lakeness = -(lakeness, beachness)
-let lakeness = -(lakeness, riverness)
 
 
 out = idxmax(continent_threshold, lakeness, )

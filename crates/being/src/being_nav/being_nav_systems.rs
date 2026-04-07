@@ -1,9 +1,9 @@
 
 use crate::being_messages::NavOrder;
 use ::being_shared::*;
+use camera::camera_components::CameraTarget;
 use bevy_northstar::{CardinalGrid, grid::GridSettingsBuilder, nav::Nav};
-use ::tilemap_shared::{BlacklistedTags, ChunkPos, GlobalTilePos, LoadedChunks, LoadChunksAround};
-use ::tilemap_shared::{BlacklistedSpawnTileTagsRef, WhitelistedSpawnTileTagsRef, WhitelistedTags};
+use ::tilemap_shared::*;
 use bevy::{
     ecs::entity::{EntityHashMap, EntityHashSet},
     ecs::system::SystemParam,
@@ -14,8 +14,13 @@ use common::log_targets::BEING_SYSTEM;
 use param_sets::BlockingTileParamSet;
 use movement::movement_components::{InputMaxSpeed, InputSpeedThrottleMult};
 
-use super::being_nav_resources::AiNavGrids;
+use super::being_nav_resources::*;
 use super::being_nav_structs::AiNavGridCache;
+
+const AI_LOD_NEAR_TILES: i32 = 72;
+const AI_LOD_MID_TILES: i32 = 144;
+const AI_LOD_FAR_TILES: i32 = 288;
+const AI_LOD_HYSTERESIS_TILES: i32 = 12;
 
 #[derive(SystemParam)]
 pub struct SyncAiNavGridsScratch<'s> {
@@ -35,6 +40,114 @@ pub fn ensure_loaded_beings_have_nav_state(
     beings: Query<(Entity, ), (With<Being>, Without<WanderState>, Without<Chasing>, Without<Fleeing>, )>,
 ) {
     for (being_ent, ) in beings { cmd.entity(being_ent).try_insert(WanderState::default()); }
+}
+
+fn lod_level_for_tile_distance(tile_distance: i32) -> u8 {
+    if tile_distance <= AI_LOD_NEAR_TILES {
+        0
+    } else if tile_distance <= AI_LOD_MID_TILES {
+        1
+    } else if tile_distance <= AI_LOD_FAR_TILES {
+        2
+    } else {
+        3
+    }
+}
+
+fn lod_level_with_hysteresis(previous_level: u8, tile_distance: i32) -> u8 {
+    let d = tile_distance.max(0);
+    let near_in = (AI_LOD_NEAR_TILES - AI_LOD_HYSTERESIS_TILES).max(1);
+    let near_out = AI_LOD_NEAR_TILES + AI_LOD_HYSTERESIS_TILES;
+    let mid_in = (AI_LOD_MID_TILES - AI_LOD_HYSTERESIS_TILES).max(1);
+    let mid_out = AI_LOD_MID_TILES + AI_LOD_HYSTERESIS_TILES;
+    let far_in = (AI_LOD_FAR_TILES - AI_LOD_HYSTERESIS_TILES).max(1);
+    let far_out = AI_LOD_FAR_TILES + AI_LOD_HYSTERESIS_TILES;
+    match previous_level {
+        0 => {
+            if d > near_out {
+                lod_level_for_tile_distance(d)
+            } else {
+                0
+            }
+        }
+        1 => {
+            if d <= near_in {
+                0
+            } else if d > mid_out {
+                lod_level_for_tile_distance(d)
+            } else {
+                1
+            }
+        }
+        2 => {
+            if d <= mid_in {
+                lod_level_for_tile_distance(d)
+            } else if d > far_out {
+                3
+            } else {
+                2
+            }
+        }
+        _ => {
+            if d <= far_in {
+                lod_level_for_tile_distance(d)
+            } else {
+                3
+            }
+        }
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn update_being_lod_levels_from_camera(
+    mut cmd: Commands,
+    camera_query: Query<(&DimensionRef, &GlobalTransform), (With<CameraTarget>, )>,
+    mut beings_query: Query<
+        (
+            Entity,
+            &DimensionRef,
+            &GlobalTilePos,
+            Option<&mut LodLevel>,
+        ),
+        (With<Being>, LocalAiControlled),
+    >,
+    mut cameras_by_dim: Local<EntityHashMap<Vec<GlobalTilePos>>>,
+) {
+    cameras_by_dim.clear();
+    let camera_iter = camera_query.iter();
+    let (lower, upper) = camera_iter.size_hint();
+    cameras_by_dim.reserve(upper.unwrap_or(lower));
+    for (&dim_ref, transform) in camera_iter {
+        cameras_by_dim
+            .entry(dim_ref.0)
+            .or_default()
+            .push(GlobalTilePos::from(transform.translation().xy()));
+    }
+
+    for (being_ent, &dim_ref, &being_gpos, lod_level) in beings_query.iter_mut() {
+        let nearest_camera_tile_dist = cameras_by_dim
+            .get(&dim_ref.0)
+            .and_then(|camera_gpos| {
+                camera_gpos
+                    .iter()
+                    .map(|&camera_gpos| {
+                        let delta = camera_gpos.0 - being_gpos.0;
+                        delta.abs().max_element()
+                    })
+                    .min()
+            })
+            .unwrap_or(i32::MAX / 4);
+        let base_level = lod_level_for_tile_distance(nearest_camera_tile_dist);
+
+        let Some(mut lod_level) = lod_level else {
+            cmd.entity(being_ent).try_insert(LodLevel(base_level));
+            continue;
+        };
+        let next_level = lod_level_with_hysteresis(lod_level.0, nearest_camera_tile_dist);
+        if lod_level.0 != next_level {
+            lod_level.0 = next_level;
+        }
+    }
 }
 
 #[allow(unused_parens, )]
@@ -469,10 +582,11 @@ pub fn sync_ai_nav_grids(
             &::tilemap_shared::DimensionRef,
             Option<&ComputedBy>,
             Option<&GoTo>,
+            Option<&LodLevel>,
         ),
         With<Being>,
     >,
-    beings_query: Query<(Entity, &::tilemap_shared::DimensionRef), With<Being>>,
+    beings_query: Query<(Entity, &::tilemap_shared::DimensionRef, Option<&GoTo>, Option<&LodLevel>), With<Being>>,
     mut removed_beings: RemovedComponents<Being>,
     mut grids: ResMut<AiNavGrids>,
     mut scratch: SyncAiNavGridsScratch,
@@ -486,14 +600,22 @@ pub fn sync_ai_nav_grids(
     scratch.dim_center_counts.clear();
     scratch.dim_center_counts.reserve(chaser_count);
 
-    for (being_ent, dim_ref, controlled_by, goto, ) in chaser_iter {
-        let Some(_) = goto else {
+    for (being_ent, dim_ref, controlled_by, goto, lod_level) in chaser_iter {
+        let Some(goto) = goto else {
             continue;
         };
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_dc_input {
                 continue;
             }
+        }
+        let lod_level = lod_level.map_or(0, |lod_level| lod_level.0);
+        let is_critical_nav = matches!(
+            goto.source,
+            Some(NavOrderSource::Chasing | NavOrderSource::Fleeing)
+        );
+        if lod_level >= 2 && !is_critical_nav {
+            continue;
         }
         scratch.needed_dims.insert(dim_ref.0);
         let Ok(&gpos) = param_set.gpos_query.get(being_ent) else {
@@ -521,8 +643,15 @@ pub fn sync_ai_nav_grids(
     if removed_any_being {
         scratch.dirty_dims.extend(scratch.needed_dims.iter().copied());
     }
-    for (being_ent, dim_ref) in beings_query.iter() {
+    for (being_ent, dim_ref, go_to, lod_level) in beings_query.iter() {
         if !scratch.needed_dims.contains(&dim_ref.0) {
+            continue;
+        }
+        let lod_level = lod_level.map_or(0, |lod_level| lod_level.0);
+        let is_critical_nav = go_to
+            .map(|go_to| matches!(go_to.source, Some(NavOrderSource::Chasing | NavOrderSource::Fleeing)))
+            .unwrap_or(false);
+        if lod_level >= 2 && !is_critical_nav {
             continue;
         }
         let Ok(&gpos) = param_set.gpos_query.get(being_ent) else {

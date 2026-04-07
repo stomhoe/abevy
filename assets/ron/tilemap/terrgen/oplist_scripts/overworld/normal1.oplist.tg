@@ -1,6 +1,5 @@
 id: normal1
-size: (1, 1)
-debug: [normal_diff, antiriver, riverness]
+debug: [normal_diff, antiriver]
 
 
 

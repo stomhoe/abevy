@@ -543,6 +543,7 @@ pub fn rebuild_goto_nav_plans(
             Option<&SpeedMagnitude>,
             Option<&Chasing>,
             Option<&WanderState>,
+            Option<&LodLevel>,
         ),
         (With<Being>, LocalAiControlled),
     >,
@@ -558,7 +559,7 @@ pub fn rebuild_goto_nav_plans(
     scratch.shared_rebuild_jobs.clear();
     scratch.shared_goal_owners.clear();
 
-    for (chaser_ent, &chaser_dim, goto, chaser_speed, chasing, wander_state, ) in goto_beings.iter() {
+    for (chaser_ent, &chaser_dim, goto, chaser_speed, chasing, wander_state, lod_level, ) in goto_beings.iter() {
         let Ok(chaser_gpos) = blocking_tiles.gpos_query.get(chaser_ent) else {
             continue;
         };
@@ -570,6 +571,11 @@ pub fn rebuild_goto_nav_plans(
             plans.by_ent.entry(chaser_ent).or_default().reset(Duration::from_secs_f32(0.25));
             continue;
         };
+        let lod_level = lod_level.map_or(0, |lod_level| lod_level.0);
+        let is_critical_nav = matches!(
+            goto.source,
+            Some(NavOrderSource::Chasing | NavOrderSource::Fleeing)
+        );
         let target_pos = goto.pos;
         let goto_interval = ChaserNavPlan::rebuild_interval(
             chaser_speed.map_or(1.0, |speed| speed.0),
@@ -581,6 +587,23 @@ pub fn rebuild_goto_nav_plans(
         let timer_finished = plan.rebuild_timer.tick(time.delta()).just_finished();
         if chaser_gpos.taxicab_tile_distance(target_pos) <= goto.stop_distance.max(0.0) {
             plan.clear_path_and_retry(Duration::from_secs_f32(0.25), target_pos);
+            continue;
+        }
+        if lod_level >= 2 && !is_critical_nav {
+            let target_shifted = plan
+                .last_target_pos
+                .map(|prev| (prev.0 - target_pos.0).abs().max_element() >= TARGET_SHIFT_REBUILD_TILES)
+                .unwrap_or(true);
+            let lazy_interval = if lod_level >= 3 {
+                Duration::from_secs_f32(1.50)
+            } else {
+                Duration::from_secs_f32(0.90)
+            };
+            if plan.path_tiles.is_empty() || timer_finished || target_shifted {
+                plan.rebuild_timer = Timer::new(lazy_interval, TimerMode::Once);
+                plan.last_target_pos = Some(target_pos);
+                plan.holds_at_partial_endpoint = false;
+            }
             continue;
         }
 
@@ -760,7 +783,7 @@ pub fn rebuild_goto_nav_plans(
                 );
                 continue;
             }
-            let Ok((_blocker_ent, _blocker_dim, blocker_goto, _blocker_speed, _blocker_chasing, _blocker_wander_state, )) = goto_beings.get(occupant_ent) else {
+            let Ok((_blocker_ent, _blocker_dim, blocker_goto, _blocker_speed, _blocker_chasing, _blocker_wander_state, _blocker_lod_level, )) = goto_beings.get(occupant_ent) else {
                 consider_chase_goal_candidate(
                     &mut best_path_tiles,
                     &mut best_path_is_partial,
@@ -871,7 +894,7 @@ pub fn rebuild_goto_nav_plans(
                     );
                     continue;
                 }
-                let Ok((_blocker_ent, _blocker_dim, blocker_goto, _blocker_speed, _blocker_chasing, _blocker_wander_state, )) = goto_beings.get(occupant_ent) else {
+                let Ok((_blocker_ent, _blocker_dim, blocker_goto, _blocker_speed, _blocker_chasing, _blocker_wander_state, _blocker_lod_level, )) = goto_beings.get(occupant_ent) else {
                     consider_chase_goal_candidate(
                         &mut best_path_tiles,
                         &mut best_path_is_partial,

@@ -5,7 +5,7 @@ use tilemap_shared::*;
 use being_shared::{Being, Unloaded};
 
 use super::macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples};
-use crate::{chunking::MacroChunkTileIndices, regioning::{regioning_components::Region, regioning_resources::LoadedRegions}};
+use crate::{chunking::MacroChunkU16IndexMatrix, regioning::{regioning_components::Region, regioning_resources::LoadedRegions}};
 
 
 
@@ -107,7 +107,7 @@ pub fn spawn_activated_chunks(
                         let macro_chunk_ent = cmd.spawn_empty().id();
                         comps_for_macrochunk_ents.push((macro_chunk_ent, (
                             MacroChunk,
-                            MacroChunkTileIndices::default(),
+                            MacroChunkU16IndexMatrix::default(),
                             BiomeDistribution::default(),
                             MacrochunkPendingBiomeSamples::default(),
                             macro_chunk_pos,

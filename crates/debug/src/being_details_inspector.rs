@@ -8,7 +8,6 @@ use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
 use common::common_components::{DisplayName, HashId, StrId};
-use common::common_tag_components::TagSet;
 use common::log_targets::DEBUG;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 use item_shared::{
@@ -693,7 +692,7 @@ pub fn being_details_inspector(world: &mut World) {
             &ModifierTarget,
             Option<&ChildOf>,
             Option<&TemplEntiRef>,
-            Option<&TagSet>,
+            Option<&ModifierTags>,
             Has<PainSlowdown>,
         ),
         (With<WalkSpeed>, Without<Templ>),

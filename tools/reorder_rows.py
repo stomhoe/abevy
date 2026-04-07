@@ -2,13 +2,19 @@
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypedDict, cast
 
-from anim_format import extract_anim_blocks, format_clip_line, get_field_value, parse_clip_line, parse_header, parse_text_value
+from anim_format import (
+    extract_anim_blocks,
+    format_clip_line,
+    get_field_value,
+    parse_clip_line,
+    parse_header,
+    parse_text_value,
+)
 
 """
 Reorder spritesheet rows and rewrite matching row targets in an .anim file.

@@ -38,12 +38,16 @@ pub fn plugin(app: &mut App) {
         (
             (tick_time_based_multipliers).in_set(SimRunningSystems),
             clone_templ_children_ents,
-            set_entity_name,
             tick_timers,
             despawn_sprites_without_childof,
         ),
-    )
-    .configure_sets(
+    );
+    //#[cfg(debug_assertions)]
+    {
+        app.add_systems(Update, set_entity_name);
+    }
+
+    app.configure_sets(
         Update,
         (
             SimPausedSystems.run_if(in_state(SimulationState::Paused)),

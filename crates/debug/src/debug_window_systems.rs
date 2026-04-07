@@ -237,6 +237,7 @@ pub fn main_menu_window(
                 window_visible.region_details = false;
                 window_visible.tilemap_details = false;
                 window_visible.being_details = false;
+                window_visible.faction_details = false;
                 window_visible.player_details = false;
                 window_visible.registered_positions = false;
                 window_visible.exempted_entity_details = false;
@@ -275,6 +276,9 @@ pub fn main_menu_window(
             }
             if ui.button(egui::RichText::new("👥 Beings list").size(16.0)).clicked() {
                 window_visible.beings_list = !window_visible.beings_list;
+            }
+            if ui.button(egui::RichText::new("🏰 Faction Details").size(16.0)).clicked() {
+                window_visible.faction_details = !window_visible.faction_details;
             }
             if ui.button(egui::RichText::new("🧑 Players list").size(16.0)).clicked() {
                 window_visible.players_list = !window_visible.players_list;

@@ -1,7 +1,7 @@
 
 
 
-use bevy::{ecs::entity::EntityHashMap, prelude::*};
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
 
 use common::{common_components::{ StrId}, common_tag_components::TagSet};
 
@@ -9,8 +9,8 @@ use crate::{
     chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk,
     terrain::{
         biome::biome_resources::BiomeEntityMap,
-        operation_list::operation_list_components::{Bifurcation, CompiledBranch, CompiledBranchNode, OperationList},
-        operation_list::operation_list_resources::{EguiOperationListsHolder, OperationListEntityMap, TgCompiledOpLists, load_op_list_seri_defs},
+        operation_list::operation_list_components::{Bifurcation, OperationList},
+        operation_list::operation_list_resources::{EguiOperationListsHolder, OpListSeri, OperationListEntityMap, TgCompiledOpLists, load_op_list_seri_defs},
         operation_list::operation_list_script::load_tg_oplists,
         terrgen_components::FailedSearchOplistFilterHolder,
         terrgen_expression,
@@ -19,11 +19,15 @@ use crate::{
     tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplerEntityMap},
 };
 
-use std::collections::{HashMap, HashSet};
-
 #[allow(unused_parens)]
 pub fn cache_tg_oplists(mut cmd: Commands) {
     cmd.insert_resource(TgCompiledOpLists(load_tg_oplists()));
+}
+
+fn merged_oplist_seris(tg_oplists: &TgCompiledOpLists) -> Vec<OpListSeri> {
+    let mut seris = load_op_list_seri_defs();
+    seris.extend(tg_oplists.0.iter().cloned());
+    seris
 }
 
 /// Resolve NoiseByName variants in expression tree to actual Noise entities
@@ -108,8 +112,7 @@ pub fn init_oplists_from_assets(
     let mut oplist_multiple_dimension_refs = Vec::new();
     let mut tags_to_insert = Vec::new();
 
-    let mut seris = load_op_list_seri_defs();
-    seris.extend(tg_oplists.0.iter().cloned());
+    let mut seris = merged_oplist_seris(&tg_oplists);
     for seri in seris.iter_mut() {
         let str_id = match StrId::new_with_result(seri.id.clone(), 1) {
             Ok(str_id) => str_id,
@@ -236,9 +239,8 @@ pub fn init_oplists_bifurcations(
     tg_oplists: Res<TgCompiledOpLists>,
     mut oplist_query: Query<(Entity, &mut OperationList, &OplistSize)>,
     is_root: Query<&MultipleDimensionRefs>,
-) -> Result {
-    let mut seris = load_op_list_seri_defs();
-    seris.extend(tg_oplists.0.iter().cloned());
+) {
+    let seris = merged_oplist_seris(&tg_oplists);
     for seri in seris {
             let Ok(oplist_ent) = oplist_map.0.get_cloned(&seri.id) else {
                 error!(
@@ -279,113 +281,57 @@ pub fn init_oplists_bifurcations(
             }
     }
 
-    let mut snapshots: HashMap<Entity, (crate::terrain::terrgen_expression::ExprOpList, Vec<Bifurcation>, OplistSize)> =
-        HashMap::new();
-    for (ent, oplist, &size) in oplist_query.iter() {
-        snapshots.insert(ent, (oplist.expr_tree.clone(), oplist.bifurcations.clone(), size));
-    }
-
-    let mut cache: HashMap<Entity, CompiledBranchNode> = HashMap::new();
-    for ent in snapshots.keys().copied() {
-        let mut stack = HashSet::new();
-        let _ = compile_branch_node(ent, &snapshots, &mut cache, &mut stack);
-    }
-
-    for (ent, mut oplist, _) in oplist_query.iter_mut() {
-        oplist.compiled_branch_ast = cache.get(&ent).cloned();
-    }
-    Ok(())
 }
 
-fn compile_branch_node(
-    ent: Entity,
-    snapshots: &HashMap<Entity, (crate::terrain::terrgen_expression::ExprOpList, Vec<Bifurcation>, OplistSize)>,
-    cache: &mut HashMap<Entity, CompiledBranchNode>,
-    stack: &mut HashSet<Entity>,
-) -> Option<CompiledBranchNode> {
-    if let Some(found) = cache.get(&ent) {
-        return Some(found.clone());
-    }
-    if !stack.insert(ent) {
-        error!(target: "oplist_init", "Cycle detected while compiling branch AST at entity {:?}", ent);
-        return None;
-    }
-    let Some((expr_tree, bifurcations, _)) = snapshots.get(&ent) else {
-        stack.remove(&ent);
-        return None;
-    };
-
-    let mut branches = Vec::with_capacity(bifurcations.len());
-    for bif in bifurcations {
-        let (child, child_size) = if let Some(child_ent) = bif.oplist {
-            let child_size = snapshots.get(&child_ent).map(|(_, _, size)| *size);
-            let child = compile_branch_node(child_ent, snapshots, cache, stack).map(Box::new);
-            (child, child_size)
-        } else {
-            (None, None)
-        };
-        branches.push(CompiledBranch {
-            tiles: bif.tiles.clone(),
-            biome_tags: bif.biome_tags.clone(),
-            child_size,
-            child,
-        });
-    }
-    let compiled = CompiledBranchNode {
-        source_oplist: ent,
-        expr_tree: expr_tree.clone(),
-        branches,
-    };
-    cache.insert(ent, compiled.clone());
-    stack.remove(&ent);
-    Some(compiled)
-}
-
-#[allow(unused_parens)]
+#[allow(unused_parens, )]
 pub fn cycle_detection(
-    query: Query<(Entity, &OperationList, Has<MultipleDimensionStringRefs>)>,
+    query: Query<(Entity, &OperationList, Has<MultipleDimensionRefs>, ), ()>,
 ) {
     let roots: Vec<Entity> = query
-    .iter()
-    .filter_map(|(ent, _, is_root)| if is_root { Some(ent) } else { None })
-    .collect();
+        .iter()
+        .filter_map(|(ent, _, is_root)| if is_root { Some(ent) } else { None })
+        .collect();
+
     fn dfs(
-        query: &Query<(Entity, &OperationList, Has<MultipleDimensionStringRefs>)>,
+        query: &Query<(Entity, &OperationList, Has<MultipleDimensionRefs>, ), ()>,
         current: Entity,
-        visited: &mut HashSet<Entity>,
-        stack: &mut Vec<Entity>,
+        visited: &mut EntityHashSet,
+        on_path: &mut EntityHashSet,
     ) -> bool {
-        if stack.contains(&current) {
+        if on_path.contains(&current) {
             error!(target: "oplist_init", "Cycle detected, caused by oplist entity {:?}'s bifurcations", current);
             return true;
         }
         if !visited.insert(current) {
             return false;
         }
-        stack.push(current);
+        on_path.insert(current);
 
         let Ok((_, oplist, _)) = query.get(current) else {
-            stack.pop();
+            on_path.remove(&current);
             return false;
         };
+
         for bifur in &oplist.bifurcations {
-            if let Some(child) = bifur.oplist {
-                if dfs(query, child, visited, stack) {
-                    return true;
-                }
+            let Some(child) = bifur.oplist else { continue; };
+            if dfs(query, child, visited, on_path) {
+                return true;
             }
         }
-        stack.pop();
+
+        on_path.remove(&current);
         false
     }
+
     for root in roots {
-        let mut visited = HashSet::new();
-        let mut stack = Vec::new();
-        if dfs(&query, root, &mut visited, &mut stack) {
+        let mut visited = EntityHashSet::default();
+        let mut on_path = EntityHashSet::default();
+        if dfs(&query, root, &mut visited, &mut on_path) {
             error!(target: "oplist_init", "Cycle detected starting from root oplist {:?}", root);
         }
     }
 }
+
 #[allow(unused_parens)]
 pub fn assign_rootoplist_to_dimensions(mut cmd: Commands,
     oplist_query: Query<(Entity, &StrId, &MultipleDimensionRefs),(With<OperationList>, )>,

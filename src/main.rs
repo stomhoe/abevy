@@ -49,6 +49,7 @@ fn build_filter() -> String {
 
         (log_targets::OPLIST_INIT, WARN),
         (log_targets::TERRGEN_INIT, INFO),
+        (log_targets::TERRPROBE_INIT, DEBUG),
         (log_targets::SGC_INIT, DEBUG),
         (log_targets::REGION_SYSTEM, DEBUG),
         (log_targets::SGC_CHUNK_OFFER, DEBUG),
@@ -73,6 +74,7 @@ fn build_filter() -> String {
 
         (log_targets::BEING_CONTROL, DEBUG),
         (log_targets::BODY_BUILD, DEBUG),
+        (log_targets::GAME_COMMON_SYSTEM, INFO),
         (log_targets::GAME_INIT, DEBUG),
 
         (log_targets::SPRITE_ANIMATION_INIT, DEBUG),

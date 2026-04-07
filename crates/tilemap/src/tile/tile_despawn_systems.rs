@@ -1,5 +1,5 @@
 use crate::{
-    chunking::MacroChunkTileIndices,
+    chunking::MacroChunkU16IndexMatrix,
     tile::{tile_components::*, tile_delete_others_systems::*, tile_messages::*},
 };
 use bevy::prelude::*;
@@ -70,11 +70,11 @@ pub fn safe_despawn_tile_at(
     loaded_chunks: Res<LoadedChunks>,
     chunk_children: Query<&Tilemaps>,
     macro_chunk_ref_query: Query<&MacroChunkRef>,
-    mut macro_chunk_tile_indices_query: Query<&mut MacroChunkTileIndices>,
+    mut macro_chunk_tile_indices_query: Query<&mut MacroChunkU16IndexMatrix>,
     mut tilemap_query: Query<(&mut TileStorage, &HashIdToTexIndex)>,
     hash_id_query: Query<&common::HashId, common::AnyDisabling>,
     templ_ref_query: Query<&TemplEntiRef, (With<Tile>, common::AnyDisabling)>,
-    tile_index_query: Query<&TileIndex, common::AnyDisabling>,
+    tile_index_query: Query<&U16TileIndex, common::AnyDisabling>,
     dim_query: Query<&DimensionRef, (With<Tile>, common::AnyDisabling)>,
     gpos_query: Query<&GlobalTilePos, (With<Tile>, common::AnyDisabling)>,
     mut rechecks: Local<Vec<RecheckTileAdjacency>>,

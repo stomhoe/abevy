@@ -1,6 +1,7 @@
 use ::tilemap_shared::directions::*;
-use bevy::ecs::entity::{EntityHashSet, MapEntities};
+use bevy::ecs::entity::MapEntities;
 use bevy::platform::collections::HashMap;
+use bevy::platform::collections::HashSet;
 #[allow(unused_imports)]
 use bevy::prelude::*;
 #[allow(unused_imports)]
@@ -180,14 +181,14 @@ pub struct UseFallbackSprite;
 #[derive(Component, Debug, Default, Clone)]
 pub struct Exclusive;
 
-#[derive(Component, Debug, Clone, PartialEq, Eq)]
+#[derive(Component, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct BecomeChildOfSpriteWithTag(pub Tag);
 
-#[derive(Component, Debug, Clone, MapEntities, Default)]
-pub struct ScsToBuild(#[entities] pub EntityHashSet);
+#[derive(Component, Debug, Clone, Default, Deserialize, Serialize)]
+pub struct ScsToBuild(pub HashSet<HashId>);
 impl ScsToBuild {
     pub fn with_capacity(capacity: usize) -> Self {
-        Self(EntityHashSet::with_capacity(capacity))
+        Self(HashSet::with_capacity(capacity))
     }
 }
 

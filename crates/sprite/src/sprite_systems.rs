@@ -23,17 +23,28 @@ pub struct SpriteChangedScaleOrOffsetOrParent(pub Entity);
 #[allow(unused_parens)]
 pub fn sprite_change_detection(
     sprite_query: Query<Entity, (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<TemplEntiRef>, Changed<Offset2D>, Changed<Sprite>, Changed<ChildOf>)>)>,
-    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>, Changed<Visibility>)>, Without<Unloaded>, Without<Disabled>)>,
-    mut removed_disabled: RemovedComponents<Disabled>,
+    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>, Changed<Visibility>)>, Without<Unloaded>, )>,
     mut removed_unloaded: RemovedComponents<Unloaded>,
     mut writer: MessageWriter<SpriteChangedScaleOrOffsetOrParent>,
     mut changed: Local<HashSet<SpriteChangedScaleOrOffsetOrParent>>,
 )
 {
-    changed.extend(sprite_query.iter().map(SpriteChangedScaleOrOffsetOrParent));
-    changed.extend(removed_disabled.read().map(SpriteChangedScaleOrOffsetOrParent));
-    changed.extend(baseholder_query.iter().flat_map(|held_sprites| held_sprites.iter().map(|sprite_ent| SpriteChangedScaleOrOffsetOrParent(sprite_ent))));
-    changed.extend(removed_unloaded.read().map(|removed| SpriteChangedScaleOrOffsetOrParent(removed)));
+    let sprite_iter = sprite_query.iter();
+    let (sprite_lower, sprite_upper) = sprite_iter.size_hint();
+    changed.reserve(sprite_upper.unwrap_or(sprite_lower));
+    changed.extend(sprite_iter.map(SpriteChangedScaleOrOffsetOrParent));
+
+    let baseholder_iter = baseholder_query.iter();
+    let (base_lower, base_upper) = baseholder_iter.size_hint();
+    changed.reserve(base_upper.unwrap_or(base_lower));
+    for held_sprites in baseholder_iter {
+        changed.extend(held_sprites.iter().map(SpriteChangedScaleOrOffsetOrParent));
+    }
+
+    let removed_iter = removed_unloaded.read();
+    let (removed_lower, removed_upper) = removed_iter.size_hint();
+    changed.reserve(removed_upper.unwrap_or(removed_lower));
+    changed.extend(removed_iter.map(SpriteChangedScaleOrOffsetOrParent));
     writer.write_batch(changed.drain());
 }
 

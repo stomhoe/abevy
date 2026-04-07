@@ -1,5 +1,6 @@
 #[allow(unused_imports)]
 use bevy::prelude::*;
+use bevy::ecs::entity::MapEntities;
 use bevy_replicon::prelude::*;
 use common::common_components::{AssetScoped, Prefix, SparedFromHotReloading};
 use serde::{Deserialize, Serialize};
@@ -30,8 +31,8 @@ pub struct IsAffiliatedToMyFaction;
 #[derive(Component, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct BelongsToAPlayerFaction;
 
-#[derive(Component, Debug, Clone, Default)]
-pub struct PlayerMembers(pub Vec<Entity>);
+#[derive(Component, Debug, Clone, Default, Deserialize, Serialize, MapEntities)]
+pub struct PlayerMembers(#[entities] pub Vec<Entity>);
 impl PlayerMembers {
     pub fn insert(&mut self, player: Entity) -> bool {
         if self.contains(player) {

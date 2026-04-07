@@ -307,6 +307,7 @@ pub fn debug_chunking_window(
         &DimensionRef,
         &ChunkPos,
         Option<&Children>,
+        Option<&Tilemaps>,
         Option<&TilesToSave>,
         &TerrGenState,
         Option<&ActivatingChunks>,
@@ -317,6 +318,7 @@ pub fn debug_chunking_window(
     // Query for child entities to check their components
     tile_storage_query: Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
     tile_query: Query<(Entity, &TemplEntiRef, Option<&InitialPos>), With<Tile>>,
+    spritetile_query: Query<(Entity, Has<SpriteTile>), ()>,
     spritetile_gpos_query: Query<(Entity, &GlobalTilePos, Option<&TemplEntiRef>)>,
     templ_query: Query<&TileStrId, With<Templ>>,
     id_query: Query<&StrId>,
@@ -347,10 +349,10 @@ pub fn debug_chunking_window(
     });
 
     // Group chunks by dimension and position
-    let mut chunks_by_dimension: BTreeMap<String, HashMap<ChunkPos, (Entity, Option<&Children>, Option<&TilesToSave>, TerrGenState, Option<&ActivatingChunks>)>> =
+    let mut chunks_by_dimension: BTreeMap<String, HashMap<ChunkPos, (Entity, Option<&Children>, Option<&Tilemaps>, Option<&TilesToSave>, TerrGenState, Option<&ActivatingChunks>)>> =
         BTreeMap::new();
 
-    for (entity, _chunk, dim_ref, chunk_pos, children, tiles_to_save, terrgen_state, activating_chunks) in chunk_query.iter() {
+    for (entity, _chunk, dim_ref, chunk_pos, children, tilemaps, tiles_to_save, terrgen_state, activating_chunks) in chunk_query.iter() {
         let dim_name = if let Ok(str_id) = id_query.get(dim_ref.0) {
             str_id.as_str().to_string()
         } else {
@@ -360,7 +362,7 @@ pub fn debug_chunking_window(
         chunks_by_dimension
             .entry(dim_name)
             .or_insert_with(HashMap::new)
-            .insert(*chunk_pos, (entity, children, tiles_to_save, *terrgen_state, activating_chunks));
+            .insert(*chunk_pos, (entity, children, tilemaps, tiles_to_save, *terrgen_state, activating_chunks));
     }
 
     if chunking_ui.follow_camera_chunk {
@@ -466,7 +468,7 @@ pub fn debug_chunking_window(
                                     for y in (min_y..=max_y).rev() {
                                         for x in min_x..=max_x {
                                             let pos = ChunkPos(IVec2::new(x, y));
-                                            if let Some((entity, children, _tiles_to_save, _terrgen_state, _activating_chunks)) = chunks_map.get(&pos) {
+                                            if let Some((entity, children, _tilemaps, _tiles_to_save, _terrgen_state, _activating_chunks)) = chunks_map.get(&pos) {
                                                 let is_selected = selected_chunk == Some(*entity);
                                                 let is_camera_pos = camera_chunk_pos.map_or(false, |cam_pos| cam_pos == pos);
 
@@ -524,7 +526,7 @@ pub fn debug_chunking_window(
                 .collect();
             selected_chunk_details.sort_by_key(|(_, _, (entity, ..))| entity.index());
 
-            for (dim_key, chunk_pos, (entity, children, tiles_to_save, terrgen_state, activating_chunks)) in selected_chunk_details {
+            for (dim_key, chunk_pos, (entity, children, tilemaps, tiles_to_save, terrgen_state, activating_chunks)) in selected_chunk_details {
                 let should_start_open = camera_dim_name.as_ref().is_some_and(|camera_dim_name| camera_dim_name == dim_key)
                     && camera_chunk_pos == Some(*chunk_pos);
                 let is_selected = selected_entities.selected_chunks.contains(entity);
@@ -547,107 +549,125 @@ pub fn debug_chunking_window(
                                 activating.0.len()));
                         }
 
-                        // Display children details
                         ui.separator();
-                        if let Some(children_ref) = children {
-                            egui::CollapsingHeader::new("Children:")
+                        if let Some(tilemaps_ref) = tilemaps {
+                            egui::CollapsingHeader::new("Tilemaps")
                                 .default_open(true)
                                 .show(ui, |ui| {
-                                for child_entity in children_ref.iter() {
-                                    // Check if child is a tilemap with TileStorage
-                                    if let Ok((tmap_entity, tile_storage, ac_z, shader_ref)) = tile_storage_query.get(child_entity) {
-
-                                        // Build display label with entity id for readability
-                                        let mut label = format!("🗺️ Tilemap ({})", tmap_entity.index());
-                                        if let Some(z) = ac_z {
-                                            label.push_str(&format!(" [Z: {:.1}]", z.0));
-                                        }
-                                        if let Some(shader_ref) = shader_ref {
-                                            if let Ok(shader_str) = id_query.get(shader_ref.0) {
+                                    for tmap_entity in tilemaps_ref.iter() {
+                                        if let Ok((tmap_entity, tile_storage, ac_z, shader_ref)) = tile_storage_query.get(tmap_entity) {
+                                            let mut label = format!("🗺️ Tilemap ({})", tmap_entity.index());
+                                            if let Some(z) = ac_z {
+                                                label.push_str(&format!(" [Z: {:.1}]", z.0));
+                                            }
+                                            if let Some(shader_ref) = shader_ref
+                                                && let Ok(shader_str) = id_query.get(shader_ref.0)
+                                            {
                                                 label.push_str(&format!(" [Shader: {}]", shader_str.as_str()));
                                             }
-                                        }
 
-                                        // Stable type key across chunks: shader + z + tilemap size
-                                        let shader_key = shader_ref
-                                            .and_then(|s| id_query.get(s.0).ok().map(|id| id.as_str().to_string()))
-                                            .unwrap_or_else(|| "none".to_string());
-                                        let z_key = ac_z.map(|z| format!("{:.3}", z.0)).unwrap_or_else(|| "none".to_string());
-                                        let tilemap_type = format!(
-                                            "shader:{}|z:{}|size:{}x{}",
-                                            shader_key,
-                                            z_key,
-                                            tile_storage.size.x,
-                                            tile_storage.size.y
-                                        );
-                                        let collapsing = egui::CollapsingHeader::new(label)
-                                            .id_salt(format!("tilemap_type_{}", tilemap_type))
-                                            .default_open(
-                                                chunking_ui.open_tilemap_type.as_deref()
-                                                    == Some(tilemap_type.as_str()),
-                                            )
-                                            .show(ui, |ui| {
-                                            ui.label(format!("Size: {}x{}", tile_storage.size.x, tile_storage.size.y));
+                                            let shader_key = shader_ref
+                                                .and_then(|s| id_query.get(s.0).ok().map(|id| id.as_str().to_string()))
+                                                .unwrap_or_else(|| "none".to_string());
+                                            let z_key = ac_z.map(|z| format!("{:.3}", z.0)).unwrap_or_else(|| "none".to_string());
+                                            let tilemap_type = format!(
+                                                "shader:{}|z:{}|size:{}x{}",
+                                                shader_key,
+                                                z_key,
+                                                tile_storage.size.x,
+                                                tile_storage.size.y
+                                            );
+                                            let collapsing = egui::CollapsingHeader::new(label)
+                                                .id_salt(format!("tilemap_type_{}", tilemap_type))
+                                                .default_open(
+                                                    chunking_ui.open_tilemap_type.as_deref()
+                                                        == Some(tilemap_type.as_str()),
+                                                )
+                                                .show(ui, |ui| {
+                                                    ui.label(format!("Size: {}x{}", tile_storage.size.x, tile_storage.size.y));
 
-                                            if ui.button("📋 View All Components").clicked() {
-                                                selected_entities.selected_tilemap = Some(child_entity);
-                                                window_visible.tilemap_details = true;
+                                                    if ui.button("📋 View All Components").clicked() {
+                                                        selected_entities.selected_tilemap = Some(tmap_entity);
+                                                        window_visible.tilemap_details = true;
+                                                    }
+
+                                                    let camera_tile_pos_for_this_dim =
+                                                        if camera_dim_name.as_deref() == Some(dim_key.as_str()) {
+                                                            camera_tile_pos
+                                                        } else {
+                                                            None
+                                                        };
+                                                    if let Some(clicked_tile) = render_tilemap_grid(
+                                                        ui,
+                                                        tile_storage,
+                                                        &tile_query,
+                                                        &templ_query,
+                                                        &mut selected_entities.selected_tile,
+                                                        camera_tile_pos_for_this_dim,
+                                                    ) {
+                                                        selected_entities.selected_tile = Some(clicked_tile);
+                                                        window_visible.tile_details = true;
+                                                    }
+                                                });
+                                            if collapsing.fully_open() {
+                                                chunking_ui.open_tilemap_type = Some(tilemap_type);
                                             }
-
-                                            let camera_tile_pos_for_this_dim =
-                                                if camera_dim_name.as_deref() == Some(dim_key.as_str()) {
-                                                    camera_tile_pos
-                                                } else {
-                                                    None
-                                                };
-                                            if let Some(clicked_tile) = render_tilemap_grid(
-                                                ui,
-                                                tile_storage,
-                                                &tile_query,
-                                                &templ_query,
-                                                &mut selected_entities.selected_tile,
-                                                camera_tile_pos_for_this_dim,
-                                            ) {
-                                                selected_entities.selected_tile = Some(clicked_tile);
-                                                window_visible.tile_details = true;  // Show tile details window when selected
-                                            }
-                                        });
-                                        if collapsing.fully_open() {
-                                            chunking_ui.open_tilemap_type = Some(tilemap_type);
                                         }
-                                    } else {
-                                        // Display generic child info
-                                        ui.label(format!("Child: {:?}", child_entity));
-                                    }
-                                }
-                            });
-
-                            egui::CollapsingHeader::new("SpriteTilesMap")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    let camera_tile_pos_for_this_dim =
-                                        if camera_dim_name.as_deref() == Some(dim_key.as_str()) {
-                                            camera_tile_pos
-                                        } else {
-                                            None
-                                        };
-                                    if let Some(clicked_spritetile) = render_spritetiles_grid(
-                                        ui,
-                                        *chunk_pos,
-                                        children_ref.as_ref(),
-                                        &tile_storage_query,
-                                        &spritetile_gpos_query,
-                                        &id_query,
-                                        &mut selected_entities.selected_sprite,
-                                        camera_tile_pos_for_this_dim,
-                                    ) {
-                                        selected_entities.selected_sprite = Some(clicked_spritetile);
-                                        window_visible.sprite_details = true;
                                     }
                                 });
                         } else {
-                            ui.label("No children");
+                            ui.label("No tilemaps");
                         }
+
+                        egui::CollapsingHeader::new("SpriteTilesMap")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                let camera_tile_pos_for_this_dim =
+                                    if camera_dim_name.as_deref() == Some(dim_key.as_str()) {
+                                        camera_tile_pos
+                                    } else {
+                                        None
+                                    };
+                                let child_entities = children
+                                    .map(|children| children.iter().collect::<Vec<_>>())
+                                    .unwrap_or_default();
+                                if let Some(clicked_spritetile) = render_spritetiles_grid(
+                                    ui,
+                                    *chunk_pos,
+                                    &child_entities,
+                                    &tile_storage_query,
+                                    &spritetile_gpos_query,
+                                    &id_query,
+                                    &mut selected_entities.selected_sprite,
+                                    camera_tile_pos_for_this_dim,
+                                ) {
+                                    selected_entities.selected_sprite = Some(clicked_spritetile);
+                                    window_visible.sprite_details = true;
+                                }
+                            });
+
+                        egui::CollapsingHeader::new("Non-tile Children")
+                            .default_open(false)
+                            .show(ui, |ui| {
+                                if let Some(children_ref) = children {
+                                    for child_entity in children_ref.iter() {
+                                        let is_tilemap_entity = tilemaps.map_or(false, |tilemaps_ref| {
+                                            tilemaps_ref.iter().any(|tmap_entity| tmap_entity == child_entity)
+                                        });
+                                        if is_tilemap_entity {
+                                            continue;
+                                        }
+                                        if let Ok((_, is_sprite_tile)) = spritetile_query.get(child_entity)
+                                            && is_sprite_tile
+                                        {
+                                            continue;
+                                        }
+                                        ui.label(format!("Child: {:?}", child_entity));
+                                    }
+                                } else {
+                                    ui.label("No children");
+                                }
+                            });
                     });
                 });
             }

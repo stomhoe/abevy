@@ -13,14 +13,14 @@ use game_common::game_common_components::*;
 use sprite_shared::{AcZ, YSortOrigin};
 use ::tilemap_shared::*;
 use crate::{
-    chunking::MacroChunkTileIndices,
+    chunking::MacroChunkU16IndexMatrix,
     tile::{
         tile_bundles::*,
         tile_delete_others_systems::TileDeleteOthersParamSet,
         tile_despawn_systems::*,
         tile_shader::tile_shader_components::*,
     },
-    tile::TileIndex,
+    tile::U16TileIndex,
     tilemap_resources::*,
     tilemap_structs::*,
     tilemap_terrbl_systems::build_terrbl_material_for_map,
@@ -63,11 +63,11 @@ pub struct ComponentsQueries<'w, 's> {
     pub color_query: Query<'w, 's, &'static TileColor, common::AnyDisabling>,
     pub y_sort_query: Query<'w, 's, (), (With<YSortOrigin>, common::AnyDisabling)>,
     pub tile_templ_ref_query: Query<'w, 's, &'static TemplEntiRef>,
-    pub tile_index_query: Query<'w, 's, &'static TileIndex, common::AnyDisabling>,
+    pub tile_index_query: Query<'w, 's, &'static U16TileIndex, common::AnyDisabling>,
     pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex>,
     pub interaction_zones_query: Query<'w, 's, &'static InteractionZones, common::AnyDisabling>,
     pub macro_chunk_ref_query: Query<'w, 's, &'static MacroChunkRef>,
-    pub macro_chunk_tile_indices_query: Query<'w, 's, &'static mut MacroChunkTileIndices>,
+    pub macro_chunk_tile_indices_query: Query<'w, 's, &'static mut MacroChunkU16IndexMatrix>,
     pub delete_others_paramset: TileDeleteOthersParamSet<'w, 's>,
 }
 
@@ -561,7 +561,7 @@ fn process_tile_into_corresponding_tilemap(
             (
                 TilemapConfig::new(size_in_tiles, tile_size, chunk_pos, tile_z_index, y_sort),
                 ChildOf(chunk),
-                TilemapOf::new(chunk),
+                TilemapOf{chunk},
                 dim_ref,
                 shader_ref.copied().unwrap_or_default(),
             ))

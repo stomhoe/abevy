@@ -115,7 +115,7 @@ macro_rules! define_entity_map_systems {
     ) => {
         paste::paste! {
             #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Clone, )]
-            #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility::Hidden, Transform)]
+            #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility::Hidden, Transform, Name)]
             pub struct [<Egui $abbreviation sHolder>];
 
             #[derive(bevy::prelude::Resource, std::fmt::Debug, Clone)]
@@ -374,7 +374,7 @@ macro_rules! define_entity_map_systems {
             }
 
             #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Copy, Clone)]
-            #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility, Transform)]
+            #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility, Transform, Name)]
             pub struct [<Egui $abbreviation sHolder>];
 
             #[derive(bevy::prelude::Resource, Clone, )]
@@ -563,7 +563,7 @@ macro_rules! define_entity_map_systems_no_replicate {
     ) => {
         paste::paste! {
             #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Copy, Clone)]
-            #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility, Transform)]
+            #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility, Transform, Name)]
             pub struct [<Egui $abbreviation sHolder>];
 
             #[derive(bevy::prelude::Resource, Clone, )]
@@ -774,7 +774,7 @@ macro_rules! define_entity_map_systems_no_replicate {
             }
 
             #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Copy, Clone)]
-            #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility, Transform)]
+            #[require(common::common_components::SparedFromHotReloading, common::common_components::AssetScoped, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, Visibility, Transform, Name)]
             pub struct [<Egui $abbreviation sHolder>];
 
             #[derive(bevy::prelude::Resource, Clone, )]

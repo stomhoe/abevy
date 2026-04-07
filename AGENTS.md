@@ -5,9 +5,11 @@ if a queried component has no fields, use Has<ComponentName> instead of Option<&
 Prefer let Ok/Some(...) else {continue;} over if let Ok/Some(...){}. Use
 EntityHashmap/set over Hashmap/set<Entity>. use .read() to read MessageReader's received messages, not .iter(). to write messages with a MessageWriter, define mut messages: Local<Vec<MessageType>> in the system params, then call writer.write_batch(messages.drain(..)); at the end of the system. Don't forget to add imports. If you use something from a crate, add the dependency. if you change fields of a *Seri struct, fix dependent .ron files, and don't create legacy adapters for these outdated .rons, just update the rons.
 
+When i tell you to move structs from a .rs file into the other, don't make the old file do pub use and reexporte the new .rs file's structs. just update imports in the consumer files to point to the new .rs file's structs. if the old file ends up empty after the requested struct moves, delete it
+
 For "target" parameter in error!, info!, trace!, debug!, warn! macros, put the corresponding constant from log_targets.rs. If constant is missing, define it in log_targets.rs and then add into main.rs's format string.
 
-For freshly implemented features, add debug! prints with the correct "target:" const from log_targets.rs for the file and update main.rs to actually show the logs, so that the user can help you debug, but make these occupy a single line even if long. if spammy use trace! instead. Avoid overdoing it, put in the most important sections. Only do it if you suspect the code can be buggy and it's not straightforward
+For freshly implemented features, add debug! prints with the correct "target:" const from log_targets.rs for the file and update main.rs to actually show the logs, so that the user can help you debug, but make these occupy a single line even if long. if spammy use trace! instead. AVOID OVERDOING it, put in the most important sections. Only do it if you suspect the code can be buggy/tricky in that section and it's not straightforward
 
 Make sure to .replicate::<T> newly added components which the client also uses in his locally running systems.
 

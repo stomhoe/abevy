@@ -322,6 +322,7 @@ pub struct BodyHealthLocalParams<'s> {
     consciousness_mod_sum: Local<'s, EntityHashMap<f32>>,
     vision_mod_sum: Local<'s, EntityHashMap<f32>>,
     body_modifiers: Local<'s, EntityHashSet>,
+    body_parts_by_body: Local<'s, EntityHashMap<Vec<(Entity, Entity)>>>,
 }
 
 #[allow(unused_parens, )]
@@ -340,6 +341,18 @@ pub fn update_body_health_from_parts(
     locals.blood_capacity_mod_sum.clear();
     locals.consciousness_mod_sum.clear();
     locals.vision_mod_sum.clear();
+    locals.body_parts_by_body.clear();
+
+    for (part_ent, part_child_of) in queries.parts_query.iter() {
+        let Ok(part_templ_ref) = queries.templ_enti_refs_query.get(part_ent) else {
+            continue;
+        };
+        locals
+            .body_parts_by_body
+            .entry(part_child_of.parent())
+            .or_insert_with(Vec::new)
+            .push((part_ent, part_templ_ref.0));
+    }
 
     for (body, body_of) in queries.bodies_query.iter() {
         let mut total_max_hp = 0.0;
@@ -428,133 +441,130 @@ pub fn update_body_health_from_parts(
             }
         }
 
-        for (part_ent, part_child_of) in queries.parts_query.iter() {
-            if part_child_of.parent() != body {
-                continue;
-            }
-            let Ok(part_templ_ref) = queries.templ_enti_refs_query.get(part_ent) else {
-                continue;
-            };
-            locals.body_modifiers.clear();
-            collect_applied_modifier_entities(
-                &mut locals.body_modifiers,
-                part_ent,
-                Some(part_templ_ref),
-                &queries.part_applied_mods_query,
-            );
-            for &mod_ent in locals.body_modifiers.iter() {
-                let templ_ref = queries.templ_enti_refs_query.get(mod_ent).ok();
-                let Some(value) = resolve_modifier_component(mod_ent, templ_ref, &queries.curr_values_query) else {
-                    continue;
-                };
-                let Ok(target) = queries.modifier_target_query.get(mod_ent) else {
-                    continue;
-                };
-                let target_is_this_part = target.0 == part_ent || target.0 == part_templ_ref.0;
-                let Some(target_part_ent) = target_is_this_part.then_some(part_ent) else {
-                    continue;
-                };
-                if modifier_has_marker(mod_ent, templ_ref, &queries.pain_infliction_query) {
-                    add_part_or_body_modifier_sum(
-                        &mut locals.pain_infliction_by_part,
-                        &mut locals.pain_infliction_by_body,
-                        target_part_ent,
-                        value.0,
-                        &queries.bodies_query,
-                        &queries.parts_query,
-                        &queries.user_body_instances_query,
-                    );
+        if let Some(body_parts) = locals.body_parts_by_body.get(&body) {
+            for (part_ent, part_templ_ent) in body_parts.iter().copied() {
+                locals.body_modifiers.clear();
+                let part_templ_ref = TemplEntiRef(part_templ_ent);
+                collect_applied_modifier_entities(
+                    &mut locals.body_modifiers,
+                    part_ent,
+                    Some(&part_templ_ref),
+                    &queries.part_applied_mods_query,
+                );
+                for &mod_ent in locals.body_modifiers.iter() {
+                    let templ_ref = queries.templ_enti_refs_query.get(mod_ent).ok();
+                    let Some(value) = resolve_modifier_component(mod_ent, templ_ref, &queries.curr_values_query) else {
+                        continue;
+                    };
+                    let Ok(target) = queries.modifier_target_query.get(mod_ent) else {
+                        continue;
+                    };
+                    let target_is_this_part = target.0 == part_ent || target.0 == part_templ_ent;
+                    let Some(target_part_ent) = target_is_this_part.then_some(part_ent) else {
+                        continue;
+                    };
+                    if modifier_has_marker(mod_ent, templ_ref, &queries.pain_infliction_query) {
+                        add_part_or_body_modifier_sum(
+                            &mut locals.pain_infliction_by_part,
+                            &mut locals.pain_infliction_by_body,
+                            target_part_ent,
+                            value.0,
+                            &queries.bodies_query,
+                            &queries.parts_query,
+                            &queries.user_body_instances_query,
+                        );
+                    }
+                    if modifier_has_marker(mod_ent, templ_ref, &queries.pain_sensitivity_query) {
+                        add_part_or_body_modifier_sum(
+                            &mut locals.pain_sensitivity_by_part,
+                            &mut locals.pain_sensitivity_by_body,
+                            target_part_ent,
+                            value.0,
+                            &queries.bodies_query,
+                            &queries.parts_query,
+                            &queries.user_body_instances_query,
+                        );
+                    }
+                    if modifier_has_marker(mod_ent, templ_ref, &queries.bleed_query) {
+                        add_modifier_sum(
+                            &mut locals.bleed_mod_sum,
+                            target_part_ent,
+                            value.0,
+                            &queries.bodies_query,
+                            &queries.parts_query,
+                            &queries.user_body_instances_query,
+                        );
+                    }
+                    if modifier_has_marker(mod_ent, templ_ref, &queries.blood_capacity_query) {
+                        add_modifier_sum(
+                            &mut locals.blood_capacity_mod_sum,
+                            target_part_ent,
+                            value.0,
+                            &queries.bodies_query,
+                            &queries.parts_query,
+                            &queries.user_body_instances_query,
+                        );
+                    }
+                    if modifier_has_marker(mod_ent, templ_ref, &queries.consciousness_query) {
+                        add_modifier_sum(
+                            &mut locals.consciousness_mod_sum,
+                            target_part_ent,
+                            value.0,
+                            &queries.bodies_query,
+                            &queries.parts_query,
+                            &queries.user_body_instances_query,
+                        );
+                    }
+                    if modifier_has_marker(mod_ent, templ_ref, &queries.vision_query) {
+                        add_modifier_sum(
+                            &mut locals.vision_mod_sum,
+                            target_part_ent,
+                            value.0,
+                            &queries.bodies_query,
+                            &queries.parts_query,
+                            &queries.user_body_instances_query,
+                        );
+                    }
                 }
-                if modifier_has_marker(mod_ent, templ_ref, &queries.pain_sensitivity_query) {
-                    add_part_or_body_modifier_sum(
-                        &mut locals.pain_sensitivity_by_part,
-                        &mut locals.pain_sensitivity_by_body,
-                        target_part_ent,
-                        value.0,
-                        &queries.bodies_query,
-                        &queries.parts_query,
-                        &queries.user_body_instances_query,
-                    );
-                }
-                if modifier_has_marker(mod_ent, templ_ref, &queries.bleed_query) {
-                    add_modifier_sum(
-                        &mut locals.bleed_mod_sum,
-                        target_part_ent,
-                        value.0,
-                        &queries.bodies_query,
-                        &queries.parts_query,
-                        &queries.user_body_instances_query,
-                    );
-                }
-                if modifier_has_marker(mod_ent, templ_ref, &queries.blood_capacity_query) {
-                    add_modifier_sum(
-                        &mut locals.blood_capacity_mod_sum,
-                        target_part_ent,
-                        value.0,
-                        &queries.bodies_query,
-                        &queries.parts_query,
-                        &queries.user_body_instances_query,
-                    );
-                }
-                if modifier_has_marker(mod_ent, templ_ref, &queries.consciousness_query) {
-                    add_modifier_sum(
-                        &mut locals.consciousness_mod_sum,
-                        target_part_ent,
-                        value.0,
-                        &queries.bodies_query,
-                        &queries.parts_query,
-                        &queries.user_body_instances_query,
-                    );
-                }
-                if modifier_has_marker(mod_ent, templ_ref, &queries.vision_query) {
-                    add_modifier_sum(
-                        &mut locals.vision_mod_sum,
-                        target_part_ent,
-                        value.0,
-                        &queries.bodies_query,
-                        &queries.parts_query,
-                        &queries.user_body_instances_query,
-                    );
-                }
-            }
 
-            let max_hp = max_hp_by_part.0.get(&part_ent).copied().unwrap_or(0.0).max(0.0);
-            let mut current_hp = max_hp;
-            if let Ok(damage) = queries.damage_query.get_mut(part_ent) {
-                current_hp = (max_hp - damage.0).max(0.0);
-            }
-            let current_hp = current_hp.clamp(0.0, max_hp);
-            let damage_amount = (max_hp - current_hp).max(0.0);
-            let pain_ratio = if max_hp > 0.0 {
-                damage_amount / max_hp
-            } else {
-                0.0
-            };
+                let max_hp = max_hp_by_part.0.get(&part_ent).copied().unwrap_or(0.0).max(0.0);
+                let mut current_hp = max_hp;
+                if let Ok(damage) = queries.damage_query.get_mut(part_ent) {
+                    current_hp = (max_hp - damage.0).max(0.0);
+                }
+                let current_hp = current_hp.clamp(0.0, max_hp);
+                let damage_amount = (max_hp - current_hp).max(0.0);
+                let pain_ratio = if max_hp > 0.0 {
+                    damage_amount / max_hp
+                } else {
+                    0.0
+                };
 
-            let pain_infliction = locals.pain_infliction_by_part
-                .get(&part_ent)
-                .copied()
-                .unwrap_or(0.0)
-                + locals.pain_infliction_by_body
+                let pain_infliction = locals.pain_infliction_by_part
+                    .get(&part_ent)
+                    .copied()
+                    .unwrap_or(0.0)
+                    + locals.pain_infliction_by_body
+                        .get(&body)
+                        .copied()
+                        .unwrap_or(0.0);
+
+                let pain_sensitivity_part = locals.pain_sensitivity_by_part
+                    .get(&part_ent)
+                    .copied()
+                    .unwrap_or(1.0);
+                let pain_sensitivity_body = locals.pain_sensitivity_by_body
                     .get(&body)
                     .copied()
-                    .unwrap_or(0.0);
+                    .unwrap_or(1.0);
+                let pain_sensitivity_mult = pain_sensitivity_part * pain_sensitivity_body;
+                let pain_mult = (1.0 + pain_infliction) * pain_sensitivity_mult;
+                let part_pain = pain_ratio * pain_mult;
 
-            let pain_sensitivity_part = locals.pain_sensitivity_by_part
-                .get(&part_ent)
-                .copied()
-                .unwrap_or(1.0);
-            let pain_sensitivity_body = locals.pain_sensitivity_by_body
-                .get(&body)
-                .copied()
-                .unwrap_or(1.0);
-            let pain_sensitivity_mult = pain_sensitivity_part * pain_sensitivity_body;
-            let pain_mult = (1.0 + pain_infliction) * pain_sensitivity_mult;
-            let part_pain = pain_ratio * pain_mult;
-
-            total_max_hp += max_hp;
-            total_hp += current_hp;
-            total_pain += part_pain;
+                total_max_hp += max_hp;
+                total_hp += current_hp;
+                total_pain += part_pain;
+            }
         }
         let bleed_rate = bleed_rate + locals.bleed_mod_sum.get(&body).copied().unwrap_or(0.0);
         let blood_capacity = (blood_capacity + locals.blood_capacity_mod_sum.get(&body).copied().unwrap_or(0.0)).max(0.0);

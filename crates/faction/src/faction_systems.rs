@@ -27,7 +27,6 @@ pub fn set_stuff_as_self_faction(mut cmd: Commands,
     player_factions: Query<(), With<PlayerMembers>>,
     player_faction_changes: Query<(), (With<Player>, Changed<FactionRef>)>,
     mut removed_player_factions: RemovedComponents<PlayerMembers>,
-
 ) {
     let had_removed_player_factions = removed_player_factions.read().next().is_some();
     let rerun_all = !added_mine_query.is_empty()

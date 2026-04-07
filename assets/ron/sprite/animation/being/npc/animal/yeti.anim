@@ -40,7 +40,7 @@ anim yeti_west_idle {
     paused: true
     speed: 1.0
     clips {
-        row 3 partial 0 0
+        row 3 partial 3 3
     }
 }
 
@@ -48,7 +48,7 @@ anim yeti_west_move {
     img_path: "texture/being/npc/monster/yeti.png"
     rows_cols: 4 8
     clips {
-        row 3 start_frame 1
+        row 3 start_frame 0
     }
 }
 
@@ -58,7 +58,7 @@ anim yeti_east_idle {
     paused: true
     speed: 1.0
     clips {
-        row 2 partial 0 0
+        row 2 partial 4 4
     }
 }
 
@@ -66,6 +66,6 @@ anim yeti_east_move {
     img_path: "texture/being/npc/monster/yeti.png"
     rows_cols: 4 8
     clips {
-        row 2 start_frame 1
+        row 2 start_frame 5
     }
 }

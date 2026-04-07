@@ -23,9 +23,6 @@ pub struct OperationList {
     /// Variable names to keep in runtime debug capture for this oplist.
     pub hash_ids_mapped_to_strids: HashIdMap<StrId>,
     pub bifurcations: Vec<Bifurcation>,
-    /// Precompiled branch tree with child oplists inlined for fast recursive eval.
-    #[serde(skip, default)]
-    pub compiled_branch_ast: Option<CompiledBranchNode>,
 }
 
 impl Default for OperationList {
@@ -37,7 +34,6 @@ impl Default for OperationList {
             },
             hash_ids_mapped_to_strids: HashIdMap::default(),
             bifurcations: Vec::new(),
-            compiled_branch_ast: None,
         }
     }
 }
@@ -53,25 +49,7 @@ impl MapEntities for OperationList {
             bifur.tiles.iter_mut().for_each(|tile_entity| *tile_entity = entity_mapper.get_mapped(*tile_entity));
             bifur.biome_tags.iter_mut().for_each(|biome_tag| biome_tag.biome = entity_mapper.get_mapped(biome_tag.biome));
         }
-        if let Some(ast) = self.compiled_branch_ast.as_mut() {
-            map_compiled_branch_entities(ast, entity_mapper);
-        }
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct CompiledBranchNode {
-    pub source_oplist: Entity,
-    pub expr_tree: crate::terrain::terrgen_expression::ExprOpList,
-    pub branches: Vec<CompiledBranch>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CompiledBranch {
-    pub tiles: Vec<Entity>,
-    pub biome_tags: Vec<BiomeTagWeightAtMacrochunk>,
-    pub child_size: Option<tilemap_shared::OplistSize>,
-    pub child: Option<Box<CompiledBranchNode>>,
 }
 
 fn map_expr_entities<E: EntityMapper>(
@@ -120,25 +98,5 @@ fn map_expr_entities<E: EntityMapper>(
         | Expr::HashPos { .. }
         | Expr::PoissonDisk { .. }
         | Expr::Variable { .. } => {}
-    }
-}
-
-fn map_compiled_branch_entities<E: EntityMapper>(
-    node: &mut CompiledBranchNode,
-    entity_mapper: &mut E,
-) {
-    node.source_oplist = entity_mapper.get_mapped(node.source_oplist);
-    for assignment in node.expr_tree.assignments.iter_mut() {
-        map_expr_entities(&mut assignment.expr, entity_mapper);
-    }
-    map_expr_entities(&mut node.expr_tree.output, entity_mapper);
-    for branch in node.branches.iter_mut() {
-        for tile in branch.tiles.iter_mut() {
-            *tile = entity_mapper.get_mapped(*tile);
-        }
-        branch.biome_tags.iter_mut().for_each(|biome_tag| biome_tag.biome = entity_mapper.get_mapped(biome_tag.biome));
-        if let Some(child) = branch.child.as_mut() {
-            map_compiled_branch_entities(child, entity_mapper);
-        }
     }
 }

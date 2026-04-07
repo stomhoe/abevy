@@ -13,6 +13,7 @@ use movement::MovementSystems;
         debug_chunking_window::*, debug_fonts::*, debug_messages::*, debug_resources::*,
         debug_systems::*, debug_window_systems::*,
         gpos_maps_window::*,
+        faction_details_inspector::*,
         macrochunks_grid_window::*,
         player_details_inspector::*, players_list_window::*, portals_list_window::*, region_details_inspector::*,
         regions_list_window::*, registered_positions_window::*, sprite_cfgs_details_inspector::*,
@@ -43,6 +44,11 @@ pub fn plugin(app: &mut App) {
             FixedUpdate,
             (
                 debug_increase_speed,
+                receive_speed_update_applied_from_server
+                    .in_set(AcClientSystems)
+                    .run_if(in_state(ClientState::Connected))
+                    .run_if(on_message::<BeingDebugSpeedApplied>)
+                    .before(disable_movement_while_speed_debug_update_pending),
                 (disable_movement_while_speed_debug_update_pending)
                     .in_set(AcClientSystems)
                     .before(MovementSystems)
@@ -86,6 +92,7 @@ pub fn plugin(app: &mut App) {
                 region_details_inspector,
                 tilemap_details_inspector,
                 being_details_inspector,
+                faction_details_inspector,
                 player_details_inspector,
                 sprite_details_inspector,
             )
@@ -101,5 +108,6 @@ pub fn plugin(app: &mut App) {
         .init_resource::<WorldTileClickInspectorState>()
         .init_resource::<common::common_states::HotReloadSelection>()
         .init_resource::<common::common_states::HotReloadRequest>()
-        .add_mapped_client_message::<UpdateBeingSpeed>(Channel::Ordered);
+        .add_mapped_client_message::<UpdateBeingSpeed>(Channel::Ordered)
+        .add_mapped_server_message::<BeingDebugSpeedApplied>(Channel::Ordered);
 }

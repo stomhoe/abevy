@@ -44,6 +44,7 @@ pub const BIOME_INIT: &str = "biome_init";
 pub const OPLIST_INIT: &str = "oplist_init";
 pub const SGC_INIT: &str = "sgc_init";
 pub const PORTAL_INIT: &str = "portal_init";
+pub const TERRPROBE_INIT: &str = "terrprobe_init";
 pub const BEING_TEMPLATE_INIT: &str = "being_template_init";
 pub const COLOR_SAMPLER_INIT: &str = "color_sampler_init";
 pub const CHILDRENSPRITE_INIT: &str = "childrensprite_init";
@@ -57,6 +58,7 @@ pub const SPRITE_BUILD: &str = "sprite_build";
 pub const BEING_TEMPLATE_BUILD: &str = "being_template_build";
 pub const BODY_BUILD: &str = "body_build";
 pub const BODY_TEMPL_INIT: &str = "body_templ_init";
+pub const GAME_COMMON_SYSTEM: &str = "game_common_system";
 
 // ============================================================================
 // RUNTIME SYSTEMS - SPRITE & ANIMATION (format: <name>_system)

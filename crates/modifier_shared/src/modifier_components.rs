@@ -1,4 +1,4 @@
-use bevy::platform::collections::HashMap;
+use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)]
 use bevy::prelude::*;
 #[allow(unused_imports)]
@@ -24,7 +24,31 @@ pub struct AppliedModifiers(Vec<Entity>);
 
 // BORRÉ TODOS LOS Reflect PORQUE QUIERO QUE SE IMPLEMENTEN DEBUG WINDOWS PARA VER ESTOS COMPONENTES COMODAMENTE
 
-pub type ModifierTags = TagSet;
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct ModifierTags(pub HashSet<HashId>);
+impl ModifierTags {
+    pub fn contains(&self, tag: &HashId) -> bool {
+        self.0.contains(tag)
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &HashId> {
+        self.0.iter()
+    }
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl From<&TagSet> for ModifierTags {
+    fn from(tags: &TagSet) -> Self {
+        Self(tags.iter().map(HashId::from).collect())
+    }
+}
+
+impl From<TagSet> for ModifierTags {
+    fn from(tags: TagSet) -> Self {
+        Self(tags.into_iter().map(HashId::from).collect())
+    }
+}
 /*categorías/tipo de sustancia/familia de sustancia a las q pertenece: race_modifier,
     (así se pueden identificar sustancias origen y hacer sistemas de antidotos q contrarresten sustancias específicas)
 */

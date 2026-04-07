@@ -1,6 +1,6 @@
 
 use bevy::prelude::*;
-use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
+use bevy::ecs::entity::EntityHashSet;
 pub use crate::debug_seris::*;
 use common::common_components::HashId;
 use std::collections::HashMap;
@@ -24,6 +24,7 @@ pub struct DubugWindowsVisibility{
     pub region_details: bool,
     pub tilemap_details: bool,
     pub being_details: bool,
+    pub faction_details: bool,
     pub player_details: bool,
     pub registered_positions: bool,
     pub exempted_entity_details: bool,
@@ -56,6 +57,7 @@ impl Default for DubugWindowsVisibility {
             region_details: false,
             tilemap_details: false,
             being_details: false,
+            faction_details: false,
             player_details: false,
             registered_positions: false,
             exempted_entity_details: false,
@@ -83,6 +85,8 @@ pub struct DebugSelectedEntities {
     pub selected_being_interaction_zone: Option<HashId>,
     pub selected_being_bodypart: Option<Entity>,
     pub show_full_being_components: bool,
+    pub selected_faction: Option<Entity>,
+    pub show_full_faction_components: bool,
     pub selected_player: Option<Entity>,
     pub selected_exempted_entity: Option<Entity>,
     pub selected_sprite: Option<Entity>,
@@ -110,6 +114,8 @@ impl Default for DebugSelectedEntities {
             selected_being_interaction_zone: None,
             selected_being_bodypart: None,
             show_full_being_components: false,
+            selected_faction: None,
+            show_full_faction_components: false,
             selected_player: None,
             selected_exempted_entity: None,
             selected_sprite: None,
@@ -159,7 +165,7 @@ impl Default for DebugChunkingUiState {
 
 #[derive(Resource, Default)]
 pub struct PendingSpeedDebugUpdates {
-    pub by_being: EntityHashMap<f32>,
+    pub by_being: EntityHashSet,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
