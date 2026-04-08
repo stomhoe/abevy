@@ -1,9 +1,10 @@
 
 use bevy::prelude::*;
 use common::common_components::*;
+use common::common_id_components::HashId;
 use ::being_shared::*;
 
-use game_common::Templ;
+use game_common::{Templ, game_common_components::TemplEntiHashIdRef};
 use ::sprite_shared::*;
 use tilemap_shared::tilemap_shared_samplers::*;
 
@@ -54,6 +55,8 @@ pub fn init_being_templates(
         let bit_entity = cmd.spawn((
             being_inst_template,
             str_id.clone(),
+            AddHashIdFromStrId,
+            TemplEntiHashIdRef(HashId::from(str_id.as_str())),
             Templ
         )).id();
 
@@ -69,10 +72,10 @@ pub fn init_being_templates(
         }
         if !template_seri.body.trim().is_empty() {
             let body_str_id = StrId::trunc(&template_seri.body);
-            if let Ok(body_sampler_ent) = body_sampler_map.0.get_cloned(&body_str_id) {
-                cmd.entity(bit_entity).insert(BodyWeightedSamplerRef(body_sampler_ent));
-            } else if let Ok(body_ent) = body_map.0.get_cloned(&body_str_id) {
-                cmd.entity(bit_entity).insert(BodyRef(body_ent));
+            if body_sampler_map.0.get_cloned(&body_str_id).is_ok() {
+                cmd.entity(bit_entity).insert(BodyWeightedSamplerRef(HashId::from(body_str_id.as_str())));
+            } else if body_map.0.get_cloned(&body_str_id).is_ok() {
+                cmd.entity(bit_entity).insert(BodyRef(HashId::from(body_str_id.as_str())));
             } else{
                 error!(target: "being_template_init", "Body tree/sampler '{}' not found for BeingInstTemplate '{}'", body_str_id, str_id);
             }
@@ -134,7 +137,7 @@ pub fn init_being_templates(
             error!(target: "being_template_init", "BeingTemplate '{}' race '{}' not found in RaceEntityMap", str_id, race_str_id);
             continue;
         };
-        race_refs_to_insert.push((bit_entity, RaceRef(race_entity)));
+        race_refs_to_insert.push((bit_entity, RaceRef(HashId::from(race_str_id.as_str()))));
         cmd.entity(bit_entity).insert(build_being_interaction_zones_with_fallback(
             None,
             template_seri.melee_attack_zone.clone(),

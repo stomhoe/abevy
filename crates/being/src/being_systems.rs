@@ -2,9 +2,9 @@ use ::being_shared::*;
 use faction_shared::Faction;
 use ::tilemap_shared::GlobalTilePos;
 use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled}, prelude::*};
-use common::common_components::StrId;
+use common::common_components::{HashId, StrId};
 use common::log_targets::BEING_SYSTEM;
-use faction::faction_resources::FactionRef;
+use faction::faction_resources::{FactionEntityMap, FactionRef};
 use game_common::Templ;
 use game_common::game_common_components::TemplEntiRef;
 
@@ -39,7 +39,9 @@ pub fn sync_group_members_from_member_of(
     mut being_query: Query<(Entity, Option<Mut<JoinedGroups>>, Option<Mut<FactionRef>>), (With<Being>, )>,
     mut removed_member_of: RemovedComponents<JoinedGroups>,
     mut removed_faction_ref: RemovedComponents<FactionRef>,
+    faction_map: Res<FactionEntityMap>,
     faction_query: Query<(), (With<Faction>, )>,
+    faction_hash_query: Query<&HashId, (With<Faction>, )>,
     mut group_members_query: Query<&mut BeingMembers, >,
     mut groups_by_being: Local<EntityHashMap<EntityHashSet>>,
     mut touched_beings: Local<EntityHashSet>,
@@ -95,50 +97,50 @@ pub fn sync_group_members_from_member_of(
         let current_groups = groups_by_being.entry(being_ent).or_default();
         let previous_groups = current_groups.clone();
 
-        let mut member_faction = None;
+        let mut member_faction_ent = None;
         for group_ent in current_member_of.iter() {
             if faction_query.get(group_ent).is_err() {
                 continue;
             }
-            member_faction = Some(group_ent);
+            member_faction_ent = Some(group_ent);
             break;
         }
 
-        let current_faction = faction_ref.as_ref().map(|faction_ref| faction_ref.0);
-        if let Some(faction_ent) = current_faction {
-            if faction_query.get(faction_ent).is_err() {
-                error!(target: BEING_SYSTEM, "Being {:?} points at non-faction entity {:?} in FactionRef", being_ent, faction_ent);
-            }
-        }
-        let current_faction = current_faction.filter(|faction_ent| faction_query.get(*faction_ent).is_ok());
-        let desired_faction = member_faction.or(current_faction);
-        if let Some(desired_faction) = desired_faction {
+        let current_faction_ent = faction_ref
+            .as_ref()
+            .and_then(|faction_ref| faction_map.0.get_cloned(faction_ref.0).ok());
+        let desired_faction_ent = member_faction_ent.or(current_faction_ent);
+        if let Some(desired_faction_ent) = desired_faction_ent {
+            let Ok(&desired_faction_hash) = faction_hash_query.get(desired_faction_ent) else {
+                error!(target: BEING_SYSTEM, "Faction entity {:?} missing HashId while syncing being {:?}", desired_faction_ent, being_ent);
+                continue;
+            };
             if let Some(mut faction_ref) = faction_ref {
-                if faction_ref.0 != desired_faction {
-                    faction_ref.0 = desired_faction;
+                if faction_ref.0 != desired_faction_hash {
+                    faction_ref.0 = desired_faction_hash;
                 }
             } else {
-                cmd.entity(being_ent).try_insert(FactionRef(desired_faction));
+                cmd.entity(being_ent).try_insert(FactionRef(desired_faction_hash));
             }
             if let Some(member_of) = member_of.as_mut() {
-                if !member_of.contains(desired_faction) {
-                    member_of.insert(desired_faction);
+                if !member_of.contains(desired_faction_ent) {
+                    member_of.insert(desired_faction_ent);
                 }
                 let faction_groups_to_remove: Vec<_> = member_of
                     .iter()
-                    .filter(|group_ent| *group_ent != desired_faction && faction_query.get(*group_ent).is_ok())
+                    .filter(|group_ent| *group_ent != desired_faction_ent && faction_query.get(*group_ent).is_ok())
                     .collect();
                 for group_ent in faction_groups_to_remove {
                     member_of.remove(group_ent);
                 }
                 current_member_of = (**member_of).clone();
             }
-            if !current_member_of.contains(desired_faction) {
-                current_member_of.insert(desired_faction);
+            if !current_member_of.contains(desired_faction_ent) {
+                current_member_of.insert(desired_faction_ent);
             }
             let faction_groups_to_remove: Vec<_> = current_member_of
                 .iter()
-                .filter(|group_ent| *group_ent != desired_faction && faction_query.get(*group_ent).is_ok())
+                .filter(|group_ent| *group_ent != desired_faction_ent && faction_query.get(*group_ent).is_ok())
                 .collect();
             for group_ent in faction_groups_to_remove {
                 current_member_of.remove(group_ent);
@@ -220,6 +222,8 @@ pub fn assign_member_ranks_on_joined_squad(
         ),
         (Without<Templ>, ),
     >,
+    bit_map: Res<BeingInstTemplateEntityMap>,
+    race_map: Res<RaceEntityMap>,
     templ_rank_sampler_query: Query<&PackMemberRankSampler, (With<Templ>, )>,
 ) {
     let mut rng = rand::rng();
@@ -231,10 +235,12 @@ pub fn assign_member_ranks_on_joined_squad(
         let rank_sampler_from_templ = templ_ref
             .and_then(|templ_ref| templ_rank_sampler_query.get(templ_ref.0).ok());
         let rank_sampler = rank_sampler_on_squad.or(rank_sampler_from_templ);
+        let bit_ent = bit_ref.and_then(|bit_ref| bit_map.0.get_cloned(bit_ref.0).ok());
+        let race_ent = race_ref.and_then(|race_ref| race_map.0.get_cloned(race_ref.0).ok());
         let rank_dist = rank_sampler.and_then(|rank_sampler| {
-            bit_ref
-                .and_then(|bit_ref| rank_sampler.0.get(&bit_ref.0))
-                .or_else(|| race_ref.and_then(|race_ref| rank_sampler.0.get(&race_ref.0)))
+            bit_ent
+                .and_then(|bit_ent| rank_sampler.0.get(&bit_ent))
+                .or_else(|| race_ent.and_then(|race_ent| rank_sampler.0.get(&race_ent)))
         });
         let sampled_rank = rank_dist
             .map(|rank_dist| rank_dist.sample(&mut rng))

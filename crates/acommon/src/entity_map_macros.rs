@@ -2,11 +2,11 @@
 macro_rules! __entity_map_define_ref_struct {
     ($abbreviation:ident $(,)?) => {
         paste::paste! {
-            #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, bevy::ecs::entity::MapEntities, )]
-            pub struct [<$abbreviation Ref>](#[entities] pub Entity);
+            #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, )]
+            pub struct [<$abbreviation Ref>](pub common::common_components::HashId);
             impl [<$abbreviation Ref>] {
                 pub fn is_placeholder(&self) -> bool {
-                    self.0 == Entity::PLACEHOLDER
+                    self.0 == common::common_components::HashId::default()
                 }
             }
         }
@@ -16,11 +16,11 @@ macro_rules! __entity_map_define_ref_struct {
     };
     ($abbreviation:ident, reflect_ref) => {
         paste::paste! {
-            #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, Reflect, bevy::ecs::entity::MapEntities, )]
-            pub struct [<$abbreviation Ref>](#[entities] pub Entity);
+            #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, Reflect, )]
+            pub struct [<$abbreviation Ref>](pub common::common_components::HashId);
             impl [<$abbreviation Ref>] {
                 pub fn is_placeholder(&self) -> bool {
-                    self.0 == Entity::PLACEHOLDER
+                    self.0 == common::common_components::HashId::default()
                 }
             }
         }
@@ -239,14 +239,37 @@ macro_rules! define_entity_map_systems {
                 let iter = query.iter();
                 let mut refs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
                 for (customer_ent, str_id_ref) in iter {
-                    let Ok(bit_entity) = emap.0.get_cloned(&str_id_ref.0) else {
+                    let Ok(_) = emap.0.get_cloned(&str_id_ref.0) else {
                         error_once!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
                         continue;
                     };
-                    refs.push((customer_ent, [<$abbreviation Ref>](bit_entity)));
+                    refs.push((customer_ent, [<$abbreviation Ref>](common::common_components::HashId::from(str_id_ref.0.as_str()))));
                     cmd.entity(customer_ent).try_remove::<[<$abbreviation StrIdRef>]>();
                 }
                 cmd.try_insert_batch(refs);
+            }
+
+            #[allow(unused_parens, )]
+            pub fn [<resolve_ $abbreviation:snake _templ_enti_ref_from_hash_id>](
+                mut cmd: Commands,
+                emap: Option<Res<[<$main_component EntityMap>]>>,
+                query: Query<
+                    (Entity, &common::common_components::TemplEntiHashIdRef, Option<&common::common_components::TemplEntiRef>),
+                    (With<$main_component>, Or<(Changed<common::common_components::TemplEntiHashIdRef>, Added<$main_component>)>),
+                >,
+            ) {
+                let Some(emap) = emap else {
+                    return;
+                };
+                for (entity, templ_hash_ref, templ_ref) in query.iter() {
+                    let Ok(templ_ent) = emap.0.get_cloned(templ_hash_ref.0) else {
+                        continue;
+                    };
+                    if templ_ref.map(|templ_ref| templ_ref.0 == templ_ent).unwrap_or(false) {
+                        continue;
+                    }
+                    cmd.entity(entity).insert(common::common_components::TemplEntiRef(templ_ent));
+                }
             }
 
             pub fn [<plugin_ $main_component:snake>](app: &mut App) {
@@ -269,6 +292,7 @@ macro_rules! define_entity_map_systems {
                     .init_resource::<[<$main_component EntityMap>]>()
                     //.register_type::<[<Egui $abbreviation sHolder>]>()
                     .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
+                         [<resolve_ $abbreviation:snake _templ_enti_ref_from_hash_id>].after([<map_ $main_component:snake _id_to_entity>]),
                          [<add_ $main_component:snake _templs_to_egui_holder>].run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1))),
                     ))
                     .add_observer([<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>])
@@ -396,10 +420,15 @@ macro_rules! define_entity_map_systems {
             pub fn [<map_ $main_component:snake _id_to_entity>](
                 mut cmd: Commands,
                 map: Option<ResMut<[<$main_component EntityMap>]>>,
-                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type), (Changed<$id_type>, With<$main_component>, $with_filters)>,
+                client_state: Res<State<bevy_replicon::prelude::ClientState>>,
+                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type, Has<common::common_components::RemoveReplicatedAfterClone>), (Changed<$id_type>, With<$main_component>, $with_filters)>,
             ) {
+                let am_i_client = *client_state.get() == bevy_replicon::prelude::ClientState::Connected;
                 if let Some(mut map) = map {
-                    for (entity, prefix, id) in query.iter() {
+                    for (entity, prefix, id, remove_after_clone) in query.iter() {
+                        if am_i_client && remove_after_clone {
+                            continue;
+                        }
                         if let Err(prev_ent) = map.0.insert(id, entity) {
                             if prev_ent.0 == entity {
                                 continue;
@@ -491,11 +520,11 @@ macro_rules! define_entity_map_systems {
                 let iter = query.iter();
                 let mut refs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
                 for (customer_ent, str_id_ref) in iter {
-                    let Ok(bit_entity) = emap.0.get_cloned(&str_id_ref.0) else {
+                    let Ok(_) = emap.0.get_cloned(&str_id_ref.0) else {
                         error_once!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
                         continue;
                     };
-                    refs.push((customer_ent, [<$abbreviation Ref>](bit_entity)));
+                    refs.push((customer_ent, [<$abbreviation Ref>](common::common_components::HashId::from(str_id_ref.0.as_str()))));
                     cmd.entity(customer_ent).try_remove::<[<$abbreviation StrIdRef>]>();
                 }
                 cmd.try_insert_batch(refs);
@@ -583,10 +612,15 @@ macro_rules! define_entity_map_systems_no_replicate {
             pub fn [<map_ $main_component:snake _id_to_entity>](
                 mut cmd: Commands,
                 map: Option<ResMut<[<$main_component EntityMap>]>>,
-                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type), (Changed<$id_type>, With<$main_component>, $with_filters)>,
+                client_state: Res<State<bevy_replicon::prelude::ClientState>>,
+                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type, Has<common::common_components::RemoveReplicatedAfterClone>), (Changed<$id_type>, With<$main_component>, $with_filters)>,
             ) {
+                let am_i_client = *client_state.get() == bevy_replicon::prelude::ClientState::Connected;
                 if let Some(mut map) = map {
-                    for (entity, prefix, id) in query.iter() {
+                    for (entity, prefix, id, remove_after_clone) in query.iter() {
+                        if am_i_client && remove_after_clone {
+                            continue;
+                        }
                         if let Err(prev_ent) = map.0.insert(id, entity) {
                             if prev_ent.0 == entity {
                                 continue;
@@ -678,11 +712,11 @@ macro_rules! define_entity_map_systems_no_replicate {
                 let iter = query.iter();
                 let mut refs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
                 for (customer_ent, str_id_ref) in iter {
-                    let Ok(bit_entity) = emap.0.get_cloned(&str_id_ref.0) else {
+                    let Ok(_) = emap.0.get_cloned(&str_id_ref.0) else {
                         error_once!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
                         continue;
                     };
-                    refs.push((customer_ent, [<$abbreviation Ref>](bit_entity)));
+                    refs.push((customer_ent, [<$abbreviation Ref>](common::common_components::HashId::from(str_id_ref.0.as_str()))));
                     cmd.entity(customer_ent).try_remove::<[<$abbreviation StrIdRef>]>();
                 }
                 cmd.try_insert_batch(refs);
@@ -796,10 +830,15 @@ macro_rules! define_entity_map_systems_no_replicate {
             pub fn [<map_ $main_component:snake _id_to_entity>](
                 mut cmd: Commands,
                 map: Option<ResMut<[<$main_component EntityMap>]>>,
-                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type), (Changed<$id_type>, With<$main_component>, $with_filters)>,
+                client_state: Res<State<bevy_replicon::prelude::ClientState>>,
+                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type, Has<common::common_components::RemoveReplicatedAfterClone>), (Changed<$id_type>, With<$main_component>, $with_filters)>,
             ) {
+                let am_i_client = *client_state.get() == bevy_replicon::prelude::ClientState::Connected;
                 if let Some(mut map) = map {
-                    for (entity, prefix, id) in query.iter() {
+                    for (entity, prefix, id, remove_after_clone) in query.iter() {
+                        if am_i_client && remove_after_clone {
+                            continue;
+                        }
                         if let Err(prev_ent) = map.0.insert(id, entity) {
                             if prev_ent.0 == entity {
                                 continue;
@@ -891,14 +930,37 @@ macro_rules! define_entity_map_systems_no_replicate {
                 let iter = query.iter();
                 let mut refs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
                 for (customer_ent, str_id_ref) in iter {
-                    let Ok(bit_entity) = emap.0.get_cloned(&str_id_ref.0) else {
+                    let Ok(_) = emap.0.get_cloned(&str_id_ref.0) else {
                         error_once!(target: $target, "{} StrIdRef '{}' could not be resolved to entity in {}", stringify!($abbreviation), str_id_ref.0, stringify!($main_component EntityMap));
                         continue;
                     };
-                    refs.push((customer_ent, [<$abbreviation Ref>](bit_entity)));
+                    refs.push((customer_ent, [<$abbreviation Ref>](common::common_components::HashId::from(str_id_ref.0.as_str()))));
                     cmd.entity(customer_ent).try_remove::<[<$abbreviation StrIdRef>]>();
                 }
                 cmd.try_insert_batch(refs);
+            }
+
+            #[allow(unused_parens, )]
+            pub fn [<resolve_ $abbreviation:snake _templ_enti_ref_from_hash_id>](
+                mut cmd: Commands,
+                emap: Option<Res<[<$main_component EntityMap>]>>,
+                query: Query<
+                    (Entity, &common::common_components::TemplEntiHashIdRef, Option<&common::common_components::TemplEntiRef>),
+                    (With<$main_component>, Or<(Changed<common::common_components::TemplEntiHashIdRef>, Added<$main_component>)>),
+                >,
+            ) {
+                let Some(emap) = emap else {
+                    return;
+                };
+                for (entity, templ_hash_ref, templ_ref) in query.iter() {
+                    let Ok(templ_ent) = emap.0.get_cloned(templ_hash_ref.0) else {
+                        continue;
+                    };
+                    if templ_ref.map(|templ_ref| templ_ref.0 == templ_ent).unwrap_or(false) {
+                        continue;
+                    }
+                    cmd.entity(entity).insert(common::common_components::TemplEntiRef(templ_ent));
+                }
             }
 
             pub fn [<plugin_ $main_component:snake>](app: &mut App) {
@@ -913,6 +975,7 @@ macro_rules! define_entity_map_systems_no_replicate {
                     .init_resource::<bevy_asset_loader::dynamic_asset::DynamicAssets>()
                     .init_resource::<[<$main_component EntityMap>]>()
                     .add_systems(Update, ([<map_ $main_component:snake _id_to_entity>],
+                         [<resolve_ $abbreviation:snake _templ_enti_ref_from_hash_id>].after([<map_ $main_component:snake _id_to_entity>]),
                          [<add_ $main_component:snake _templs_to_egui_holder>]
                             .run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1)))
                             .run_if(in_state(bevy_replicon::prelude::ClientState::Disconnected)),

@@ -5,7 +5,6 @@ use common::common_components::*;
 use serde::{Deserialize, Serialize};
 #[allow(unused_imports, )]
 use bevy::platform::collections::{HashSet, HashMap};
-use bevy::{ecs::entity::{EntityHashSet, MapEntities}, };
 use common::common_tag_components::TagSet;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, )]
@@ -67,13 +66,8 @@ impl DimensionStrIdRef {
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct DimensionSystems;
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, MapEntities)]
-#[relationship(relationship_target = RootInDimensions)]
-pub struct DimensionRootOplist(#[relationship]#[entities]pub Entity);
-
-#[derive(Component, Debug, Clone)]
-#[relationship_target(relationship = DimensionRootOplist)]
-pub struct RootInDimensions(EntityHashSet);
+#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct DimensionRootOplist(pub HashId);
 
 
 
@@ -90,8 +84,8 @@ impl MultipleDimensionStringRefs {
     }
 }
 
-#[derive(Component, Debug, Default, Serialize, Deserialize, MapEntities, Clone)]
-pub struct MultipleDimensionRefs(#[entities] pub EntityHashSet,);
+#[derive(Component, Debug, Default, Serialize, Deserialize, Clone)]
+pub struct MultipleDimensionRefs(pub HashSet<HashId>);
 
 #[derive(Debug, Message)]
 pub struct ReassignDimensionToEntity (pub Entity);

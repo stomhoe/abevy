@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use common::common_components::HashId;
 
 use crate::terrain::{
     terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_messages::TerrProbeJob},
@@ -9,6 +10,7 @@ use ::tilemap_shared::*;
 pub fn process_region_pattern(
     pos_search: TerrProbeJob,
     templ: &TerrProbeTempl,
+    filtered_op: HashId,
     root_oplist: DimensionRootOplist,
     spacing: u16,
     region_multiplier: f32,
@@ -60,7 +62,7 @@ pub fn process_region_pattern(
                     gpos: GlobalTilePos(IVec2::new(x, y)),
                 },
                 purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {
-                    filtered_op: templ.opfilter_ref.0,
+                    filtered_op,
                     requester: pos_search.requester,
                     max_emitted_results: u32::MAX,
                     mark_last_success_in_batch: pos_search.collect_all_successes,

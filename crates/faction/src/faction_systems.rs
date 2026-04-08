@@ -3,6 +3,7 @@ use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use ::being_shared::*;
+use common::common_components::HashId;
 use common::log_targets::FACTION_SYSTEM;
 use game_common::Templ;
 use player_shared::player_components::*;
@@ -23,6 +24,7 @@ pub fn set_stuff_as_self_faction(mut cmd: Commands,
         Without<Player>,
     >,
     selfplayer_faction_query: Query<Ref<FactionRef>, (MyPlayer)>,
+    faction_map: Res<FactionEntityMap>,
     added_mine_query: Query<(), (With<Player>, Added<Mine>)>,
     player_factions: Query<(), With<PlayerMembers>>,
     player_faction_changes: Query<(), (With<Player>, Changed<FactionRef>)>,
@@ -42,12 +44,13 @@ pub fn set_stuff_as_self_faction(mut cmd: Commands,
         error!("Failed to get my player faction");
         return;
     };
+    let selfplayer_faction_ent = faction_map.0.get_cloned(selfplayer_faction.0).ok();
     for (thing_ent, member_of, has_player_faction, is_affiliated_to_my_faction) in things_query.iter() {
         if !rerun_all && !member_of.is_changed() {
             continue;
         }
         let belongs_to_player_faction = member_of.iter().any(|group_ent| player_factions.get(group_ent).is_ok());
-        let belongs_to_self_faction = member_of.contains(selfplayer_faction.0);
+        let belongs_to_self_faction = selfplayer_faction_ent.is_some_and(|selfplayer_faction_ent| member_of.contains(selfplayer_faction_ent));
         if belongs_to_player_faction {
             if !has_player_faction {
                 cmd.entity(thing_ent).try_insert(BelongsToAPlayerFaction);
@@ -88,6 +91,8 @@ pub fn update_player_members_of_groups(
     mut removed_faction_ref: RemovedComponents<FactionRef>,
     mut removed_mine: RemovedComponents<Mine>,
     faction_query: Query<(), (With<Faction>, Without<Templ>)>,
+    faction_hash_query: Query<&HashId, (With<Faction>, Without<Templ>)>,
+    faction_map: Res<FactionEntityMap>,
     mut player_members_query: Query<&mut PlayerMembers, >,
     mut prev_player_group: Local<EntityHashMap<Option<Entity>>>,
     mut prev_mine_groups: Local<EntityHashSet>,
@@ -143,7 +148,9 @@ pub fn update_player_members_of_groups(
         let Ok((_, _has_mine, faction_ref, mut member_of, )) = player_query.get_mut(player_ent) else {
             continue;
         };
-        let faction_ref_ent = faction_ref.as_ref().map(|faction_ref| faction_ref.0);
+        let faction_ref_ent = faction_ref
+            .as_ref()
+            .and_then(|faction_ref| faction_map.0.get_cloned(faction_ref.0).ok());
         let mut member_faction = None;
         if let Some(member_of) = member_of.as_ref() {
             for group_ent in member_of.iter() {
@@ -165,12 +172,15 @@ pub fn update_player_members_of_groups(
             prev_player_group.insert(player_ent, None);
             continue;
         };
+        let Ok(&faction_hash) = faction_hash_query.get(faction_ent) else {
+            continue;
+        };
         if let Some(mut faction_ref) = faction_ref {
-            if faction_ref.0 != faction_ent {
-                faction_ref.0 = faction_ent;
+            if faction_ref.0 != faction_hash {
+                faction_ref.0 = faction_hash;
             }
         } else {
-            cmd.entity(player_ent).try_insert(FactionRef(faction_ent));
+            cmd.entity(player_ent).try_insert(FactionRef(faction_hash));
         }
         if let Some(member_of) = member_of.as_mut() {
             member_of.insert(faction_ent);
@@ -197,7 +207,7 @@ pub fn update_player_members_of_groups(
         if !has_mine {
             continue;
         }
-        let mut faction_ent = faction_ref.map(|faction_ref| faction_ref.0);
+        let mut faction_ent = faction_ref.and_then(|faction_ref| faction_map.0.get_cloned(faction_ref.0).ok());
         if faction_ent.is_none() {
             if let Some(member_of) = member_of {
                 for group_ent in member_of.iter() {

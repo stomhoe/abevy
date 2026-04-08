@@ -32,7 +32,8 @@ pub fn init_opfilters(
         let ent = cmd.spawn_empty().id();
         comps.push((ent, (
             str_id,
-            Replicated,
+            RemoveReplicatedAfterClone,
+            game_common::Templ,
             AssetScoped,
             HotReload,
             OpFilter {

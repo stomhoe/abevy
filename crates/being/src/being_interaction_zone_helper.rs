@@ -86,19 +86,23 @@ pub fn resolve_being_interaction_zone(
     bit_ref: Option<&BitRef>,
     race_ref: Option<&RaceRef>,
     zone_id: HashId,
+    bit_map: &BeingInstTemplateEntityMap,
+    race_map: &RaceEntityMap,
     zone_sources: &Query<&InteractionZones>,
 ) -> InteractionZone {
     if let Some(zone) = being_interaction_zones.and_then(|zones| zones.0.get(zone_id).ok()) {
         return zone.clone();
     }
     if let Some(zone) = bit_ref
-        .and_then(|bit_ref| zone_sources.get(bit_ref.0).ok())
+        .and_then(|bit_ref| bit_map.0.get_cloned(bit_ref.0).ok())
+        .and_then(|bit_ent| zone_sources.get(bit_ent).ok())
         .and_then(|zones| zones.0.get(zone_id).ok())
     {
         return zone.clone();
     }
     if let Some(zone) = race_ref
-        .and_then(|race_ref| zone_sources.get(race_ref.0).ok())
+        .and_then(|race_ref| race_map.0.get_cloned(race_ref.0).ok())
+        .and_then(|race_ent| zone_sources.get(race_ent).ok())
         .and_then(|zones| zones.0.get(zone_id).ok())
     {
         return zone.clone();

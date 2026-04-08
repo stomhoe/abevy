@@ -43,6 +43,8 @@ pub(crate) struct ActivateFirstLoadQueries<'w, 's> {
     ), >,
     bit_race_query: Query<'w, 's, &'static RaceRef, >,
     being_str_id_query: Query<'w, 's, &'static StrId, >,
+    bit_map: Res<'w, BeingInstTemplateEntityMap>,
+    race_map: Res<'w, RaceEntityMap>,
 }
 
 #[derive(SystemParam)]
@@ -99,10 +101,13 @@ pub fn activate_beings_in_first_time_loaded_chunks(
             let _being_str_id = queries.being_str_id_query.get(being_ent).ok();
             let bit_ref = param_set.get_being_bit_ref(being_ent);
             let race_ref = param_set.get_being_race_ref(being_ent);
+            let bit_ent = bit_ref.and_then(|bit_ref| queries.bit_map.0.get_cloned(bit_ref.0).ok());
+            let race_ent = race_ref.and_then(|race_ref| queries.race_map.0.get_cloned(race_ref.0).ok());
             Being::select_spawn_tile_tag_filters(
                 being_ent,
-                bit_ref.map(|bit_ref| bit_ref.0),
-                race_ref.map(|race_ref| race_ref.0),
+                bit_ent,
+                race_ent,
+                &queries.race_map,
                 &queries.bit_race_query,
                 &queries.spawn_tile_tags_query,
                 &queries.being_spawn_tag_extension_query,
@@ -142,10 +147,13 @@ pub fn activate_beings_in_first_time_loaded_chunks(
             for &being_ent in locals.grouped_entities.iter() {
                 let bit_ref = param_set.get_being_bit_ref(being_ent);
                 let race_ref = param_set.get_being_race_ref(being_ent);
+                let bit_ent = bit_ref.and_then(|bit_ref| queries.bit_map.0.get_cloned(bit_ref.0).ok());
+                let race_ent = race_ref.and_then(|race_ref| queries.race_map.0.get_cloned(race_ref.0).ok());
                 Being::select_spawn_tile_tag_filters(
                     being_ent,
-                    bit_ref.map(|bit_ref| bit_ref.0),
-                    race_ref.map(|race_ref| race_ref.0),
+                    bit_ent,
+                    race_ent,
+                    &queries.race_map,
                     &queries.bit_race_query,
                     &queries.spawn_tile_tags_query,
                     &queries.being_spawn_tag_extension_query,

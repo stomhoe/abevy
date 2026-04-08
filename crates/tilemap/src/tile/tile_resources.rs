@@ -14,10 +14,14 @@ use crate::tile::tile_seris::TileSeri;
 use crate::tile::tile_components::*;
 
 common::define_entity_map_systems!(
-    Tile,
-    (With<Templ>, common::AnyDisabling),
-    (Tile, Templ),
-    TileSeri, "seri.tilemap.tile", "tile.ron",
+    main_component: Tile,
+    with_filters: (With<Templ>, common::AnyDisabling),
+    abbreviation: Tile,
+    target: "",
+    entity_prefix: "tile",
+    despawn_trigger: Tile,
+    id_type: common::common_components::StrId,
+    assets: [(TileSeri, "seri.tilemap.tile", "tile.ron")]
 );
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]

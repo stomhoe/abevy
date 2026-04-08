@@ -30,6 +30,8 @@ pub fn update_pack_center_pos(
     mut cmd: Commands,
     mut pack_query: Query<(Entity, &SquadMembers, Option<&MemberRanks>, Option<&GlobalCenterRankWeightMultiplier>, Option<&CenterWeightRankBasedMultiplier>, Option<&mut SquadAvgCenterPerDim>, ), (Without<Templ>, )>,
     member_pos_query: Query<(&DimensionRef, &GlobalTilePos, Option<&BitRef>, Option<&RaceRef>, ), (Without<Templ>, ),>,
+    bit_map: Res<BeingInstTemplateEntityMap>,
+    race_map: Res<RaceEntityMap>,
     mut centers: Local<HashMap<DimensionRef, (Vec2, f32)>>,
 ) {
     for (pack_ent, members, member_ranks, global_weight_multiplier, center_rank_multipliers, pack_center_pos, ) in pack_query.iter_mut() {
@@ -41,15 +43,17 @@ pub fn update_pack_center_pos(
             let member_rank = member_ranks
                 .and_then(|member_ranks| member_ranks.0.get(&member_ent).copied())
                 .unwrap_or(0.0);
+            let member_bit_ent = member_bit_ref.and_then(|bit_ref| bit_map.0.get_cloned(bit_ref.0).ok());
+            let member_race_ent = member_race_ref.and_then(|race_ref| race_map.0.get_cloned(race_ref.0).ok());
             let member_multiplier = member_bit_ref
-                .and_then(|bit_ref| {
+                .and_then(|_| {
                     center_rank_multipliers
-                        .and_then(|multipliers| multipliers.0.get(&bit_ref.0).copied())
+                        .and_then(|multipliers| member_bit_ent.and_then(|bit_ent| multipliers.0.get(&bit_ent).copied()))
                 })
                 .or_else(|| {
-                    member_race_ref.and_then(|race_ref| {
+                    member_race_ref.and_then(|_| {
                         center_rank_multipliers
-                            .and_then(|multipliers| multipliers.0.get(&race_ref.0).copied())
+                            .and_then(|multipliers| member_race_ent.and_then(|race_ent| multipliers.0.get(&race_ent).copied()))
                     })
                 })
                 .unwrap_or(1.0)

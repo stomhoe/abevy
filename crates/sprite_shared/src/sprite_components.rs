@@ -136,10 +136,10 @@ pub struct SpriteTimedSfx {
     pub scale_interval_with_animation_speed: bool,
 }
 
-#[derive(Component, Default, Deserialize, Serialize, Debug, MapEntities, Clone)]
-pub struct MappedAnimations(#[entities] pub HashMap<AnimType, Entity>);
+#[derive(Component, Default, Deserialize, Serialize, Debug, Clone)]
+pub struct MappedAnimations(pub HashMap<AnimType, HashId>);
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, MapEntities)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct AnimType {
     pub direction: CardinalDirection,
     pub moving: MoveAnimActive,
@@ -166,11 +166,7 @@ impl AnimType {
 pub struct ExcludedFromBaseAnimPickingSystem;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]
-pub enum FlipHorizIfDir {
-    Left,
-    Right,
-    Any,
-}
+pub enum FlipHorizIfDir {Left, Right, Any,}
 
 #[derive(Component, Debug, Default, Clone, Reflect)]
 pub struct ColorHolder(pub Color);

@@ -17,11 +17,27 @@ fn ref_id_label(entity: Entity, id_query: &Query<&StrId>) -> String {
         .unwrap_or_else(|_| format!("{:?}", entity))
 }
 
+fn dimension_name_for_ref(
+    dim_ref: &DimensionRef,
+    dimension_map: &DimensionEntityMap,
+    dimension_query: &Query<&Name>,
+) -> String {
+    let Some(dim_ent) = dimension_map.0.get_cloned(dim_ref.0).ok() else {
+        return format!("{:?}", dim_ref);
+    };
+    dimension_query
+        .get(dim_ent)
+        .map(|name| name.to_string())
+        .unwrap_or_else(|_| format!("{:?}", dim_ref))
+}
+
 fn being_list_entry_label(
     display_name: Option<&DisplayName>,
     name: Option<&Name>,
     race_ref: Option<&RaceRef>,
     bit_ref: Option<&BitRef>,
+    race_map: &RaceEntityMap,
+    bit_map: &BeingInstTemplateEntityMap,
     id_query: &Query<&StrId>,
 ) -> String {
     let mut parts = Vec::with_capacity(3);
@@ -49,12 +65,14 @@ fn being_list_entry_label(
 
     parts.push(
         race_ref
-            .map(|race_ref| ref_id_label(race_ref.0, id_query))
+            .and_then(|race_ref| race_map.0.get_cloned(race_ref.0).ok())
+            .map(|race_ent| ref_id_label(race_ent, id_query))
             .unwrap_or_else(|| "-".to_string()),
     );
     parts.push(
         bit_ref
-            .map(|bit_ref| ref_id_label(bit_ref.0, id_query))
+            .and_then(|bit_ref| bit_map.0.get_cloned(bit_ref.0).ok())
+            .map(|bit_ent| ref_id_label(bit_ent, id_query))
             .unwrap_or_else(|| "-".to_string()),
     );
     parts.join(" | ")
@@ -75,11 +93,14 @@ pub fn beings_list_window(
             Option<&BitRef>,
             &DimensionRef,
             &GlobalTilePos,
-        ),
-        With<Being>,
-    >,
+    ),
+    With<Being>,
+>,
     dimension_query: Query<&Name>,
+    dimension_map: Res<DimensionEntityMap>,
     camera_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    bit_map: Res<BeingInstTemplateEntityMap>,
+    race_map: Res<RaceEntityMap>,
     id_query: Query<&StrId>,
 ) {
     if !window_visible.beings_list {
@@ -103,12 +124,8 @@ pub fn beings_list_window(
     let mut beings_by_dimension: BTreeMap<String, Vec<(Entity, String, GlobalTilePos, Vec2, f32)>> = BTreeMap::new();
 
     for (entity, display_name, name, _, race_ref, bit_ref, dim_ref, global_pos) in being_query.iter() {
-        let dim_name = if let Ok(n) = dimension_query.get(dim_ref.0) {
-            format!("{}", n)
-        } else {
-            format!("{:?}", dim_ref)
-        };
-        let label = being_list_entry_label(display_name, name, race_ref, bit_ref, &id_query);
+        let dim_name = dimension_name_for_ref(dim_ref, &dimension_map, &dimension_query);
+        let label = being_list_entry_label(display_name, name, race_ref, bit_ref, &race_map, &bit_map, &id_query);
         let direction = if camera_dim_ref.map(|camera_ref| camera_ref == dim_ref).unwrap_or(false) {
             if let Some(cam_pos) = camera_pos {
                 let being_pixel_pos: Vec2 = (*global_pos).into();
@@ -129,8 +146,8 @@ pub fn beings_list_window(
     // Sort dimensions with camera dimension first
     let mut sorted_dims: Vec<_> = beings_by_dimension.keys().cloned().collect();
     if let Some(camera_ref) = camera_dim_ref {
-        if let Ok(camera_name) = dimension_query.get(camera_ref.0) {
-            let camera_dim_str = format!("{}", camera_name);
+        let camera_dim_str = dimension_name_for_ref(camera_ref, &dimension_map, &dimension_query);
+        if !camera_dim_str.is_empty() {
             sorted_dims.sort_by(|a, b| {
                 if a == &camera_dim_str { std::cmp::Ordering::Less }
                 else if b == &camera_dim_str { std::cmp::Ordering::Greater }
@@ -156,11 +173,7 @@ pub fn beings_list_window(
                     });
 
                     let is_camera_dim = camera_dim_ref.map_or(false, |camera_ref| {
-                        if let Ok(camera_name) = dimension_query.get(camera_ref.0) {
-                            dim_key == &format!("{}", camera_name)
-                        } else {
-                            false
-                        }
+                        dim_key == &dimension_name_for_ref(camera_ref, &dimension_map, &dimension_query)
                     });
                     egui::CollapsingHeader::new(format!("{} ({})", dim_key, beings.len()))
                         .default_open(is_camera_dim)

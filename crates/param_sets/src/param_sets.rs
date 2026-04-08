@@ -100,6 +100,8 @@ pub struct BlockingTileParamSet<'w, 's> {
     hash_id_query: Query<'w, 's, &'static HashId, common::AnyDisabling>,
     loaded_macro_chunks: Res<'w, LoadedMacroChunks>,
     tile_map: Res<'w, TileEntityMap>,
+    bit_map: Res<'w, BeingInstTemplateEntityMap>,
+    race_map: Res<'w, RaceEntityMap>,
     card_at_gpos: Res<'w, CardinalDirAtGpos>,
     beings_at_gpos: Res<'w, BeingsAtGpos>,
     occupied_gposes: Local<'s, Vec<GlobalTilePos>>,

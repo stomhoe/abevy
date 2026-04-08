@@ -25,11 +25,11 @@ pub struct BeingBundle(
     pub GridLockedMovementVisual,
 );
 impl BeingBundle {
-    pub fn new(dimension_ref: DimensionRef, tile_pos: GlobalTilePos) -> Self {
+    pub fn new(dimension_ref: DimensionRef, dimension_ent: Entity, tile_pos: GlobalTilePos) -> Self {
         Self(
             Being::default(),
             dimension_ref,
-            ChildOf(dimension_ref.0),
+            ChildOf(dimension_ent),
             Transform::from_translation(tile_pos.to_translation(0.0)),
             tile_pos,
             GridLockedMovement {

@@ -13,7 +13,6 @@ pub fn flip_tile_based_on_initial_pos_hash(
         (&mut TileFlip, &InitialPos, &TemplEntiRef),
         (Changed<InitialPos>, Without<Templ>, common::AnyDisabling,),
     >,
-    dim_hash_query: Query<&HashId, common::AnyDisabling>,
     templ_query: Query<(
             Has<FlipHorizontallyBasedOnHash>,
             Has<FlipVerticallyBasedOnHash>,
@@ -36,10 +35,7 @@ pub fn flip_tile_based_on_initial_pos_hash(
                 return;
             };
 
-            let dimension_hash = dim_hash_query
-                .get(initial_pos.dim.0)
-                .ok()
-                .cloned().unwrap_or_default();
+            let dimension_hash = initial_pos.dim.0;
 
             if do_flip_hori {
                 tile_flip.x = initial_pos.pos.hash_true_false(settings, dimension_hash, 0);
@@ -58,7 +54,6 @@ pub fn flip_tile_based_on_initial_pos_hash(
 pub fn rotate_tile_based_on_initial_pos_hash(
     mut cmd: Commands,
     settings: Query<&GlobalGenSettings>,
-    dim_hash_query: Query<&HashId, common::AnyDisabling>,
     mut tile_query: Query<
         (
             Entity,
@@ -89,11 +84,7 @@ pub fn rotate_tile_based_on_initial_pos_hash(
         let Ok((do_transform_rotate)) = templ_query.get(templ_ref.0) else {
             continue;
         };
-        let dimension_hash = dim_hash_query
-            .get(initial_pos.dim.0)
-            .ok()
-            .cloned()
-            .unwrap_or_default();
+        let dimension_hash = initial_pos.dim.0;
 
         let hash_u8 = (initial_pos.pos.hash_value(settings, dimension_hash, 3) % 4) as u8;
         let new_direction = CardinalDirection::from(hash_u8);

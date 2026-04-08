@@ -2,9 +2,11 @@
 #[allow(unused_imports, )]use being::being_bundles::{BeingBundle, };
 use ::being_shared::*;
 use common::{GAME_INIT, common_components::StrId, common_states::AppState};
+use common::common_components::HashId;
 use faction::{faction_resources::*};
 use ::being_shared::JoinedGroups;
 use faction_shared::Faction;
+use game_common::game_common_components::Templ;
 use movement::movement_components::{GridLockedMovement, GridLockedMovementVisual};
 use player_shared::player_components::*;
 use tilemap::{
@@ -122,7 +124,8 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
 
 
     let host_faction_id = StrId::trunc("host");
-    let host_faction = cmd.spawn((Faction, host_faction_id.clone(), Mine)).id();
+    let host_faction_hash = HashId::from(host_faction_id.as_str());
+    let host_faction = cmd.spawn((Faction, host_faction_id.clone(), host_faction_hash, Mine)).id();
 
     map.0.overwrite(host_faction_id, host_faction);
 
@@ -130,7 +133,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
     cmd.spawn((
         Mine, HostPlayer,
         StrId::trunc("HOOOOOST"),
-        FactionRef(host_faction),
+        FactionRef(host_faction_hash),
     ));
     app_state.set(AppState::StatefulGameSession);
 }
@@ -140,15 +143,21 @@ pub fn host_on_player_added(mut cmd: Commands,
     query: Query<(Entity, &StrId),(Added<StrId>, With<Player>)>,
     player_query: Query<(&CreatedCharacters)>,
     ________settings: Res<GameInitSettings>,
-
-    host_faction: Query<Entity, (With<Faction>, With<Mine>)>,
+    host_player_faction_ref: Query<&FactionRef, (With<HostPlayer>, With<Mine>, )>,
+    host_faction_query: Query<Entity, (With<Faction>, With<Mine>, Without<Templ>, )>,
+    faction_map: Res<FactionEntityMap>,
 ) {
     if query.is_empty() {
         return;
     }
 
-    let Ok(host_faction) = host_faction.single() else {
-        error!(target: GAME_INIT, "Failed to get host faction");
+    let host_faction = host_player_faction_ref
+        .single()
+        .ok()
+        .and_then(|host_faction_ref| faction_map.0.get_cloned(host_faction_ref.0).ok())
+        .or_else(|| host_faction_query.iter().next());
+    let Some(host_faction) = host_faction else {
+        error!(target: GAME_INIT, "Failed to get host faction: no HostPlayer FactionRef could be resolved and no fallback Faction+Mine entity was found");
         return;
     };
     for (player_ent, username) in query.iter() {
@@ -177,6 +186,7 @@ pub fn host_on_player_added(mut cmd: Commands,
 pub fn find_common_player_spawn_origin(
     mut cmd: Commands,
     dimension_entity_map: Res<DimensionEntityMap>,
+    dimension_hash_query: Query<&HashId, With<Dimension>>,
     terrprobe_entity_map: Res<TerrProbeTemplEntityMap>,
     terrprobe_query: Query<&TerrProbeTempl>,
     mut search_params: SearchParams,
@@ -188,6 +198,9 @@ pub fn find_common_player_spawn_origin(
     let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
             return None;
         };
+        let Ok(&ow_dimension_hash) = dimension_hash_query.get(ow_dimension) else {
+            return None;
+        };
 
         let Ok(probe_template_ent) = terrprobe_entity_map.0.get_cloned(settings.players_spawn_probe_id.clone()) else {
             return None;
@@ -195,7 +208,7 @@ pub fn find_common_player_spawn_origin(
         let Ok(probe_template) = terrprobe_query.get(probe_template_ent) else {
             return None;
         };
-        Some(probe_template.to_probe(probe_template_ent, DimensionRef(ow_dimension), GlobalTilePos::default()))
+        Some(probe_template.to_probe(probe_template_ent, DimensionRef(ow_dimension_hash), GlobalTilePos::default()))
     };
     let handle_success = |cmd: &mut Commands,
                               found_pos: GlobalTilePos,
@@ -205,8 +218,11 @@ pub fn find_common_player_spawn_origin(
         let Ok(ow_dimension) = dimension_entity_map.0.get_cloned(Dimension::overworld()) else {
             return false;
         };
+        let Ok(&ow_dimension_hash) = dimension_hash_query.get(ow_dimension) else {
+            return false;
+        };
         cmd.trigger(CommonSpawnOriginFound {
-            dim_ref: DimensionRef(ow_dimension),
+            dim_ref: DimensionRef(ow_dimension_hash),
             pos: found_pos,
         });
         true

@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
 };
 #[allow(unused_imports, )]
-use common::{AnyDisabling, common_components::{SampleSpritesamplers, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
+use common::{AnyDisabling, common_components::{HashId, SampleSpritesamplers, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
 use faction::faction_resources::FactionRef;
 use game_common::game_common_components::TemplEntiRef;
 use game_common::game_common_timers::Templ;
@@ -13,7 +13,7 @@ use ::tilemap_shared::*;
 
 use crate::{
     body::{BodyRef, body_sampler::body_sampler_resources::BodyWeightedSamplerRef},
-    sex::sex_resources::SexRef,
+    sex::sex_resources::{SexEntityMap, SexRef},
 };
 
 #[derive(SystemParam)]
@@ -31,6 +31,9 @@ pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
     body_ref_query: Query<'w, 's, &'static BodyRef>,
     race_ref_query: Query<'w, 's, &'static RaceRef>,
     bit_ref_query: Query<'w, 's, &'static BitRef>,
+    hash_id_query: Query<'w, 's, &'static HashId>,
+    bit_map: Res<'w, BeingInstTemplateEntityMap>,
+    race_map: Res<'w, RaceEntityMap>,
     dont_extend_from_bit_spawn_whitelist_query: Query<'w, 's, (), With<DontExtendBitSpawnWhitelist>>,
     dont_extend_from_bit_spawn_blacklist_query: Query<'w, 's, (), With<DontExtendBitSpawnBlacklist>>,
     dont_extend_from_race_spawn_whitelist_query: Query<'w, 's, (), With<DontExtendRaceSpawnWhitelist>>,
@@ -80,14 +83,22 @@ pub fn build_beings_from_refs(
         let mut race_ref = queries.race_ref_query.get(being_ent).ok().copied();
         if let Ok(&TemplEntiRef(templ_ent)) = queries.templ_ref_query.get(being_ent) {
             if queries.bit_query.get(templ_ent).is_ok() {
-                let templ_bit_ref = BitRef(templ_ent);
+                let Ok(&templ_hash) = queries.hash_id_query.get(templ_ent) else {
+                    warn!(target: BEING_TEMPLATE_BUILD, "Templ BIT entity {:?} has no HashId", templ_ent);
+                    continue;
+                };
+                let templ_bit_ref = BitRef(templ_hash);
                 if bit_ref != Some(templ_bit_ref) {
                     cmd.entity(being_ent).insert(templ_bit_ref);
                     debug!(target: BEING_TEMPLATE_BUILD, "Resolved TemplEntiRef {:?} for being {:?} as BitRef", templ_ent, being_ent);
                 }
                 bit_ref = Some(templ_bit_ref);
             } else if queries.race_query.get(templ_ent).is_ok() {
-                let templ_race_ref = RaceRef(templ_ent);
+                let Ok(&templ_hash) = queries.hash_id_query.get(templ_ent) else {
+                    warn!(target: BEING_TEMPLATE_BUILD, "Templ Race entity {:?} has no HashId", templ_ent);
+                    continue;
+                };
+                let templ_race_ref = RaceRef(templ_hash);
                 if race_ref != Some(templ_race_ref) {
                     cmd.entity(being_ent).insert(templ_race_ref);
                     debug!(target: BEING_TEMPLATE_BUILD, "Resolved TemplEntiRef {:?} for being {:?} as RaceRef", templ_ent, being_ent);
@@ -96,14 +107,21 @@ pub fn build_beings_from_refs(
             }
         }
 
-        let mut race_ref = bit_ref
-            .and_then(|bit_ref| queries.race_ref_query.get(bit_ref.0).ok().copied())
-            .or(race_ref);
+        let mut bit_ent = bit_ref.and_then(|bit_ref| queries.bit_map.0.get_cloned(bit_ref.0).ok());
+        let mut race_ent = race_ref.and_then(|race_ref| queries.race_map.0.get_cloned(race_ref.0).ok());
+        if race_ref.is_none() {
+            if let Some(bit_ent) = bit_ent {
+                if let Ok(&race_ref_from_bit) = queries.race_ref_query.get(bit_ent) {
+                    race_ent = queries.race_map.0.get_cloned(race_ref_from_bit.0).ok();
+                    race_ref = Some(race_ref_from_bit);
+                }
+            }
+        }
         let current_refs = (bit_ref, race_ref);
         let wander_cfg = common::query_fallback_get!(
             queries.wander_cfg_query,
-            bit_ref.map(|bit_ref| bit_ref.0),
-            race_ref.map(|race_ref| race_ref.0),
+            bit_ent,
+            race_ent,
         );
         if let Some(wander_cfg) = wander_cfg {
             let has_initialized_wander_state = queries
@@ -116,8 +134,8 @@ pub fn build_beings_from_refs(
             }
         }
 
-        let dont_extend_from_bit_spawn_whitelist = bit_ref.is_some_and(|bit_ref| queries.dont_extend_from_bit_spawn_whitelist_query.get(bit_ref.0).is_ok());
-        let dont_extend_from_bit_spawn_blacklist = bit_ref.is_some_and(|bit_ref| queries.dont_extend_from_bit_spawn_blacklist_query.get(bit_ref.0).is_ok());
+        let dont_extend_from_bit_spawn_whitelist = bit_ent.is_some_and(|bit_ent| queries.dont_extend_from_bit_spawn_whitelist_query.get(bit_ent).is_ok());
+        let dont_extend_from_bit_spawn_blacklist = bit_ent.is_some_and(|bit_ent| queries.dont_extend_from_bit_spawn_blacklist_query.get(bit_ent).is_ok());
         if dont_extend_from_bit_spawn_whitelist {
             cmd.entity(being_ent).try_insert_if_new(DontExtendBitSpawnWhitelist);
         } else {
@@ -129,8 +147,8 @@ pub fn build_beings_from_refs(
             cmd.entity(being_ent).try_remove::<DontExtendBitSpawnBlacklist>();
         }
 
-        let dont_extend_from_race_spawn_whitelist = bit_ref.is_some_and(|bit_ref| queries.dont_extend_from_race_spawn_whitelist_query.get(bit_ref.0).is_ok());
-        let dont_extend_from_race_spawn_blacklist = bit_ref.is_some_and(|bit_ref| queries.dont_extend_from_race_spawn_blacklist_query.get(bit_ref.0).is_ok());
+        let dont_extend_from_race_spawn_whitelist = race_ent.is_some_and(|race_ent| queries.dont_extend_from_race_spawn_whitelist_query.get(race_ent).is_ok());
+        let dont_extend_from_race_spawn_blacklist = race_ent.is_some_and(|race_ent| queries.dont_extend_from_race_spawn_blacklist_query.get(race_ent).is_ok());
         if dont_extend_from_race_spawn_whitelist {
             cmd.entity(being_ent).try_insert_if_new(DontExtendRaceSpawnWhitelist);
         } else {
@@ -142,26 +160,26 @@ pub fn build_beings_from_refs(
             cmd.entity(being_ent).try_remove::<DontExtendRaceSpawnBlacklist>();
         }
 
-        let is_predator_now = bit_ref.is_some_and(|bit_ref| queries.predator_cfg_query.get(bit_ref.0).is_ok())
-            || race_ref.is_some_and(|race_ref| queries.predator_cfg_query.get(race_ref.0).is_ok());
+        let is_predator_now = bit_ent.is_some_and(|bit_ent| queries.predator_cfg_query.get(bit_ent).is_ok())
+            || race_ent.is_some_and(|race_ent| queries.predator_cfg_query.get(race_ent).is_ok());
 
         if is_predator_now {
             cmd.entity(being_ent).try_insert_if_new(Predator);
         } else {
             cmd.entity(being_ent).try_remove::<Predator>();
         }
-        let avoid_blacklisted_spawn_tiles_for_wander = if let Some(bit_ref) = bit_ref {
-            if let Ok(bit_wander_cfg) = queries.wander_cfg_query.get(bit_ref.0) {
+        let avoid_blacklisted_spawn_tiles_for_wander = if let Some(bit_ent) = bit_ent {
+            if let Ok(bit_wander_cfg) = queries.wander_cfg_query.get(bit_ent) {
                 bit_wander_cfg.avoid_blacklisted_spawn_tiles
             } else {
-                race_ref
-                    .and_then(|race_ref| queries.wander_cfg_query.get(race_ref.0).ok())
+                race_ent
+                    .and_then(|race_ent| queries.wander_cfg_query.get(race_ent).ok())
                     .map(|cfg| cfg.avoid_blacklisted_spawn_tiles)
                     .unwrap_or(false)
             }
         } else {
-            race_ref
-                .and_then(|race_ref| queries.wander_cfg_query.get(race_ref.0).ok())
+            race_ent
+                .and_then(|race_ent| queries.wander_cfg_query.get(race_ent).ok())
                 .map(|cfg| cfg.avoid_blacklisted_spawn_tiles)
                 .unwrap_or(false)
         };
@@ -203,33 +221,38 @@ pub fn build_beings_from_refs(
         let mut has_body_ref_now = queries.body_weighted_sampler_query.get(being_ent).is_ok() || queries.body_ref_query.get(being_ent).is_ok();
 
         if let Some(bit_ref) = bit_ref {
-            let Ok((template, )) = queries.bit_query.get(bit_ref.0) else {
+            let Some(bit_ent) = bit_ent else {
+                warn!(target: BEING_TEMPLATE_BUILD, "BitRef hash {:?} could not be resolved to template entity", bit_ref.0);
+                continue;
+            };
+            let Ok((template, )) = queries.bit_query.get(bit_ent) else {
                 warn!(target: BEING_TEMPLATE_BUILD, "BitRef entity {:?} could not be resolved to BeingInstTemplate", bit_ref.0);
                 continue;
             };
-            if !has_sample_sprites_now && let Ok(sample_sprites) = queries.sample_sprite_ents_query.get(bit_ref.0) {
+            if !has_sample_sprites_now && let Ok(sample_sprites) = queries.sample_sprite_ents_query.get(bit_ent) {
                 sample_sprites_to_ins.push((being_ent, sample_sprites.clone()));
                 has_sample_sprites_now = true;
             }
             if !has_body_ref_now {
-                if let Ok(&sample_body_body) = queries.body_weighted_sampler_query.get(bit_ref.0) {
+                if let Ok(&sample_body_body) = queries.body_weighted_sampler_query.get(bit_ent) {
                     body_sampler_to_ins.push((being_ent, sample_body_body));
                     has_body_ref_now = true;
-                } else if let Ok(&body_ref) = queries.body_ref_query.get(bit_ref.0) {
+                } else if let Ok(&body_ref) = queries.body_ref_query.get(bit_ent) {
                     body_refs_to_ins.push((being_ent, body_ref));
                     has_body_ref_now = true;
                 }
             }
-            if let Ok(&faction_ref) = queries.faction_ref_query.get(bit_ref.0) {
+            if let Ok(&faction_ref) = queries.faction_ref_query.get(bit_ent) {
                 faction_refs_to_ins.push((being_ent, faction_ref));
             }
 
-            if let Ok(&race_ref_from_bit) = queries.race_ref_query.get(bit_ref.0) {
+            if let Ok(&race_ref_from_bit) = queries.race_ref_query.get(bit_ent) {
                 if race_ref != Some(race_ref_from_bit) {
                     cmd.entity(being_ent).insert(race_ref_from_bit);
                     debug!(target: BEING_TEMPLATE_BUILD, "Resolved bit {:?} for being {:?} to RaceRef {:?}", bit_ref.0, being_ent, race_ref_from_bit.0);
                 }
                 race_ref = Some(race_ref_from_bit);
+                race_ent = queries.race_map.0.get_cloned(race_ref_from_bit.0).ok();
             }
             if template.extra_health_multiplier != 1.0 {
                 // add in a modifier
@@ -237,24 +260,32 @@ pub fn build_beings_from_refs(
         }
 
         if let Some(race_ref) = race_ref {
+            let Some(race_ent) = race_ent else {
+                warn!(target: BEING_TEMPLATE_BUILD, "RaceRef hash {:?} could not be resolved to template entity", race_ref.0);
+                continue;
+            };
             if !has_body_ref_now {
-                if let Ok(&sample_body_body) = queries.body_weighted_sampler_query.get(race_ref.0) {
+                if let Ok(&sample_body_body) = queries.body_weighted_sampler_query.get(race_ent) {
                     body_sampler_to_ins.push((being_ent, sample_body_body));
                     has_body_ref_now = true;
-                } else if let Ok(&body_ref) = queries.body_ref_query.get(race_ref.0) {
+                } else if let Ok(&body_ref) = queries.body_ref_query.get(race_ent) {
                     body_refs_to_ins.push((being_ent, body_ref));
                     has_body_ref_now = true;
                 }
             }
 
             let mut selected_sex_ent = None;
-            if let Ok(sexes_sampler) = queries.sexes_sampler_query.get(race_ref.0) {
+            if let Ok(sexes_sampler) = queries.sexes_sampler_query.get(race_ent) {
                 selected_sex_ent = sexes_sampler.0.sample_with_rng(&mut rng);
                 if let Some(sex_ent) = selected_sex_ent {
-                    sex_refs_to_ins.push((being_ent, SexRef(sex_ent)));
+                    let Ok(&sex_hash) = queries.hash_id_query.get(sex_ent) else {
+                        warn!(target: BEING_TEMPLATE_BUILD, "Sex entity {:?} sampled for race {:?} has no HashId", sex_ent, race_ref.0);
+                        continue;
+                    };
+                    sex_refs_to_ins.push((being_ent, SexRef(sex_hash)));
                 }
             }
-            if !has_sample_sprites_now && let Ok(mapped_sprites) = queries.mapped_sprites_to_sample_query.get(race_ref.0) {
+            if !has_sample_sprites_now && let Ok(mapped_sprites) = queries.mapped_sprites_to_sample_query.get(race_ent) {
                 let selected_sex_ent = selected_sex_ent.or_else(|| mapped_sprites.0.keys().next().copied());
                 let Some(sex_ent) = selected_sex_ent else {
                     warn!(target: BEING_SYSTEM, "Race entity {:?} has no selectable sex for sprite sampling", race_ref.0);
@@ -282,6 +313,9 @@ pub struct SampleSpriteNormalSizeVariationsQueryParams<'w, 's> {
     beings_to_sample: Query<'w, 's, (Option<&'static BitRef>, Option<&'static RaceRef>, Option<&'static SexRef>, Has<SpriteGlobalNormalDistResult>, Has<SpriteHoriNormalDistResult>, Has<SpriteVertNormalDistResult>), (With<Being>, AnyDisabling)>,
     race_sex_size_dists: Query<'w, 's, &'static SexSizeVariationsBySex, With<Race>>,
     dists_query: Query<'w, 's, (Option<&'static SpriteGlobalNormalDist>, Option<&'static SpriteHoriNormalDist>, Option<&'static SpriteVertNormalDist>)>,
+    bit_map: Res<'w, BeingInstTemplateEntityMap>,
+    race_map: Res<'w, RaceEntityMap>,
+    sex_map: Res<'w, SexEntityMap>,
 }
 
 #[derive(SystemParam)]
@@ -326,24 +360,26 @@ pub fn sample_sprite_normal_size_variations(
         let mut global_dist: Option<&SpriteGlobalNormalDist> = None;
         let mut hori_dist: Option<&SpriteHoriNormalDist> = None;
         let mut vert_dist: Option<&SpriteVertNormalDist> = None;
+        let bit_ent = bit_ref.and_then(|bit_ref| queries.bit_map.0.get_cloned(bit_ref.0).ok());
+        let race_ent = race_ref.and_then(|race_ref| queries.race_map.0.get_cloned(race_ref.0).ok());
 
-        if let Some(bit_ref) = bit_ref {
-            if let Ok((bit_global, bit_hori, bit_vert, )) = queries.dists_query.get(bit_ref.0) {
+        if let Some(bit_ent) = bit_ent {
+            if let Ok((bit_global, bit_hori, bit_vert, )) = queries.dists_query.get(bit_ent) {
                 if bit_global.is_some() { global_dist = bit_global; }
                 if bit_hori.is_some() { hori_dist = bit_hori; }
                 if bit_vert.is_some() { vert_dist = bit_vert; }
             }
         }
 
-        if let Some(race_ref) = race_ref {
-            if let Some(sex_ref) = sex_ref {
-                if let Ok(sex_dists) = queries.race_sex_size_dists.get(race_ref.0) {
-                    if let Some(dist) = sex_dists.0.get(&sex_ref.0) {
+        if let Some(race_ent) = race_ent {
+            if let Some(sex_ref) = sex_ref && let Ok(sex_ent) = queries.sex_map.0.get_cloned(sex_ref.0) {
+                if let Ok(sex_dists) = queries.race_sex_size_dists.get(race_ent) {
+                    if let Some(dist) = sex_dists.0.get(&sex_ent) {
                         global_dist = Some(dist);
                     }
                 }
             }
-            if let Ok((race_global, race_hori, race_vert, )) = queries.dists_query.get(race_ref.0) {
+            if let Ok((race_global, race_hori, race_vert, )) = queries.dists_query.get(race_ent) {
                 if global_dist.is_none() { global_dist = race_global; }
                 if hori_dist.is_none() { hori_dist = race_hori; }
                 if vert_dist.is_none() { vert_dist = race_vert; }

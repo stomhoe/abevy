@@ -10,6 +10,7 @@ use bevy::{
     prelude::*,
 };
 use common::common_tag_components::TagSet;
+use tilemap_shared::DimensionEntityMap;
 use tilemap_shared::GlobalTilePos;
 
 const HUNTERS_PER_PREY_TARGET: usize = 4;
@@ -50,14 +51,23 @@ fn health_ratio(
 fn resolve_predator_cfg(
     bit_ref: Option<&BitRef>,
     race_ref: Option<&RaceRef>,
+    bit_map: &BeingInstTemplateEntityMap,
+    race_map: &RaceEntityMap,
     bit_cfg_query: &Query<&PredatorCfg>,
 ) -> Option<PredatorCfg> {
-    common::query_fallback_get!(
-        bit_cfg_query,
-        bit_ref.map(|bit_ref| bit_ref.0),
-        race_ref.map(|race_ref| race_ref.0),
-    )
-    .cloned()
+    if let Some(bit_ref) = bit_ref
+        && let Ok(bit_ent) = bit_map.0.get_cloned(bit_ref.0)
+        && let Ok(cfg) = bit_cfg_query.get(bit_ent)
+    {
+        return Some(cfg.clone());
+    }
+    if let Some(race_ref) = race_ref
+        && let Ok(race_ent) = race_map.0.get_cloned(race_ref.0)
+        && let Ok(cfg) = bit_cfg_query.get(race_ent)
+    {
+        return Some(cfg.clone());
+    }
+    None
 }
 
 fn euclidean_dist(a: GlobalTilePos, b: GlobalTilePos) -> f32 {
@@ -116,6 +126,9 @@ pub struct UpdatePredatorHuntingTargetsQueries<'w, 's> {
     >,
     pub beings_query: Query<'w, 's, Entity, (With<Being>, )>,
     pub pos_dim_query: Query<'w, 's, (&'static ::tilemap_shared::DimensionRef, &'static GlobalTilePos), >,
+    pub dim_map: Res<'w, DimensionEntityMap>,
+    pub bit_map: Res<'w, BeingInstTemplateEntityMap>,
+    pub race_map: Res<'w, RaceEntityMap>,
     pub body_weight_query: Query<'w, 's, &'static BodyWeightSum, >,
     pub tagset_query: Query<'w, 's, &'static TagSet, >,
     pub squad_member_of_query: Query<'w, 's, &'static SquadMemberOf, >,
@@ -138,13 +151,14 @@ pub fn update_predator_hunting_targets(
     grids: Res<AiNavGrids>,
     mut locals: UpdatePredatorHuntingTargetsLocals,
 ) {
+    let resolve_dim_ent = |dim_ref: &::tilemap_shared::DimensionRef| params.dim_map.0.get_opt(dim_ref.0).copied();
     for (pred_ent, squad_member_of, hunting, hunger) in params.predators.iter() {
         if squad_member_of.is_some() {
             continue;
         }
         let bit_ref = params.bit_ref_query.get(pred_ent).ok();
         let race_ref = params.race_ref_query.get(pred_ent).ok();
-        let Some(predator_cfg) = resolve_predator_cfg(bit_ref, race_ref, &params.predator_cfg_query) else {
+        let Some(predator_cfg) = resolve_predator_cfg(bit_ref, race_ref, &params.bit_map, &params.race_map, &params.predator_cfg_query) else {
             cmd.entity(pred_ent).try_remove::<Hunting>();
             continue;
         };
@@ -202,7 +216,14 @@ pub fn update_predator_hunting_targets(
         let mut chosen_target = closest_target;
         if let Some(current_prey) = hunting.map(|hunting| hunting.prey) {
             if let Ok((current_dim, current_pos)) = params.pos_dim_query.get(current_prey) {
-                if *current_dim == *pred_dim && grids.can_pathfind_between(*pred_pos, *current_pos, *pred_dim) {
+                let Some(pred_dim_ent) = resolve_dim_ent(pred_dim) else {
+                    cmd.entity(pred_ent).try_remove::<Hunting>();
+                    continue;
+                };
+                let Some(current_dim_ent) = resolve_dim_ent(current_dim) else {
+                    continue;
+                };
+                if current_dim_ent == pred_dim_ent && grids.can_pathfind_between(*pred_pos, *current_pos, pred_dim_ent) {
                     let current_dist = euclidean_dist(*current_pos, *pred_pos);
                     if current_dist <= closest_dist + HUNT_RETARGET_HYSTERESIS_TILES {
                         chosen_target = current_prey;
@@ -231,7 +252,7 @@ pub fn update_predator_hunting_targets(
 
             let member_bit_ref = params.bit_ref_query.get(member_ent).ok();
             let member_race_ref = params.race_ref_query.get(member_ent).ok();
-            let Some(predator_cfg) = resolve_predator_cfg(member_bit_ref, member_race_ref, &params.predator_cfg_query) else {
+            let Some(predator_cfg) = resolve_predator_cfg(member_bit_ref, member_race_ref, &params.bit_map, &params.race_map, &params.predator_cfg_query) else {
                 cmd.entity(member_ent).try_remove::<Hunting>();
                 continue;
             };
@@ -274,7 +295,13 @@ pub fn update_predator_hunting_targets(
             let Ok((current_dim, current_pos)) = params.pos_dim_query.get(current_prey) else {
                 continue;
             };
-            if *current_dim != member_dim || !grids.can_pathfind_between(member_pos, *current_pos, member_dim) {
+            let Some(member_dim_ent) = resolve_dim_ent(&member_dim) else {
+                continue;
+            };
+            let Some(current_dim_ent) = resolve_dim_ent(current_dim) else {
+                continue;
+            };
+            if current_dim_ent != member_dim_ent || !grids.can_pathfind_between(member_pos, *current_pos, member_dim_ent) {
                 continue;
             }
             *committed_counts.entry(current_prey).or_insert(0) += 1;
@@ -315,9 +342,9 @@ pub fn update_predator_hunting_targets(
             }
         }
 
-        if let Ok(target_member_of) = params.squad_member_of_query.get(base_target) {
-            if let Ok((target_squad_members)) = params.squad_members_query.get(target_member_of.0) {
-                for target_member in target_squad_members.iter() {
+            if let Ok(target_member_of) = params.squad_member_of_query.get(base_target) {
+                if let Ok((target_squad_members)) = params.squad_members_query.get(target_member_of.0) {
+                    for target_member in target_squad_members.iter() {
                     if squad_members.iter().any(|member_ent| member_ent == target_member) {
                         continue;
                     }
@@ -333,7 +360,16 @@ pub fn update_predator_hunting_targets(
                         let Ok((pred_dim, pred_pos)) = params.pos_dim_query.get(member_ent) else {
                             continue;
                         };
-                        if !grids.can_pathfind_between(*pred_pos, *member_pos, *pred_dim) {
+                        let Some(pred_dim_ent) = resolve_dim_ent(pred_dim) else {
+                            continue;
+                        };
+                        let Some(member_dim_ent) = resolve_dim_ent(member_dim) else {
+                            continue;
+                        };
+                        if !grids.can_pathfind_between(*pred_pos, *member_pos, pred_dim_ent) {
+                            continue;
+                        }
+                        if pred_dim_ent != member_dim_ent {
                             continue;
                         }
                         reachable = true;
@@ -363,6 +399,10 @@ pub fn update_predator_hunting_targets(
                 cmd.entity(member_ent).try_remove::<Hunting>();
                 continue;
             };
+            let Some(member_dim_ent) = resolve_dim_ent(member_dim) else {
+                cmd.entity(member_ent).try_remove::<Hunting>();
+                continue;
+            };
             let mut target_ix = (ix / HUNTERS_PER_PREY_TARGET).min(locals.target_list.len().saturating_sub(1));
             let mut assigned_target = None;
             while target_ix < locals.target_list.len() {
@@ -371,7 +411,7 @@ pub fn update_predator_hunting_targets(
                     target_ix += 1;
                     continue;
                 };
-                if !grids.can_pathfind_between(*member_pos, *target_pos, *member_dim) {
+                if !grids.can_pathfind_between(*member_pos, *target_pos, member_dim_ent) {
                     target_ix += 1;
                     continue;
                 }

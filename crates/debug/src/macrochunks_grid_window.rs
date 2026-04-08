@@ -40,21 +40,43 @@ fn origin_being_label(
     entity: Entity,
     bit_ref: Option<&BitRef>,
     race_ref: Option<&RaceRef>,
+    bit_map: &BeingInstTemplateEntityMap,
+    race_map: &RaceEntityMap,
     id_query: &Query<&StrId>,
 ) -> String {
     if let Some(bit_ref) = bit_ref {
-        if let Ok(str_id) = id_query.get(bit_ref.0) {
-            return format!("{:?} | bit {}", entity, str_id.as_str());
+        if let Ok(bit_ent) = bit_map.0.get_cloned(bit_ref.0) {
+            if let Ok(str_id) = id_query.get(bit_ent) {
+                return format!("{:?} | bit {}", entity, str_id.as_str());
+            }
+            return format!("{:?} | bit {:?}", entity, bit_ent);
         }
         return format!("{:?} | bit {:?}", entity, bit_ref.0);
     }
     if let Some(race_ref) = race_ref {
-        if let Ok(str_id) = id_query.get(race_ref.0) {
-            return format!("{:?} | race {}", entity, str_id.as_str());
+        if let Ok(race_ent) = race_map.0.get_cloned(race_ref.0) {
+            if let Ok(str_id) = id_query.get(race_ent) {
+                return format!("{:?} | race {}", entity, str_id.as_str());
+            }
+            return format!("{:?} | race {:?}", entity, race_ent);
         }
         return format!("{:?} | race {:?}", entity, race_ref.0);
     }
     format!("{:?}", entity)
+}
+
+fn dimension_name_for_ref(
+    dim_ref: &DimensionRef,
+    dimension_map: &DimensionEntityMap,
+    id_query: &Query<&StrId>,
+) -> String {
+    let Some(dim_ent) = dimension_map.0.get_cloned(dim_ref.0).ok() else {
+        return format!("{:?}", dim_ref);
+    };
+    id_query
+        .get(dim_ent)
+        .map(|str_id| str_id.as_str().to_string())
+        .unwrap_or_else(|_| format!("{:?}", dim_ref))
 }
 
 fn chunk_state_color(terrgen_state: TerrGenState) -> egui::Color32 {
@@ -551,8 +573,11 @@ pub fn macrochunks_grid_window(
     macro_chunk_biome_sampling_states: Query<&MacrochunkPendingBiomeSamples>,
     chunk_query: Query<(Entity, &MacroChunkRef, &TerrGenState, &ChunkPos), With<Chunk>>,
     camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    dimension_map: Res<DimensionEntityMap>,
     loaded_macro_chunks: Res<LoadedMacroChunks>,
     id_query: Query<&StrId>,
+    bit_map: Res<BeingInstTemplateEntityMap>,
+    race_map: Res<RaceEntityMap>,
     origin_being_query: Query<(Entity, &DimensionRef, &NaturalSpawnOrigin, Option<&BitRef>, Option<&RaceRef>)>,
 ) {
     if !window_visible.macrochunks_grid {
@@ -576,12 +601,7 @@ pub fn macrochunks_grid_window(
             (Some(*dim_ref), Some(camera_chunk_pos), Some(camera_chunk_pos.to_macrochunk_pos()))
         })
         .unwrap_or((None, None, None));
-    let camera_dim_name = camera_dim_ref.and_then(|dim_ref| {
-        id_query
-            .get(dim_ref.0)
-            .ok()
-            .map(|str_id| str_id.as_str().to_string())
-    });
+    let camera_dim_name = camera_dim_ref.as_ref().map(|dim_ref| dimension_name_for_ref(dim_ref, &dimension_map, &id_query));
 
     let mut chunk_stats_by_macrochunk: HashMap<Entity, MacroChunkChunkStats> = HashMap::default();
     let mut chunk_states_by_macrochunk: HashMap<Entity, Vec<(Entity, ChunkPos, TerrGenState)>> = HashMap::default();
@@ -606,7 +626,7 @@ pub fn macrochunks_grid_window(
             .or_default()
             .push(OriginBeingEntry {
                 entity,
-                label: origin_being_label(entity, bit_ref, race_ref, &id_query),
+                label: origin_being_label(entity, bit_ref, race_ref, &bit_map, &race_map, &id_query),
             });
     }
     origin_beings_by_chunk.values_mut().for_each(|entries| entries.sort_by_key(|entry| entry.entity.index()));
@@ -622,10 +642,7 @@ pub fn macrochunks_grid_window(
     let mut selected_macrochunk_dimension = None;
 
     for (entity, &dim_ref, &macro_chunk_pos, biome_distribution) in macro_chunk_query.iter() {
-        let dim_name = id_query
-            .get(dim_ref.0)
-            .map(|str_id| str_id.as_str().to_string())
-            .unwrap_or_else(|_| format!("{:?}", dim_ref));
+        let dim_name = dimension_name_for_ref(&dim_ref, &dimension_map, &id_query);
         if selected_entities.selected_macrochunk == Some(entity) {
             selected_macrochunk_dimension = Some(dim_name.clone());
         }

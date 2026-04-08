@@ -1,28 +1,32 @@
 use bevy::prelude::*;
+use bevy::platform::collections::HashSet as BevyHashSet;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
 use tilemap_shared::{GlobalTilePos, OplistSize, GlobalGenSettings, HashablePosVec, PoissonDisk};
 use crate::terrain::terrgen_components::FnlNoiseComp;
 use common::common_components::{HashId, HashIdMap, StrId};
-use bevy::ecs::entity::{EntityHashMap, };
 
+impl Default for Expr {
+    fn default() -> Self {
+        Self::Literal(0.0)
+    }
+}
 /// Expression tree for terrain generation operations
 /// Replaces the slot-based system with a composable AST
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, )]
 pub enum Expr {
     /// Literal constant value
     Literal(f32),
 
-    /// Reference to a noise entity
+    /// Reference to a noise entity by hash id
     Noise {
-        entity: Entity,
+        hash_id: HashId,
         sample_range: fnl::NoiseSampleRange,
         complement: bool,
         seed_offset: i32,
     },
 
-    /// Reference to a noise by name (resolved later to entity)
+    /// Reference to a noise by name hash
     NoiseByName {
         name: HashId,
         sample_range: fnl::NoiseSampleRange,
@@ -87,30 +91,23 @@ impl Expr {
         match self {
             Expr::Literal(v) => *v,
 
-            Expr::NoiseByName { .. } => {
-                // NoiseByName should be resolved to Noise during init
-                // If we reach here, it means resolution failed
-                warn!(target: "oplist_eval", "Unresolved NoiseByName reached runtime eval; returning 0.0");
-                0.0
-            }
-
-            Expr::Noise { entity, sample_range, complement, seed_offset } => {
-                if let Some(noise) = context.noises.get(entity) {
-                    let mut value = noise.sample(
-                        context.global_pos,
-                        context.dimension_hash,
-                        *sample_range,
-                        false, // complement handled separately
-                        *seed_offset,
-                        context.gen_settings,
-                    );
-                    if *complement {
-                        value = 1.0 - value;
-                    }
-                    value
-                } else {
-                    0.0
+            Expr::Noise { hash_id, sample_range, complement, seed_offset }
+            | Expr::NoiseByName { name: hash_id, sample_range, complement, seed_offset } => {
+                let Ok(noise) = context.noises.get(*hash_id) else {
+                    return 0.0;
+                };
+                let mut value = noise.sample(
+                    context.global_pos,
+                    context.dimension_hash,
+                    *sample_range,
+                    false, // complement handled separately
+                    *seed_offset,
+                    context.gen_settings,
+                );
+                if *complement {
+                    value = 1.0 - value;
                 }
+                value
             }
 
             Expr::HashPos { seed } => {
@@ -139,8 +136,8 @@ impl Expr {
                 if let Ok(v) = context.variables.get(var_id) {
                     *v
                 } else {
-                    static MISSING_VARS_WARNED: OnceLock<Mutex<HashSet<HashId>>> = OnceLock::new();
-                    let warned = MISSING_VARS_WARNED.get_or_init(|| Mutex::new(HashSet::new()));
+                    static MISSING_VARS_WARNED: OnceLock<Mutex<BevyHashSet<HashId>>> = OnceLock::new();
+                    let warned = MISSING_VARS_WARNED.get_or_init(|| Mutex::new(BevyHashSet::new()));
                     if let Ok(mut set) = warned.lock() && set.insert(var_id) {
                         warn!(
                             target: "oplist_eval",
@@ -244,15 +241,10 @@ impl Expr {
     }
 
     /// Collect all noise entities referenced in this expression
-    pub fn collect_noise_entities(&self, out: &mut Vec<Entity>) {
+    pub fn collect_noise_hash_ids(&self, out: &mut BevyHashSet<HashId>) {
         match self {
-            Expr::NoiseByName { .. } => {
-                // NoiseByName entities will be collected after resolution
-            }
-            Expr::Noise { entity, .. } => {
-                if !out.contains(entity) {
-                    out.push(*entity);
-                }
+            Expr::Noise { hash_id, .. } | Expr::NoiseByName { name: hash_id, .. } => {
+                out.insert(*hash_id);
             }
             Expr::Add { left, right }
             | Expr::Subtract { left, right }
@@ -260,13 +252,13 @@ impl Expr {
             | Expr::Divide { left, right }
             | Expr::MultiplyNormalized { left, right }
             | Expr::MultiplyNormalizedAbs { left, right } => {
-                left.collect_noise_entities(out);
-                right.collect_noise_entities(out);
+                left.collect_noise_hash_ids(out);
+                right.collect_noise_hash_ids(out);
             }
             Expr::MultiplyOpo { value }
             | Expr::Abs { value }
             | Expr::Complement { value } => {
-                value.collect_noise_entities(out);
+                value.collect_noise_hash_ids(out);
             }
             Expr::Min { values }
             | Expr::Max { values }
@@ -274,17 +266,17 @@ impl Expr {
             | Expr::IndexMax { values }
             | Expr::Linear { values } => {
                 for v in values {
-                    v.collect_noise_entities(out);
+                    v.collect_noise_hash_ids(out);
                 }
             }
             Expr::IndexNorm { value, multiplier } => {
-                value.collect_noise_entities(out);
-                multiplier.collect_noise_entities(out);
+                value.collect_noise_hash_ids(out);
+                multiplier.collect_noise_hash_ids(out);
             }
             Expr::Clamp { value, min, max } => {
-                value.collect_noise_entities(out);
-                min.collect_noise_entities(out);
-                max.collect_noise_entities(out);
+                value.collect_noise_hash_ids(out);
+                min.collect_noise_hash_ids(out);
+                max.collect_noise_hash_ids(out);
             }
             _ => {}
         }
@@ -297,7 +289,7 @@ pub struct EvalContext<'a> {
     pub dimension_hash: HashId,
     pub gen_settings: &'a GlobalGenSettings,
     pub oplist_size: OplistSize,
-    pub noises: &'a EntityHashMap<FnlNoiseComp>,
+    pub noises: &'a HashIdMap<FnlNoiseComp>,
     pub variables: &'a HashIdMap<f32>,
 }
 
@@ -309,7 +301,7 @@ pub struct Assignment {
 }
 
 /// Oplist definition using expression trees
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExprOpList {
     /// Named variable assignments
     pub assignments: Vec<Assignment>,

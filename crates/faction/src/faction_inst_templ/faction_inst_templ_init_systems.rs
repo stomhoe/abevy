@@ -1,6 +1,8 @@
 use bevy::prelude::*;
-use common::common_components::{DisplayName, StrId, Tag};
+use common::common_components::{AddHashIdFromStrId, DisplayName, StrId, Tag};
+use common::common_id_components::HashId;
 use game_common::game_common_string_components::Description;
+use game_common::game_common_components::TemplEntiHashIdRef;
 use faction_shared::FactionInstTempl;
 
 use crate::{
@@ -18,7 +20,7 @@ pub fn init_faction_inst_templates(
 
     for seri in load_faction_inst_templ_seri_defs() {
         let str_id = StrId::trunc(&seri.id);
-        let mut ecmd = cmd.spawn((FactionInstTempl, str_id.clone()));
+        let mut ecmd = cmd.spawn((FactionInstTempl, str_id.clone(), AddHashIdFromStrId, TemplEntiHashIdRef(HashId::from(str_id.as_str()))));
 
         if !seri.display_name.trim().is_empty() {
             ecmd.insert(DisplayName(seri.display_name.clone()));

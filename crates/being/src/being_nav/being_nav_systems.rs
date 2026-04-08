@@ -10,6 +10,7 @@ use bevy::{
     platform::collections::HashMap,
     prelude::*,
 };
+use common::common_components::HashId;
 use common::log_targets::BEING_SYSTEM;
 use param_sets::BlockingTileParamSet;
 use movement::movement_components::{InputMaxSpeed, InputSpeedThrottleMult};
@@ -111,6 +112,7 @@ pub fn update_being_lod_levels_from_camera(
         ),
         (With<Being>, LocalAiControlled),
     >,
+    dim_map: Res<DimensionEntityMap>,
     mut cameras_by_dim: Local<EntityHashMap<Vec<GlobalTilePos>>>,
 ) {
     cameras_by_dim.clear();
@@ -118,15 +120,21 @@ pub fn update_being_lod_levels_from_camera(
     let (lower, upper) = camera_iter.size_hint();
     cameras_by_dim.reserve(upper.unwrap_or(lower));
     for (&dim_ref, transform) in camera_iter {
+        let Some(dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
+            continue;
+        };
         cameras_by_dim
-            .entry(dim_ref.0)
+            .entry(dim_ent)
             .or_default()
             .push(GlobalTilePos::from(transform.translation().xy()));
     }
 
     for (being_ent, &dim_ref, &being_gpos, lod_level) in beings_query.iter_mut() {
+        let Some(dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
+            continue;
+        };
         let nearest_camera_tile_dist = cameras_by_dim
-            .get(&dim_ref.0)
+            .get(&dim_ent)
             .and_then(|camera_gpos| {
                 camera_gpos
                     .iter()
@@ -344,6 +352,8 @@ fn resolve_flee_wander_cfg(
     member_of: Option<&SquadMemberOf>,
     bit_ref: Option<&BitRef>,
     race_ref: Option<&RaceRef>,
+    bit_map: &BeingInstTemplateEntityMap,
+    race_map: &RaceEntityMap,
     wander_cfg_query: &Query<&WanderSeri>,
 ) -> WanderSeri {
     if let Some(member_of) = member_of {
@@ -352,12 +362,16 @@ fn resolve_flee_wander_cfg(
         }
     }
     if let Some(bit_ref) = bit_ref {
-        if let Ok(cfg) = wander_cfg_query.get(bit_ref.0) {
+        if let Ok(bit_ent) = bit_map.0.get_cloned(bit_ref.0)
+            && let Ok(cfg) = wander_cfg_query.get(bit_ent)
+        {
             return cfg.clone();
         }
     }
     if let Some(race_ref) = race_ref {
-        if let Ok(cfg) = wander_cfg_query.get(race_ref.0) {
+        if let Ok(race_ent) = race_map.0.get_cloned(race_ref.0)
+            && let Ok(cfg) = wander_cfg_query.get(race_ent)
+        {
             return cfg.clone();
         }
     }
@@ -369,6 +383,8 @@ fn resolve_flee_avoid_tile_tags(
     has_avoid_blacklisted_spawn_tiles: bool,
     bit_ref: Option<&BitRef>,
     race_ref: Option<&RaceRef>,
+    bit_map: &BeingInstTemplateEntityMap,
+    race_map: &RaceEntityMap,
     blacklisted_spawn_tile_tags_query: &Query<&::tilemap_shared::BlacklistedSpawnTileTags>,
 ) -> BlacklistedTags {
     let mut avoid_tile_tags = BlacklistedTags::new(&cfg.avoid_tile_tags);
@@ -376,7 +392,9 @@ fn resolve_flee_avoid_tile_tags(
         return avoid_tile_tags;
     }
     if let Some(bit_ref) = bit_ref {
-        if let Ok(bit_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(bit_ref.0) {
+        if let Ok(bit_ent) = bit_map.0.get_cloned(bit_ref.0)
+            && let Ok(bit_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(bit_ent)
+        {
             if !bit_blacklisted_spawn_tile_tags.0.is_empty() {
                 avoid_tile_tags.extend_from(&bit_blacklisted_spawn_tile_tags.0);
                 return avoid_tile_tags;
@@ -384,7 +402,9 @@ fn resolve_flee_avoid_tile_tags(
         }
     }
     if let Some(race_ref) = race_ref {
-        if let Ok(race_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(race_ref.0) {
+        if let Ok(race_ent) = race_map.0.get_cloned(race_ref.0)
+            && let Ok(race_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(race_ent)
+        {
             avoid_tile_tags.extend_from(&race_blacklisted_spawn_tile_tags.0);
         }
     }
@@ -400,6 +420,8 @@ pub fn update_goto_from_fleeing(
     flee_from_query: Query<(&::tilemap_shared::DimensionRef, ), (With<Being>, )>,
     wander_cfg_query: Query<&WanderSeri>,
     blacklisted_spawn_tile_tags_query: Query<&::tilemap_shared::BlacklistedSpawnTileTags>,
+    bit_map: Res<BeingInstTemplateEntityMap>,
+    race_map: Res<RaceEntityMap>,
     mut messages: Local<Vec<NavOrder>>,
 ) {
     const FLEE_STOP_DISTANCE_TILES: i32 = 20;
@@ -450,12 +472,14 @@ pub fn update_goto_from_fleeing(
         }
         let bit_ref = blocking_tiles.get_being_bit_ref(being_ent);
         let race_ref = blocking_tiles.get_being_race_ref(being_ent);
-        let cfg = resolve_flee_wander_cfg(member_of, bit_ref, race_ref, &wander_cfg_query);
+        let cfg = resolve_flee_wander_cfg(member_of, bit_ref, race_ref, &bit_map, &race_map, &wander_cfg_query);
         let avoid_tile_tags = resolve_flee_avoid_tile_tags(
             &cfg,
             has_avoid_blacklisted_spawn_tiles,
             bit_ref,
             race_ref,
+            &bit_map,
+            &race_map,
             &blacklisted_spawn_tile_tags_query,
         );
         let Some((target_pos, score, open_exits)) = choose_flee_target_pos(
@@ -575,6 +599,7 @@ pub fn sync_ai_nav_grids(
     time: Res<Time>,
     loaded_chunks: Res<LoadedChunks>,
     chunk_range: Res<LoadChunksAround>,
+    dim_map: Res<DimensionEntityMap>,
     mut param_set: BlockingTileParamSet,
     chasers_query: Query<
         (
@@ -589,6 +614,7 @@ pub fn sync_ai_nav_grids(
     beings_query: Query<(Entity, &::tilemap_shared::DimensionRef, Option<&GoTo>, Option<&LodLevel>), With<Being>>,
     mut removed_beings: RemovedComponents<Being>,
     mut grids: ResMut<AiNavGrids>,
+    dimension_hash_query: Query<&HashId, With<Dimension>>,
     mut scratch: SyncAiNavGridsScratch,
 ) {
     let chaser_iter = chasers_query.iter();
@@ -604,6 +630,9 @@ pub fn sync_ai_nav_grids(
         let Some(goto) = goto else {
             continue;
         };
+        let Some(dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
+            continue;
+        };
         if let Some(controlled_by) = controlled_by {
             if controlled_by.human_dc_input {
                 continue;
@@ -617,14 +646,14 @@ pub fn sync_ai_nav_grids(
         if lod_level >= 2 && !is_critical_nav {
             continue;
         }
-        scratch.needed_dims.insert(dim_ref.0);
+        scratch.needed_dims.insert(dim_ent);
         let Ok(&gpos) = param_set.gpos_query.get(being_ent) else {
             continue;
         };
         let pos = gpos.0;
-        let center = scratch.dim_centers.entry(dim_ref.0).or_insert(IVec2::ZERO);
+        let center = scratch.dim_centers.entry(dim_ent).or_insert(IVec2::ZERO);
         *center += pos;
-        *scratch.dim_center_counts.entry(dim_ref.0).or_insert(0) += 1;
+        *scratch.dim_center_counts.entry(dim_ent).or_insert(0) += 1;
     }
 
     grids.by_dim.retain(|dim, _| scratch.needed_dims.contains(dim));
@@ -644,7 +673,10 @@ pub fn sync_ai_nav_grids(
         scratch.dirty_dims.extend(scratch.needed_dims.iter().copied());
     }
     for (being_ent, dim_ref, go_to, lod_level) in beings_query.iter() {
-        if !scratch.needed_dims.contains(&dim_ref.0) {
+        let Some(dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
+            continue;
+        };
+        if !scratch.needed_dims.contains(&dim_ent) {
             continue;
         }
         let lod_level = lod_level.map_or(0, |lod_level| lod_level.0);
@@ -660,21 +692,21 @@ pub fn sync_ai_nav_grids(
         scratch.seen_beings.insert(being_ent);
         scratch
             .beings_by_dim
-            .entry(dim_ref.0)
+            .entry(dim_ent)
             .or_default()
             .push((being_ent, gpos));
-        let previous = scratch.prev_being_state.insert(being_ent, (dim_ref.0, gpos));
+        let previous = scratch.prev_being_state.insert(being_ent, (dim_ent, gpos));
         let Some((previous_dim, previous_gpos)) = previous else {
-            scratch.dirty_dims.insert(dim_ref.0);
+            scratch.dirty_dims.insert(dim_ent);
             continue;
         };
-        if previous_dim != dim_ref.0 {
+        if previous_dim != dim_ent {
             scratch.dirty_dims.insert(previous_dim);
-            scratch.dirty_dims.insert(dim_ref.0);
+            scratch.dirty_dims.insert(dim_ent);
             continue;
         }
         if previous_gpos != gpos {
-            scratch.dirty_dims.insert(dim_ref.0);
+            scratch.dirty_dims.insert(dim_ent);
         }
     }
     scratch.prev_being_state.retain(|being_ent, (prev_dim, _)| {
@@ -693,11 +725,17 @@ pub fn sync_ai_nav_grids(
     let mut refreshed_occupancy = 0usize;
 
     for dim in scratch.needed_dims.iter().copied() {
+        let Ok(&dim_hash) = dimension_hash_query.get(dim) else {
+            continue;
+        };
         let mut min_tile: Option<IVec2> = None;
         let mut max_tile: Option<IVec2> = None;
 
         for (&(dim_ref, chunk_pos), _) in loaded_chunks.0.iter() {
-            if dim_ref.0 != dim {
+            let Some(chunk_dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
+                continue;
+            };
+            if chunk_dim_ent != dim {
                 continue;
             }
             let cmin = chunk_pos.to_tilepos().0;
@@ -752,7 +790,7 @@ pub fn sync_ai_nav_grids(
                 for x in 0..width {
                     let world = GlobalTilePos(min_tile + IVec2::new(x as i32, y as i32));
                     if param_set.is_blocked_at_tiles_only(
-                        ::tilemap_shared::DimensionRef(dim),
+                        ::tilemap_shared::DimensionRef(dim_hash),
                         world,
                         Entity::PLACEHOLDER,
                     ) {

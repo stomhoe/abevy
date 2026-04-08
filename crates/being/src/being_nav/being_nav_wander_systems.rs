@@ -58,6 +58,8 @@ fn advance_wander_lod_tick(
 
 fn collect_entity_avoidance(
     blocking_tiles: &mut BlockingTileParamSet,
+    bit_map: &BeingInstTemplateEntityMap,
+    race_map: &RaceEntityMap,
     self_ent: Entity,
     self_dim: &DimensionRef,
     cfg: &WanderSeri,
@@ -121,7 +123,10 @@ fn collect_entity_avoidance(
         }
 
         if let Some(bit_ref) = blocking_tiles.get_being_bit_ref(threat_ent) {
-            let Ok(bit_tags) = tag_query.get(bit_ref.0) else {
+            let Ok(bit_ent) = bit_map.0.get_cloned(bit_ref.0) else {
+                continue;
+            };
+            let Ok(bit_tags) = tag_query.get(bit_ent) else {
                 continue;
             };
             let Some(spec) = AvoidBeingSpec::strongest_avoidance_spec(&cfg.avoid_bit_tags, bit_tags) else {
@@ -130,7 +135,10 @@ fn collect_entity_avoidance(
             avoidance += spec.strongest_entity_avoidance(delta_vec, distance, move_speed);
         }
         if let Some(race_ref) = blocking_tiles.get_being_race_ref(threat_ent) {
-            let Ok(race_tags) = tag_query.get(race_ref.0) else {
+            let Ok(race_ent) = race_map.0.get_cloned(race_ref.0) else {
+                continue;
+            };
+            let Ok(race_tags) = tag_query.get(race_ent) else {
                 continue;
             };
             let Some(spec) = AvoidBeingSpec::strongest_avoidance_spec(&cfg.avoid_race_tags, race_tags) else {
@@ -158,6 +166,8 @@ fn collect_entity_avoidance(
 
 fn orbit_target_allowed_for_pack_members(
     blocking_tiles: &mut BlockingTileParamSet,
+    bit_map: &BeingInstTemplateEntityMap,
+    race_map: &RaceEntityMap,
     wander_cfg_query: &Query<&WanderSeri>,
     blacklisted_spawn_tile_tags_query: &Query<&BlacklistedSpawnTileTags>,
     squad_ent: Entity,
@@ -174,17 +184,45 @@ fn orbit_target_allowed_for_pack_members(
         }
         let bit_ref = blocking_tiles.get_being_bit_ref(member_ent);
         let race_ref = blocking_tiles.get_being_race_ref(member_ent);
-        let cfg = common::query_fallback_get!(
-            wander_cfg_query,
-            Some(squad_ent),
-            bit_ref.map(|bit_ref| bit_ref.0),
-            race_ref.map(|race_ref| race_ref.0),
-        )
-        .unwrap_or(&fallback_cfg);
+        let cfg = if let Ok(cfg) = wander_cfg_query.get(squad_ent) {
+            cfg
+        } else if let Some(bit_ref) = bit_ref {
+            if let Ok(bit_ent) = bit_map.0.get_cloned(bit_ref.0) {
+                if let Ok(cfg) = wander_cfg_query.get(bit_ent) {
+                    cfg
+                } else if let Some(race_ref) = race_ref {
+                    if let Ok(race_ent) = race_map.0.get_cloned(race_ref.0) {
+                        wander_cfg_query.get(race_ent).unwrap_or(&fallback_cfg)
+                    } else {
+                        &fallback_cfg
+                    }
+                } else {
+                    &fallback_cfg
+                }
+            } else if let Some(race_ref) = race_ref {
+                if let Ok(race_ent) = race_map.0.get_cloned(race_ref.0) {
+                    wander_cfg_query.get(race_ent).unwrap_or(&fallback_cfg)
+                } else {
+                    &fallback_cfg
+                }
+            } else {
+                &fallback_cfg
+            }
+        } else if let Some(race_ref) = race_ref {
+            if let Ok(race_ent) = race_map.0.get_cloned(race_ref.0) {
+                wander_cfg_query.get(race_ent).unwrap_or(&fallback_cfg)
+            } else {
+                &fallback_cfg
+            }
+        } else {
+            &fallback_cfg
+        };
         let avoid_tile_tags = cfg.resolve_wander_avoid_tile_tags(
             has_avoid_blacklisted_spawn_tiles,
             bit_ref,
             race_ref,
+            bit_map,
+            race_map,
             blacklisted_spawn_tile_tags_query,
         );
         let avoid_spawn_tile_tags = BlacklistedSpawnTileTagsRef(&avoid_tile_tags);
@@ -304,6 +342,8 @@ pub struct WanderBehaviorQueryParams<'w, 's> {
         (With<Being>, ),
     >,
     beings_at_gpos: Res<'w, BeingsAtGpos>,
+    bit_map: Res<'w, BeingInstTemplateEntityMap>,
+    race_map: Res<'w, RaceEntityMap>,
     tag_query: Query<'w, 's, &'static TagSet>,
     pack_center_query: Query<'w, 's, &'static SquadAvgCenterPerDim>,
 }
@@ -335,6 +375,8 @@ pub fn wander_behavior(
         blacklisted_spawn_tile_tags_query,
         threat_query,
         beings_at_gpos,
+        bit_map,
+        race_map,
         tag_query,
         pack_center_query,
     } = queries;
@@ -376,13 +418,29 @@ pub fn wander_behavior(
         let bit_ref = blocking_tiles.get_being_bit_ref(pred_ent);
         let race_ref = blocking_tiles.get_being_race_ref(pred_ent);
         let fallback_cfg = WanderSeri::default();
-        let cfg = common::query_fallback_get!(
-            wander_cfg_query,
-            member_of.map(|member_of| member_of.0),
-            bit_ref.map(|bit_ref| bit_ref.0),
-            race_ref.map(|race_ref| race_ref.0),
-        )
-        .unwrap_or(&fallback_cfg);
+        let cfg = if let Some(member_of) = member_of {
+            wander_cfg_query.get(member_of.0).unwrap_or(&fallback_cfg)
+        } else if let Some(bit_ref) = bit_ref {
+            if let Ok(bit_ent) = bit_map.0.get_cloned(bit_ref.0) {
+                wander_cfg_query.get(bit_ent).unwrap_or(&fallback_cfg)
+            } else if let Some(race_ref) = race_ref {
+                if let Ok(race_ent) = race_map.0.get_cloned(race_ref.0) {
+                    wander_cfg_query.get(race_ent).unwrap_or(&fallback_cfg)
+                } else {
+                    &fallback_cfg
+                }
+            } else {
+                &fallback_cfg
+            }
+        } else if let Some(race_ref) = race_ref {
+            if let Ok(race_ent) = race_map.0.get_cloned(race_ref.0) {
+                wander_cfg_query.get(race_ent).unwrap_or(&fallback_cfg)
+            } else {
+                &fallback_cfg
+            }
+        } else {
+            &fallback_cfg
+        };
         if state.is_uninitialized() {
             state.initialize(&mut rng, cfg);
         }
@@ -390,6 +448,8 @@ pub fn wander_behavior(
             has_avoid_blacklisted_spawn_tiles,
             bit_ref,
             race_ref,
+            &bit_map,
+            &race_map,
             &blacklisted_spawn_tile_tags_query,
         );
         let empty_whitelist = WhitelistedTags::default();
@@ -451,6 +511,8 @@ pub fn wander_behavior(
                             |target_gpos| {
                                 orbit_target_allowed_for_pack_members(
                                     &mut blocking_tiles,
+                                    &bit_map,
+                                    &race_map,
                                     &wander_cfg_query,
                                     &blacklisted_spawn_tile_tags_query,
                                     member_of.0,
@@ -466,6 +528,8 @@ pub fn wander_behavior(
 
             input_dir += collect_entity_avoidance(
                 &mut blocking_tiles,
+                &bit_map,
+                &race_map,
                 pred_ent,
                 &dim_ref,
                 &cfg,

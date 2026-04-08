@@ -12,7 +12,7 @@ use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 
 use crate::{
-    tile::tile_shader::{tile_shader_components::*},
+    tile::tile_shader::{tile_shader_components::*, tile_shader_resources::TileShaderEntityMap},
     tilemap_structs::{MapKey, NeedsTerrblRefresh},
 };
 
@@ -21,6 +21,7 @@ pub struct RefreshTerrblTilemapsParams<'w, 's> {
     pub texture_overlay_mat: ResMut<'w, Assets<TerrBlendMat>>,
     pub images: ResMut<'w, Assets<Image>>,
     pub shader_query: Query<'w, 's, &'static TileShader>,
+    pub shader_map: Res<'w, TileShaderEntityMap>,
     pub templ_ref_query: Query<'w, 's, &'static TemplEntiRef>,
     pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex>,
     pub terrbl_params_query: Query<'w, 's, &'static TerrBlendParams>,
@@ -56,7 +57,10 @@ pub fn refresh_terrbl_tilemaps(
 
     let mut terrbl_mapkeys: bevy::platform::collections::HashMap<MapKey, Entity> = bevy::platform::collections::HashMap::default();
     for (tmap_ent, _storage, shader_ref, tile_size, &dim_ref, &chunk_pos, &ac_z) in &params.all_tilemaps {
-        let Ok(shader) = params.shader_query.get(shader_ref.0) else {
+        let Ok(shader_ent) = params.shader_map.0.get_cloned(shader_ref.0) else {
+            continue;
+        };
+        let Ok(shader) = params.shader_query.get(shader_ent) else {
             continue;
         };
         if matches!(shader, TileShader::TerrBlend(_)) {
@@ -74,7 +78,11 @@ pub fn refresh_terrbl_tilemaps(
     }
 
     for (tmap_ent, storage, shader_ref, tile_size, &dim_ref, &chunk_pos, &ac_z, mut material_handle) in &mut params.tilemaps {
-        let Ok(shader) = params.shader_query.get(shader_ref.0) else {
+        let Ok(shader_ent) = params.shader_map.0.get_cloned(shader_ref.0) else {
+            cmd.entity(tmap_ent).remove::<NeedsTerrblRefresh>();
+            continue;
+        };
+        let Ok(shader) = params.shader_query.get(shader_ent) else {
             cmd.entity(tmap_ent).remove::<NeedsTerrblRefresh>();
             continue;
         };

@@ -136,10 +136,7 @@ pub fn maze_dungeon_building_system(
         let mut floor_map = vec![false; tile_map_size];
         let mut hazard_map = vec![false; tile_map_size];
 
-        let Ok(&dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
-            error!(target: "dungeoning", "Dimension entity {:?} has no HashId component for maze dungeon", build_order.dimension_ref);
-            continue;
-        };
+        let dimension_hash = build_order.dimension_ref.0;
 
         let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);

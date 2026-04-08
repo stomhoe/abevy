@@ -11,6 +11,20 @@ use ::tilemap_shared::*;
 use crate::debug_ui_helpers::direction_arrow;
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
+fn dimension_name_for_ref(
+    dim_ref: &DimensionRef,
+    dimension_map: &DimensionEntityMap,
+    dimension_query: &Query<&Name>,
+) -> String {
+    let Some(dim_ent) = dimension_map.0.get_cloned(dim_ref.0).ok() else {
+        return format!("{:?}", dim_ref);
+    };
+    dimension_query
+        .get(dim_ent)
+        .map(|name| name.to_string())
+        .unwrap_or_else(|_| format!("{:?}", dim_ref))
+}
+
 #[allow(unused_parens)]
 pub fn portals_list_window(
     mut contexts: EguiContexts,
@@ -18,6 +32,7 @@ pub fn portals_list_window(
     mut selected_entities: ResMut<DebugSelectedEntities>,
     portal_query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&TemplEntiRef>, &PortalTo), With<PortalTo>>,
     dimension_query: Query<&Name>,
+    dimension_map: Res<DimensionEntityMap>,
     camera_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
     templ_query: Query<&TileStrId, With<Templ>>,
     target_query: Query<Entity>,
@@ -44,11 +59,7 @@ pub fn portals_list_window(
     let mut portals_by_dimension: BTreeMap<String, Vec<(Entity, GlobalTilePos, Option<TemplEntiRef>, Vec2, bool, f32)>> = BTreeMap::new();
 
     for (entity, dim_ref, global_pos, templ_ref, portal_to) in portal_query.iter() {
-        let dim_name = if let Ok(n) = dimension_query.get(dim_ref.0) {
-            format!("{}", n)
-        } else {
-            format!("{:?}", dim_ref)
-        };
+        let dim_name = dimension_name_for_ref(dim_ref, &dimension_map, &dimension_query);
 
         // Calculate direction vector if in same dimension
         let direction = if camera_dim_ref.map(|c| c == dim_ref).unwrap_or(false) {
@@ -76,8 +87,8 @@ pub fn portals_list_window(
     // Sort dimensions with camera dimension first
     let mut sorted_dims: Vec<_> = portals_by_dimension.keys().cloned().collect();
     if let Some(camera_ref) = camera_dim_ref {
-        if let Ok(camera_name) = dimension_query.get(camera_ref.0) {
-            let camera_dim_str = format!("{}", camera_name);
+        let camera_dim_str = dimension_name_for_ref(camera_ref, &dimension_map, &dimension_query);
+        if !camera_dim_str.is_empty() {
             sorted_dims.sort_by(|a, b| {
                 if a == &camera_dim_str { std::cmp::Ordering::Less }
                 else if b == &camera_dim_str { std::cmp::Ordering::Greater }

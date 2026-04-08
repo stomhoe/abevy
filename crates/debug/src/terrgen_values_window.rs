@@ -138,10 +138,14 @@ pub fn terrgen_debug_window_system(
                                 } else {
                                     debug_grid.tiles.values()
                                         .find_map(|info| {
-                                            let Ok((_, _, _, oplist)) = oplist_id_query.get(info.oplist) else {
-                                                return None;
-                                            };
-                                            oplist.hash_ids_mapped_to_strids.get_opt(*metric).map(|s| s.as_str().to_string())
+                                            oplist_id_query
+                                                .iter()
+                                                .find_map(|(_, id, hid, oplist)| {
+                                                    let current_hash = hid.copied().unwrap_or_else(|| id.hash_id());
+                                                    (current_hash == info.oplist_id)
+                                                        .then(|| oplist.hash_ids_mapped_to_strids.get_opt(*metric).map(|s| s.as_str().to_string()))
+                                                        .flatten()
+                                                })
                                         })
                                         .unwrap_or_else(|| format!("{metric}"))
                                 };

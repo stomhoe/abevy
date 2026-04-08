@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use common::common_components::HashId;
 use serde::{Deserialize, Serialize};
 use ::tilemap_shared::*;
 
@@ -18,7 +19,7 @@ impl Default for TerrProbeJob {
     fn default() -> Self {
         TerrProbeJob {
             requester: Entity::PLACEHOLDER,
-            dimension_ref: DimensionRef(Entity::PLACEHOLDER),
+            dimension_ref: DimensionRef(HashId::default()),
             search_start_pos: GlobalTilePos::default(),
             templ_ent: Entity::PLACEHOLDER,
             structuregen_whitelist: Vec::new(),

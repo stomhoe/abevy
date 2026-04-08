@@ -27,6 +27,7 @@ macro_rules! define_fixedstr_id {
 
             /// Custom error for ID creation
             pub fn as_str(&self) -> &str { self.0.as_str() }
+            pub fn hash_id(&self) -> HashId { HashId::from(self.as_str()) }
             pub fn is_empty(&self) -> bool { self.0.is_empty() }
             /// Compare with a string (flexible equality)
             pub fn eq_str<S: AsRef<str>>(&self, other: S) -> bool {
@@ -100,16 +101,90 @@ macro_rules! define_fixedstr_id {
         }
     };
 }
-define_fixedstr_id!(StrId20B, 20);
+
+macro_rules! define_fixedstr_id_with_hash {
+    ($ty:ident, $len:expr) => {
+        #[derive(Component, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, )]
+        #[require(AddHashIdFromStrId, Name)]
+        pub struct $ty(FixedStr<$len>);
+        impl $ty {
+            pub const SIZE: usize = $len;
+
+            pub fn trunc<S: AsRef<str>>(id: S) -> Self {
+                Self(FixedStr::<$len>::trunc(id.as_ref().trim()))
+            }
+            pub fn new_with_result<S: AsRef<str>>(id: S, min_length: u8) -> Result<Self, StringLengthError> {
+                FixedStr::<$len>::new_with_result(id.as_ref().trim(), min_length).map(Self)
+            }
+
+            /// Custom error for ID creation
+            pub fn as_str(&self) -> &str { self.0.as_str() }
+            pub fn hash_id(&self) -> HashId { HashId::from(self.as_str()) }
+            pub fn is_empty(&self) -> bool { self.0.is_empty() }
+            /// Compare with a string (flexible equality)
+            pub fn eq_str<S: AsRef<str>>(&self, other: S) -> bool {
+                self.0.as_str() == other.as_ref().trim()
+            }
+        }
+        impl std::fmt::Debug for $ty {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                if self.0.is_empty() { write!(f, "") } else { write!(f, "Id({})", self.0) }
+            }
+        }
+        impl std::fmt::Display for $ty {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                if self.0.is_empty() { write!(f, "") } else { write!(f, "{}", self.0) }
+            }
+        }
+        impl AsRef<str> for $ty { fn as_ref(&self) -> &str { self.0.as_str() } }
+        impl PartialEq<&str> for $ty {
+            fn eq(&self, other: &&str) -> bool {
+                self.0.as_str() == *other
+            }
+        }
+        impl From<&str> for $ty {
+            fn from(s: &str) -> Self {
+                Self(FixedStr::<$len>::trunc(s.trim()))
+            }
+        }
+        impl From<String> for $ty {
+            fn from(s: String) -> Self {
+                Self(FixedStr::<$len>::trunc(s.trim()))
+            }
+        }
+        impl From<&$ty> for $ty {
+            fn from(value: &$ty) -> Self {
+                Self(FixedStr::<$len>::trunc(value.as_ref()))
+            }
+        }
+        impl Default for $ty {
+            fn default() -> Self {
+                Self(FixedStr::<$len>::default())
+            }
+        }
+        impl Ord for $ty {
+            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                self.0.as_str().cmp(other.0.as_str())
+            }
+        }
+        impl PartialOrd for $ty {
+            fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+    };
+}
+
+define_fixedstr_id_with_hash!(StrId20B, 20);
 define_fixedstr_id!(Tag, 32);
 
-define_fixedstr_id!(StrId, 32);
+define_fixedstr_id_with_hash!(StrId, 32);
 define_fixedstr_id!(Prefix, 32);
 
 #[derive(Component, Debug, Default, Copy, Clone)]
 pub struct AddHashIdFromStrId;
 
-#[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, )]
+#[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, Reflect)]
 pub struct HashId(u64);
 impl HashId {
     pub fn new(id: u64) -> Self {

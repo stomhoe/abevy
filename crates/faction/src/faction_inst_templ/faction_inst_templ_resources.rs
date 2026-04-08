@@ -5,14 +5,14 @@ use faction_shared::FactionInstTempl;
 pub use crate::faction_inst_templ::faction_inst_templ_seris::*;
 
 common::define_entity_map_systems!(
-    FactionInstTempl,
-    (),
-    Fit,
-    "fit",
-    "FIT",
-    FactionInstTempl,
-    common::common_components::StrId,
-    FactionInstTemplSeri, "seri.faction.inst_template", "fit.ron",
+    main_component: FactionInstTempl,
+    with_filters: (),
+    abbreviation: Fit,
+    target: "fit",
+    entity_prefix: "FIT",
+    despawn_trigger: FactionInstTempl,
+    id_type: common::common_components::StrId,
+    assets: [(FactionInstTemplSeri, "seri.faction.inst_template", "fit.ron")],
 );
 
 

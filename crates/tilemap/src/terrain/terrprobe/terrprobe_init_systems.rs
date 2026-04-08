@@ -20,7 +20,7 @@ pub fn init_terrain_probes(
     map: Res<TerrProbeTemplEntityMap>,
     sgc_entity_map: Res<StructuredGenConfigEntityMap>,
     opfilter_entity_map: Res<OpFilterEntityMap>,
-    opfilter_query: Query<(&OpFilter, ), (),>,
+    opfilter_query: Query<(&OpFilter, &StrId, ), (),>,
     tile_ents_with_tag: Res<TemplTileEntsWithinTag>,
     entity_zeroes: Query<(&Templ, ), (),>,
     egui_holder_query: Query<(Entity, ), (With<EguiTptsHolder>, ),>,
@@ -66,15 +66,15 @@ pub fn init_terrain_probes(
         }
         let opfilter_ref = match (opfilter_ent, has_inline_overrides) {
             (Some(opfilter_ent), false) => {
-                let Ok((_,)) = opfilter_query.get(opfilter_ent) else {
+                let Ok((_, opfilter_str_id, )) = opfilter_query.get(opfilter_ent) else {
                     error!(target: TERRPROBE_INIT, "OpFilter entity {:?} missing OpFilter component for terrain probe '{}'", opfilter_ent, seri.id);
                     continue;
                 };
-                OpFilterRef(opfilter_ent)
+                OpFilterRef(HashId::from(opfilter_str_id.as_str()))
             }
             (opfilter_ent, _) => {
                 let mut opfilter = if let Some(opfilter_ent) = opfilter_ent {
-                    let Ok((opfilter,)) = opfilter_query.get(opfilter_ent) else {
+                    let Ok((opfilter, _, )) = opfilter_query.get(opfilter_ent) else {
                         error!(target: TERRPROBE_INIT, "OpFilter entity {:?} missing OpFilter component for terrain probe '{}'", opfilter_ent, seri.id);
                         continue;
                     };
@@ -99,7 +99,17 @@ pub fn init_terrain_probes(
                 if seri.opfilter_max_val != f32::INFINITY {
                     opfilter.max_val = seri.opfilter_max_val;
                 }
-                OpFilterRef(cmd.spawn((Replicated, AssetScoped, HotReload, opfilter)).id())
+                let inline_opfilter_strid = StrId::trunc(format!("{}_inline_opfilter", seri.id));
+                let _ = cmd.spawn((
+                    inline_opfilter_strid.clone(),
+                    AddHashIdFromStrId,
+                    Replicated,
+                    AssetScoped,
+                    HotReload,
+                    Templ,
+                    opfilter,
+                ));
+                OpFilterRef(HashId::from(inline_opfilter_strid.as_str()))
             }
         };
 

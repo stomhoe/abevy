@@ -64,6 +64,7 @@ pub fn init_sprite_configs(
             (
                 str_id.clone(),
                 AddHashIdFromStrId,
+                TemplEntiHashIdRef(HashId::from(str_id.as_str())),
                 SpriteConfig,
                 visib,
                 offset4children_cats,
@@ -172,12 +173,12 @@ pub fn init_sprite_configs(
             let mut anims_map = MappedAnimations::default();
             for (anim_type, anim_id) in seri.mapped_anims {
                 let anim_type = AnimType::from_tuple(anim_type);
-                let anim_id = StrId::trunc(anim_id);
-                let Ok(&anim_ent) = library.0.get(&anim_id) else {
+                let anim_hash = HashId::from(anim_id.as_str());
+                let Ok(&_) = library.0.get(anim_hash) else {
                     error!(target: SPRITE_INIT, "SpriteConfig {}: AcAnimationEntityMap does not contain: {} ", str_id, anim_id);
                     continue;
                 };
-                anims_map.0.insert(anim_type, anim_ent);
+                anims_map.0.insert(anim_type, anim_hash);
             }
             if anims_map.0.is_empty() {
                 error!(target: SPRITE_INIT, "SpriteConfig '{}' animations map has no valid entries", str_id);

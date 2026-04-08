@@ -135,7 +135,7 @@ impl Default for DebugSelectedEntities {
 #[derive(Resource, Default)]
 pub struct WorldTileClickInspectorState {
     pub enabled: bool,
-    pub clicked_dim: Option<Entity>,
+    pub clicked_dim: Option<HashId>,
     pub clicked_gpos: Option<tilemap_shared::GlobalTilePos>,
     pub entities_at_gpos: Vec<Entity>,
     pub click_generation: u64,

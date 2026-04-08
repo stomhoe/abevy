@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
 use camera::camera_components::CameraTarget;
+use common::common_components::HashId;
 use tilemap::chunking::MacroChunkU16IndexMatrix;
 use tilemap_shared::{DimensionRef, GlobalTilePos, LoadedMacroChunks};
 
@@ -10,7 +11,7 @@ pub struct TileIndicesMapUiState {
     radius: i32,
     cell_px: f32,
     follow_camera_target: bool,
-    center_dim: Entity,
+    center_dim: HashId,
     center_x: i32,
     center_y: i32,
     selected_gpos: Option<GlobalTilePos>,
@@ -21,7 +22,7 @@ impl Default for TileIndicesMapUiState {
             radius: 10,
             cell_px: 24.0,
             follow_camera_target: true,
-            center_dim: Entity::PLACEHOLDER,
+            center_dim: HashId::default(),
             center_x: 0,
             center_y: 0,
             selected_gpos: None,

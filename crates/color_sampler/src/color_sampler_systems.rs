@@ -71,8 +71,8 @@ pub fn init_color_samplers(
 pub fn apply_pos_sampled_color(
     mut cmd: Commands,
     gen_settings: Query<&GlobalGenSettings>,
+    sampler_map: Res<ColorSamplerEntityMap>,
     samplers: Query<&ColorSampler>,
-    dim_hash_query: Query<&HashId, common::AnyDisabling>,
     mut query: Query<
         (
             Entity,
@@ -95,13 +95,15 @@ pub fn apply_pos_sampled_color(
 
     query.iter_mut().for_each(
         |(entity, color_sampler, &global_tile_pos, dimension_ref, (sprite, tile_color))| {
-            let Ok(sampler) = samplers.get(color_sampler.0) else {
+            let Ok(sampler_ent) = sampler_map.0.get_cloned(color_sampler.0) else {
+                return;
+            };
+            let Ok(sampler) = samplers.get(sampler_ent) else {
                 return;
             };
 
             let dimension_hash = dimension_ref
-                .and_then(|dim_ref| dim_hash_query.get(dim_ref.0).ok())
-                .cloned()
+                .map(|dim_ref| dim_ref.0)
                 .unwrap_or_default();
 
             let color = sampler

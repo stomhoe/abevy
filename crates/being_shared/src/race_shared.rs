@@ -157,6 +157,12 @@ pub struct RaceSexEntrySeri {//TODO fix usage
 
 
 common::define_entity_map_systems!(
-    Race,
-    RaceSeri, "seri.being.race", "race.ron",
+    main_component: Race,
+    with_filters: (),
+    abbreviation: Race,
+    target: common::log_targets::ENTITY_MAP_SYSTEM,
+    entity_prefix: "",
+    despawn_trigger: Race,
+    id_type: common::common_components::StrId,
+    assets: [(RaceSeri, "seri.being.race", "race.ron")],
 );

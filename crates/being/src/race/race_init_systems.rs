@@ -1,9 +1,10 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
-use game_common::game_common_components::Templ;
+use common::common_id_components::HashId;
+use game_common::game_common_components::{Templ, TemplEntiHashIdRef};
 use game_common::game_common_string_components::*;
-use common::common_components::SampleSpritesamplers;
+use common::common_components::{AddHashIdFromStrId, SampleSpritesamplers};
 use sprite_systems::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 
@@ -123,14 +124,14 @@ pub fn init_races(
                 None
             }
         };
-        let mut entity_cmds = cmd.spawn((Race, Templ, str_id.clone(), ingame_name, singular, plural));
+        let mut entity_cmds = cmd.spawn((Race, Templ, str_id.clone(), AddHashIdFromStrId, TemplEntiHashIdRef(HashId::from(str_id.as_str())), ingame_name, singular, plural));
         let body_str_id = StrId::trunc(&race_seri.body_or_sampler);
         let mut body_ent = None;
 
-        if let Ok(body_sampler_ent) = body_sampler_map.0.get_cloned(&body_str_id) {
-            entity_cmds.insert(BodyWeightedSamplerRef(body_sampler_ent));
+        if body_sampler_map.0.get_cloned(&body_str_id).is_ok() {
+            entity_cmds.insert(BodyWeightedSamplerRef(HashId::from(body_str_id.as_str())));
         } else if let Ok(tree_ent) = body_map.0.get_cloned(&body_str_id) {
-            entity_cmds.insert(BodyRef(tree_ent));
+            entity_cmds.insert(BodyRef(HashId::from(body_str_id.as_str())));
             body_ent = Some(tree_ent);
         }
         let body_zones = body_ent
@@ -209,10 +210,10 @@ pub fn init_races(
             for (sex_id, sex_cfg) in &body_sexes.0 {
                 match sexes_map.0.get_cloned(sex_id) {
                     Ok(sex_entity) => {
-                        sex_entities_weights.push((sex_entity, sex_cfg.weight as f32));
-                        if let Some(size_var) = sex_cfg.size_variation.clone().filter(|v| !v.is_sentinel()) {
-                            sex_size_variations.insert(sex_entity, SpriteGlobalNormalDist::new(size_var));
-                        }
+                    sex_entities_weights.push((sex_entity, sex_cfg.weight as f32));
+                    if let Some(size_var) = sex_cfg.size_variation.clone().filter(|v| !v.is_sentinel()) {
+                        sex_size_variations.insert(sex_entity, SpriteGlobalNormalDist::new(size_var));
+                    }
 
                         let mut resolved_entities = if sex_cfg.sprites.is_empty() {
                             fallback_sprite_entities.clone()

@@ -43,6 +43,7 @@ pub fn switch_or_readjust_sprite_animation(
     mut move_anims_changed: MessageReader<MirrorHolderStateForSprite>,
     changers: Query<Entity, (Or<(Changed<HeldSprites>, Changed<Grounding>, )>, Without<Templ>)>,
     changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<TemplEntiRef>, Without<SpriteConfig>, Without<Templ>)>,
+    animation_map: Res<AcAnimationEntityMap>,
     queries: SpriteAnimationQueries,
 
 
@@ -137,7 +138,7 @@ pub fn switch_or_readjust_sprite_animation(
                 state_id: state_id.cloned(),
             };
 
-            let Some(anim_ent) = sprite_cfg_animations_map.0.get(&anim_type) else {
+            let Some(anim_hash) = sprite_cfg_animations_map.0.get(&anim_type) else {
                 file_log(
                     "move",
                     "sprite",
@@ -155,6 +156,10 @@ pub fn switch_or_readjust_sprite_animation(
                 }
                 continue;
             };
+            let Ok(&anim_ent) = animation_map.0.get(*anim_hash) else {
+                error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to resolve animation hash {} for sprite config {:?} {}", anim_hash, sprite_cfg_ref.0, held_sprite_strid);
+                continue;
+            };
             file_log(
                 "move",
                 "sprite",
@@ -167,23 +172,22 @@ pub fn switch_or_readjust_sprite_animation(
                     anim_type.state_id,
                 ),
             );
-
-            let Ok((anim_handle, anim_sheet)) = anim_handle_sheet_query.get(*anim_ent) else {
-                let anim_strid = strid_query.get(*anim_ent).ok().cloned().unwrap_or_default();
+            let Ok((anim_handle, anim_sheet)) = anim_handle_sheet_query.get(anim_ent) else {
+                let anim_strid = strid_query.get(anim_ent).ok().cloned().unwrap_or_default();
                 error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get animation data for animation entity {:?} {}", anim_ent, anim_strid);
                 continue;
             };
-            let ac_z = ac_z_query.get(*anim_ent).ok().copied();
-            let y_sort = y_sort_query.get(*anim_ent).ok().copied();
-            let clip_start_frames = clip_start_frames_query.get(*anim_ent).ok();
-            let should_save_anim_progress = save_anim_progress_query.get(*anim_ent).is_ok();
-            let alternating_config = alternating_config_query.get(*anim_ent).ok();
-            let mut alternating_state = alternating_state_query.get_mut(*anim_ent).ok();
-            let anim_playing_speed = playing_speed_query.get(*anim_ent).ok().copied();
-            let anim_seri = animation_seri_query.get(*anim_ent).ok();
+            let ac_z = ac_z_query.get(anim_ent).ok().copied();
+            let y_sort = y_sort_query.get(anim_ent).ok().copied();
+            let clip_start_frames = clip_start_frames_query.get(anim_ent).ok();
+            let should_save_anim_progress = save_anim_progress_query.get(anim_ent).is_ok();
+            let alternating_config = alternating_config_query.get(anim_ent).ok();
+            let mut alternating_state = alternating_state_query.get_mut(anim_ent).ok();
+            let anim_playing_speed = playing_speed_query.get(anim_ent).ok().copied();
+            let anim_seri = animation_seri_query.get(anim_ent).ok();
 
             let Some(sprite) = anim_sheet.0.with_loaded_image(&images) else {
-                let anim_strid = strid_query.get(*anim_ent).ok().cloned().unwrap_or_default();
+                let anim_strid = strid_query.get(anim_ent).ok().cloned().unwrap_or_default();
                 error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to create sprite for animation entity {:?} {} because image is not loaded yet.", anim_ent, anim_strid);
                 continue;
             };

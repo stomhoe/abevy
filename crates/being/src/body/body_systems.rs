@@ -1,33 +1,71 @@
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
+use bevy::platform::collections::HashSet;
+use common::common_components::HashId;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker, resolve_modifier_component};
 use modifier_shared::modifier_item_types::MassKg;
 use modifier_shared::modifier_components::*;
 use tilemap_shared::{Dimension, DimensionRef, Gravity};
+use tilemap_shared::DimensionEntityMap;
 
 use crate::body::{body_components::*,};
 use ::being_shared::*;
 
+#[derive(SystemParam)]
+pub struct BodyWeightSumQueries<'w, 's> {
+    body_changed_query: Query<'w, 's, Entity, (With<BodyOf>, Or<(Added<BodyOf>, Changed<BodypartChildrenBodyparts>)>)>,
+    being_dim_changed_query: Query<'w, 's, Entity, (With<Being>, Changed<DimensionRef>)>,
+    part_body_changed_query: Query<'w, 's, &'static ChildOf, (With<BodypartChildOfBodypart>, Or<(Changed<BodypartChildOfBodypart>, Changed<Missing>, Changed<BodypartChildrenBodyparts>)>)>,
+    parts_query: Query<'w, 's, (Entity, &'static ChildOf, Option<&'static TemplEntiRef>, Has<Missing>), With<BodypartChildOfBodypart>>,
+    part_applied_mods_query: Query<'w, 's, &'static AppliedModifiers>,
+    mass_modifiers_query: Query<'w, 's, (Entity, &'static ModifierTarget, Option<&'static TemplEntiRef>), Without<Templ>>,
+    curr_values_query: Query<'w, 's, &'static CurrEffectiveValue>,
+    mass_markers_query: Query<'w, 's, (), With<MassKg>>,
+    body_of_query: Query<'w, 's, (Entity, &'static BodyOf), With<BodyOf>>,
+    being_dim_query: Query<'w, 's, &'static DimensionRef, With<Being>>,
+    dimension_map: Res<'w, DimensionEntityMap>,
+    dimension_hash_query: Query<'w, 's, &'static HashId, With<Dimension>>,
+    being_weight_query: Query<'w, 's, &'static mut BodyWeightSum, With<Being>>,
+    gravity_changed_query: Query<'w, 's, Entity, (With<Dimension>, Changed<Gravity>)>,
+    gravity_query: Query<'w, 's, &'static Gravity, With<Dimension>>,
+    removed_missing: RemovedComponents<'w, 's, Missing>,
+}
+
+#[derive(SystemParam)]
+pub struct BodyWeightSumLocals<'s> {
+    body_and_dim_cache: Local<'s, (EntityHashSet, HashSet<HashId>)>,
+}
+
+#[allow(unused_parens, )]
 pub fn update_body_weight_sum(
     mut cmd: Commands,
-    body_changed_query: Query<Entity, (With<BodyOf>, Or<(Added<BodyOf>, Changed<BodypartChildrenBodyparts>)>)>,
-    being_dim_changed_query: Query<Entity, (With<Being>, Changed<DimensionRef>)>,
-    part_body_changed_query: Query<&ChildOf, (With<BodypartChildOfBodypart>, Or<( Changed<BodypartChildOfBodypart>, Changed<Missing>, Changed<BodypartChildrenBodyparts>)>)>,
-    parts_query: Query<(Entity, &ChildOf, Option<&TemplEntiRef>, Has<Missing>), With<BodypartChildOfBodypart>>,
-    part_applied_mods_query: Query<&AppliedModifiers>,
-    mass_modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>), Without<Templ>>,
-    curr_values_query: Query<&CurrEffectiveValue>,
-    mass_markers_query: Query<(), With<MassKg>>,
-    body_of_query: Query<(Entity, &BodyOf), With<BodyOf>>,
-    being_dim_query: Query<&DimensionRef, With<Being>>,
-    mut being_weight_query: Query<&mut BodyWeightSum, With<Being>>,
-    gravity_changed_query: Query<Entity, (With<Dimension>, Changed<Gravity>)>,
-    gravity_query: Query<&Gravity, With<Dimension>>,
-    mut removed_missing: RemovedComponents<Missing>,
-    mut body_and_dim_cache: Local<(EntityHashSet, EntityHashSet)>,
+    queries: BodyWeightSumQueries,
+    mut locals: BodyWeightSumLocals,
 ) {
-    let (affected_bodies, changed_dims) = &mut *body_and_dim_cache;
+    let BodyWeightSumQueries {
+        body_changed_query,
+        being_dim_changed_query,
+        part_body_changed_query,
+        parts_query,
+        part_applied_mods_query,
+        mass_modifiers_query,
+        curr_values_query,
+        mass_markers_query,
+        body_of_query,
+        being_dim_query,
+        dimension_map,
+        dimension_hash_query,
+        mut being_weight_query,
+        gravity_changed_query,
+        gravity_query,
+        mut removed_missing,
+    } = queries;
+    let BodyWeightSumLocals {
+        body_and_dim_cache,
+    } = &mut locals;
+    let (affected_bodies, changed_dims) = &mut **body_and_dim_cache;
     affected_bodies.clear();
     changed_dims.clear();
     for body_ent in body_changed_query.iter() {
@@ -42,7 +80,10 @@ pub fn update_body_weight_sum(
         }
     }
     for dim_ent in gravity_changed_query.iter() {
-        changed_dims.insert(dim_ent);
+        let Ok(&dim_hash) = dimension_hash_query.get(dim_ent) else {
+            continue;
+        };
+        changed_dims.insert(dim_hash);
     }
     for body_of in part_body_changed_query.iter() {
         affected_bodies.insert(body_of.parent());
@@ -95,7 +136,10 @@ pub fn update_body_weight_sum(
     for body_ent in affected_bodies.iter() {
         let Ok((_, body_of)) = body_of_query.get(*body_ent) else { continue };
         let Ok(dim_ref) = being_dim_query.get(body_of.being) else { continue };
-        let gravity = gravity_query.get(dim_ref.0).copied().unwrap_or_default();
+        let Some(dim_ent) = dimension_map.0.get_opt(dim_ref.0).copied() else {
+            continue;
+        };
+        let gravity = gravity_query.get(dim_ent).copied().unwrap_or_default();
         let total_mass = mass_per_body.get(body_ent).copied().unwrap_or_default().max(0.0);
         let total_weight = gravity.mass_to_newtons(total_mass).max(0.0);
         let Ok(mut prev_weight) = being_weight_query.get_mut(body_of.being) else {

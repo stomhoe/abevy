@@ -702,8 +702,16 @@ pub fn being_details_inspector(world: &mut World) {
         return;
     };
     let body_entity = body.entity();
-    let bit_ref_ent = bit_ref_query.get(world, selected_being_entity).ok().map(|bit_ref| bit_ref.0);
-    let race_ref_ent = race_ref_query.get(world, selected_being_entity).ok().map(|race_ref| race_ref.0);
+    let bit_map = world.get_resource::<BeingInstTemplateEntityMap>();
+    let race_map = world.get_resource::<RaceEntityMap>();
+    let bit_ref_ent = bit_ref_query
+        .get(world, selected_being_entity)
+        .ok()
+        .and_then(|bit_ref| bit_map.and_then(|map| map.0.get_cloned(bit_ref.0).ok()));
+    let race_ref_ent = race_ref_query
+        .get(world, selected_being_entity)
+        .ok()
+        .and_then(|race_ref| race_map.and_then(|map| map.0.get_cloned(race_ref.0).ok()));
     let body_label = part_label(
         body_entity,
         display_name_query.get(world, body_entity).ok(),

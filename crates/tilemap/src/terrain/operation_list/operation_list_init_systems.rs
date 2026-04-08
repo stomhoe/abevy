@@ -3,7 +3,7 @@
 
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
 
-use common::{common_components::{ StrId}, common_tag_components::TagSet};
+use common::{common_components::*, common_tag_components::TagSet};
 
 use crate::{
     chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk,
@@ -13,8 +13,6 @@ use crate::{
         operation_list::operation_list_resources::{EguiOperationListsHolder, OpListSeri, OperationListEntityMap, TgCompiledOpLists, load_op_list_seri_defs},
         operation_list::operation_list_script::load_tg_oplists,
         terrgen_components::FailedSearchOplistFilterHolder,
-        terrgen_expression,
-        terrgen_resources::TerrgenEntityMap,
     },
     tile::{tile_resources::*, tile_sampler_resources::TileWeightedSamplerEntityMap},
 };
@@ -30,70 +28,14 @@ fn merged_oplist_seris(tg_oplists: &TgCompiledOpLists) -> Vec<OpListSeri> {
     seris
 }
 
-/// Resolve NoiseByName variants in expression tree to actual Noise entities
-fn resolve_noise_names_in_expr(
-    expr: &mut terrgen_expression::Expr,
-    terr_gen_map: &TerrgenEntityMap,
-) {
-    use terrgen_expression::Expr;
-
-    match expr {
-        Expr::NoiseByName { name, sample_range, complement, seed_offset } => {
-            if let Ok(entity) = terr_gen_map.0.get_cloned(*name) {
-                *expr = Expr::Noise {
-                    entity,
-                    sample_range: *sample_range,
-                    complement: *complement,
-                    seed_offset: *seed_offset,
-                };
-            } else {
-                error!(target: "oplist_init", "Noise entity not found while resolving TG expr hash: {:?}", name);
-            }
-        }
-        Expr::Add { left, right }
-        | Expr::Subtract { left, right }
-        | Expr::Multiply { left, right }
-        | Expr::Divide { left, right }
-        | Expr::MultiplyNormalized { left, right }
-        | Expr::MultiplyNormalizedAbs { left, right } => {
-            resolve_noise_names_in_expr(left, terr_gen_map);
-            resolve_noise_names_in_expr(right, terr_gen_map);
-        }
-        Expr::MultiplyOpo { value }
-        | Expr::Abs { value }
-        | Expr::Complement { value } => {
-            resolve_noise_names_in_expr(value, terr_gen_map);
-        }
-        Expr::Min { values }
-        | Expr::Max { values }
-        | Expr::Average { values }
-        | Expr::IndexMax { values }
-        | Expr::Linear { values } => {
-            for v in values {
-                resolve_noise_names_in_expr(v, terr_gen_map);
-            }
-        }
-        Expr::IndexNorm { value, multiplier } => {
-            resolve_noise_names_in_expr(value, terr_gen_map);
-            resolve_noise_names_in_expr(multiplier, terr_gen_map);
-        }
-        Expr::Clamp { value, min, max } => {
-            resolve_noise_names_in_expr(value, terr_gen_map);
-            resolve_noise_names_in_expr(min, terr_gen_map);
-            resolve_noise_names_in_expr(max, terr_gen_map);
-        }
-        _ => {}
-    }
-}
-
 #[allow(unused_parens)]
 pub fn init_oplists_from_assets(
     mut cmd: Commands,
-    terr_gen_map: Res<TerrgenEntityMap>,
     samplers_map: Res<TileWeightedSamplerEntityMap>,
     tiles_map: Res<TileEntityMap>,
     biome_map: Res<BiomeEntityMap>,
     dimension_map: Res<DimensionEntityMap>,
+    dimension_hash_query: Query<&HashId, With<Dimension>>,
     oplist_map: Res<OperationListEntityMap>,
     tg_oplists: Res<TgCompiledOpLists>,
     egui_holder: Query<Entity, With<EguiOperationListsHolder>>,
@@ -143,15 +85,17 @@ pub fn init_oplists_from_assets(
                 .filter(|tile_str| !tile_str.is_empty())
                 .filter_map(|tile_str| {
                     if let Ok(sampler_ent) = samplers_map.0.get_cloned(tile_str) {
-                        Some(sampler_ent)
+                        let _ = sampler_ent;
+                        Some(HashId::from(tile_str.as_str()))
                     } else if let Ok(tile_ent) = tiles_map.0.get_cloned(tile_str) {
-                        Some(tile_ent)
+                        let _ = tile_ent;
+                        Some(HashId::from(tile_str.as_str()))
                     } else {
-                        warn!(target: "oplist_init", "Tile {} not found in TilingEntityMap or TileWeightedSamplerEntityMap", tile_str);
+                        warn!(target: "oplist_init", "Tile {} not found in TileEntityMap or TileWeightedSamplerEntityMap", tile_str);
                         None
                     }
                 })
-                .collect::<Vec<Entity>>();
+                .collect::<Vec<HashId>>();
 
             let biome_tags = bif_seri
                 .biome_tags
@@ -176,17 +120,14 @@ pub fn init_oplists_from_assets(
             oplist.bifurcations.push(bifurcation);
         }
 
-        if let Ok(ent) = oplist_map.0.get_cloned(&str_id) {
+        let oplist_hash = str_id.hash_id();
+        if let Ok(ent) = oplist_map.0.get_cloned(oplist_hash) {
             error!(target: "oplist_init", "{} already in OperationListEntityMap : {}", str_id, ent);
             continue;
         }
         let spawned_oplist = cmd.spawn_empty().id();
 
-        let mut expr_tree = seri.expr_tree.clone();
-        for assignment in expr_tree.assignments.iter_mut() {
-            resolve_noise_names_in_expr(&mut assignment.expr, &terr_gen_map);
-        }
-        resolve_noise_names_in_expr(&mut expr_tree.output, &terr_gen_map);
+        let expr_tree = seri.expr_tree.clone();
         oplist.expr_tree = expr_tree;
 
         let debug_vars = seri.debug_vars.iter().filter_map(|debug_var| {
@@ -205,11 +146,11 @@ pub fn init_oplists_from_assets(
             }
         }).collect::<Vec<_>>();
         for debug_var in debug_vars {
-            let hid = common::common_components::HashId::from(debug_var.as_str());
+            let hid = debug_var.hash_id();
             let _ = oplist.hash_ids_mapped_to_strids.overwrite(hid, debug_var);
         }
 
-        oplist_comps.push((spawned_oplist, (str_id, oplist, size, ChildOf(egui_oplist_holder_ent))));
+        oplist_comps.push((spawned_oplist, (str_id.clone(), str_id.hash_id(), AddHashIdFromStrId, oplist, size, RemoveReplicatedAfterClone, ChildOf(egui_oplist_holder_ent))));
         if seri.is_root() {
             let mut dim_refs = MultipleDimensionRefs::default();
             for dim_id in seri.root_in_dimensions.iter() {
@@ -218,7 +159,11 @@ pub fn init_oplists_from_assets(
                     error!(target: "oplist_init", "Dimension '{}' not found in DimensionEntityMap for root oplist '{}'", dim_id, seri.id);
                     continue;
                 };
-                dim_refs.0.insert(dim_entity);
+                let Ok(&dim_hash) = dimension_hash_query.get(dim_entity) else {
+                    error!(target: "oplist_init", "Dimension entity '{}' referenced by root oplist '{}' is missing HashId", dim_id, seri.id);
+                    continue;
+                };
+                dim_refs.0.insert(dim_hash);
             }
             oplist_multiple_dimension_refs.push((spawned_oplist, dim_refs));
         }
@@ -234,7 +179,6 @@ pub fn init_oplists_from_assets(
 
 #[allow(unused_parens)]
 pub fn init_oplists_bifurcations(
-    mut cmd: Commands,
     oplist_map: Res<OperationListEntityMap>,
     tg_oplists: Res<TgCompiledOpLists>,
     mut oplist_query: Query<(Entity, &mut OperationList, &OplistSize)>,
@@ -242,7 +186,8 @@ pub fn init_oplists_bifurcations(
 ) {
     let seris = merged_oplist_seris(&tg_oplists);
     for seri in seris {
-            let Ok(oplist_ent) = oplist_map.0.get_cloned(&seri.id) else {
+            let seri_hash = StrId::from(seri.id.as_str()).hash_id();
+            let Ok(oplist_ent) = oplist_map.0.get_cloned(seri_hash) else {
                 error!(
                     target: "oplist_init",
                     "oplist entity with id '{}' not found in OperationListEntityMap",
@@ -258,8 +203,9 @@ pub fn init_oplists_bifurcations(
             for (i, seri_bifurcation) in seri.bifs.iter().enumerate() {
                 let bifurcation_str = seri_bifurcation.oplist.trim();
                 if bifurcation_str.is_empty() { continue; }
+                let bifurcation_hash = HashId::from(bifurcation_str);
 
-                let Ok(bifurcation_ent) = oplist_map.0.get_cloned(&bifurcation_str.to_string()) else {
+                let Ok(bifurcation_ent) = oplist_map.0.get_cloned(bifurcation_hash) else {
                     error!(
                         target: "oplist_init",
                         "bifurcation entity with id '{}' not found in OperationListEntityMap",
@@ -276,8 +222,7 @@ pub fn init_oplists_bifurcations(
                     continue;
                 }
 
-                cmd.entity(bifurcation_ent).insert(ChildOf(oplist_ent));
-                oplist.bifurcations[i].oplist = Some(bifurcation_ent);
+                oplist.bifurcations[i].oplist = Some(bifurcation_hash);
             }
     }
 
@@ -285,15 +230,21 @@ pub fn init_oplists_bifurcations(
 
 #[allow(unused_parens, )]
 pub fn cycle_detection(
-    query: Query<(Entity, &OperationList, Has<MultipleDimensionRefs>, ), ()>,
+    query: Query<(Entity, &OperationList, &StrId, Has<MultipleDimensionRefs>, ), ()>,
 ) {
+    let mut oplist_entities = HashIdMap::default();
+    for (ent, _, str_id, _) in query.iter() {
+        let _ = oplist_entities.overwrite(str_id.hash_id(), ent);
+    }
+
     let roots: Vec<Entity> = query
         .iter()
-        .filter_map(|(ent, _, is_root)| if is_root { Some(ent) } else { None })
+        .filter_map(|(ent, _, _, is_root)| if is_root { Some(ent) } else { None })
         .collect();
 
     fn dfs(
-        query: &Query<(Entity, &OperationList, Has<MultipleDimensionRefs>, ), ()>,
+        query: &Query<(Entity, &OperationList, &StrId, Has<MultipleDimensionRefs>, ), ()>,
+        oplist_entities: &HashIdMap<Entity>,
         current: Entity,
         visited: &mut EntityHashSet,
         on_path: &mut EntityHashSet,
@@ -307,14 +258,17 @@ pub fn cycle_detection(
         }
         on_path.insert(current);
 
-        let Ok((_, oplist, _)) = query.get(current) else {
+        let Ok((_, oplist, _, _)) = query.get(current) else {
             on_path.remove(&current);
             return false;
         };
 
         for bifur in &oplist.bifurcations {
-            let Some(child) = bifur.oplist else { continue; };
-            if dfs(query, child, visited, on_path) {
+            let Some(child_hash) = bifur.oplist else { continue; };
+            let Ok(child) = oplist_entities.get(child_hash) else {
+                continue;
+            };
+            if dfs(query, oplist_entities, *child, visited, on_path) {
                 return true;
             }
         }
@@ -326,7 +280,7 @@ pub fn cycle_detection(
     for root in roots {
         let mut visited = EntityHashSet::default();
         let mut on_path = EntityHashSet::default();
-        if dfs(&query, root, &mut visited, &mut on_path) {
+        if dfs(&query, &oplist_entities, root, &mut visited, &mut on_path) {
             error!(target: "oplist_init", "Cycle detected starting from root oplist {:?}", root);
         }
     }
@@ -335,30 +289,51 @@ pub fn cycle_detection(
 #[allow(unused_parens)]
 pub fn assign_rootoplist_to_dimensions(mut cmd: Commands,
     oplist_query: Query<(Entity, &StrId, &MultipleDimensionRefs),(With<OperationList>, )>,
-    dimension_query: Query<(&StrId, Option<&DimensionRootOplist>), With<Dimension>>,
+    dimension_query: Query<(Entity, &StrId, &HashId, Option<&DimensionRootOplist>), With<Dimension>>,
 ) {
     let mut assignments: EntityHashMap<DimensionRootOplist> = EntityHashMap::new();
 
-
-    for (oplist_ent, my_oplist_id, dim_refs) in oplist_query.iter() {
-        for &dim_ent in dim_refs.0.iter() {
-            let Ok((dim_str_id, root_op_list)) = dimension_query.get(dim_ent) else {
-                error!(target: "oplist_init", "Dimension entity '{}' referenced by DimensionEntityMap is not spawned in world", dim_ent);
+    for (_oplist_ent, my_oplist_id, dim_refs) in oplist_query.iter() {
+        for &dim_hash in dim_refs.0.iter() {
+            let Some((dim_ent, dim_str_id, root_op_list)) = dimension_query
+                .iter()
+                .find_map(|(ent, str_id, hash_id, root)| (*hash_id == dim_hash).then_some((ent, str_id.clone(), root.copied())))
+            else {
+                error!(target: "oplist_init", "Dimension hash '{}' referenced by root oplist '{}' is not spawned in world", dim_hash, my_oplist_id);
                 continue;
             };
 
             match (assignments.get(&dim_ent), root_op_list) {
-                (Some(&other_ent), _) => {
-                    if other_ent.0 == oplist_ent { trace!(target: "oplist_init", "self is already dimoplist"); continue; }
-                    let Ok((_, other_id, _, )) = oplist_query.get(other_ent.0) else {
+                (Some(other_root), _) => {
+                    let my_oplist_hash = my_oplist_id.hash_id();
+                    if other_root.0 == my_oplist_hash {
+                        trace!(target: "oplist_init", "self is already dimoplist");
+                        continue;
+                    }
+                    let Some((other_ent, _, _)) = oplist_query
+                        .iter()
+                        .find(|(_, str_id, _)| str_id.hash_id() == other_root.0)
+                    else {
+                        continue;
+                    };
+                    let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
                         continue;
                     };
                     error!(target: "oplist_init", "Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_oplist_id);
                     continue;
                 },
-                (_, Some(&DimensionRootOplist(other_ent))) => {
-                    if other_ent == oplist_ent { trace!(target: "oplist_init", "self is already dimoplist"); continue; }
-
+                (_, Some(DimensionRootOplist(other_hash))) => {
+                    let my_oplist_hash = my_oplist_id.hash_id();
+                    if other_hash == my_oplist_hash {
+                        trace!(target: "oplist_init", "self is already dimoplist");
+                        continue;
+                    }
+                    let Some((other_ent, _, _)) = oplist_query
+                        .iter()
+                        .find(|(_, str_id, _)| str_id.hash_id() == other_hash)
+                    else {
+                        continue;
+                    };
                     let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
                         continue;
                     };
@@ -366,7 +341,7 @@ pub fn assign_rootoplist_to_dimensions(mut cmd: Commands,
                     continue;
                 },
                 (None, None) => {
-                    assignments.insert(dim_ent, DimensionRootOplist(oplist_ent));
+                    assignments.insert(dim_ent, DimensionRootOplist(my_oplist_id.hash_id()));
                 },
             }
         }

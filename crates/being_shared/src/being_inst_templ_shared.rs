@@ -111,14 +111,12 @@ impl Default for BitSeri {
     }
 }
 common::define_entity_map_systems!(
-    BeingInstTemplate,
-    (),
-    Bit,
-    "bit",
-    "BIT",
-    BeingInstTemplate,
-    common::common_components::StrId,
-    BitSeri,
-    "seri.being.inst_templ",
-    "bit.ron",
+    main_component: BeingInstTemplate,
+    with_filters: (),
+    abbreviation: Bit,
+    target: "bit",
+    entity_prefix: "BIT",
+    despawn_trigger: BeingInstTemplate,
+    id_type: common::common_components::StrId,
+    assets: [(BitSeri, "seri.being.inst_templ", "bit.ron")],
 );

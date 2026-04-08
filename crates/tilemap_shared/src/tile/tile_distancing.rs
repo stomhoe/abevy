@@ -18,7 +18,7 @@ impl Default for InitialPos {
     fn default() -> Self {
         Self {
             pos: GlobalTilePos::default(),
-            dim: DimensionRef(Entity::PLACEHOLDER),
+            dim: DimensionRef(HashId::default()),
         }
     }
 }

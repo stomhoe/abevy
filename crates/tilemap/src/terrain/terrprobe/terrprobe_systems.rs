@@ -1,4 +1,5 @@
 use bevy::{ecs::entity::{EntityHashSet, EntityHashMap}, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use common::common_components::HashId;
 use game_common::game_common_components::TemplEntiRef;
 use crate::terrain::{
     terrprobe::terrprobe_components::TerrProbeTempl,
@@ -17,6 +18,7 @@ struct TerrGenSearchTaskInput {
     probe: TerrProbeJob,
     templ: TerrProbeTempl,
     root_oplist: DimensionRootOplist,
+    filtered_op: HashId,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
@@ -59,6 +61,12 @@ impl<'w, 's> SearchParams<'w, 's> {
 
 }
 
+#[derive(bevy::ecs::system::SystemParam)]
+#[allow(unused_parens, )]
+pub struct SearchMaps<'w> {
+    pub dimension_map: Res<'w, DimensionEntityMap>,
+}
+
 use serde::{Deserialize, Serialize};
 #[derive(Component, Debug, Default, Copy, Clone, Deserialize, Serialize)]
 pub struct AwaitingStartSearch;
@@ -73,6 +81,7 @@ pub fn search_suitable_positions(
     mut mreader_sampled_value_matrix_found: MessageReader<SampledValuesCollected>,
     terrprobe_query: Query<&TerrProbeTempl>,
     dimensions_query: Query<&DimensionRootOplist>,
+    search_maps: SearchMaps,
     failed_search_oplist_filter_holder: Query<Entity, (With<FailedSearchOplistFilterHolder>)>,
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
     mut found_suitable_positions: Local<EntityHashSet>,
@@ -120,12 +129,17 @@ pub fn search_suitable_positions(
             search_failed_evs.push(SearchFailed(pos_search.requester));
             continue;
         };
-        let Ok(&root_oplist) = dimensions_query.get(pos_search.dimension_ref.0) else {
+        let Ok(dim_ent) = search_maps.dimension_map.0.get_cloned(pos_search.dimension_ref.0) else {
+            search_failed_evs.push(SearchFailed(pos_search.requester));
+            continue;
+        };
+        let Ok(&root_oplist) = dimensions_query.get(dim_ent) else {
             error!(target: "pos_search", "No root oplist found for dimension {:?}", pos_search.dimension_ref);
             search_failed_evs.push(SearchFailed(pos_search.requester));
             continue;
         };
-        inputs.push(TerrGenSearchTaskInput { probe: pos_search, templ, root_oplist });
+        let filtered_op = templ.opfilter_ref.0;
+        inputs.push(TerrGenSearchTaskInput { probe: pos_search, templ, root_oplist, filtered_op });
     }
     let found = found_suitable_positions.drain().collect::<EntityHashSet>();
     let task_pool = AsyncComputeTaskPool::get();
@@ -149,6 +163,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
             continue;
         }
         let templ = input.templ;
+        let filtered_op = input.filtered_op;
         let curr_iteration_batch_i = pos_search.curr_iteration_batch_i;
         let root_oplist = input.root_oplist;
         let curr_iteration_batch_i = curr_iteration_batch_i.max(0);
@@ -161,6 +176,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
                 process_concentric_pattern(
                     pos_search,
                     &templ,
+                    filtered_op,
                     root_oplist,
                     radius_step,
                     sample_spacing,
@@ -174,6 +190,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
                 process_chunk_pattern(
                     pos_search,
                     &templ,
+                    filtered_op,
                     root_oplist,
                     &mut new_pending_ops,
                 );
@@ -185,6 +202,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
                 process_region_pattern(
                     pos_search,
                     &templ,
+                    filtered_op,
                     root_oplist,
                     spacing,
                     region_multiplier,

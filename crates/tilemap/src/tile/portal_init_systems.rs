@@ -4,9 +4,11 @@ use ::tilemap_shared::*;
 use bevy::prelude::*;
 
 use common::PORTAL_INIT;
+use common::common_components::HashId;
 
 use crate::{
     run_suitable_pos_search_logic, terrain::{
+        operation_list::operation_list_resources::OperationListEntityMap,
         terrprobe::{terrprobe_components::*, terrprobe_resources::*},
         terrprobe::{terrprobe_messages::TerrProbeJob, terrprobe_systems::SearchParams},
     }, tile::{tile_components::*, tile_resources::*}, tilemap_resources::MassCollectedTiles
@@ -61,6 +63,8 @@ pub fn validate_portal_recipes(
     mut cmd: Commands,
     mut portal_recipes: Query<(Entity, &mut PortalRecipe, Option<&PortalSeri>), With<Templ>>,
     dimension_query: Query<&DimensionRootOplist>,
+    oplist_map: Res<OperationListEntityMap>,
+    oplist_hash_query: Query<(Entity, &HashId), With<crate::terrain::operation_list::operation_list_components::OperationList>>,
     terrprobe_entity_map: Res<TerrProbeTemplEntityMap>,
 ) {
     for (templ_portal, mut recipe, portal_seri_opt) in portal_recipes.iter_mut() {
@@ -71,6 +75,19 @@ pub fn validate_portal_recipes(
             error!(target: PORTAL_INIT, "PortalRecipe with dest_dimension entity {:?} references a Dimension that doesn't exist or has no DimensionRootOplist.", recipe.dest_dimension);
             continue;
         };
+        let Some(root_oplist_ent) = oplist_map
+            .0
+            .get_cloned(root_oplist.0)
+            .ok()
+            .or_else(|| {
+                oplist_hash_query
+                    .iter()
+                    .find_map(|(oplist_ent, &oplist_hash)| (oplist_hash == root_oplist.0).then_some(oplist_ent))
+            })
+        else {
+            error!(target: PORTAL_INIT, "PortalRecipe with dest_dimension entity {:?} references missing root oplist hash {:?}", recipe.dest_dimension, root_oplist.0);
+            continue;
+        };
         if recipe.terrprobe_ent == Entity::PLACEHOLDER
             && let Some(portal_seri) = portal_seri_opt
             && let Ok(ent) = terrprobe_entity_map.0.get_cloned(&portal_seri.oe_terrprobe)
@@ -79,7 +96,7 @@ pub fn validate_portal_recipes(
         }
 
         if recipe.terrprobe_ent != Entity::PLACEHOLDER {
-            debug!(target: PORTAL_INIT, "PortalRecipe with dest_dimension entity {:?} is valid with root oplist {:?} and terrprobe {:?}.", recipe.dest_dimension, root_oplist, recipe.terrprobe_ent);
+            debug!(target: PORTAL_INIT, "PortalRecipe with dest_dimension entity {:?} is valid with root oplist {:?} (entity {:?}) and terrprobe {:?}.", recipe.dest_dimension, root_oplist, root_oplist_ent, recipe.terrprobe_ent);
             cmd.entity(templ_portal).try_insert(AwaitingStartSearch);
         } else {
             let terrprobe_id = portal_seri_opt.map(|p| p.oe_terrprobe.as_str()).unwrap_or("<missing PortalSeri>");
@@ -104,6 +121,7 @@ pub fn start_portal_search(
     >,
     templ_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<Templ>,)>,
     terrprobe_query: Query<&TerrProbeTempl>,
+    dimension_hash_query: Query<&HashId, With<Dimension>>,
     mut search_params: SearchParams,
 ) {
     let make_search_request = |_cmd: &mut Commands,
@@ -128,7 +146,11 @@ pub fn start_portal_search(
             error!(target: PORTAL_INIT, "TerrainProbe template entity {:?} missing TerrProbeTempl", probe_template_ent);
             return None;
         };
-        let probe = probe_template.to_probe(probe_template_ent, DimensionRef(portal_recipe.dest_dimension), global_pos);
+        let Ok(&dest_dim_hash) = dimension_hash_query.get(portal_recipe.dest_dimension) else {
+            error!(target: PORTAL_INIT, "Portal tile '{}' destination dimension entity {:?} is missing HashId", str_id, portal_recipe.dest_dimension);
+            return None;
+        };
+        let probe = probe_template.to_probe(probe_template_ent, DimensionRef(dest_dim_hash), global_pos);
         Some(probe)
     };
 
@@ -194,6 +216,7 @@ pub fn resolve_portal_search_results(
         (Without<Templ>, With<Tile>),
     >,
     templ_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<Templ>,)>,
+    dimension_hash_query: Query<&HashId, With<Dimension>>,
     mut mass_collected: ResMut<MassCollectedTiles>,
     mut register_pos: ResMut<ImportantRegisteredPositions>,
     mut search_params: SearchParams,
@@ -219,7 +242,11 @@ pub fn resolve_portal_search_results(
 
         info!(target: PORTAL_INIT, "Found suitable pos for portal tile {} (entity: {:?}) self's dimension and pos: ({:?}, {:?}), DestDimension: {:?}, found pos: {:?}", str_id, portal_ent, dim_ref.0, my_pos, portal_recipe.dest_dimension, found_pos);
 
-        let oe_dim_ref = DimensionRef(portal_recipe.dest_dimension);
+        let Ok(&dest_dim_hash) = dimension_hash_query.get(portal_recipe.dest_dimension) else {
+            error!(target: PORTAL_INIT, "Failed to resolve destination dimension hash for portal tile {}", str_id);
+            return false;
+        };
+        let oe_dim_ref = DimensionRef(dest_dim_hash);
 
         let oe_portal_tileref = TemplEntiRef(portal_recipe.oe_portal_tile);
         debug!(target: PORTAL_INIT, "OE Portal TileRef: {:?}", oe_portal_tileref);

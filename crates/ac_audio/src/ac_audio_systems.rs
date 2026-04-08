@@ -4,15 +4,14 @@ use bevy_kira_audio::{DefaultSpatialRadius, SpatialAudioEmitter};
 use bevy_spritesheet_animation::prelude::*;
 
 use ::being_shared::*;
+use crate::ac_audio_components::*;
+use crate::SpatialAudioSettings;
 use game_common::game_common_components::TemplEntiRef;
 use ::sprite_shared::*;
 use sprite_animation_shared::MoveAnimActive;
 use tilemap::tile::tile_components::{TileStepSfx, TileStepSfxConfig};
 use ::tilemap_shared::*;
 use std::hash::{DefaultHasher, Hash, Hasher};
-
-use crate::ac_audio_components::*;
-use crate::SpatialAudioSettings;
 
 pub fn play_sprite_animation_sfx_on_frame_change(
     mut cmd: Commands,
@@ -292,6 +291,7 @@ pub fn play_step_sfx_from_moved_distance(
         Option<&mut SpatialAudioEmitter>,
         Option<&mut StepDistanceSfxState>,
     ), With<Being>>,
+    race_map: Res<RaceEntityMap>,
     race_step_sfx_enabled: Query<&ProducesStepSfx>,
     race_footstep_sfx_cfgs: Query<&RaceFootstepSfxConfig>,
     sprite_templ_enti_refs: Query<&TemplEntiRef>,
@@ -336,7 +336,10 @@ pub fn play_step_sfx_from_moved_distance(
             continue;
         }
         if let Some(race_ref) = race_ref {
-            if race_step_sfx_enabled.get(race_ref.0).is_err() {
+            let Some(race_ent) = race_map.0.get_cloned(race_ref.0).ok() else {
+                continue;
+            };
+            if race_step_sfx_enabled.get(race_ent).is_err() {
                 continue;
             }
         }
@@ -348,7 +351,10 @@ pub fn play_step_sfx_from_moved_distance(
         let mut prevent_repeat = true;
         let mut disable_tile_step_sfx = false;
         if let Some(race_ref) = race_ref {
-            if let Ok(race_footstep_cfg) = race_footstep_sfx_cfgs.get(race_ref.0) {
+            let Some(race_ent) = race_map.0.get_cloned(race_ref.0).ok() else {
+                continue;
+            };
+            if let Ok(race_footstep_cfg) = race_footstep_sfx_cfgs.get(race_ent) {
                 disable_tile_step_sfx = race_footstep_cfg.disable_tile_step_sfx;
                 for path in race_footstep_cfg.paths.iter() {
                     if !path.trim().is_empty() {

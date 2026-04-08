@@ -2,6 +2,7 @@
 use bevy::prelude::*;
 use bevy::platform::collections::{HashMap, HashSet};
 use common::common_components::*;
+use common::common_components::HashId;
 use common::common_states::AssetLoading;
 use common::def_db;
 use common::log_targets::BODY_BUILD;
@@ -119,6 +120,7 @@ pub fn init_bodytree_templates(
     mut cmd: Commands,
     bodytree_map: Res<BodyTreeTemplateEntityMap>,
     part_map: Res<BodypartEntityMap>,
+    part_hash_query: Query<&HashId, With<Bodypart>>,
 ) {
     if !bodytree_map.0.is_empty() {
         return;
@@ -135,6 +137,8 @@ pub fn init_bodytree_templates(
         };
         let tree_ent = cmd.spawn((
             tree_id.clone(),
+            AddHashIdFromStrId,
+            HashId::from(tree_id.as_str()),
             DisplayName::trunc(tree_id.as_str()),
             BodyTreeTemplate,
             Templ,
@@ -147,6 +151,7 @@ pub fn init_bodytree_templates(
         let root = rec_build_templ_body_tree_nodes(
             &mut cmd,
             &part_map,
+            &part_hash_query,
             tree_ent,
             &tree_id,
             def.root,
@@ -169,6 +174,7 @@ pub fn init_bodytree_templates(
 pub(crate) fn rec_build_templ_body_tree_nodes(
     cmd: &mut Commands,
     part_map: &BodypartEntityMap,
+    part_hash_query: &Query<&HashId, With<Bodypart>>,
     templ_owner_ent: Entity,
     owner_id: &StrId,
     node: BodypartNodeSeri,
@@ -189,10 +195,15 @@ pub(crate) fn rec_build_templ_body_tree_nodes(
             BodypartChildrenBodyparts,
         )>();
     }).id();
+    let Ok(&source_part_hash) = part_hash_query.get(source_part_ent) else {
+        error!(target: BODY_BUILD, "Bodypart '{}' has no HashId while building bodytree/body '{}', skipping", node_bodypart_id, owner_id);
+        return None;
+    };
     cmd.entity(node_ent).insert((
         BodypartChildOfBodypart { parent_bodypart },
         ChildOf(templ_owner_ent),
         TemplEntiRef(source_part_ent),
+        TemplEntiHashIdRef(source_part_hash),
         UserBodypartInstances::default(),
         Templ,
         Name::default(),
@@ -207,6 +218,7 @@ pub(crate) fn rec_build_templ_body_tree_nodes(
         rec_build_templ_body_tree_nodes(
             cmd,
             part_map,
+            part_hash_query,
             templ_owner_ent,
             owner_id,
             child,

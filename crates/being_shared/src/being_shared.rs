@@ -7,7 +7,7 @@ use bevy::ecs::entity::MapEntities;
 use faction_shared::BelongsToAPlayerFaction;
 use tilemap_shared::*;
 use crate::being_inst_templ_shared::{DontExtendBitSpawnBlacklist, DontExtendBitSpawnWhitelist, DontExtendRaceSpawnBlacklist, DontExtendRaceSpawnWhitelist};
-use crate::RaceRef;
+use crate::{RaceEntityMap, RaceRef};
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct ComputedLocally;
@@ -22,6 +22,7 @@ impl Being {
         being_ent: Entity,
         bit_ent: Option<Entity>,
         race_ent: Option<Entity>,
+        race_map: &RaceEntityMap,
         bit_race_query: &Query<&RaceRef>,
         spawn_tile_tags_query: &Query<(
             Option<&WhitelistedSpawnTileTags>,
@@ -45,7 +46,14 @@ impl Being {
             }
         }
 
-        race_ent.or(bit_ent.and_then(|bit_ent| bit_race_query.get(bit_ent).ok().map(|race_ref| race_ref.0)))
+        race_ent.or(
+            bit_ent.and_then(|bit_ent| {
+                bit_race_query
+                    .get(bit_ent)
+                    .ok()
+                    .and_then(|race_ref| race_map.0.get_cloned(race_ref.0).ok())
+            }),
+        )
     }
 
     fn apply_spawn_tile_tags(
@@ -77,6 +85,7 @@ impl Being {
         being_ent: Entity,
         bit_ent: Option<Entity>,
         race_ent: Option<Entity>,
+        race_map: &RaceEntityMap,
         bit_race_query: &Query<&RaceRef>,
         spawn_tile_tags_query: &Query<(Option<&WhitelistedSpawnTileTags>, Option<&BlacklistedSpawnTileTags>, )>,
         being_spawn_tag_extension_query: &Query<(Has<DontExtendBitSpawnWhitelist>, Has<DontExtendBitSpawnBlacklist>, Has<DontExtendRaceSpawnWhitelist>, Has<DontExtendRaceSpawnBlacklist>, )>,
@@ -90,6 +99,7 @@ impl Being {
             being_ent,
             bit_ent,
             race_ent,
+            race_map,
             bit_race_query,
             spawn_tile_tags_query,
         ) else {
@@ -100,7 +110,14 @@ impl Being {
             return;
         };
 
-        let resolved_race_ent = race_ent.or(bit_ent.and_then(|bit_ent| bit_race_query.get(bit_ent).ok().map(|race_ref| race_ref.0)));
+        let resolved_race_ent = race_ent.or(
+            bit_ent.and_then(|bit_ent| {
+                bit_race_query
+                    .get(bit_ent)
+                    .ok()
+                    .and_then(|race_ref| race_map.0.get_cloned(race_ref.0).ok())
+            }),
+        );
         if !Self::apply_spawn_tile_tags(source_ent, spawn_tile_tags_query, whitelisted_tags, blacklisted_tags) {
             return;
         }

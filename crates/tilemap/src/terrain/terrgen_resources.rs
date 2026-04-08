@@ -13,7 +13,7 @@ use tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos};
 pub struct TerrGenDebugSample {
     pub dimension_ref: DimensionRef,
     pub gpos: GlobalTilePos,
-    pub oplist: Entity,
+    pub oplist: HashId,
     pub oplist_id: HashId,
     pub output: f32,
     pub variables: HashIdMap<f32>,
@@ -21,7 +21,7 @@ pub struct TerrGenDebugSample {
 
 #[derive(Debug, Clone)]
 pub struct TerrGenTileDebugInfo {
-    pub oplist: Entity,
+    pub oplist: HashId,
     pub oplist_id: HashId,
     pub output: f32,
     pub variables: HashIdMap<f32>,
@@ -29,7 +29,7 @@ pub struct TerrGenTileDebugInfo {
 impl Default for TerrGenTileDebugInfo {
     fn default() -> Self {
         Self {
-            oplist: Entity::PLACEHOLDER,
+            oplist: HashId::default(),
             oplist_id: HashId::default(),
             output: 0.0,
             variables: HashIdMap::new(),
@@ -39,9 +39,9 @@ impl Default for TerrGenTileDebugInfo {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TerrGenDebugTileKey {
-    pub dimension: Entity,
+    pub dimension: HashId,
     pub gpos: IVec2,
-    pub oplist: Entity,
+    pub oplist: HashId,
 }
 
 #[derive(Resource, Debug)]

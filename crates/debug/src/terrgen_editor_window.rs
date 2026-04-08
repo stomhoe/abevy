@@ -8,7 +8,7 @@ use tilemap::terrain::terrgen_expression::Expr;
 use camera::camera_components::CameraTarget;
 use common::common_components::HashId;
 use fnl::NoiseType;
-use tilemap_shared::{DimensionRef, GlobalGenSettings, GlobalTilePos};
+use tilemap_shared::{DimensionEntityMap, DimensionRef, GlobalGenSettings, GlobalTilePos};
 use crate::debug_resources::{
     DebugNoiseWorkshopState, DebugSelectedEntities, DubugWindowsVisibility, NoiseCombineOp,
 };
@@ -220,6 +220,7 @@ pub fn terrgen_editor_window(
         Query<&mut FnlNoiseComp, With<Terrgen>>,
     )>,
     camera_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    dimension_map: Res<DimensionEntityMap>,
     dim_hash_query: Query<&HashId>,
     gen_settings_query: Query<&GlobalGenSettings>,
 ) {
@@ -396,28 +397,28 @@ pub fn terrgen_editor_window(
                         columns[1].separator();
                         columns[1].horizontal(|ui| {
                             ui.label("Seed:");
-                            ui.add(egui::DragValue::new(&mut noise_comp.0.seed).speed(1));
+                            ui.add(egui::DragValue::new(&mut noise_comp.fnl.seed).speed(1));
                         });
                         columns[1].horizontal(|ui| {
                             ui.label("Offset X:");
-                            ui.add(egui::DragValue::new(&mut noise_comp.0.offset.x).speed(1));
+                            ui.add(egui::DragValue::new(&mut noise_comp.fnl.offset.x).speed(1));
                         });
                         columns[1].horizontal(|ui| {
                             ui.label("Offset Y:");
-                            ui.add(egui::DragValue::new(&mut noise_comp.0.offset.y).speed(1));
+                            ui.add(egui::DragValue::new(&mut noise_comp.fnl.offset.y).speed(1));
                         });
                         columns[1].horizontal(|ui| {
                             ui.label("Frequency:");
-                            let mut frequency = noise_comp.0.frequency();
+                            let mut frequency = noise_comp.fnl.frequency();
                             if ui.add(egui::Slider::new(&mut frequency, 0.0001..=5.0).step_by(0.0001)).changed() {
-                                noise_comp.0.set_frequency(Some(frequency));
+                                noise_comp.fnl.set_frequency(Some(frequency));
                             }
                         });
                         columns[1].separator();
                         columns[1].horizontal(|ui| {
                             ui.label("Noise Type:");
                             egui::ComboBox::from_id_salt("terrgen_noise_type")
-                                .selected_text(format!("{:?}", noise_comp.0.noise_type))
+                                .selected_text(format!("{:?}", noise_comp.fnl.noise_type))
                                 .show_ui(ui, |ui| {
                                     for (label, ty) in [
                                         ("OpenSimplex2", NoiseType::OpenSimplex2),
@@ -429,46 +430,46 @@ pub fn terrgen_editor_window(
                                         ("ValueLanczos", NoiseType::ValueLanczos),
                                         ("River", NoiseType::River),
                                     ] {
-                                        if ui.selectable_label(noise_comp.0.noise_type == ty, label).clicked() {
-                                            noise_comp.0.set_noise_type(Some(ty));
+                                        if ui.selectable_label(noise_comp.fnl.noise_type == ty, label).clicked() {
+                                            noise_comp.fnl.set_noise_type(Some(ty));
                                         }
                                     }
                                 });
                         });
                         columns[1].separator();
-                        columns[1].label(format!("Fractal Type: {:?}", noise_comp.0.fractal_type));
+                        columns[1].label(format!("Fractal Type: {:?}", noise_comp.fnl.fractal_type));
                         columns[1].horizontal(|ui| {
                             ui.label("Octaves:");
-                            ui.add(egui::Slider::new(&mut noise_comp.0.octaves, 1..=10));
+                            ui.add(egui::Slider::new(&mut noise_comp.fnl.octaves, 1..=10));
                         });
                         columns[1].horizontal(|ui| {
                             ui.label("Lacunarity:");
-                            ui.add(egui::Slider::new(&mut noise_comp.0.lacunarity, 0.1..=4.0).step_by(0.01));
+                            ui.add(egui::Slider::new(&mut noise_comp.fnl.lacunarity, 0.1..=4.0).step_by(0.01));
                         });
                         columns[1].horizontal(|ui| {
                             ui.label("Gain:");
-                            ui.add(egui::Slider::new(&mut noise_comp.0.gain, 0.0..=1.0).step_by(0.01));
+                            ui.add(egui::Slider::new(&mut noise_comp.fnl.gain, 0.0..=1.0).step_by(0.01));
                         });
                         columns[1].horizontal(|ui| {
                             ui.label("Weighted Strength:");
-                            ui.add(egui::Slider::new(&mut noise_comp.0.weighted_strength, 0.0..=1.0).step_by(0.01));
+                            ui.add(egui::Slider::new(&mut noise_comp.fnl.weighted_strength, 0.0..=1.0).step_by(0.01));
                         });
                         columns[1].horizontal(|ui| {
                             ui.label("Ping Pong:");
-                            ui.add(egui::Slider::new(&mut noise_comp.0.ping_pong_strength, 0.0..=4.0).step_by(0.01));
+                            ui.add(egui::Slider::new(&mut noise_comp.fnl.ping_pong_strength, 0.0..=4.0).step_by(0.01));
                         });
                         columns[1].separator();
-                        columns[1].label(format!("Cellular Distance: {:?}", noise_comp.0.cellular_distance_function));
-                        columns[1].label(format!("Cellular Return: {:?}", noise_comp.0.cellular_return_type));
+                        columns[1].label(format!("Cellular Distance: {:?}", noise_comp.fnl.cellular_distance_function));
+                        columns[1].label(format!("Cellular Return: {:?}", noise_comp.fnl.cellular_return_type));
                         columns[1].horizontal(|ui| {
                             ui.label("Jitter:");
-                            ui.add(egui::Slider::new(&mut noise_comp.0.cellular_jitter_modifier, 0.0..=2.0).step_by(0.01));
+                            ui.add(egui::Slider::new(&mut noise_comp.fnl.cellular_jitter_modifier, 0.0..=2.0).step_by(0.01));
                         });
                         columns[1].separator();
-                        columns[1].label(format!("Domain Warp: {:?}", noise_comp.0.domain_warp_type));
+                        columns[1].label(format!("Domain Warp: {:?}", noise_comp.fnl.domain_warp_type));
                         columns[1].horizontal(|ui| {
                             ui.label("Amplitude:");
-                            ui.add(egui::Slider::new(&mut noise_comp.0.domain_warp_amp, 0.0..=2.0).step_by(0.01));
+                            ui.add(egui::Slider::new(&mut noise_comp.fnl.domain_warp_amp, 0.0..=2.0).step_by(0.01));
                         });
                     } else {
                         columns[1].label("Selected noise component unavailable");
@@ -483,7 +484,11 @@ pub fn terrgen_editor_window(
             ui.label("Combine multiple noises, apply per-noise subtract, and preview threshold highlights.");
 
             if let Some((camera_dim_ref, transform)) = camera_query.iter().next() {
-                if let (Ok(dim_hash), Ok(gen_settings)) = (dim_hash_query.get(camera_dim_ref.0), gen_settings_query.single()) {
+                let Some(dim_ent) = dimension_map.0.get_cloned(camera_dim_ref.0).ok() else {
+                    ui.label("Camera dimension entity missing");
+                    return;
+                };
+                if let (Ok(dim_hash), Ok(gen_settings)) = (dim_hash_query.get(dim_ent), gen_settings_query.single()) {
                     let camera_tile = GlobalTilePos::from(transform.translation().xy());
 
                     egui::Frame::group(ui.style()).show(ui, |ui| {

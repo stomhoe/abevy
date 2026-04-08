@@ -33,7 +33,7 @@ use super::being_nav_helpers::{
 #[derive(Clone, Copy)]
 struct SharedChaseRebuildJob {
     chaser_ent: Entity,
-    chaser_dim: DimensionRef,
+    chaser_dim: Entity,
     chaser_gpos: GlobalTilePos,
     target_ent: Entity,
     target_pos: GlobalTilePos,
@@ -305,10 +305,12 @@ fn rebuild_shared_chase_flow_field(
     chase_fields: &mut SharedChaseFlowFields,
     cache: &AiNavGridCache,
     target_ent: Entity,
-    target_dim: DimensionRef,
+    target_dim: Entity,
     target_pos: GlobalTilePos,
     target_bit_ref: Option<&BitRef>,
     target_race_ref: Option<&RaceRef>,
+    bit_map: &BeingInstTemplateEntityMap,
+    race_map: &RaceEntityMap,
     interaction_zones_query: &Query<&InteractionZones, >,
     zone_tiles: &mut Vec<GlobalTilePos>,
     goal_tiles: &mut Vec<GlobalTilePos>,
@@ -321,6 +323,8 @@ fn rebuild_shared_chase_flow_field(
         target_bit_ref,
         target_race_ref,
         InteractionZones::COLLISION,
+        bit_map,
+        race_map,
         interaction_zones_query,
     );
     collect_chase_goal_tiles(
@@ -335,7 +339,7 @@ fn rebuild_shared_chase_flow_field(
     );
     let flow_field = SharedChaseFlowField::build(
         cache,
-        target_dim.0,
+        target_dim,
         target_pos,
         goal_tiles,
         slot_tiles,
@@ -535,6 +539,9 @@ pub fn cleanup_player_chase_chunk_retention(
 pub fn rebuild_goto_nav_plans(
     time: Res<Time>,
     blocking_tiles: BlockingTileParamSet,
+    dim_map: Res<DimensionEntityMap>,
+    bit_map: Res<BeingInstTemplateEntityMap>,
+    race_map: Res<RaceEntityMap>,
     goto_beings: Query<
         (
             Entity,
@@ -560,6 +567,9 @@ pub fn rebuild_goto_nav_plans(
     scratch.shared_goal_owners.clear();
 
     for (chaser_ent, &chaser_dim, goto, chaser_speed, chasing, wander_state, lod_level, ) in goto_beings.iter() {
+        let Some(chaser_dim_ent) = dim_map.0.get_opt(chaser_dim.0).copied() else {
+            continue;
+        };
         let Ok(chaser_gpos) = blocking_tiles.gpos_query.get(chaser_ent) else {
             continue;
         };
@@ -607,7 +617,7 @@ pub fn rebuild_goto_nav_plans(
             continue;
         }
 
-        let Some(cache) = grids.by_dim.get(&chaser_dim.0) else {
+        let Some(cache) = grids.by_dim.get(&chaser_dim_ent) else {
             plan.clear_path_and_retry(goto_interval, target_pos);
             continue;
         };
@@ -631,8 +641,11 @@ pub fn rebuild_goto_nav_plans(
                 plan.clear_path_and_retry(goto_interval, target_pos);
                 continue;
             };
-            let target_dim = *target_dim;
-            if target_dim != chaser_dim {
+            let Some(target_dim_ent) = dim_map.0.get_opt(target_dim.0).copied() else {
+                plan.clear_path_and_retry(goto_interval, target_pos);
+                continue;
+            };
+            if target_dim_ent != chaser_dim_ent {
                 plan.clear_path_and_retry(goto_interval, target_pos);
                 continue;
             }
@@ -651,6 +664,8 @@ pub fn rebuild_goto_nav_plans(
                 target_bit_ref,
                 target_race_ref,
                 InteractionZones::COLLISION,
+                &bit_map,
+                &race_map,
                 &interaction_zones_query,
             );
             collect_chase_goal_tiles(
@@ -667,7 +682,7 @@ pub fn rebuild_goto_nav_plans(
                 .by_target
                 .get(&shared_target_ent)
                 .map(|field| {
-                    !field.matches_grid(cache, target_dim.0, target_pos)
+                    !field.matches_grid(cache, target_dim_ent, target_pos)
                         || field.goal_tiles != *scratch.chase_goal_tiles
                         || field.slot_tiles != *scratch.chase_slot_tiles
                         || field.seed_goal_tiles != *scratch.chase_seed_goal_tiles
@@ -678,10 +693,12 @@ pub fn rebuild_goto_nav_plans(
                     &mut chase_fields,
                     cache,
                     shared_target_ent,
-                    target_dim,
+                    target_dim_ent,
                     target_pos,
                     target_bit_ref,
                     target_race_ref,
+                    &bit_map,
+                    &race_map,
                     &interaction_zones_query,
                     &mut scratch.chase_zone_tiles,
                     &mut scratch.chase_goal_tiles,
@@ -712,7 +729,7 @@ pub fn rebuild_goto_nav_plans(
             }
             scratch.shared_rebuild_jobs.push(SharedChaseRebuildJob {
                 chaser_ent,
-                chaser_dim,
+                chaser_dim: chaser_dim_ent,
                 chaser_gpos: *chaser_gpos,
                 target_ent: shared_target_ent,
                 target_pos,
@@ -991,7 +1008,7 @@ pub fn rebuild_goto_nav_plans(
 
     scratch.shared_rebuild_jobs.sort_unstable_by_key(|job| (job.target_dist, job.chaser_ent.index_u32()));
     for job in scratch.shared_rebuild_jobs.iter().copied() {
-        let Some(cache) = grids.by_dim.get(&job.chaser_dim.0) else {
+        let Some(cache) = grids.by_dim.get(&job.chaser_dim) else {
             continue;
         };
         rebuild_shared_chase_plan_for_job(
@@ -1013,6 +1030,7 @@ pub fn rebuild_goto_nav_plans(
 #[allow(unused_parens, )]
 pub fn goto_behavior(
     mut blocking_tiles: BlockingTileParamSet,
+    dim_map: Res<DimensionEntityMap>,
     mut goto_beings: Query<
         (
             Entity,
@@ -1030,6 +1048,9 @@ pub fn goto_behavior(
         mut last_shared_dirs: Local<HashMap<Entity, IVec2>>,
 ) {
     for (chaser_ent, &chaser_dim, goto, chasing, wander_state, ) in goto_beings.iter_mut() {
+        let Some(chaser_dim_ent) = dim_map.0.get_opt(chaser_dim.0).copied() else {
+            continue;
+        };
         let Ok(mut input_move_dir) = input_dirs.get_mut(chaser_ent) else {
             continue;
         };
@@ -1059,11 +1080,11 @@ pub fn goto_behavior(
             None
         };
         let shared_flow_field = shared_target_ent.and_then(|shared_target_ent| {
-                let cache = grids.by_dim.get(&chaser_dim.0)?;
+                let cache = grids.by_dim.get(&chaser_dim_ent)?;
                 chase_fields
                     .by_target
                     .get(&shared_target_ent)
-                    .filter(|flow_field| flow_field.matches_grid(cache, chaser_dim.0, target_pos))
+                    .filter(|flow_field| flow_field.matches_grid(cache, chaser_dim_ent, target_pos))
                     .map(|flow_field| (cache, flow_field))
             });
         let shared_reserved_goal = plans.by_ent.get(&chaser_ent).and_then(|plan| plan.reserved_shared_goal);

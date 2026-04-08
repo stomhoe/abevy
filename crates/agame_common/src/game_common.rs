@@ -98,6 +98,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<Description>()
     .replicate::<Templ>()
     .replicate::<TemplEntiRef>()
+    .replicate::<TemplEntiHashIdRef>()
 
     .replicate::<Directionable>()
     //.replicate::<EntityCountMapWeightedSampler>()

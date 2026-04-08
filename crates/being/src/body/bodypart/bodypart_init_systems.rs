@@ -84,9 +84,10 @@ pub fn init_bodyparts(
 
         let part_ent = cmd.spawn_empty().id();
         spawned_ids.insert(part_id.clone());
+        let part_hash_id = HashId::from(part_id.as_str());
 
         cmd.entity(part_ent)
-            .insert((part_id.clone(), Bodypart, Templ));
+            .insert((part_id.clone(), part_hash_id, AddHashIdFromStrId, Bodypart, Templ));
 
         if !part.name.trim().is_empty() {
             cmd.entity(part_ent).insert(DisplayName::trunc(part.name.clone()));

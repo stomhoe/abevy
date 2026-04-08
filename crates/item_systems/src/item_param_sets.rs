@@ -7,7 +7,7 @@ use game_common::game_common_components::{Templ, TemplEntiRef};
 use item_shared::{clone_item_from_templ, dropped_scs_to_build, Item, ItemHeldIn};
 use param_sets::BlockingTileParamSet;
 use ::sprite_shared::AcZ;
-use tilemap_shared::{DimensionRef, GlobalTilePos};
+use tilemap_shared::{DimensionEntityMap, DimensionRef, GlobalTilePos};
 
 #[derive(SystemParam)]
 pub struct ItemGroundMaterializeParamSet<'w, 's> {
@@ -16,6 +16,7 @@ pub struct ItemGroundMaterializeParamSet<'w, 's> {
     sprite_cfg_hash_query: Query<'w, 's, &'static HashId, (With<::sprite_shared::SpriteConfig>, common::AnyDisabling)>,
     item_ground_query: Query<'w, 's, (&'static TemplEntiRef, &'static DimensionRef), (With<Item>, Without<Templ>)>,
     ac_z_query: Query<'w, 's, &'static AcZ>,
+    dim_map: Res<'w, DimensionEntityMap>,
     occupied_nonstackable: Local<'s, HashSet<GlobalTilePos>>,
 }
 
@@ -94,7 +95,16 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
             );
             return;
         };
-        self.materialize_item_on_ground_from_templ(cmd, Some(item_ent), item_templ_ref, dim_ref, gpos);
+        let Some(dim_ent) = self.dim_map.0.get_opt(dim_ref.0).copied() else {
+            warn!(
+                target: log_targets::ITEM_SYSTEM,
+                "Skipping ground materialization: item {:?} dimension hash {:?} is missing from DimensionEntityMap",
+                item_ent,
+                dim_ref.0,
+            );
+            return;
+        };
+        self.materialize_item_on_ground_from_templ(cmd, Some(item_ent), item_templ_ref, dim_ref, dim_ent, gpos);
     }
 
     pub fn materialize_item_on_ground_from_templ(
@@ -103,6 +113,7 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
         item_ent: Option<Entity>,
         item_templ_ref: TemplEntiRef,
         dim_ref: DimensionRef,
+        dim_ent: Entity,
         gpos: GlobalTilePos,
     ) {
         let item_ent = item_ent.unwrap_or_else(|| clone_item_from_templ(cmd, item_templ_ref, dim_ref));
@@ -121,7 +132,7 @@ impl<'w, 's> ItemGroundMaterializeParamSet<'w, 's> {
         item_cmd.insert((
             gpos,
             AcZ(z),
-            ChildOf(dim_ref.0),
+            ChildOf(dim_ent),
         ));
         let Some(scs_to_build) = dropped_scs_to_build(&self.item_cfg_query, &self.sprite_cfg_hash_query, item_templ_ref) else {
             return;

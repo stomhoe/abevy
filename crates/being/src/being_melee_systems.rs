@@ -55,6 +55,8 @@ pub fn emit_ai_melee_attack_requests(
         (&DimensionRef, &GlobalTilePos, ),
         (With<Being>, ),
     >,
+    bit_map: Res<BeingInstTemplateEntityMap>,
+    race_map: Res<RaceEntityMap>,
     zone_sources: Query<&InteractionZones>,
     mut local_cooldowns: Local<EntityHashMap<Timer>>,
     mut local_requests: Local<Vec<LocalMeleeAttackRequest>>,
@@ -87,6 +89,8 @@ pub fn emit_ai_melee_attack_requests(
             attacker_bit_ref,
             attacker_race_ref,
             InteractionZones::MELEE_ATTACK,
+            &bit_map,
+            &race_map,
             &zone_sources,
         );
         let attacker_pos = attacker_transform.translation().xy();
@@ -111,6 +115,8 @@ pub fn emit_ai_melee_attack_requests(
                 None,
                 None,
                 InteractionZones::COLLISION,
+                &bit_map,
+                &race_map,
                 &zone_sources,
             );
             let target_pos_px = target_gpos.to_pixelpos();
@@ -156,6 +162,8 @@ pub fn apply_melee_attack(
         ),
         (With<Being>, ),
     >,
+    bit_map: Res<BeingInstTemplateEntityMap>,
+    race_map: Res<RaceEntityMap>,
     zone_sources: Query<&InteractionZones>,
     beings_at_gpos: Res<BeingsAtGpos>,
     mut tile_gathering: BlockingTileParamSet,
@@ -188,6 +196,8 @@ pub fn apply_melee_attack(
             attacker_bit_ref,
             attacker_race_ref,
             InteractionZones::MELEE_ATTACK,
+            &bit_map,
+            &race_map,
             &zone_sources,
         );
 
@@ -243,6 +253,8 @@ pub fn apply_melee_attack(
                     target_bit_ref,
                     target_race_ref,
                     InteractionZones::COLLISION,
+                    &bit_map,
+                    &race_map,
                     &zone_sources,
                 );
                 let hit = collision_zone.intersects_zone(

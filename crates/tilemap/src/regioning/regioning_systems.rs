@@ -49,6 +49,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
     structured_gens: Query<(&StructuredGenConfig, Option<&TagSet>, Option<&PoissonDisk>, Option<&MultipleDimensionRefs>),()>,
     strid_query: Query<&StrId>,
     dimension_query: Query<(&HashId, Option<&WhitelistedStructureGenTags>, Option<&BlacklistedStructureGenTags>),()>,
+    dimension_map: Res<DimensionEntityMap>,
     mut writer: MessageWriter<OfferChunk>,
     mut loaded_regions: ResMut<LoadedRegions>,
     prioritized: Res<Prioritized>,
@@ -66,6 +67,9 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
     let mut offers = Vec::new();
 
     for (region_ent, mut claimlist, &dim_ref, &region_pos) in region_query.iter_mut() {
+        let Ok(dim_ent) = dimension_map.0.get_cloned(dim_ref.0) else {
+            continue;
+        };
         trace!(target: "sgc_chunk_offer", "Offering chunks for new region at {:?}", region_pos);
         let region_key = (dim_ref, region_pos);
         loaded_regions.0.insert(region_key, region_ent);
@@ -75,7 +79,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
             .or_insert_with(|| prioritized.0.clone());
 
 
-        let Ok((&dim_hash, dim_wlist_tags, dim_blist_tags)) = dimension_query.get(dim_ref.0)
+        let Ok((&dim_hash, dim_wlist_tags, dim_blist_tags)) = dimension_query.get(dim_ent)
         else {
             error!(target: "sgc_chunk_offer", "Dimension {:?} not found when requesting chunk claims for region at {:?}, skipping region",
             dim_ref, region_pos);
@@ -127,7 +131,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
                     .map(|strid| strid.to_string())
                     .unwrap_or_else(|| structured_gen_cfg.structure_id().to_string());
                 if let Some(exclusive_for_dimensions) = exclusive_for_dimensions {
-                    if ! exclusive_for_dimensions.0.contains(&dim_ref.0) {
+                    if !exclusive_for_dimensions.0.contains(&dim_hash) {
                         reattempt_count += 1;
                         trace!(target: "sgc_chunk_offer", "Dimension {:?} is not in exclusive dimension list for structure '{}', skipping", dim_ref, structured_gen_label);
                         continue 'next_sgc_attempt;

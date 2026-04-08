@@ -6,7 +6,7 @@ use common::log_targets;
 use game_common::game_common_components::{Dead, Templ, TemplEntiRef};
 use ::item_shared::*;
 use ::sprite_shared::{HeldSprites, ScsToBuild};
-use tilemap_shared::{DimensionRef, GlobalTilePos, ItemsAtGpos};
+use tilemap_shared::{DimensionEntityMap, DimensionRef, GlobalTilePos, ItemsAtGpos};
 
 use crate::ItemGroundMaterializeParamSet;
 pub fn on_being_held_items_changed(//chequear si caben todos en slots
@@ -53,6 +53,7 @@ pub fn readjust_child_of_for_items(
         (Entity, &DimensionRef, Option<&ChildOf>),
         (DroppedItem, Or<(Changed<DimensionRef>, Without<ChildOf>)>),
     >,
+    dim_map: Res<DimensionEntityMap>,
 ) {
     let mut child_ofs_to_insert = Vec::new();
     for (item_ent, held_in, child_of) in held_query.iter() {
@@ -62,12 +63,21 @@ pub fn readjust_child_of_for_items(
         child_ofs_to_insert.push((item_ent, ChildOf(held_in.holder)));
     }
     for (item_ent, dim_ref, child_of) in dropped_query.iter() {
+        let Some(dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
+            warn!(
+                target: log_targets::ITEM_SYSTEM,
+                "Skipping child_of refresh for dropped item {:?}: dimension hash {:?} missing from DimensionEntityMap",
+                item_ent,
+                dim_ref.0,
+            );
+            continue;
+        };
         if let Some(child_of) = child_of {
-            if child_of.parent() == dim_ref.0 {
+            if child_of.parent() == dim_ent {
                 continue;
             }
         }
-        child_ofs_to_insert.push((item_ent, ChildOf(dim_ref.0)));
+        child_ofs_to_insert.push((item_ent, ChildOf(dim_ent)));
     }
     cmd.try_insert_batch(child_ofs_to_insert);
 }
@@ -167,6 +177,7 @@ pub fn execute_item_operations(
     item_instance_query: Query<&ItemHeldIn, (With<Item>, Without<Templ>)>,
     templ_item_query: Query<(), (With<Item>, With<Templ>)>,
     child_of_query: Query<&ChildOf>,
+    dim_map: Res<DimensionEntityMap>,
     mut materialize_params: ItemGroundMaterializeParamSet,
 ) {
     for &item_operation in item_operations.read() {
@@ -185,7 +196,16 @@ pub fn execute_item_operations(
                 cmd.entity(item_instance).try_insert((ItemHeldIn { holder: target }, ChildOf(target)));
             }
             ItemOperation::FromTempl(templ_ref, KnownItemDest::Ground(dim_ref, gpos)) => {
-                materialize_params.materialize_item_on_ground_from_templ(&mut cmd, None, templ_ref, dim_ref, gpos);
+                let Some(dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
+                    warn!(
+                        target: log_targets::ITEM_SYSTEM,
+                        "Skipping item op for templ {:?}: ground dimension hash {:?} is missing from DimensionEntityMap",
+                        templ_ref.0,
+                        dim_ref.0,
+                    );
+                    continue;
+                };
+                materialize_params.materialize_item_on_ground_from_templ(&mut cmd, None, templ_ref, dim_ref, dim_ent, gpos);
             }
             ItemOperation::Preexisting(item, known_dest) => {
                 if templ_item_query.get(item).is_ok() {

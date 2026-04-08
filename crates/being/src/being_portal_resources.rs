@@ -2,13 +2,14 @@ use ::tilemap_shared::*;
 use bevy::ecs::entity::EntityHashMap;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
+use common::common_components::HashId;
 use ::being_shared::*;
 
 #[derive(Resource, Debug, Default)]
 pub struct PortalCrossingIndex {
-    portal_locations: EntityHashMap<(Entity, GlobalTilePos)>,
-    portals_by_dimension: EntityHashMap<Vec<Entity>>,
-    portals_by_tile: HashMap<(Entity, GlobalTilePos), Vec<Entity>>,
+    portal_locations: EntityHashMap<(HashId, GlobalTilePos)>,
+    portals_by_dimension: HashMap<HashId, Vec<Entity>>,
+    portals_by_tile: HashMap<(HashId, GlobalTilePos), Vec<Entity>>,
 }
 
 impl PortalCrossingIndex {
@@ -22,7 +23,6 @@ impl PortalCrossingIndex {
         let Some((dimension, tile_pos)) = self.portal_locations.remove(&portal_ent) else {
             return;
         };
-        let tile_key = (dimension, tile_pos);
         let mut drop_dimension_bucket = false;
         if let Some(bucket) = self.portals_by_dimension.get_mut(&dimension) {
             Self::remove_from_bucket(bucket, portal_ent);
@@ -32,31 +32,31 @@ impl PortalCrossingIndex {
             self.portals_by_dimension.remove(&dimension);
         }
         let mut drop_tile_bucket = false;
-        if let Some(bucket) = self.portals_by_tile.get_mut(&tile_key) {
+        if let Some(bucket) = self.portals_by_tile.get_mut(&(dimension, tile_pos)) {
             Self::remove_from_bucket(bucket, portal_ent);
             drop_tile_bucket = bucket.is_empty();
         }
         if drop_tile_bucket {
-            self.portals_by_tile.remove(&tile_key);
+            self.portals_by_tile.remove(&(dimension, tile_pos));
         }
     }
 
-    fn insert_portal(&mut self, portal_ent: Entity, dimension: Entity, gpos: GlobalTilePos) {
+    fn insert_portal(&mut self, portal_ent: Entity, dimension: HashId, gpos: GlobalTilePos) {
         self.portal_locations.insert(portal_ent, (dimension, gpos));
         self.portals_by_dimension.entry(dimension).or_default().push(portal_ent);
         self.portals_by_tile.entry((dimension, gpos)).or_default().push(portal_ent);
     }
 
-    pub fn update_portal(&mut self, portal_ent: Entity, dimension: Entity, gpos: GlobalTilePos) {
+    pub fn update_portal(&mut self, portal_ent: Entity, dimension: HashId, gpos: GlobalTilePos) {
         self.remove_portal(portal_ent);
         self.insert_portal(portal_ent, dimension, gpos);
     }
 
-    pub fn portals_at_tile(&self, dimension: Entity, gpos: GlobalTilePos) -> Option<&[Entity]> {
+    pub fn portals_at_tile(&self, dimension: HashId, gpos: GlobalTilePos) -> Option<&[Entity]> {
         self.portals_by_tile.get(&(dimension, gpos)).map(Vec::as_slice)
     }
 
-    pub fn portals_in_dimension(&self, dimension: Entity) -> Option<&[Entity]> {
+    pub fn portals_in_dimension(&self, dimension: HashId) -> Option<&[Entity]> {
         self.portals_by_dimension.get(&dimension).map(Vec::as_slice)
     }
 }

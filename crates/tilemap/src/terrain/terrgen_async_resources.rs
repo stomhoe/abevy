@@ -29,7 +29,7 @@ pub struct TerrGenLaunchQueue(pub Vec<TerrGenLaunchWork>);
 
 #[derive(Debug, Clone)]
 pub struct TerrGenTileRequest {
-    pub bif_tiles: Vec<Entity>,
+    pub bif_tiles: Vec<HashId>,
     pub pending: PendingOp,
     pub oplist_size: OplistSize,
     pub dimension_hash: HashId,

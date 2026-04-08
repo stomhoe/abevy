@@ -6,8 +6,9 @@ use common::log_targets::WILDLIFE_SYSTEM;
 use ::game_common::*;
 use tilemap::terrain::biome::biome_components::CreatureSampler;
 use tilemap::terrain::operation_list::operation_list_components::OperationList;
+use tilemap::terrain::operation_list::operation_list_resources::OperationListEntityMap;
 use tilemap::chunking::macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples};
-use ::tilemap_shared::*;
+use ::tilemap_shared::{DimensionEntityMap, *};
 use tilemap::terrain::terrgen_messages::*;
 
 use crate::wildlife_spawning_helpers::*;
@@ -32,7 +33,9 @@ pub fn request_macrochunk_biome_sampling(
     mut cmd: Commands,
     mut loaded_macrochunks: MessageReader<NewMacrochunkLoaded>,
     mut macro_chunk_query: Query<(&DimensionRef, &MacrochunkPos, &mut MacrochunkPendingBiomeSamples, ), (With<MacroChunk>, )>,
+    dimension_map: Res<DimensionEntityMap>,
     dimension_query: Query<&DimensionRootOplist>,
+    oplist_map: Res<OperationListEntityMap>,
     oplists: Query<&OplistSize, With<OperationList>>,
     mut pending_ops_writer: MessageWriter<PendingOp>,
     mut pending_ops: Local<Vec<PendingOp>>,
@@ -47,11 +50,19 @@ pub fn request_macrochunk_biome_sampling(
         if biome_state.0 != 0 {
             continue;
         }
-        let Ok(&root_oplist) = dimension_query.get(dim_ref.0) else {
+        let Some(dim_ent) = dimension_map.0.get_opt(dim_ref.0).copied() else {
+            error!(target: WILDLIFE_SYSTEM, "No dimension entity for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
+            continue;
+        };
+        let Ok(root_oplist) = dimension_query.get(dim_ent) else {
             error!(target: WILDLIFE_SYSTEM, "No root operation list for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
             continue;
         };
-        let Ok(_) = oplists.get(root_oplist.0) else {
+        let Ok(root_oplist_ent) = oplist_map.0.get_cloned(root_oplist.0) else {
+            error!(target: WILDLIFE_SYSTEM, "No root operation list entity mapped for hash {:?}", root_oplist.0);
+            continue;
+        };
+        let Ok(_) = oplists.get(root_oplist_ent) else {
             error!(target: WILDLIFE_SYSTEM, "No oplist size for root operation list {:?}", root_oplist);
             continue;
         };
@@ -66,7 +77,7 @@ pub fn request_macrochunk_biome_sampling(
         biome_state.0 = expected_samples;
         for &gpos in sample_positions {
             pending_ops.push(PendingOp {
-                oplist: root_oplist,
+                oplist: *root_oplist,
                 input: PendingOpInput {
                     dimension_ref: dim_ref,
                     gpos,

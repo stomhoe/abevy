@@ -1,7 +1,7 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::common_components::{StrId};
+use common::common_components::{AddHashIdFromStrId, StrId};
 use ::tilemap_shared::*;
 
 use crate::tile::{TileWeightedSamplerEntityMap, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
@@ -18,7 +18,7 @@ pub fn init_tile_weighted_samplers(
     for seri in load_tile_weighted_sampler_seri_defs() {
         let Ok(str_id) = StrId::new_with_result(seri.id, 4) else { continue };
         let ent = cmd.spawn_empty().id();
-        comps_to_insert.push((ent, (str_id, EntityWeightedSampler::default(), TileWeightedSampler, )));
+        comps_to_insert.push((ent, (str_id, AddHashIdFromStrId, EntityWeightedSampler::default(), TileWeightedSampler, )));
     }
     cmd.insert_batch(comps_to_insert);
 }
@@ -55,7 +55,7 @@ pub fn init_tile_weighted_samplers_part_two(
                 }
             } else {
                 let sampler_id_trimmed = tile_id.trim_end_matches('*');
-                if let Ok(ent) = hashpos_weighted_map.0.get_cloned(&sampler_id_trimmed.to_string()) {
+                if let Ok(ent) = hashpos_weighted_map.0.get_cloned(sampler_id_trimmed) {
                     if weights.iter().any(|(e, _)| *e == ent) {
                         error!("TileWeightedSampler {:?} already contains sampler entity {:?} for id {:?}, skipping duplicate", str_id, ent, sampler_id_trimmed);
                         continue;

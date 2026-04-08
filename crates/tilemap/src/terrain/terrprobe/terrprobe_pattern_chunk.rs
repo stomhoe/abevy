@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use common::common_components::HashId;
 use crate::terrain::{
     terrprobe::{terrprobe_components::TerrProbeTempl, terrprobe_messages::TerrProbeJob},
     terrgen_messages::{PendingOp, PendingOpInput, PendingOpMatrixSpec, PendingOpPurpose, PendingOpValueProbe},
@@ -8,6 +9,7 @@ use ::tilemap_shared::*;
 pub fn process_chunk_pattern(
     pos_search: TerrProbeJob,
     templ: &TerrProbeTempl,
+    filtered_op: HashId,
     root_oplist: DimensionRootOplist,
     new_pending_ops: &mut Vec<PendingOp>,
 ) {
@@ -25,7 +27,7 @@ pub fn process_chunk_pattern(
                 gpos,
             },
             purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {
-                filtered_op: templ.opfilter_ref.0,
+                filtered_op,
                 requester: pos_search.requester,
                 max_emitted_results: u32::MAX,
                 mark_last_success_in_batch: pos_search.collect_all_successes,

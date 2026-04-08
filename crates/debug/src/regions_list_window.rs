@@ -12,6 +12,21 @@ use ::tilemap_shared::*;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
+fn region_dim_key_for_ref(
+    dim_ref: &DimensionRef,
+    dimension_map: &DimensionEntityMap,
+    id_query: &Query<&StrId>,
+) -> String {
+    let Some(dim_ent) = dimension_map.0.get_cloned(dim_ref.0).ok() else {
+        return format!("{:?}", dim_ref);
+    };
+    if let Ok(str_id) = id_query.get(dim_ent) {
+        format!("{} ({})", str_id.as_str(), dim_ent.index())
+    } else {
+        format!("{:?} ({})", dim_ref, dim_ent.index())
+    }
+}
+
 #[allow(unused_parens)]
 pub fn regions_list_window(
     mut contexts: EguiContexts,
@@ -34,6 +49,7 @@ pub fn regions_list_window(
         Has<DespawnOnTimeout>,
     ), With<Region>>,
     camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    dimension_map: Res<DimensionEntityMap>,
     id_query: Query<&StrId>,
     river_debug: Option<Res<RiverDebugData>>,
 ) {
@@ -55,15 +71,18 @@ pub fn regions_list_window(
         BTreeMap::new();
 
     for (entity, _region, dim_ref, region_pos, name, grid, claim_list, planned_tiles, chunks_active, counts, &region_state, timeout_timer, empty_timer) in region_query.iter() {
-        let dim_key = if let Ok(str_id) = id_query.get(dim_ref.0) {
-            format!("{} ({})", str_id.as_str(), dim_ref.0.index())
-        } else {
-            format!("{:?} ({})", dim_ref, dim_ref.0.index())
-        };
+        let dim_key = region_dim_key_for_ref(dim_ref, &dimension_map, &id_query);
 
         regions_by_dimension
             .entry(dim_key.clone())
-            .or_insert_with(|| (dim_ref.0, HashMap::new()))
+            .or_insert_with(|| {
+                let dim_ent = dimension_map
+                    .0
+                    .get_cloned(dim_ref.0)
+                    .ok()
+                    .unwrap_or(Entity::PLACEHOLDER);
+                (dim_ent, HashMap::new())
+            })
             .1
             .insert(*region_pos, (entity, name, grid, claim_list, planned_tiles, chunks_active, counts, region_state, timeout_timer, empty_timer));
     }
@@ -92,11 +111,7 @@ pub fn regions_list_window(
     // Sort dimensions with camera dimension first
     let mut sorted_dims: Vec<_> = regions_by_dimension.keys().cloned().collect();
     if let Some(camera_ref) = camera_dim_ref {
-        let camera_dim_key = if let Ok(camera_str_id) = id_query.get(camera_ref.0) {
-            format!("{} ({})", camera_str_id.as_str(), camera_ref.0.index())
-        } else {
-            format!("{:?} ({})", camera_ref, camera_ref.0.index())
-        };
+        let camera_dim_key = region_dim_key_for_ref(camera_ref, &dimension_map, &id_query);
         sorted_dims.sort_by(|a, b| {
             if a == &camera_dim_key { std::cmp::Ordering::Less }
             else if b == &camera_dim_key { std::cmp::Ordering::Greater }
@@ -117,12 +132,7 @@ pub fn regions_list_window(
             for dim_key in sorted_dims.iter() {
                 if let Some((_, regions_map)) = regions_by_dimension.get(dim_key) {
                     let is_camera_dim = camera_dim_ref.map_or(false, |camera_ref| {
-                        let camera_key = if let Ok(camera_str_id) = id_query.get(camera_ref.0) {
-                            format!("{} ({})", camera_str_id.as_str(), camera_ref.0.index())
-                        } else {
-                            format!("{:?} ({})", camera_ref, camera_ref.0.index())
-                        };
-                        dim_key == &camera_key
+                        dim_key == &region_dim_key_for_ref(camera_ref, &dimension_map, &id_query)
                     });
                     let header_label = format!("{} - {} regions", dim_key, regions_map.len());
                     egui::CollapsingHeader::new(&header_label)

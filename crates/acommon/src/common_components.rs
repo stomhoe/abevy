@@ -19,6 +19,7 @@ pub struct HotReload;
 pub struct SparedFromHotReloading;
 
 #[derive(Component, Debug, Default, Clone, Copy, Serialize, Deserialize)]
+#[require(AddHashIdFromStrId, bevy_replicon::prelude::Replicated)]
 pub struct RemoveReplicatedAfterClone;
 
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
@@ -128,6 +129,24 @@ pub enum Grounding {
     Swimming,
     Floating,
 }
+
+#[derive(
+    Component,
+    Debug,
+    Clone,
+    Deserialize,
+    Serialize,
+    Reflect,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    MapEntities,
+)]
+pub struct TemplEntiRef(#[entities] pub Entity);
+
+#[derive(Component, Debug, Clone, Deserialize, Serialize, Copy, PartialEq, Eq, Hash)]
+pub struct TemplEntiHashIdRef(pub HashId);
 impl From<u8> for Grounding {
     fn from(value: u8) -> Self {
         match value {

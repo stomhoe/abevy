@@ -64,7 +64,7 @@ pub fn init_animations(
 
         let ent = cmd.spawn_empty().id();
 
-        main_comps.push((ent, (AcAnimation, str_id.clone(), ChildOf(anim_holder))));
+        main_comps.push((ent, (AcAnimation, HotReload, AssetScoped, RemoveReplicatedAfterClone, str_id, ChildOf(anim_holder))));
 
         if let Some(y_sort) = y_sort {
             cmd.entity(ent).insert(YSortOrigin(y_sort));

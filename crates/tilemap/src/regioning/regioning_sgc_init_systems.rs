@@ -126,6 +126,7 @@ pub fn init_structured_gen_configs(
     map: Res<StructuredGenConfigEntityMap>,
     sgc_command_registry: Res<SgcCommandRegistry>,
     dimension_entity_map: Res<DimensionEntityMap>,
+    dimension_hash_query: Query<&HashId, With<Dimension>>,
     egui_holder_query: Query<Entity, With<EguiSgcsHolder>>,
     _opfilter_entity_map: Res<OpFilterEntityMap>,
 ) {
@@ -184,7 +185,11 @@ pub fn init_structured_gen_configs(
                     error!(target: SGC_INIT, "Failed to find Dimension with StrId: {}", dim_strid);
                     continue;
                 };
-                dim_refs.0.insert(dim_ent);
+                let Ok(&dim_hash) = dimension_hash_query.get(dim_ent) else {
+                    error!(target: SGC_INIT, "Dimension '{}' resolved to entity {:?} but it is missing HashId", dim_strid, dim_ent);
+                    continue;
+                };
+                dim_refs.0.insert(dim_hash);
             }
             if dim_refs.0.is_empty() {
                 continue;

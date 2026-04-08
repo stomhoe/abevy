@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use common::common_components::HashId;
 use std::f32::consts::PI;
 
 use crate::terrain::{
@@ -10,6 +11,7 @@ use ::tilemap_shared::*;
 pub fn process_concentric_pattern(
     pos_search: TerrProbeJob,
     templ: &TerrProbeTempl,
+    filtered_op: HashId,
     root_oplist: DimensionRootOplist,
     radius_step: f32,
     sample_spacing: f32,
@@ -37,7 +39,7 @@ pub fn process_concentric_pattern(
                     gpos: pos_search.search_start_pos,
                 },
                 purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {
-                    filtered_op: templ.opfilter_ref.0,
+                    filtered_op,
                     requester: pos_search.requester,
                     max_emitted_results: templ.max_emitted_results,
                     mark_last_success_in_batch: false,
@@ -62,7 +64,7 @@ pub fn process_concentric_pattern(
                         )),
                 },
                 purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {
-                    filtered_op: templ.opfilter_ref.0,
+                    filtered_op,
                     requester: pos_search.requester,
                     max_emitted_results: templ.max_emitted_results,
                     mark_last_success_in_batch: false,

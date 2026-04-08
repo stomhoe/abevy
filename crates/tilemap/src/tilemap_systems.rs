@@ -19,6 +19,7 @@ use crate::{
         tile_delete_others_systems::TileDeleteOthersParamSet,
         tile_despawn_systems::*,
         tile_shader::tile_shader_components::*,
+        tile_shader::tile_shader_resources::TileShaderEntityMap,
     },
     tile::U16TileIndex,
     tilemap_resources::*,
@@ -47,6 +48,8 @@ pub struct SystemResources<'w> {
     pub loaded_chunks: Res<'w, LoadedChunks>,
     pub state: Res<'w, State<ClientState>>,
     pub tmap_map: ResMut<'w, TmapMap>,
+    pub dimension_map: Res<'w, DimensionEntityMap>,
+    pub tile_shader_map: Res<'w, TileShaderEntityMap>,
 }
 
 #[derive(SystemParam)]
@@ -145,12 +148,13 @@ pub fn process_tiles_pre(
         let to_persist = tile_components.persisted_query.get(bundle.templ_ref.0).is_ok();
         let min_dists = tile_components.min_dists_query.get(bundle.templ_ref.0).ok();
         let keep_distance_from = tile_components.keep_distance_query.get(bundle.templ_ref.0).ok();
-        let Ok(&_dim_hash) = tile_components.hash_id_query.get(bundle.dim_ref.0) else {
-            error_once!(target: TILEMAP_SYSTEM, "Dimension entity {} is despawned", bundle.dim_ref.0);
+        let _dim_hash = bundle.dim_ref.0;
+        if resources.dimension_map.0.get_cloned(_dim_hash).is_err() {
+            error_once!(target: TILEMAP_SYSTEM, "Dimension hash {} is missing from DimensionEntityMap", _dim_hash);
             cmd.entity(tile_ent).try_despawn();
             resources.collected_tiles.0.swap_remove(i);
             continue;
-        };
+        }
 
         if !resources.regpos_map.check_min_distances(
             &mut cmd,
@@ -188,7 +192,12 @@ pub fn process_tiles_pre(
 
         if to_persist {
             if is_host {
-                child_ofs_to_insert.push((tile_ent, ChildOf(bundle.dim_ref.0)));
+                let Ok(dimension_ent) = resources.dimension_map.0.get_cloned(bundle.dim_ref.0) else {
+                    cmd.entity(tile_ent).try_despawn();
+                    resources.collected_tiles.0.swap_remove(i);
+                    continue;
+                };
+                child_ofs_to_insert.push((tile_ent, ChildOf(dimension_ent)));
                 to_insert_replicated.push((tile_ent, Replicated));
                 if is_spritetile{
                     let interaction_zones = tile_components.interaction_zones_query.get(bundle.templ_ref.0).ok();
@@ -290,7 +299,10 @@ pub fn process_tiles_pre(
         let Some(shader_ref) = mapkey.shader_ref() else {
             continue;
         };
-        let Ok(shader) = params.shader_query.get(shader_ref.0) else {
+        let Ok(shader_ent) = resources.tile_shader_map.0.get_cloned(shader_ref.0) else {
+            continue;
+        };
+        let Ok(shader) = params.shader_query.get(shader_ent) else {
             continue;
         };
         if !matches!(shader, TileShader::TerrBlend(_)) {
@@ -322,7 +334,13 @@ pub fn process_tiles_pre(
 
     for mapkey in locals.changed_structs.drain() {
         let shader = if let Some(shader_ref) = mapkey.shader_ref() {
-            params.shader_query.get(shader_ref.0).ok().map(|(shader)| shader.clone())
+            resources
+                .tile_shader_map
+                .0
+                .get_cloned(shader_ref.0)
+                .ok()
+                .and_then(|shader_ent| params.shader_query.get(shader_ent).ok())
+                .map(|shader| shader.clone())
         } else {
             None
         };

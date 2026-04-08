@@ -90,24 +90,28 @@ impl WanderSeri {
         has_avoid_blacklisted_spawn_tiles: bool,
         bit_ref: Option<&crate::BitRef>,
         race_ref: Option<&crate::RaceRef>,
+        bit_map: &crate::BeingInstTemplateEntityMap,
+        race_map: &crate::RaceEntityMap,
         blacklisted_spawn_tile_tags_query: &Query<&BlacklistedSpawnTileTags>,
     ) -> BlacklistedTags {
         let mut avoid_tile_tags = BlacklistedTags::new(&self.avoid_tile_tags);
         if !has_avoid_blacklisted_spawn_tiles {
             return avoid_tile_tags;
         }
-        if let Some(bit_ref) = bit_ref {
-            if let Ok(bit_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(bit_ref.0) {
+        if let Some(bit_ref) = bit_ref
+            && let Ok(bit_ent) = bit_map.0.get_cloned(bit_ref.0)
+            && let Ok(bit_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(bit_ent)
+        {
                 if !bit_blacklisted_spawn_tile_tags.0.is_empty() {
                     avoid_tile_tags.extend_from(&bit_blacklisted_spawn_tile_tags.0);
                     return avoid_tile_tags;
                 }
-            }
         }
-        if let Some(race_ref) = race_ref {
-            if let Ok(race_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(race_ref.0) {
-                avoid_tile_tags.extend_from(&race_blacklisted_spawn_tile_tags.0);
-            }
+        if let Some(race_ref) = race_ref
+            && let Ok(race_ent) = race_map.0.get_cloned(race_ref.0)
+            && let Ok(race_blacklisted_spawn_tile_tags) = blacklisted_spawn_tile_tags_query.get(race_ent)
+        {
+            avoid_tile_tags.extend_from(&race_blacklisted_spawn_tile_tags.0);
         }
         avoid_tile_tags
     }

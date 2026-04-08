@@ -62,11 +62,12 @@ pub fn camera_zoom_system(
     }
 }
 
-use tilemap_shared::{Dimension, DimensionRef, GlobalTilePos };
+use tilemap_shared::{Dimension, DimensionEntityMap, DimensionRef, GlobalTilePos };
 
 #[allow(unused_parens, )]
 pub fn hide_nonvisualized_dimension(
     camera_curr_dimension: Query<&DimensionRef, With<CameraTarget>>,
+    dimension_map: Res<DimensionEntityMap>,
     mut dimensions: Query<(Entity, &mut Visibility, ), (With<Dimension>)>,
 ) {
     if camera_curr_dimension.is_empty() {
@@ -76,8 +77,11 @@ pub fn hide_nonvisualized_dimension(
         error!("Failed to get camera current dimension, multiple camera targets");
         return;
     };
+    let Ok(camera_dimension_ent) = dimension_map.0.get_cloned(camera_curr_dimension.0) else {
+        return;
+    };
     for (dimension_ent, mut visibility, ) in dimensions.iter_mut() {
-        if camera_curr_dimension.0 != dimension_ent {
+        if camera_dimension_ent != dimension_ent {
             *visibility = Visibility::Hidden;
         }
         else {

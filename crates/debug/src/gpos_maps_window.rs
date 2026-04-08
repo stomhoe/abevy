@@ -1,7 +1,9 @@
 use bevy::prelude::*;
+use bevy::ecs::system::SystemParam;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use camera::camera_components::CameraTarget;
 use bevy_ecs_tilemap::tiles::TileFlip;
+use common::common_components::HashId;
 use ::being_shared::*;
 
 use game_common::game_common_components::TemplEntiRef;
@@ -15,7 +17,7 @@ pub struct GposMapsUiState {
     cell_px: f32,
     fit_grids_to_window: bool,
     follow_camera_target: bool,
-    center_dim: Entity,
+    center_dim: HashId,
     center_x: i32,
     center_y: i32,
 }
@@ -26,7 +28,7 @@ impl Default for GposMapsUiState {
             cell_px: 16.0,
             fit_grids_to_window: true,
             follow_camera_target: true,
-            center_dim: Entity::PLACEHOLDER,
+            center_dim: HashId::default(),
             center_x: 0,
             center_y: 0,
         }
@@ -106,6 +108,24 @@ fn paint_grid(
     clicked
 }
 
+#[derive(SystemParam)]
+pub struct GposMapsQueries<'w, 's> {
+    tile_instance_query: Query<'w, 's, (&'static TemplEntiRef, &'static GlobalTilePos, Option<&'static TileFlip>)>,
+    walk_speed: Query<'w, 's, &'static WalkSpeedMultIfOnTop>,
+    tile_interaction_zones: Query<'w, 's, (&'static InteractionZones, &'static tilemap_shared::SizeInTiles)>,
+    being_query: Query<'w, 's, (Entity, &'static DimensionRef, &'static GlobalTilePos, Option<&'static InteractionZones>, Option<&'static BitRef>, Option<&'static RaceRef>, Has<being_shared::HumanControlled>), With<Being>>,
+    zone_sources: Query<'w, 's, &'static InteractionZones>,
+    camera_target_query: Query<'w, 's, (&'static DimensionRef, &'static GlobalTransform), With<CameraTarget>>,
+    being_dim_pos: Query<'w, 's, (&'static DimensionRef, &'static Transform)>,
+}
+
+#[derive(SystemParam)]
+pub struct GposMapsLocals<'s> {
+    terrain_blocked: Local<'s, HashSet<(i32, i32)>>,
+    melee_zone_tiles: Local<'s, HashSet<(i32, i32)>>,
+    ui_state: Local<'s, GposMapsUiState>,
+}
+
 pub fn gpos_maps_window_system(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
@@ -113,17 +133,26 @@ pub fn gpos_maps_window_system(
     beings_at_gpos: Res<BeingsAtGpos>,
     items_at_gpos: Res<ItemsAtGpos>,
     mut tile_gathering: TileGatheringParamSet,
-    tile_instance_query: Query<(&TemplEntiRef, &GlobalTilePos, Option<&TileFlip>)>,
-    walk_speed: Query<&WalkSpeedMultIfOnTop>,
-    tile_interaction_zones: Query<(&InteractionZones, &tilemap_shared::SizeInTiles)>,
-    being_query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&InteractionZones>, Option<&BitRef>, Option<&RaceRef>, Has<being_shared::HumanControlled>), With<Being>>,
-    zone_sources: Query<&InteractionZones>,
-    camera_target_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
-    being_dim_pos: Query<(&DimensionRef, &Transform)>,
-    mut terrain_blocked: Local<HashSet<(i32, i32)>>,
-    mut melee_zone_tiles: Local<HashSet<(i32, i32)>>,
-    mut ui_state: Local<GposMapsUiState>,
+    queries: GposMapsQueries,
+    bit_map: Res<BeingInstTemplateEntityMap>,
+    race_map: Res<RaceEntityMap>,
+    mut locals: GposMapsLocals,
 ) {
+    let GposMapsQueries {
+        tile_instance_query,
+        walk_speed,
+        tile_interaction_zones,
+        being_query,
+        zone_sources,
+        camera_target_query,
+        being_dim_pos,
+    } = queries;
+    let GposMapsLocals {
+        terrain_blocked,
+        melee_zone_tiles,
+        ui_state,
+    } = &mut locals;
+
     if !window_visible.gpos_maps {
         return;
     }
@@ -199,13 +228,15 @@ pub fn gpos_maps_window_system(
                             .cloned()
                             .or_else(|| {
                                 bit_ref
-                                    .and_then(|bit_ref| zone_sources.get(bit_ref.0).ok())
+                                    .and_then(|bit_ref| bit_map.0.get_cloned(bit_ref.0).ok())
+                                    .and_then(|bit_ent| zone_sources.get(bit_ent).ok())
                                     .and_then(|zones| zones.0.get(InteractionZones::MELEE_ATTACK).ok())
                                     .cloned()
                             })
                             .or_else(|| {
                                 race_ref
-                                    .and_then(|race_ref| zone_sources.get(race_ref.0).ok())
+                                    .and_then(|race_ref| race_map.0.get_cloned(race_ref.0).ok())
+                                    .and_then(|race_ent| zone_sources.get(race_ent).ok())
                                     .and_then(|zones| zones.0.get(InteractionZones::MELEE_ATTACK).ok())
                                     .cloned()
                             })

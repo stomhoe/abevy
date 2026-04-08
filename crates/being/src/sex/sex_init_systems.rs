@@ -15,7 +15,7 @@ pub fn init_sexes(
             let ingame_name = DisplayName(sex_seri.name.clone());
             let description = sex_seri.description.as_ref().map(|d| Description(d.clone()));
 
-            let mut entity_cmds = cmd.spawn((Sex, str_id.clone(), ingame_name));
+            let mut entity_cmds = cmd.spawn((Sex, str_id.clone(), AddHashIdFromStrId, ingame_name));
 
             if let Some(desc) = description {
                 entity_cmds.insert(desc);

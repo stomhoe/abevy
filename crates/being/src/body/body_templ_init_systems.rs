@@ -43,6 +43,8 @@ pub fn init_templ_bodys(
         let body_ent = cmd.spawn_empty().id();
         cmd.entity(body_ent).insert((
             body_id.clone(),
+            AddHashIdFromStrId,
+            HashId::from(body_id.as_str()),
             Body,
             Templ,
             build_being_interaction_zones(
@@ -119,7 +121,8 @@ pub fn init_templ_bodys(
             error!(target: BODY_BUILD, "Body '{}' references abstract bodytree '{}'; use a derived concrete tree instead", body_id, bodytree_str_id);
             continue;
         }
-        cmd.entity(body_ent).insert(BodyTreeRef(bodytree_ent));
+        cmd.entity(body_ent)
+            .insert(BodyTreeRef(HashId::from(bodytree_str_id.as_str())));
         debug!(target: BODY_BUILD, "Body '{}' uses shared bodytree '{}'", body_id, bodytree_str_id);
     }
 }

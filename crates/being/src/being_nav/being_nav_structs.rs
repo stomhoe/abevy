@@ -276,9 +276,9 @@ impl crate::being_nav::being_nav_resources::AiNavGrids {
         &self,
         from_pos: GlobalTilePos,
         to_pos: GlobalTilePos,
-        dim: ::tilemap_shared::DimensionRef,
+        dim: Entity,
     ) -> bool {
-        let Some(cache) = self.by_dim.get(&dim.0) else {
+        let Some(cache) = self.by_dim.get(&dim) else {
             return true;
         };
         let Some((start, goal)) = cache.local_path_points(from_pos, to_pos) else {

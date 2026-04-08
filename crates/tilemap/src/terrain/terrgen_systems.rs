@@ -1,6 +1,6 @@
 use bevy::{ecs::entity::EntityHashMap, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use camera::camera_components::CameraTarget;
-use common::{common_components::{HashId, StrId}, common_tag_components::HashedTagsVec};
+use common::{common_components::{HashId, HashIdMap}, common_tag_components::HashedTagsVec};
 use common::log_targets::TERRGEN_SYSTEM;
 use std::mem::take;
 
@@ -9,6 +9,7 @@ use crate::{
     terrain::{
         terrprobe::opfilter::opfilter_components::OpFilter,
         operation_list::operation_list_components::*,
+        operation_list::operation_list_resources::OperationListEntityMap,
         terrprobe::terrprobe_messages::*,
         terrgen_async_resources::*,
         terrgen_components::*,
@@ -21,21 +22,22 @@ use crate::{
         terrgen_messages::*,
         terrgen_resources::*,
     },
+    tile::{tile_components::*, tile_sampler_components::*, tile_resources::*},
     tilemap_resources::{CloneSpawnParamSet, MassCollectedTiles},
 };
-use ::tilemap_shared::*;
 
 pub use crate::terrain::terrprobe::terrprobe_systems::search_suitable_positions;
 
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct TerrgenQueries<'w, 's> {
-	pub oplist_query: Query<'w, 's, (&'static OperationList, &'static OplistSize, Option<&'static HashedTagsVec>, &'static StrId), ()>,
-	pub fnl_noises: Query<'w, 's, &'static FnlNoiseComp>,
-	pub op_filters: Query<'w, 's, &'static OpFilter>,
+	pub oplist_query: Query<'w, 's, (&'static HashId, &'static OperationList, &'static OplistSize, Option<&'static HashedTagsVec>), ()>,
+	pub fnl_noises: Query<'w, 's, (&'static HashId, &'static FnlNoiseComp), ()>,
+	pub op_filters: Query<'w, 's, (&'static HashId, &'static OpFilter), ()>,
 	pub dim_hash_query: Query<'w, 's, &'static HashId, common::AnyDisabling>,
 	pub camera_query: Query<'w, 's, (&'static DimensionRef, &'static GlobalTransform), With<CameraTarget>>,
 	pub macro_chunk_biome_distributions: Query<'w, 's, &'static mut BiomeDistribution>,
 	pub macro_chunk_biome_sampling_states: Query<'w, 's, &'static mut MacrochunkPendingBiomeSamples>,
+	pub tile_hash_query: Query<'w, 's, (Entity, &'static HashId), Or<(With<Tile>, With<TileWeightedSampler>)>>,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
@@ -69,6 +71,8 @@ pub struct TerrgenLocalBuffers<'s> {
 pub fn launch_terrain_based_tile_generation_operations(
     mut chunks_query: Query<(Entity, &ChunkPos, &DimensionRef, &mut TerrGenState), (With<Chunk>, Changed<TerrGenState>)>,
     dimension_query: Query<(&DimensionRootOplist), ()>,
+    dimension_map: Res<DimensionEntityMap>,
+    oplist_map: Res<OperationListEntityMap>,
     oplist_size_query: Query<(&OplistSize), (With<OperationList>,)>,
     mut launch_queue: ResMut<TerrGenLaunchQueue>,
     blocked_terrgen_gpos: Res<TerrGenDisabledGposByChunk>,
@@ -79,11 +83,19 @@ pub fn launch_terrain_based_tile_generation_operations(
         if *terrgen_state != TerrGenState::Ready {
             continue;
         }
-        let Ok(&dim_root_op_list) = dimension_query.get(dim_ref.0) else {
+        let Ok(dim_ent) = dimension_map.0.get_cloned(dim_ref.0) else {
+            error_once!(target: TERRGEN_SYSTEM, "Missing Dimension entity for hash {:?}", dim_ref.0);
+            continue;
+        };
+        let Ok(&dim_root_op_list) = dimension_query.get(dim_ent) else {
             error_once!(target: TERRGEN_SYSTEM, "No root operation list for dimension {:?}", dim_ref);
             continue;
         };
-        let Ok(&oplist_size) = oplist_size_query.get(dim_root_op_list.0) else {
+        let Ok(root_oplist_ent) = oplist_map.0.get_cloned(dim_root_op_list.0) else {
+            error_once!(target: TERRGEN_SYSTEM, "Dimension references missing root operation list hash {:?}", dim_root_op_list.0);
+            continue;
+        };
+        let Ok(&oplist_size) = oplist_size_query.get(root_oplist_ent) else {
             error_once!(target: TERRGEN_SYSTEM, "Dimension references non-existent root operation list {:?}", dim_root_op_list);
             continue;
         };
@@ -114,8 +126,8 @@ pub fn process_pending_ops_and_collect_tiles(
     let oplist_query = &queries.oplist_query;
     let fnl_noises = &queries.fnl_noises;
     let op_filters = &queries.op_filters;
-    let dim_hash_query = &queries.dim_hash_query;
     let camera_query = &queries.camera_query;
+    let tile_hash_query = &queries.tile_hash_query;
     let collected = &mut resources.collected;
     let terrgen_tasks = &mut resources.terrgen_tasks;
     let debug_grid = &mut resources.debug_grid;
@@ -234,16 +246,24 @@ pub fn process_pending_ops_and_collect_tiles(
     for request in local_buffers.tile_requests.drain(..) {
         let dim_ref = request.pending.dimension_ref();
         let base_gpos = request.pending.gpos();
+        let mut tile_entities = HashIdMap::default();
+        for (tile_ent, hash_id) in tile_hash_query.iter() {
+            let _ = tile_entities.overwrite(*hash_id, tile_ent);
+        }
         collected.collect_tiles_at_positions(
             &mut cmd,
-            request.bif_tiles.into_iter().map(|tile_ent| {
+            request.bif_tiles.into_iter().filter_map(|tile_hash| {
+                let Ok(tile_ent) = tile_entities.get(tile_hash) else {
+                    error!(target: TERRGEN_SYSTEM, "Tile hash {:?} not found in local tile hash map", tile_hash);
+                    return None;
+                };
                 let offset = param_set
                     .terrgen_offsets
-                    .get(tile_ent)
+                    .get(*tile_ent)
                     .copied()
                     .unwrap_or_default()
                     .0;
-                (tile_ent, base_gpos + offset)
+                Some((*tile_ent, base_gpos + offset))
             }),
             dim_ref,
             &param_set,
@@ -327,11 +347,9 @@ pub fn process_pending_ops_and_collect_tiles(
     if local_buffers.pending_ops_batch.is_empty() { return; }
 
     let task_context = build_terrgen_task_context(
-        &local_buffers.pending_ops_batch,
         &oplist_query,
         &fnl_noises,
         &op_filters,
-        &dim_hash_query,
     );
 
     let pending_ops_batch = take(&mut *local_buffers.pending_ops_batch);

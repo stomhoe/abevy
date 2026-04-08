@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use common::common_components::StrId;
+use common::common_components::{AddHashIdFromStrId, HashId, StrId};
 
 use faction_shared::Faction;
 
@@ -12,6 +12,7 @@ use crate::{
 pub fn spawn_faction_instance_from_template(
     mut cmd: Commands,
     requests: Query<(Entity, &FitRef, Option<&SpawnFactionInstanceFromTemplate>), Added<FitRef>>,
+    fit_map: Res<FactionInstTemplEntityMap>,
     fit_query: Query<(
         &StrId,
         Option<&FactionTemplateTags>,
@@ -29,6 +30,9 @@ pub fn spawn_faction_instance_from_template(
     let mut requester_links = Vec::new();
 
     for (_request_ent, fit_ref, spawn_request) in requests.iter() {
+        let Ok(fit_ent) = fit_map.0.get_cloned(fit_ref.0) else {
+            continue;
+        };
         let Ok((
             template_id,
             template_tags,
@@ -37,19 +41,22 @@ pub fn spawn_faction_instance_from_template(
             is_player_joinable,
             bit_weightmap,
             rpg_profile,
-        )) = fit_query.get(fit_ref.0)
+        )) = fit_query.get(fit_ent)
         else {
             continue;
         };
 
         let faction_ent = cmd.spawn_empty().id();
         let instance_id = StrId::trunc(format!("{}_{}", template_id.as_str(), faction_ent.index()));
+        let instance_hash = HashId::from(instance_id.as_str());
 
         let mut ins = cmd.entity(faction_ent);
         ins.insert((
             Faction,
             instance_id,
-            FactionInstancedFromTemplate(fit_ref.0),
+            instance_hash,
+            AddHashIdFromStrId,
+            FactionInstancedFromTemplate(fit_ent),
             FactionInstanceTemplateId(template_id.clone()),
         ));
 

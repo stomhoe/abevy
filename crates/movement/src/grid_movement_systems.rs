@@ -100,7 +100,7 @@ pub fn resolve_overlapping_beings(
     }
 
     duplicate_positions.sort_unstable_by_key(|((dim_ref, gpos), _)| {
-        (dim_ref.0.to_bits(), gpos.0.x, gpos.0.y)
+        (dim_ref.0.as_u64(), gpos.0.x, gpos.0.y)
     });
 
     let mut corrected_beings = 0usize;

@@ -249,19 +249,7 @@ pub fn claim_chunks_for_river_structures(
                 cmd.entity(ent).despawn();
                 continue;
             };
-            let Ok(&dimension_hash) = dimension_hash_q.get(dimension_ref.0) else {
-                error!(
-                    target: RIVER_SYSTEM,
-                    "Probe {:?} region {:?} dim {:?}: missing dimension hash",
-                    ent,
-                    req.region_pos,
-                    dimension_ref
-                );
-                claim_state.skipped_offers.push((req.region_ent, req.offer_i as usize));
-                river_debug.mark_probe_finished(dimension_ref, req.region_pos, req.start_chunk);
-                cmd.entity(ent).despawn();
-                continue;
-            };
+            let dimension_hash = dimension_ref.0;
             let Some(region_info_ro) = river_debug.0.get(&(dimension_ref, req.region_pos)) else {
                 error!(
                     target: RIVER_SYSTEM,
@@ -422,16 +410,7 @@ pub fn river_structure_building_system(
             forced_chunk_biomes: Vec::new(),
         };
 
-        let Ok(&dimension_hash) = dimension_hash_q.get(order.dimension_ref.0) else {
-            error!(
-                target: RIVER_SYSTEM,
-                "Order {}: missing dimension hash for {:?}",
-                order.i,
-                order.dimension_ref
-            );
-            compliances_to_emit.push(compliance);
-            continue;
-        };
+        let dimension_hash = order.dimension_ref.0;
 
         let river_tile_id = cfg.args
             .get("river_tile_id")

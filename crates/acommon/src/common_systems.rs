@@ -60,10 +60,9 @@ pub fn clone_and_tell_server(
 ) {
     for entity in query.iter() {
         let cloned = cmd.entity(entity).clone_and_spawn_with_opt_out(|builder| {
-            builder.deny::<Replicated>();
-            builder.deny::<RemoveReplicatedAfterClone>();
+            builder.deny::<(RemoveReplicatedAfterClone, Replicated)>();
         }).id();
-        debug!(
+        trace!(
             target: ENTITY_MAP_SYSTEM,
             "Cloned replicated entity {:?} locally as {:?} and requested server removal",
             entity,
@@ -86,6 +85,6 @@ pub fn remove_replicated_after_clone_from_client(
             "Server removing Replicated from entity {:?} on client request",
             being_ent
         );
-        cmd.entity(being_ent).try_remove::<Replicated>();
+        cmd.entity(being_ent).try_remove::<(Replicated, RemoveReplicatedAfterClone)>();
     }
 }

@@ -6,7 +6,7 @@ use crate::tile::{self, tile_shader::*};
 use serde::{Deserialize, Serialize};
 
 pub type TileShaderRef = tile::tile_shader::tile_shader_resources::TileShaderRef;
-impl Default for TileShaderRef { fn default() -> Self { Self(Entity::PLACEHOLDER) } }
+impl Default for TileShaderRef { fn default() -> Self { Self(HashId::default()) } }
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 #[require(AssetScoped, Prefix::trunc("TileShader"), Replicated)]

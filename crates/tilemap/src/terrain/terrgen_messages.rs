@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use common::common_components::HashId;
 use ::tilemap_shared::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -16,7 +17,7 @@ pub struct PendingOpInput {
 
 #[derive(Debug, Clone, Copy)]
 pub struct PendingOpValueProbe {
-    pub filtered_op: Entity,
+    pub filtered_op: HashId,
     pub requester: Entity,
     pub max_emitted_results: u32,
     pub mark_last_success_in_batch: bool,
@@ -56,10 +57,10 @@ impl PendingOp {
         self.input.gpos
     }
 
-    pub fn filtered_op(&self) -> Entity {
+    pub fn filtered_op(&self) -> HashId {
         match self.purpose {
             PendingOpPurpose::ValueProbe(probe) => probe.filtered_op,
-            _ => Entity::PLACEHOLDER,
+            _ => HashId::default(),
         }
     }
 
@@ -92,6 +93,6 @@ impl PendingOp {
     }
 
     pub fn filtered_op_is_placeholder(&self) -> bool {
-        self.filtered_op() == Entity::PLACEHOLDER
+        self.filtered_op() == HashId::default()
     }
 }

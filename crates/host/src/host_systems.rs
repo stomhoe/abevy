@@ -3,6 +3,7 @@ use std::{mem, };
 use bevy_replicon_renet::{RenetServer, netcode::NetcodeServerTransport};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use common::common_components::HashId;
 use common::common_states::{AssetLoading, GamePhase} ;
 use faction::faction_resources::FactionRef;
 use faction_shared::Faction;
@@ -41,16 +42,16 @@ pub fn on_server_start_successful(
 
 #[allow(unused_parens, )]
 pub fn host_on_player_connect(on_connected_client: On<Add, ConnectedClient>,
-    mut cmd: Commands, host_faction: Query<(Entity ), (With<Faction>, With<Mine>)>,
+    mut cmd: Commands, host_faction_hash: Query<&HashId, (With<Faction>, With<Mine>)>,
 ) {
 
-    let Ok(host_faction) = host_faction.single()
+    let Ok(&host_faction_hash) = host_faction_hash.single()
     else {
-        error!(target: "host_systems", "Failed to get host faction for assigning to connected client");
+        error!(target: "host_systems", "Failed to get host faction hash for assigning to connected client");
         return;
     };
 
-    cmd.entity(on_connected_client.entity).insert((Player, FactionRef(host_faction)));
+    cmd.entity(on_connected_client.entity).insert((Player, FactionRef(host_faction_hash)));
     info!(target: "host_systems", "(HOST) `{}` connected", on_connected_client.entity);
 
 }

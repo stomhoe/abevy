@@ -5,14 +5,12 @@ use ::sprite_shared::*;
 
 
 common::define_entity_map_systems!(
-    SpriteConfig,
-    (With<game_common::game_common_components::Templ>, ),
-    Sc,
-    "sprite_config",
-    "",
-    SpriteConfig,
-    common::common_components::StrId,
-    SpriteConfigSeri,
-    "seri.sprite.config",
-    "sprite.ron",
+    main_component: SpriteConfig,
+    with_filters: (With<game_common::game_common_components::Templ>, ),
+    abbreviation: Sc,
+    target: "sprite_config",
+    entity_prefix: "",
+    despawn_trigger: SpriteConfig,
+    id_type: common::common_components::StrId,
+    assets: [(SpriteConfigSeri, "seri.sprite.config", "sprite.ron")],
 );

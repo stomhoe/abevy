@@ -5,7 +5,7 @@ use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use ::being_shared::*;
 use common::log_targets::BEING_SYSTEM;
-use common::common_components::StrId;
+use common::common_components::{HashId, StrId};
 use game_common::Templ;
 use game_common::game_common_components::TemplEntiRef;
 use param_sets::BlockingTileParamSet;
@@ -37,6 +37,8 @@ pub(crate) struct InstancePackQueries<'w, 's> {
     pack_spawn_radius_query: Query<'w, 's, &'static PackSpawnRadius>,
     no_spawn_squad_query: Query<'w, 's, (), With<NoSpawnSquadEntity>>,
     spawn_count_query: Query<'w, 's, (&'static PackInitialSizeSampler, )>,
+    hash_query: Query<'w, 's, &'static HashId>,
+    dim_map: Res<'w, DimensionEntityMap>,
 }
 
 #[derive(SystemParam)]
@@ -274,9 +276,13 @@ pub fn instance_pack_entities(
         let mut spawned_members = 0usize;
         for (spawn_target, gpos) in locals.spawn_assignments.drain(..) {
             let gpos_chunk = gpos.to_chunkpos();
+            let Ok(dim_ent) = queries.dim_map.0.get_cloned(msg.dim_ref.0) else {
+                error!(target: BEING_SYSTEM, "Could not resolve DimensionRef hash {:?} when instancing source {:?}", msg.dim_ref.0, source_ent);
+                continue;
+            };
             let being_ent = cmd
                 .spawn((
-                    BeingBundle::new(msg.dim_ref, gpos),
+                    BeingBundle::new(msg.dim_ref, dim_ent, gpos),
                     Disabled,
                     NaturalSpawnOrigin(gpos_chunk),
                     spawn_group_id,
@@ -290,9 +296,17 @@ pub fn instance_pack_entities(
             let target_is_bit = is_bit_target || queries.bit_query.get(spawn_target).is_ok();
             let target_is_race = is_race_target || queries.race_query.get(spawn_target).is_ok();
             if target_is_bit {
-                cmd.entity(being_ent).insert(BitRef(spawn_target));
+                let Ok(&spawn_target_hash) = queries.hash_query.get(spawn_target) else {
+                    error!(target: BEING_SYSTEM, "Sampled BIT target {:?} is missing HashId", spawn_target);
+                    continue;
+                };
+                cmd.entity(being_ent).insert(BitRef(spawn_target_hash));
             } else if target_is_race {
-                cmd.entity(being_ent).insert(RaceRef(spawn_target));
+                let Ok(&spawn_target_hash) = queries.hash_query.get(spawn_target) else {
+                    error!(target: BEING_SYSTEM, "Sampled Race target {:?} is missing HashId", spawn_target);
+                    continue;
+                };
+                cmd.entity(being_ent).insert(RaceRef(spawn_target_hash));
             } else {
                 error!(target: BEING_SYSTEM, "Sampled spawn target {:?} for source {:?} is neither BIT nor Race template", spawn_target, source_ent);
             }

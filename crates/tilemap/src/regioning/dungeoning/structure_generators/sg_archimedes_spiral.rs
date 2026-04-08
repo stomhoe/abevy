@@ -127,10 +127,7 @@ pub fn archimedes_spiral_building_system(
             .args
             .parse_arg("border_seal_margin", carve_margin);
 
-        let Ok(&dimension_hash) = dimension_hash.get(build_order.dimension_ref.0) else {
-            error!(target: "dungeoning", "Dimension entity {:?} has no HashId component for archimedes spiral dungeon", build_order.dimension_ref);
-            continue;
-        };
+        let dimension_hash = build_order.dimension_ref.0;
 
         let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);

@@ -11,6 +11,12 @@ pub struct TileWeightedSamplerSeri {
 }
 
 define_entity_map_systems!(
-    TileWeightedSampler,
-    TileWeightedSamplerSeri, "seri.tilemap.tile.weighted_sampler", "tsampler.ron",
+    main_component: TileWeightedSampler,
+    with_filters: (),
+    abbreviation: TileWeightedSampler,
+    target: "",
+    entity_prefix: "tile weighted sampler",
+    despawn_trigger: TileWeightedSampler,
+    id_type: common::common_components::StrId,
+    assets: [(TileWeightedSamplerSeri, "seri.tilemap.tile.weighted_sampler", "tsampler.ron")]
 );

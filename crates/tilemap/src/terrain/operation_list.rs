@@ -36,5 +36,6 @@ pub fn plugin(app: &mut App) {
             ).chain(),
             ).in_set(OperationListSystems)
         )
+        .register_type::<OperationList>()
     ;
 }

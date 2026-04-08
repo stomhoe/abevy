@@ -81,11 +81,17 @@ pub struct AlternatingStartFramesState(pub Vec<usize>);
 pub struct SaveAnimationProgress;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-#[require(HotReload, AssetScoped, Replicated, Prefix::trunc("Animation"),   )]
+#[require(Prefix::trunc("Anim"), )]
 pub struct AcAnimation;
 
 
 
 common::define_entity_map_systems!(
-    AcAnimation
+    main_component: AcAnimation,
+    with_filters: (),
+    abbreviation: AcAnimation,
+    target: common::log_targets::ENTITY_MAP_SYSTEM,
+    entity_prefix: "anim",
+    despawn_trigger: AcAnimation,
+    id_type: common::common_components::StrId,
 );

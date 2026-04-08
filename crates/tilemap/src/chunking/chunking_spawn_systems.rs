@@ -76,6 +76,7 @@ fn insert_border_chunk_positions(
 pub fn spawn_activated_chunks(
     mut cmd: Commands,
     query: Query<(&ActivatingChunks, &DimensionRef, ), Changed<ActivatingChunks>>,
+    dimension_map: Res<DimensionEntityMap>,
     macro_chunk_holder_query: Query<&MacroChunkHolderRef>,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut loaded_macro_chunks: ResMut<LoadedMacroChunks>,
@@ -97,7 +98,11 @@ pub fn spawn_activated_chunks(
                 }
                 let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
                 let macro_chunk_key = (dimension_ref, macro_chunk_pos);
-                let Ok(macro_chunk_holder_ref) = macro_chunk_holder_query.get(dimension_ref.0) else {
+                let Ok(dimension_ent) = dimension_map.0.get_cloned(dimension_ref.0) else {
+                    error!(target: CHUNK_ACTIVATION, "Dimension hash {:?} is not present in DimensionEntityMap", dimension_ref.0);
+                    continue;
+                };
+                let Ok(macro_chunk_holder_ref) = macro_chunk_holder_query.get(dimension_ent) else {
                     error!(target: CHUNK_ACTIVATION, "Dimension {:?} has no MacroChunkHolderRef for macrochunk {}", dimension_ref, macro_chunk_pos);
                     continue;
                 };
@@ -134,7 +139,7 @@ pub fn spawn_activated_chunks(
                             Region,
                             Name::new(format!("{:?}", region_pos)),
                             Transform::default(),
-                            ChildOf(dimension_ref.0),
+                            ChildOf(dimension_ent),
                             dimension_ref,
                         )));
                         loaded_regions.0.insert(region_key, region_ent);

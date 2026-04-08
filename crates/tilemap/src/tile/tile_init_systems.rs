@@ -138,8 +138,8 @@ pub fn init_tiles(
 
         if !seri.color_map.is_empty() {
             match color_map.0.get_cloned(&seri.color_map) {
-                Ok(color_sampler_ent) => {
-                    cmd.entity(tile_enti).insert(ColorSamplerRef(color_sampler_ent));
+                Ok(_) => {
+                    cmd.entity(tile_enti).insert(ColorSamplerRef(HashId::from(seri.color_map.as_str())));
                 }
                 Err(_err) => {
                     error!("Tile '{}': Weighted color sampler with id '{}' not found in ColorSamplerEntityMap", str_id, seri.color_map);
@@ -238,7 +238,8 @@ pub fn init_tiles(
                     error!("Tile '{}' could not resolve single terrbl shader entity", str_id);
                     return;
                 };
-                cmd.entity(tile_enti).insert(TileShaderRef(shader_ent));
+                let _ = shader_ent;
+                cmd.entity(tile_enti).insert(TileShaderRef(HashId::from("terrbl")));
             }
             cmd.entity(tile_enti).insert_if_new((TileColor::from(color), ));
         } else {

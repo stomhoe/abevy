@@ -14,6 +14,7 @@ use tilemap::chunking::chunking_components::*;
 use tilemap_shared::*;
 use tilemap::tile::tile_components::*;
 use tilemap::tile::tile_shader::tile_shader_components::TileShaderRef;
+use tilemap::tile::tile_shader::tile_shader_resources::TileShaderEntityMap;
 
 // Color palette for unique tile types - readable and distinct colors
 const TILE_COLORS: &[egui::Color32] = &[
@@ -44,6 +45,20 @@ fn short_tile_label(str_id: &str) -> String {
     };
     let last = str_id.chars().last().unwrap_or(first);
     format!("{}{}", first, last)
+}
+
+fn dimension_name_for_ref(
+    dim_ref: &DimensionRef,
+    dimension_map: &DimensionEntityMap,
+    id_query: &Query<&StrId>,
+) -> String {
+    let Some(dim_ent) = dimension_map.0.get_cloned(dim_ref.0).ok() else {
+        return format!("{:?}", dim_ref);
+    };
+    id_query
+        .get(dim_ent)
+        .map(|s| s.as_str().to_string())
+        .unwrap_or_else(|_| format!("{:?}", dim_ref))
 }
 
 #[allow(unused_parens)]
@@ -314,7 +329,9 @@ pub fn debug_chunking_window(
     ), With<Chunk>>,
 
     camera_dimension: Query<(&DimensionRef, &GlobalTransform, Option<&LoadChunksAround>), With<CameraTarget>>,
+    dimension_map: Res<DimensionEntityMap>,
     loaded_chunks: Res<LoadedChunks>,
+    tile_shader_map: Res<TileShaderEntityMap>,
     // Query for child entities to check their components
     tile_storage_query: Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
     tile_query: Query<(Entity, &TemplEntiRef, Option<&InitialPos>), With<Tile>>,
@@ -344,20 +361,14 @@ pub fn debug_chunking_window(
             (Some(dim_ref), Some(chunk_pos), Some(tile_pos), chunk_settings.copied())
         })
         .unwrap_or((None, None, None, None));
-    let camera_dim_name = camera_dim_ref.and_then(|camera_ref| {
-        id_query.get(camera_ref.0).ok().map(|s| s.as_str().to_string())
-    });
+    let camera_dim_name = camera_dim_ref.as_ref().map(|camera_ref| dimension_name_for_ref(camera_ref, &dimension_map, &id_query));
 
     // Group chunks by dimension and position
     let mut chunks_by_dimension: BTreeMap<String, HashMap<ChunkPos, (Entity, Option<&Children>, Option<&Tilemaps>, Option<&TilesToSave>, TerrGenState, Option<&ActivatingChunks>)>> =
         BTreeMap::new();
 
     for (entity, _chunk, dim_ref, chunk_pos, children, tilemaps, tiles_to_save, terrgen_state, activating_chunks) in chunk_query.iter() {
-        let dim_name = if let Ok(str_id) = id_query.get(dim_ref.0) {
-            str_id.as_str().to_string()
-        } else {
-            format!("{:?}", dim_ref)
-        };
+        let dim_name = dimension_name_for_ref(&dim_ref, &dimension_map, &id_query);
 
         chunks_by_dimension
             .entry(dim_name)
@@ -379,8 +390,8 @@ pub fn debug_chunking_window(
     // Sort dimensions with camera dimension first
     let mut sorted_dims: Vec<_> = chunks_by_dimension.keys().cloned().collect();
     if let Some(camera_ref) = camera_dim_ref {
-        if let Ok(camera_str_id) = id_query.get(camera_ref.0) {
-            let camera_dim_str = camera_str_id.as_str().to_string();
+        let camera_dim_str = dimension_name_for_ref(&camera_ref, &dimension_map, &id_query);
+        if !camera_dim_str.is_empty() {
             sorted_dims.sort_by(|a, b| {
                 if a == &camera_dim_str { std::cmp::Ordering::Less }
                 else if b == &camera_dim_str { std::cmp::Ordering::Greater }
@@ -442,11 +453,7 @@ pub fn debug_chunking_window(
             for dim_key in sorted_dims.iter() {
                 if let Some(chunks_map) = chunks_by_dimension.get(dim_key) {
                     let is_camera_dim = camera_dim_ref.map_or(false, |camera_ref| {
-                        if let Ok(camera_str_id) = id_query.get(camera_ref.0) {
-                            dim_key == &camera_str_id.as_str().to_string()
-                        } else {
-                            false
-                        }
+                        dim_key == &dimension_name_for_ref(camera_ref, &dimension_map, &id_query)
                     });
                     egui::CollapsingHeader::new(dim_key)
                         .default_open(is_camera_dim)
@@ -561,13 +568,15 @@ pub fn debug_chunking_window(
                                                 label.push_str(&format!(" [Z: {:.1}]", z.0));
                                             }
                                             if let Some(shader_ref) = shader_ref
-                                                && let Ok(shader_str) = id_query.get(shader_ref.0)
+                                                && let Ok(shader_ent) = tile_shader_map.0.get_cloned(shader_ref.0)
+                                                && let Ok(shader_str) = id_query.get(shader_ent)
                                             {
                                                 label.push_str(&format!(" [Shader: {}]", shader_str.as_str()));
                                             }
 
                                             let shader_key = shader_ref
-                                                .and_then(|s| id_query.get(s.0).ok().map(|id| id.as_str().to_string()))
+                                                .and_then(|s| tile_shader_map.0.get_cloned(s.0).ok())
+                                                .and_then(|shader_ent| id_query.get(shader_ent).ok().map(|id| id.as_str().to_string()))
                                                 .unwrap_or_else(|| "none".to_string());
                                             let z_key = ac_z.map(|z| format!("{:.3}", z.0)).unwrap_or_else(|| "none".to_string());
                                             let tilemap_type = format!(
@@ -685,11 +694,7 @@ pub fn debug_chunking_window(
                 let mut chunks_by_dim: BTreeMap<String, Vec<(Entity, ChunkPos)>> = BTreeMap::new();
 
                 for ((dim_ref, chunk_pos), entity) in loaded_chunks.0.iter() {
-                    let dim_str_id = if let Ok(str_id) = id_query.get(dim_ref.0) {
-                        str_id.as_str().to_string()
-                    } else {
-                        format!("{:?}", dim_ref)
-                    };
+                    let dim_str_id = dimension_name_for_ref(dim_ref, &dimension_map, &id_query);
 
                     chunks_by_dim
                         .entry(dim_str_id)

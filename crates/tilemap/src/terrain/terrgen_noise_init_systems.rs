@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use ::fnl::*;
-use common::common_components::{Prefix, StrId};
+use common::common_components::{AddHashIdFromStrId, Prefix, StrId};
 use tilemap_shared::GlobalGenSettings;
 use crate::terrain::{
     TerrgenEntityMap,
@@ -137,8 +137,13 @@ pub fn init_noises(
             noise_ent,
             (
                 str_id.clone(),
-                FnlNoiseComp(noise, seri.tect),
+                common::AssetScoped,
+                common::RemoveReplicatedAfterClone,
+                FnlNoiseComp { fnl: noise, is_tect: seri.tect },
                 ChildOf(holder),
+                Terrgen,
+                Prefix::trunc("Noise"),
+                common::HotReload,
             ),
         ));
     }

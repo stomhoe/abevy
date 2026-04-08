@@ -62,13 +62,9 @@ pub fn claim_chunks_for_various_dungeon_types(
             continue;
         };
 
-        let Ok(dimension_hash) = dimension_hash.get(dimension_ref.0) else {
-            warn!(target: "dungeoning", "Dimension entity {:?} has no HashId component when claiming chunks for structure spawn, skipping", dimension_ref.0);
-            mark_skipped(offer.region_ent, offer.i);
-            continue;
-        };
+        let dimension_hash = dimension_ref.0;
 
-        let seed = center_chunk.hash_value(&settings, *dimension_hash, 0);
+        let seed = center_chunk.hash_value(&settings, dimension_hash, 0);
         let mut rng = rand_pcg::Pcg64Mcg::seed_from_u64(seed);
 
         let min_side_length = structured_gen_cfg
