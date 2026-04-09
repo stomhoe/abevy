@@ -91,6 +91,28 @@ fn format_expr(expr: &Expr, indent: usize) -> String {
                 .join(", ");
             format!("idxmax({})", args)
         }
+        Expr::IndexMaxIslands { values } => {
+            let args = values.iter()
+                .map(|v| format_expr_compact(v))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("idxmaxislands({})", args)
+        }
+        Expr::IslandDiff { values } => {
+            let args = values.iter()
+                .map(|v| format_expr_compact(v))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("islanddiff({})", args)
+        }
+        Expr::RemapRange { value, input_min, input_max, output_min, output_max } => {
+            format!("remap({}, {}, {}, {}, {})",
+                format_expr_compact(value),
+                format_expr_compact(input_min),
+                format_expr_compact(input_max),
+                format_expr_compact(output_min),
+                format_expr_compact(output_max))
+        }
         Expr::IndexNorm { value, multiplier } => {
             format!("idxnorm({}, {})",
                 format_expr_compact(value),
@@ -160,6 +182,28 @@ fn format_expr_compact(expr: &Expr) -> String {
                 .collect::<Vec<_>>()
                 .join(", ");
             format!("idxmax({})", args)
+        }
+        Expr::IndexMaxIslands { values } => {
+            let args = values.iter()
+                .map(format_expr_compact)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("idxmaxislands({})", args)
+        }
+        Expr::IslandDiff { values } => {
+            let args = values.iter()
+                .map(format_expr_compact)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("islanddiff({})", args)
+        }
+        Expr::RemapRange { value, input_min, input_max, output_min, output_max } => {
+            format!("remap({}, {}, {}, {}, {})",
+                format_expr_compact(value),
+                format_expr_compact(input_min),
+                format_expr_compact(input_max),
+                format_expr_compact(output_min),
+                format_expr_compact(output_max))
         }
         Expr::Linear { values } => {
             let args = values.iter()

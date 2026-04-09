@@ -12,5 +12,4 @@ common::define_entity_map_systems!(
     entity_prefix: "",
     despawn_trigger: SpriteConfig,
     id_type: common::common_components::StrId,
-    assets: [(SpriteConfigSeri, "seri.sprite.config", "sprite.ron")],
 );

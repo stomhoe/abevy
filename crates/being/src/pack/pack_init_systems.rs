@@ -1,6 +1,7 @@
 use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::*};
 use ::being_shared::*;
 use common::common_components::StrId;
+use common::common_id_components::HashId;
 use game_common::{
     game_common_components::Templ,
 };
@@ -36,13 +37,35 @@ pub fn init_packs(
     let mut min_dists_by_pack: EntityHashMap<PackMinSepToPacksOrRaces> = EntityHashMap::default();
 
     for pack_seri in &pack_seris {
-        let str_id = StrId::trunc(&pack_seri.id);
-        let pack_entity = cmd.spawn((Pack, Templ, str_id.clone())).id();
+        let str_id = match StrId::new_with_result(pack_seri.id.trim(), 0) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!(
+                    target: "pack_init",
+                    "Skipping pack with invalid id '{}': {}",
+                    pack_seri.id,
+                    err,
+                );
+                continue;
+            }
+        };
+        let pack_entity = cmd.spawn((Pack, Templ, str_id.clone(), )).id();
         pack_by_id.insert(str_id, pack_entity);
     }
 
     for pack_seri in &pack_seris {
-        let str_id = StrId::trunc(&pack_seri.id);
+        let str_id = match StrId::new_with_result(pack_seri.id.trim(), 0) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!(
+                    target: "pack_init",
+                    "Skipping pack init pass for invalid id '{}': {}",
+                    pack_seri.id,
+                    err,
+                );
+                continue;
+            }
+        };
         let Some(&pack_entity) = pack_by_id.get(&str_id) else {
             continue;
         };
@@ -99,7 +122,10 @@ pub fn init_packs(
             let Ok(resolved_ent) = resolved_ent else {
                 continue;
             };
-            being_sampler.0.insert(resolved_ent, weight);
+            let resolved_hash = HashId::from(trimmed);
+            if let Err(negative_items) = being_sampler.0.insert(resolved_hash, weight) {
+                tilemap_shared::log_negative_weighted_sampler_items!("being_pack_init", pack_seri.id.as_str(), vec![negative_items]);
+            }
             leader_priority.0.insert(resolved_ent, CappedNormalDist::from_seri(priority.clone()));
             if min_count > 0 || max_count < u32::MAX {
                 let max_count = if max_count == u32::MAX {
@@ -133,8 +159,21 @@ pub fn init_packs(
         }
 
         if !pack_seri.behavior_on_member_attack.trim().is_empty() {
+            let behavior_str_id = match StrId::new_with_result(pack_seri.behavior_on_member_attack.trim(), 0) {
+                Ok(behavior_str_id) => behavior_str_id,
+                Err(err) => {
+                    error!(
+                        target: "pack_init",
+                        "Pack '{}' has invalid behavior_on_member_attack id '{}': {}",
+                        str_id,
+                        pack_seri.behavior_on_member_attack,
+                        err,
+                    );
+                    continue;
+                }
+            };
             cmd.entity(pack_entity)
-                .insert(PackOnPreyedOnBehavior(StrId::trunc(&pack_seri.behavior_on_member_attack)));
+                .insert(PackOnPreyedOnBehavior(behavior_str_id));
         }
         cmd.entity(pack_entity).insert((
             PackAttackAlertEffectivenessFalloff(pack_seri.attack_alert_effectiveness_falloff.max(0.0)),
@@ -153,7 +192,20 @@ pub fn init_packs(
             if trimmed.is_empty() {
                 continue;
             }
-            if let Some(&other_pack_ent) = pack_by_id.get(&StrId::trunc(trimmed)) {
+            let target_str_id = match StrId::new_with_result(trimmed, 0) {
+                Ok(target_str_id) => target_str_id,
+                Err(err) => {
+                    error!(
+                        target: "pack_init",
+                        "Pack '{}' has invalid chunk_separation target id '{}': {}",
+                        str_id,
+                        target_id,
+                        err,
+                    );
+                    continue;
+                }
+            };
+            if let Some(&other_pack_ent) = pack_by_id.get(&target_str_id) {
                 min_dists.insert(other_pack_ent, *min_inbetween_chunks);
                 continue;
             }
@@ -173,12 +225,23 @@ pub fn init_packs(
             let Ok(mut biome_pack_sampler) = biome_pack_samplers.get_mut(biome_ent) else {
                 continue;
             };
-            biome_pack_sampler.add_affinity(pack_entity, *weight);
+            biome_pack_sampler.add_affinity(HashId::from(pack_seri.id.as_str()), *weight);
         }
     }
 
     for race_seri in load_race_seri_defs() {
-        let race_id = StrId::trunc(&race_seri.id);
+        let race_id = match StrId::new_with_result(race_seri.id.trim(), 0) {
+            Ok(race_id) => race_id,
+            Err(err) => {
+                error!(
+                    target: "pack_init",
+                    "Skipping race membership mapping due to invalid race id '{}': {}",
+                    race_seri.id,
+                    err,
+                );
+                continue;
+            }
+        };
         let Ok(race_ent) = race_emap.0.get_cloned(&race_id) else {
             continue;
         };
@@ -187,13 +250,30 @@ pub fn init_packs(
             if trimmed.is_empty() {
                 continue;
             }
-            let Some(&pack_ent) = pack_by_id.get(&StrId::trunc(trimmed)) else {
+            let pack_str_id = match StrId::new_with_result(trimmed, 0) {
+                Ok(pack_str_id) => pack_str_id,
+                Err(err) => {
+                    error!(
+                        target: "pack_init",
+                        "Race '{}' references invalid pack id '{}': {}",
+                        race_id,
+                        pack_id,
+                        err,
+                    );
+                    continue;
+                }
+            };
+            let Some(&pack_ent) = pack_by_id.get(&pack_str_id) else {
                 continue;
             };
-            being_samplers_by_pack
+            if let Err(negative_item) = being_samplers_by_pack
                 .entry(pack_ent)
                 .or_default()
-                .0.insert(race_ent, 1.0);
+                .0
+                .insert(HashId::from(race_id.as_str()), 1.0)
+            {
+                tilemap_shared::log_negative_weighted_sampler_items!("being_pack_init", race_id.as_str(), vec![negative_item]);
+            }
             rank_sampler_by_pack
                 .entry(pack_ent)
                 .or_default()
@@ -202,7 +282,18 @@ pub fn init_packs(
     }
 
     for bit_seri in load_bit_seri_defs() {
-        let bit_id = StrId::trunc(&bit_seri.id);
+        let bit_id = match StrId::new_with_result(bit_seri.id.trim(), 0) {
+            Ok(bit_id) => bit_id,
+            Err(err) => {
+                error!(
+                    target: "pack_init",
+                    "Skipping bit membership mapping due to invalid bit id '{}': {}",
+                    bit_seri.id,
+                    err,
+                );
+                continue;
+            }
+        };
         let Ok(bit_ent) = bit_emap.0.get_cloned(&bit_id) else {
             continue;
         };
@@ -211,13 +302,30 @@ pub fn init_packs(
             if trimmed.is_empty() {
                 continue;
             }
-            let Some(&pack_ent) = pack_by_id.get(&StrId::trunc(trimmed)) else {
+            let pack_str_id = match StrId::new_with_result(trimmed, 0) {
+                Ok(pack_str_id) => pack_str_id,
+                Err(err) => {
+                    error!(
+                        target: "pack_init",
+                        "Bit '{}' references invalid pack id '{}': {}",
+                        bit_id,
+                        pack_id,
+                        err,
+                    );
+                    continue;
+                }
+            };
+            let Some(&pack_ent) = pack_by_id.get(&pack_str_id) else {
                 continue;
             };
-            being_samplers_by_pack
+            if let Err(negative_item) = being_samplers_by_pack
                 .entry(pack_ent)
                 .or_default()
-                .0.insert(bit_ent, 1.0);
+                .0
+                .insert(HashId::from(bit_id.as_str()), 1.0)
+            {
+                tilemap_shared::log_negative_weighted_sampler_items!("being_pack_init", bit_id.as_str(), vec![negative_item]);
+            }
             rank_sampler_by_pack
                 .entry(pack_ent)
                 .or_default()

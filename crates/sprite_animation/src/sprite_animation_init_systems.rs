@@ -58,13 +58,26 @@ pub fn init_animations(
             error!(target: SPRITE_ANIMATION_INIT, "Skipping animation with empty id from '{}'", def.rel_path);
             continue;
         }
-        let str_id = StrId::trunc(std::mem::take(&mut seri.id));
+        let raw_anim_id = std::mem::take(&mut seri.id);
+        let str_id = match StrId::new_with_result(raw_anim_id.as_str(), 0) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!(
+                    target: SPRITE_ANIMATION_INIT,
+                    "Skipping animation '{}' from '{}' due to invalid StrId: {}",
+                    raw_anim_id,
+                    def.rel_path,
+                    err,
+                );
+                continue;
+            }
+        };
 
         let y_sort = seri.y_sort();
 
         let ent = cmd.spawn_empty().id();
 
-        main_comps.push((ent, (AcAnimation, HotReload, AssetScoped, RemoveReplicatedAfterClone, str_id, ChildOf(anim_holder))));
+        main_comps.push((ent, (AcAnimation, SelectedForHotReload, AssetScoped, ReplicateIfServerStarts, str_id.hash_id(), str_id, ChildOf(anim_holder))));
 
         if let Some(y_sort) = y_sort {
             cmd.entity(ent).insert(YSortOrigin(y_sort));

@@ -1,0 +1,17 @@
+sprite mahuhe0 {
+name "Human male head 0"
+mapped_anims {
+    south idle g _ = mahuhe0_s_idle
+    west idle g _ = mahuhe0_w_idle
+    east idle g _ = mahuhe0_e_idle
+    north idle g _ = mahuhe0_n_idle
+}
+parent_cat body
+tags head
+children_sprites []
+shares_tag []
+directionable true
+movement_based false
+grounding_based false
+baseline_move_speed 250.0
+}

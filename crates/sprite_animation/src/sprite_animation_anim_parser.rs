@@ -71,7 +71,7 @@ pub fn load_animation_defs_from_filesystem() -> Vec<LoadedAnimationDef> {
 
         for parsed in parsed_defs {
             if let Some(prev) = raw_by_id.insert(parsed.id.clone(), parsed) {
-                debug!(target: SPRITE_ANIMATION_INIT, "Animation '{}' overridden: '{}' -> '{}'", prev.id, prev.rel_path, source.rel_path);
+                info!(target: SPRITE_ANIMATION_INIT, "Animation '{}' overridden: '{}' -> '{}'", prev.id, prev.rel_path, source.rel_path);
             }
         }
     }
@@ -102,7 +102,7 @@ pub fn load_animation_defs_from_filesystem() -> Vec<LoadedAnimationDef> {
     if out.is_empty() {
         error!(target: SPRITE_ANIMATION_INIT, "No animation defs loaded from filesystem");
     } else {
-        debug!(target: SPRITE_ANIMATION_INIT, "Loaded {} animation defs from filesystem", out.len());
+        trace!(target: SPRITE_ANIMATION_INIT, "Loaded {} animation defs from filesystem", out.len());
     }
 
     out

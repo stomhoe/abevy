@@ -1,4 +1,5 @@
 use bevy::ecs::entity::MapEntities;
+use bevy::ecs::{lifecycle::HookContext, world::DeferredWorld};
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 #[allow(unused_imports)]
@@ -13,14 +14,19 @@ pub use crate::common_id_components::*;
 pub struct AssetScoped;
 
 #[derive(Component, Clone, Default)]
-pub struct HotReload;
+pub struct SelectedForHotReload;
 
 #[derive(Component, Clone, Default)]
-pub struct SparedFromHotReloading;
+pub struct EguiHolder;
+
+#[derive(Component, Debug, Default, Clone, Copy, Serialize, Deserialize)]
+
+pub struct ReplicateIfServerStarts;
 
 #[derive(Component, Debug, Default, Clone, Copy, Serialize, Deserialize)]
 #[require(AddHashIdFromStrId, bevy_replicon::prelude::Replicated)]
 pub struct RemoveReplicatedAfterClone;
+
 
 #[derive(Component, Clone, Default, Serialize, Deserialize, Reflect)]
 pub struct DisplayName(pub String);

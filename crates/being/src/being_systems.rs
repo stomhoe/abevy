@@ -1,35 +1,78 @@
 use ::being_shared::*;
 use faction_shared::Faction;
 use ::tilemap_shared::GlobalTilePos;
-use bevy::{ecs::{entity::{EntityHashMap, EntityHashSet}, entity_disabling::Disabled}, prelude::*};
-use common::common_components::{HashId, StrId};
+use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
+use common::common_components::{DisplayName, HashId, StrId};
 use common::log_targets::BEING_SYSTEM;
 use faction::faction_resources::{FactionEntityMap, FactionRef};
 use game_common::Templ;
 use game_common::game_common_components::TemplEntiRef;
 
+fn missing_gpos_entity_label(
+    ent: Entity,
+    str_id: Option<&StrId>,
+    hash_id: Option<&HashId>,
+    display_name: Option<&DisplayName>,
+) -> String {
+    let mut label = format!("Being {:?}", ent);
+    if let Some(str_id) = str_id {
+        label.push_str(&format!(" StrId={}", str_id.as_str()));
+    }
+    if let Some(hash_id) = hash_id {
+        label.push_str(&format!(" HashId={}", hash_id));
+    }
+    if let Some(display_name) = display_name {
+        label.push_str(&format!(" DisplayName={}", display_name));
+    }
+    label
+}
+
 #[allow(unused_parens, )]
 pub fn validate_added_beings_have_gpos(
-    query: Query<(Entity, Option<&StrId>, Has<GlobalTilePos>, ), (LoadedBeing, ),>,
-    added_being: Query<Entity, (Added<Being>, )>,
-    mut removed_disabled: RemovedComponents<Disabled>,
-    mut removed_unloaded: RemovedComponents<Unloaded>,
-    mut to_iter: Local<EntityHashSet>,
+    query: Query<(Entity, Option<&StrId>, Option<&HashId>, Option<&DisplayName>, Has<GlobalTilePos>, ), (LoadedBeing, ),>,
+    time: Res<Time>,
+    mut missing_gpos_timers: Local<EntityHashMap<Timer>>,
+    mut loaded_beings: Local<EntityHashSet>,
 ) {
-    to_iter.extend(added_being.iter());
-    to_iter.extend(removed_disabled.read());
-    to_iter.extend(removed_unloaded.read());
-    for (ent, str_id, has_gpos, ) in query.iter_many(to_iter.drain()) {
+    loaded_beings.clear();
+
+    let iter = query.iter();
+    let loaded_count = iter.size_hint().1.unwrap_or(iter.size_hint().0);
+    loaded_beings.reserve(loaded_count);
+
+    for (ent, str_id, hash_id, display_name, has_gpos, ) in iter {
+        loaded_beings.insert(ent);
+
         if has_gpos {
+            missing_gpos_timers.remove(&ent);
             continue;
         }
-        error_once!(
-            target: BEING_SYSTEM,
-            "Added Being {:?} {} missing required components: GlobalTilePos={}",
-            ent,
-            str_id.map(StrId::as_str).unwrap_or("<no-strid>"),
-            has_gpos,
-        );
+
+        let timer = missing_gpos_timers
+            .entry(ent)
+            .or_insert_with(|| Timer::from_seconds(4.0, TimerMode::Once));
+        if timer.is_finished() {
+            continue;
+        }
+        timer.tick(time.delta());
+        if timer.is_finished() {
+            error!(
+                target: BEING_SYSTEM,
+                "{} still missing GlobalTilePos after 4s",
+                missing_gpos_entity_label(ent, str_id, hash_id, display_name),
+            );
+        }
+    }
+
+    let mut stale_ents = Vec::new();
+    for ent in missing_gpos_timers.keys().copied() {
+        if loaded_beings.iter().any(|loaded_ent| *loaded_ent == ent) {
+            continue;
+        }
+        stale_ents.push(ent);
+    }
+    for ent in stale_ents {
+        missing_gpos_timers.remove(&ent);
     }
 }
 

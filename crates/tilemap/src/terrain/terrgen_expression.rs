@@ -72,6 +72,19 @@ pub enum Expr {
     /// Index of maximum value
     IndexMax { values: Vec<Expr> },
 
+    /// Index of maximum score where each island value competes against
+    /// the mean of the remaining islands.
+    /// Operand order is [ocean_threshold, island_0, island_1, ...].
+    IndexMaxIslands { values: Vec<Expr> },
+
+    /// Stable per-island score:
+    /// islanddiff(index, island_0, island_1, ...) = island[index] - mean(other islands)
+    IslandDiff { values: Vec<Expr> },
+
+    /// Remap a value from one range into another, clamped to the output range.
+    /// remap(value, input_min, input_max, output_min, output_max)
+    RemapRange { value: Box<Expr>, input_min: Box<Expr>, input_max: Box<Expr>, output_min: Box<Expr>, output_max: Box<Expr> },
+
     /// Index normalized to range
     IndexNorm { value: Box<Expr>, multiplier: Box<Expr> },
 
@@ -86,6 +99,16 @@ pub enum Expr {
 }
 
 impl Expr {
+    fn remap_clamped(value: f32, input_min: f32, input_max: f32, output_min: f32, output_max: f32) -> f32 {
+        let input_span = input_max - input_min;
+        if !input_span.is_finite() || input_span.abs() < f32::EPSILON {
+            return output_min;
+        }
+
+        let t = ((value - input_min) / input_span).clamp(0.0, 1.0);
+        output_min + t * (output_max - output_min)
+    }
+
     /// Evaluate the expression recursively
     pub fn eval(&self, context: &EvalContext) -> f32 {
         match self {
@@ -207,6 +230,79 @@ impl Expr {
                 max_idx as f32
             }
 
+            Expr::IndexMaxIslands { values } => {
+                if values.is_empty() {
+                    return 0.0;
+                }
+
+                let ocean_threshold = values[0].eval(context);
+                if values.len() == 1 {
+                    return 0.0;
+                }
+
+                let island_values: Vec<f32> = values[1..].iter().map(|v| v.eval(context)).collect();
+                let islands_count = island_values.len();
+                if islands_count == 0 {
+                    return 0.0;
+                }
+                let total_island_sum: f32 = island_values.iter().sum();
+
+                let mut max_idx = 0usize;
+                let mut max_val = ocean_threshold;
+
+                for (island_i, island_value) in island_values.iter().enumerate() {
+                    let score = if islands_count > 1 {
+                        let other_mean = (total_island_sum - island_value) / (islands_count as f32 - 1.0);
+                        island_value - other_mean
+                    } else {
+                        *island_value
+                    };
+                    if score > max_val {
+                        max_val = score;
+                        max_idx = island_i + 1;
+                    }
+                }
+
+                max_idx as f32
+            }
+
+            Expr::IslandDiff { values } => {
+                if values.len() < 2 {
+                    return 0.0;
+                }
+                let raw_index = values[0].eval(context);
+                if !raw_index.is_finite() {
+                    return 0.0;
+                }
+                let island_values: Vec<f32> = values[1..].iter().map(|v| v.eval(context)).collect();
+                if island_values.is_empty() {
+                    return 0.0;
+                }
+
+                let index = raw_index.round() as isize;
+                if index < 0 || index >= island_values.len() as isize {
+                    return 0.0;
+                }
+                let index = index as usize;
+                let self_value = island_values[index];
+                if island_values.len() == 1 {
+                    return self_value;
+                }
+
+                let total_sum: f32 = island_values.iter().sum();
+                let other_mean = (total_sum - self_value) / (island_values.len() as f32 - 1.0);
+                self_value - other_mean
+            }
+
+            Expr::RemapRange { value, input_min, input_max, output_min, output_max } => {
+                let value = value.eval(context);
+                let input_min = input_min.eval(context);
+                let input_max = input_max.eval(context);
+                let output_min = output_min.eval(context);
+                let output_max = output_max.eval(context);
+                Self::remap_clamped(value, input_min, input_max, output_min, output_max)
+            }
+
             Expr::IndexNorm { value, multiplier } => {
                 value.eval(context) * multiplier.eval(context)
             }
@@ -264,10 +360,19 @@ impl Expr {
             | Expr::Max { values }
             | Expr::Average { values }
             | Expr::IndexMax { values }
+            | Expr::IndexMaxIslands { values }
+            | Expr::IslandDiff { values }
             | Expr::Linear { values } => {
                 for v in values {
                     v.collect_noise_hash_ids(out);
                 }
+            }
+            Expr::RemapRange { value, input_min, input_max, output_min, output_max } => {
+                value.collect_noise_hash_ids(out);
+                input_min.collect_noise_hash_ids(out);
+                input_max.collect_noise_hash_ids(out);
+                output_min.collect_noise_hash_ids(out);
+                output_max.collect_noise_hash_ids(out);
             }
             Expr::IndexNorm { value, multiplier } => {
                 value.collect_noise_hash_ids(out);

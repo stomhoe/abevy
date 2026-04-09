@@ -1,4 +1,4 @@
-anim tiger_south_idle {
+anim tiger_s_idle {
     img_path: "texture/being/npc/tiger.png"
     rows_cols: 4 4
     paused: true
@@ -8,7 +8,7 @@ anim tiger_south_idle {
     }
 }
 
-anim tiger_south_move {
+anim tiger_s_move {
     img_path: "texture/being/npc/tiger.png"
     rows_cols: 4 4
     clips {
@@ -16,7 +16,7 @@ anim tiger_south_move {
     }
 }
 
-anim tiger_north_idle {
+anim tiger_n_idle {
     img_path: "texture/being/npc/tiger.png"
     rows_cols: 4 4
     paused: true
@@ -26,7 +26,7 @@ anim tiger_north_idle {
     }
 }
 
-anim tiger_north_move {
+anim tiger_n_move {
     img_path: "texture/being/npc/tiger.png"
     rows_cols: 4 4
     clips {
@@ -34,7 +34,7 @@ anim tiger_north_move {
     }
 }
 
-anim tiger_west_idle {
+anim tiger_w_idle {
     img_path: "texture/being/npc/tiger.png"
     rows_cols: 4 4
     paused: true
@@ -44,7 +44,7 @@ anim tiger_west_idle {
     }
 }
 
-anim tiger_west_move {
+anim tiger_w_move {
     img_path: "texture/being/npc/tiger.png"
     rows_cols: 4 4
     clips {
@@ -52,7 +52,7 @@ anim tiger_west_move {
     }
 }
 
-anim tiger_east_idle {
+anim tiger_e_idle {
     img_path: "texture/being/npc/tiger.png"
     rows_cols: 4 4
     paused: true
@@ -62,7 +62,7 @@ anim tiger_east_idle {
     }
 }
 
-anim tiger_east_move {
+anim tiger_e_move {
     img_path: "texture/being/npc/tiger.png"
     rows_cols: 4 4
     clips {

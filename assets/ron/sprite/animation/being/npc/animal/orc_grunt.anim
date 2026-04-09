@@ -1,4 +1,4 @@
-anim orc_grunt_south_idle {
+anim orc_grunt_s_idle {
     img_path: "texture/being/npc/orc/orc_grunt.png"
     rows_cols: 4 8
     paused: true
@@ -8,7 +8,7 @@ anim orc_grunt_south_idle {
     }
 }
 
-anim orc_grunt_south_move {
+anim orc_grunt_s_move {
     img_path: "texture/being/npc/orc/orc_grunt.png"
     rows_cols: 4 8
     clips {
@@ -16,7 +16,7 @@ anim orc_grunt_south_move {
     }
 }
 
-anim orc_grunt_north_idle {
+anim orc_grunt_n_idle {
     img_path: "texture/being/npc/orc/orc_grunt.png"
     rows_cols: 4 8
     paused: true
@@ -26,7 +26,7 @@ anim orc_grunt_north_idle {
     }
 }
 
-anim orc_grunt_north_move {
+anim orc_grunt_n_move {
     img_path: "texture/being/npc/orc/orc_grunt.png"
     rows_cols: 4 8
     clips {
@@ -34,7 +34,7 @@ anim orc_grunt_north_move {
     }
 }
 
-anim orc_grunt_west_idle {
+anim orc_grunt_w_idle {
     img_path: "texture/being/npc/orc/orc_grunt.png"
     rows_cols: 4 8
     paused: true
@@ -44,7 +44,7 @@ anim orc_grunt_west_idle {
     }
 }
 
-anim orc_grunt_west_move {
+anim orc_grunt_w_move {
     img_path: "texture/being/npc/orc/orc_grunt.png"
     rows_cols: 4 8
     clips {
@@ -52,7 +52,7 @@ anim orc_grunt_west_move {
     }
 }
 
-anim orc_grunt_east_idle {
+anim orc_grunt_e_idle {
     img_path: "texture/being/npc/orc/orc_grunt.png"
     rows_cols: 4 8
     paused: true
@@ -62,7 +62,7 @@ anim orc_grunt_east_idle {
     }
 }
 
-anim orc_grunt_east_move {
+anim orc_grunt_e_move {
     img_path: "texture/being/npc/orc/orc_grunt.png"
     rows_cols: 4 8
     clips {

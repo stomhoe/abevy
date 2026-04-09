@@ -22,7 +22,6 @@ pub fn map_portal_tiles(
     >,
     tiles_map: Res<TileEntityMap>,
 ) {
-    info!("Mapping portal tiles");
     portals_templ_query.iter_mut().for_each(|(ent, str_id, portal_seri)| {
         let Ok(tile_ent) = tiles_map.0.get_cloned(&portal_seri.oe_tile) else {
             error!(
@@ -34,12 +33,6 @@ pub fn map_portal_tiles(
             );
             return;
         };
-        info!(
-            target: PORTAL_INIT,
-            "Mapping portal tile '{}' to destination dimension '{}'",
-            str_id,
-            portal_seri.dest_dimension
-        );
         let mut sampled_offsets = Vec::with_capacity(portal_seri.offset_pos_destinations.len().max(1));
         for (weight, (x, y)) in &portal_seri.offset_pos_destinations {
             sampled_offsets.push((GlobalTilePos::new(*x as i32, *y as i32), *weight));
@@ -53,7 +46,13 @@ pub fn map_portal_tiles(
             oe_portal_tile: tile_ent,
             terrprobe_ent: Entity::PLACEHOLDER,
             one_way: portal_seri.one_way,
-            sampler: GlobalTilePosWeightedSampler::new(&sampled_offsets),
+            sampler: {
+                let (sampler, negative_indices) = GlobalTilePosWeightedSampler::new(&sampled_offsets);
+                if !negative_indices.is_empty() {
+                    tilemap_shared::log_negative_weighted_sampler_indices!("portal_init", "portal_offsets", &sampled_offsets, negative_indices);
+                }
+                sampler
+            },
         });
     });
 }

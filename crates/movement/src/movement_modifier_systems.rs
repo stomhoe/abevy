@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::ClientState;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 
-use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker, resolve_modifier_component};
+use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker};
 use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::{InvertMovement, WalkSpeed};
 use tilemap_shared::*;
@@ -21,7 +21,7 @@ pub fn process_input_direction_modifiers(
         &mut InputInvMul,
     )>,
     applied_mods_query: Query<&AppliedModifiers, >,
-    modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>, ), (Without<Templ>, )>,
+    modifiers_query: Query<(Entity, Option<&TemplEntiRef>, ), (Without<Templ>, )>,
     curr_values_query: Query<&CurrEffectiveValue, >,
     apply_modes_query: Query<&ApplyMode, >,
     invert_markers_query: Query<(), With<InvertMovement>>,
@@ -53,17 +53,27 @@ pub fn process_input_direction_modifiers(
             collect_applied_modifier_entities(&mut effects, bodypart_ent, part_templ_ref, &applied_mods_query);
         }
         for effect in effects.iter() {
-            let Ok((modifier_ent, _, templ_ref, )) = modifiers_query.get(*effect)
+            let Ok((modifier_ent, templ_ref, )) = modifiers_query.get(*effect)
             else {
                 continue;
             };
             if !modifier_has_marker::<InvertMovement>(modifier_ent, templ_ref, &invert_markers_query) {
                 continue;
             }
-            let Some(curr_value) = resolve_modifier_component(modifier_ent, templ_ref, &curr_values_query) else {
+            let Ok(curr_value) = curr_values_query.get(modifier_ent).or_else(|_| {
+                let Some(templ_ref) = templ_ref else {
+                    return Err(());
+                };
+                curr_values_query.get(templ_ref.0).map_err(|_| ())
+            }) else {
                 continue;
             };
-            let Some(optype) = resolve_modifier_component(modifier_ent, templ_ref, &apply_modes_query) else {
+            let Ok(optype) = apply_modes_query.get(modifier_ent).or_else(|_| {
+                let Some(templ_ref) = templ_ref else {
+                    return Err(());
+                };
+                apply_modes_query.get(templ_ref.0).map_err(|_| ())
+            }) else {
                 continue;
             };
             let val = curr_value.0;
@@ -116,7 +126,7 @@ pub fn process_speed_modifiers(
         Has<ComputedLocally>,
     )>,
     applied_mods_query: Query<&AppliedModifiers, >,
-    modifiers_query: Query<(Entity, &ModifierTarget, Option<&TemplEntiRef>, ), (Without<Templ>, )>,
+    modifiers_query: Query<(Entity, Option<&TemplEntiRef>, ), (Without<Templ>, )>,
     curr_values_query: Query<&CurrEffectiveValue>,
     apply_modes_query: Query<&ApplyMode, >,
     walk_markers_query: Query<(), With<WalkSpeed>>,
@@ -127,6 +137,7 @@ pub fn process_speed_modifiers(
     mut effects: Local<EntityHashSet>,
     mut tile_gathering: TileGatheringParamSet,
 ) {
+    let is_client = state.get() == &ClientState::Connected;
     for (
         being_ent,
         &dim_ref,
@@ -139,7 +150,6 @@ pub fn process_speed_modifiers(
         controlled_locally,
     ) in being_query.iter_mut()
     {
-        let is_client = state.get() == &ClientState::Connected;
         if is_client && !controlled_locally {
             continue;
         }
@@ -167,7 +177,7 @@ pub fn process_speed_modifiers(
             collect_applied_modifier_entities(&mut effects, bodypart_ent, part_templ_ref, &applied_mods_query);
         }
         for effect in effects.iter() {
-            let Ok((modifier_ent, _, templ_ref, )) =
+            let Ok((modifier_ent, templ_ref, )) =
                 modifiers_query.get(*effect)
             else {
                 continue;
@@ -175,10 +185,20 @@ pub fn process_speed_modifiers(
             if !modifier_has_marker::<WalkSpeed>(modifier_ent, templ_ref, &walk_markers_query) {
                 continue;
             }
-            let Some(curr_value) = resolve_modifier_component(modifier_ent, templ_ref, &curr_values_query) else {
+            let Ok(curr_value) = curr_values_query.get(modifier_ent).or_else(|_| {
+                let Some(templ_ref) = templ_ref else {
+                    return Err(());
+                };
+                curr_values_query.get(templ_ref.0).map_err(|_| ())
+            }) else {
                 continue;
             };
-            let Some(optype) = resolve_modifier_component(modifier_ent, templ_ref, &apply_modes_query) else {
+            let Ok(optype) = apply_modes_query.get(modifier_ent).or_else(|_| {
+                let Some(templ_ref) = templ_ref else {
+                    return Err(());
+                };
+                apply_modes_query.get(templ_ref.0).map_err(|_| ())
+            }) else {
                 continue;
             };
             let mitigating = modifier_has_marker::<MitigatingOnly>(
@@ -215,8 +235,8 @@ pub fn process_speed_modifiers(
         final_speed /= total_weight_newtons;
 
         let mut tile_walk_mult: f32 = 1.0;
-        let tile_ents = tile_gathering.gather_tiles(dim_ref, *tile_pos).to_vec();
-        for tile_ent in tile_ents {
+        let tile_ents = tile_gathering.gather_tiles(dim_ref, *tile_pos);
+        for &tile_ent in tile_ents {
             let Ok(tile_cfg_ref) = templ_refs_query.get(tile_ent) else {
                 continue;
             };

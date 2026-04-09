@@ -7,6 +7,7 @@ use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugW
 
 use camera::camera_components::CameraTarget;
 use common::common_components::StrId;
+use tilemap::terrain::biome::BiomeEntityMap;
 use tilemap::chunking::{chunking_components::{Chunk, MacroChunk, MacroChunkRef, TerrGenState}, macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples}};
 use ::tilemap_shared::*;
 use ::being_shared::*;
@@ -34,6 +35,322 @@ struct MacroChunkCell {
 struct OriginBeingEntry {
     entity: Entity,
     label: String,
+}
+
+impl MacroChunkCell {
+    fn fill_color(&self) -> egui::Color32 {
+        match self.biome_sampling_state {
+            Some(MacrochunkPendingBiomeSamples(remaining_samples)) if remaining_samples > 0 => egui::Color32::from_rgb(170, 120, 60),
+            Some(_) => egui::Color32::from_rgb(52, 52, 52),
+            None if self.natural_origin_beings_count > 0 => egui::Color32::from_rgb(60, 140, 82),
+            None => egui::Color32::from_rgb(65, 105, 165),
+        }
+    }
+
+    fn stroke(&self, is_selected: bool, is_camera_macrochunk: bool) -> egui::Stroke {
+        if is_camera_macrochunk {
+            egui::Stroke::new(2.0, egui::Color32::YELLOW)
+        } else if is_selected {
+            egui::Stroke::new(1.5, egui::Color32::WHITE)
+        } else if self.chunk_states.iter().any(|(_, _, state)| *state != TerrGenState::Pending) {
+            egui::Stroke::new(1.0, egui::Color32::from_rgb(160, 200, 235))
+        } else {
+            egui::Stroke::new(0.5, egui::Color32::from_gray(35))
+        }
+    }
+
+    fn hover_text(&self) -> String {
+        let mut lines = vec![
+            format!("Macrochunk: {}", self.pos),
+            format!("Entity: {:?}", self.entity),
+            format!("Loaded: {}", self.loaded),
+            format!(
+                "Chunks finalized: {}/{}",
+                self.chunk_stats.finished_chunks + self.chunk_stats.disabled_chunks,
+                self.chunk_stats.total_chunks,
+            ),
+            format!("Natural origin beings: {}", self.natural_origin_beings_count),
+        ];
+        if self.biome_sampling_state.is_none() {
+            if let Some((biome_hash, weight)) = self
+                .biome_distribution
+                .produced_biome_sampler
+                .iter()
+                .max_by(|(_, lhs), (_, rhs)| lhs.partial_cmp(rhs).unwrap_or(Ordering::Equal))
+            {
+                lines.push(format!("Final dominant biome: {:?} ({:.2})", biome_hash, *weight));
+            }
+        } else {
+            lines.push("Biome finalization pending".to_string());
+        }
+        lines.join("\n")
+    }
+
+    fn render_chunk_states_map(
+        &self,
+        ui: &mut egui::Ui,
+        selected_chunk: Option<ChunkPos>,
+        current_chunk: Option<ChunkPos>,
+        origin_counts_by_chunk: &HashMap<ChunkPos, usize>,
+    ) -> Option<ChunkPos> {
+        let width = MacrochunkPos::SIZE_IN_CHUNKS.0.x as f32;
+        let height = MacrochunkPos::SIZE_IN_CHUNKS.0.y as f32;
+        let available_size = ui.available_size_before_wrap();
+        let max_grid_side = available_size.x.min(available_size.y).min(240.0);
+        let cell_side = (available_size.x / width)
+            .min(max_grid_side / width)
+            .floor()
+            .clamp(4.0, 24.0);
+        let grid_size = egui::vec2(width * cell_side, height * cell_side);
+        let (rect, _) = ui.allocate_exact_size(grid_size, egui::Sense::hover());
+        let painter = ui.painter_at(rect);
+        let macrochunk_origin = self.pos.to_chunkpos();
+        let mut chunks_by_local_pos: HashMap<(i32, i32), (Entity, ChunkPos, TerrGenState)> = HashMap::default();
+        let mut clicked_chunk = None;
+
+        for &(entity, chunk_pos, terrgen_state) in &self.chunk_states {
+            let local = chunk_pos.0 - macrochunk_origin.0;
+            chunks_by_local_pos.insert((local.x, local.y), (entity, chunk_pos, terrgen_state));
+        }
+
+        for local_y in (0..MacrochunkPos::SIZE_IN_CHUNKS.0.y as i32).rev() {
+            for local_x in 0..MacrochunkPos::SIZE_IN_CHUNKS.0.x as i32 {
+                let row = (MacrochunkPos::SIZE_IN_CHUNKS.0.y as i32 - 1 - local_y) as f32;
+                let col = local_x as f32;
+                let cell_rect = egui::Rect::from_min_size(
+                    egui::pos2(rect.left() + col * cell_side, rect.top() + row * cell_side),
+                    egui::vec2(cell_side, cell_side),
+                );
+                let response = ui.interact(
+                    cell_rect,
+                    ui.make_persistent_id(("macrochunk_chunk_state_cell", self.entity.index(), local_x, local_y)),
+                    egui::Sense::click(),
+                );
+                let chunk_pos = ChunkPos(macrochunk_origin.0 + IVec2::new(local_x, local_y));
+                let origin_count = origin_counts_by_chunk.get(&chunk_pos).copied().unwrap_or(0);
+                if let Some(&(entity, _, terrgen_state)) = chunks_by_local_pos.get(&(local_x, local_y)) {
+                    painter.rect_filled(cell_rect, 0.0, chunk_state_color(terrgen_state));
+                    let stroke = if current_chunk == Some(chunk_pos) {
+                        egui::Stroke::new(2.0, egui::Color32::YELLOW)
+                    } else if selected_chunk == Some(chunk_pos) {
+                        egui::Stroke::new(2.0, egui::Color32::WHITE)
+                    } else {
+                        egui::Stroke::new(0.5, egui::Color32::from_gray(35))
+                    };
+                    painter.rect_stroke(cell_rect, 0.0, stroke, egui::StrokeKind::Inside);
+                    if origin_count > 0 {
+                        let radius = (cell_side * 0.18).clamp(2.5, 5.0);
+                        painter.circle_filled(
+                            egui::pos2(cell_rect.right() - radius - 2.0, cell_rect.top() + radius + 2.0),
+                            radius,
+                            egui::Color32::from_rgb(110, 255, 160),
+                        );
+                        if cell_side >= 18.0 {
+                            painter.text(
+                                egui::pos2(cell_rect.center().x, cell_rect.bottom() - 2.0),
+                                egui::Align2::CENTER_BOTTOM,
+                                origin_count.to_string(),
+                                egui::FontId::proportional((cell_side * 0.3).clamp(8.0, 12.0)),
+                                egui::Color32::BLACK,
+                            );
+                        }
+                    }
+                    response.clone().on_hover_text(format!(
+                        "Chunk {}\nEntity: {:?}\nState: {}\nOrigin beings: {}",
+                        chunk_pos,
+                        entity,
+                        chunk_state_name(terrgen_state),
+                        origin_count,
+                    ));
+                } else {
+                    painter.rect_filled(cell_rect, 0.0, egui::Color32::from_gray(18));
+                    let stroke = if current_chunk == Some(chunk_pos) {
+                        egui::Stroke::new(2.0, egui::Color32::YELLOW)
+                    } else if selected_chunk == Some(chunk_pos) {
+                        egui::Stroke::new(2.0, egui::Color32::WHITE)
+                    } else {
+                        egui::Stroke::new(0.5, egui::Color32::from_gray(28))
+                    };
+                    painter.rect_stroke(cell_rect, 0.0, stroke, egui::StrokeKind::Inside);
+                    if origin_count > 0 {
+                        let radius = (cell_side * 0.18).clamp(2.5, 5.0);
+                        painter.circle_filled(
+                            egui::pos2(cell_rect.right() - radius - 2.0, cell_rect.top() + radius + 2.0),
+                            radius,
+                            egui::Color32::from_rgb(110, 255, 160),
+                        );
+                    }
+                    response.clone().on_hover_text(format!(
+                        "Chunk {}\nState: Missing\nOrigin beings: {}",
+                        chunk_pos,
+                        origin_count,
+                    ));
+                }
+                if response.clicked() {
+                    clicked_chunk = Some(chunk_pos);
+                }
+            }
+        }
+
+        clicked_chunk
+    }
+
+    fn show_macrochunk_details(
+        &self,
+        ui: &mut egui::Ui,
+        window_visible: &mut DubugWindowsVisibility,
+        selected_entities: &mut DebugSelectedEntities,
+        chunking_ui: &mut DebugChunkingUiState,
+        dim_name: &str,
+        dim_ref: DimensionRef,
+        camera_chunk_pos: Option<ChunkPos>,
+        origin_beings_by_chunk: &HashMap<(DimensionRef, ChunkPos), Vec<OriginBeingEntry>>,
+        biome_map: &BiomeEntityMap,
+        id_query: &Query<&StrId>,
+    ) {
+        ui.heading("Selected MacroChunk");
+        ui.separator();
+        ui.label(format!("Dimension: {}", dim_name));
+        ui.label(format!("Entity: {:?}", self.entity));
+        ui.label(format!("{}", self.pos));
+        ui.label(format!("Loaded: {}", self.loaded));
+        ui.label(format!(
+            "Chunks finalized: {}/{}",
+            self.chunk_stats.finished_chunks + self.chunk_stats.disabled_chunks,
+            self.chunk_stats.total_chunks,
+        ));
+        ui.label(format!("Natural origin beings in macrochunk: {}", self.natural_origin_beings_count));
+        ui.separator();
+        ui.label(format!(
+            "Final chunk states: finished {} | disabled {} | total {}",
+            self.chunk_stats.finished_chunks,
+            self.chunk_stats.disabled_chunks,
+            self.chunk_stats.total_chunks,
+        ));
+        egui::CollapsingHeader::new("Chunk states map")
+            .default_open(true)
+            .show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.colored_label(chunk_state_color(TerrGenState::Pending), "Pending");
+                    ui.colored_label(chunk_state_color(TerrGenState::Ready), "Ready");
+                    ui.colored_label(chunk_state_color(TerrGenState::OpsLaunched), "OpsLaunched");
+                    ui.colored_label(chunk_state_color(TerrGenState::Finished), "Finished");
+                    ui.colored_label(egui::Color32::from_gray(18), "Missing");
+                    ui.colored_label(egui::Color32::YELLOW, "Current chunk");
+                    ui.colored_label(egui::Color32::from_rgb(110, 255, 160), "NaturalSpawnOrigin present");
+                });
+                ui.separator();
+
+                if chunking_ui
+                    .selected_macrochunk_chunk
+                    .is_some_and(|chunk_pos| !self.pos.contains_chunkpos(chunk_pos))
+                {
+                    chunking_ui.selected_macrochunk_chunk = None;
+                }
+
+                let current_chunk = camera_chunk_pos.filter(|chunk_pos| self.pos.contains_chunkpos(*chunk_pos));
+                let mut origin_counts_by_chunk: HashMap<ChunkPos, usize> = HashMap::default();
+                for (&(entry_dim_ref, chunk_pos), origin_beings) in origin_beings_by_chunk.iter() {
+                    if entry_dim_ref == dim_ref && self.pos.contains_chunkpos(chunk_pos) {
+                        origin_counts_by_chunk.insert(chunk_pos, origin_beings.len());
+                    }
+                }
+
+                ui.horizontal_top(|ui| {
+                    ui.vertical(|ui| {
+                        if let Some(clicked_chunk) = self.render_chunk_states_map(
+                            ui,
+                            chunking_ui.selected_macrochunk_chunk,
+                            current_chunk,
+                            &origin_counts_by_chunk,
+                        ) {
+                            chunking_ui.selected_macrochunk_chunk = Some(clicked_chunk);
+                        }
+                    });
+                    ui.separator();
+                    ui.vertical(|ui| {
+                        ui.set_min_width(240.0);
+                        if let Some(selected_chunk_pos) = chunking_ui.selected_macrochunk_chunk {
+                            let selected_chunk_entity = self
+                                .chunk_states
+                                .iter()
+                                .find_map(|(entity, chunk_pos, _)| (*chunk_pos == selected_chunk_pos).then_some(*entity));
+                            let selected_chunk_state = self
+                                .chunk_states
+                                .iter()
+                                .find_map(|(_, chunk_pos, terrgen_state)| (*chunk_pos == selected_chunk_pos).then_some(*terrgen_state));
+                            ui.label(format!("Selected chunk: {}", selected_chunk_pos));
+                            if let Some(terrgen_state) = selected_chunk_state {
+                                ui.label(format!("TerrGenState: {}", chunk_state_name(terrgen_state)));
+                            } else {
+                                ui.label("TerrGenState: Missing");
+                            }
+                            ui.label(format!(
+                                "Origin beings: {}",
+                                origin_beings_by_chunk
+                                    .get(&(dim_ref, selected_chunk_pos))
+                                    .map(|beings| beings.len())
+                                    .unwrap_or(0)
+                            ));
+                            let show_chunk_details = ui.add_enabled(
+                                selected_chunk_entity.is_some(),
+                                egui::Button::new("Show Chunk Details"),
+                            );
+                            if show_chunk_details.clicked() {
+                                selected_entities.selected_chunks.clear();
+                                selected_entities.selected_chunks.insert(selected_chunk_entity.unwrap());
+                                chunking_ui.chunk_details_open_nonce = chunking_ui.chunk_details_open_nonce.wrapping_add(1);
+                                window_visible.chunk_details = true;
+                            }
+                            ui.separator();
+                            egui::ScrollArea::vertical()
+                                .max_height(ui.available_height().max(160.0))
+                                .show(ui, |ui| {
+                                    if let Some(origin_beings) = origin_beings_by_chunk.get(&(dim_ref, selected_chunk_pos)) {
+                                        for origin_being in origin_beings {
+                                            ui.label(&origin_being.label);
+                                        }
+                                    } else {
+                                        ui.label("No beings have NaturalSpawnOrigin on this chunk.");
+                                    }
+                                });
+                        } else {
+                            ui.label("Select a chunk in the map to inspect origin beings.");
+                        }
+                    });
+                });
+            });
+        ui.separator();
+        match self.biome_sampling_state {
+            Some(MacrochunkPendingBiomeSamples(remaining_samples)) if remaining_samples > 0 => {
+                ui.label("Biome finalization pending");
+            }
+            Some(_) => {
+                ui.label("Biome sampling idle");
+            }
+            None => {
+                ui.label("Biome finalized");
+                if let Some((biome_hash, weight)) = self
+                    .biome_distribution
+                    .produced_biome_sampler
+                    .iter()
+                    .max_by(|(_, lhs), (_, rhs)| lhs.partial_cmp(rhs).unwrap_or(Ordering::Equal))
+                {
+                    ui.label(format!(
+                        "Final dominant biome: {} ({:.2})",
+                        biome_label_for_hash(*biome_hash, biome_map, id_query),
+                        *weight
+                    ));
+                }
+                ui.separator();
+                egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
+                    for line in biome_distribution_lines(&self.biome_distribution, biome_map, id_query) {
+                        ui.label(line);
+                    }
+                });
+            }
+        }
+    }
 }
 
 fn origin_being_label(
@@ -106,31 +423,32 @@ fn short_macrochunk_label(label: &str) -> String {
     format!("{}{}", first.to_ascii_uppercase(), second.to_ascii_uppercase())
 }
 
-fn dominant_biome(distribution: &BiomeDistribution, id_query: &Query<&StrId>) -> Option<(String, f32)> {
-    distribution
-        .produced_biome_sampler
-        .iter()
-        .max_by(|(_, lhs), (_, rhs)| lhs.partial_cmp(rhs).unwrap_or(Ordering::Equal))
-        .map(|(biome_ent, weight)| {
-            let label = id_query
-                .get(*biome_ent)
-                .map(|str_id| str_id.as_str().to_string())
-                .unwrap_or_else(|_| format!("{:?}", biome_ent));
-            (label, *weight)
-        })
+fn biome_label_for_hash(
+    biome_hash: common::common_components::HashId,
+    biome_map: &BiomeEntityMap,
+    id_query: &Query<&StrId>,
+) -> String {
+    let Some(biome_ent) = biome_map.0.get_cloned(biome_hash).ok() else {
+        return format!("{:?}", biome_hash);
+    };
+    id_query
+        .get(biome_ent)
+        .map(|str_id| str_id.as_str().to_string())
+        .unwrap_or_else(|_| format!("{:?}", biome_ent))
 }
 
-fn biome_distribution_lines(distribution: &BiomeDistribution, id_query: &Query<&StrId>) -> Vec<String> {
+fn biome_distribution_lines(
+    distribution: &BiomeDistribution,
+    biome_map: &BiomeEntityMap,
+    id_query: &Query<&StrId>,
+) -> Vec<String> {
     let total_weight: f32 = distribution.produced_biome_sampler.iter().map(|(_, weight)| *weight).sum();
     let mut lines: Vec<_> = distribution
         .produced_biome_sampler
         .iter()
-        .map(|(biome_ent, weight)| {
-            let label = id_query
-                .get(*biome_ent)
-                .map(|str_id| str_id.as_str().to_string())
-                .unwrap_or_else(|_| format!("{:?}", biome_ent));
-            let pack_stats = distribution.averaged_pack_count_multiplier_stats(*biome_ent);
+        .map(|(biome_hash, weight)| {
+            let label = biome_label_for_hash(*biome_hash, biome_map, id_query);
+            let pack_stats = distribution.averaged_pack_count_multiplier_stats(*biome_hash);
             let pack_mean = if pack_stats.samples == 0 {
                 1.0
             } else {
@@ -156,56 +474,12 @@ fn biome_distribution_lines(distribution: &BiomeDistribution, id_query: &Query<&
         .collect()
 }
 
-fn macrochunk_fill_color(cell: &MacroChunkCell) -> egui::Color32 {
-    match cell.biome_sampling_state {
-        Some(MacrochunkPendingBiomeSamples(remaining_samples)) if remaining_samples > 0 => egui::Color32::from_rgb(170, 120, 60),
-        Some(_) => egui::Color32::from_rgb(52, 52, 52),
-        None if cell.natural_origin_beings_count > 0 => egui::Color32::from_rgb(60, 140, 82),
-        None => egui::Color32::from_rgb(65, 105, 165),
-    }
-}
-
-fn macrochunk_stroke(cell: &MacroChunkCell, is_selected: bool, is_camera_macrochunk: bool) -> egui::Stroke {
-    if is_camera_macrochunk {
-        egui::Stroke::new(2.0, egui::Color32::YELLOW)
-    } else if is_selected {
-        egui::Stroke::new(1.5, egui::Color32::WHITE)
-    } else if cell.chunk_states.iter().any(|(_, _, state)| *state != TerrGenState::Pending) {
-        egui::Stroke::new(1.0, egui::Color32::from_rgb(160, 200, 235))
-    } else {
-        egui::Stroke::new(0.5, egui::Color32::from_gray(35))
-    }
-}
-
-fn macrochunk_hover_text(cell: &MacroChunkCell, id_query: &Query<&StrId>) -> String {
-    let mut lines = vec![
-        format!("Macrochunk: {}", cell.pos),
-        format!("Entity: {:?}", cell.entity),
-        format!("Loaded: {}", cell.loaded),
-        format!(
-            "Chunks finalized: {}/{}",
-            cell.chunk_stats.finished_chunks + cell.chunk_stats.disabled_chunks,
-            cell.chunk_stats.total_chunks,
-        ),
-        format!("Natural origin beings: {}", cell.natural_origin_beings_count),
-    ];
-    if cell.biome_sampling_state.is_none() {
-        if let Some((label, weight)) = dominant_biome(&cell.biome_distribution, id_query) {
-            lines.push(format!("Final dominant biome: {} ({:.2})", label, weight));
-        }
-    } else {
-        lines.push("Biome finalization pending".to_string());
-    }
-    lines.join("\n")
-}
-
 fn render_macrochunks_grid(
     ui: &mut egui::Ui,
     dim_key: &str,
     macrochunks_map: &HashMap<MacrochunkPos, MacroChunkCell>,
     selected_macrochunk: Option<Entity>,
     camera_macrochunk_pos: Option<MacrochunkPos>,
-    id_query: &Query<&StrId>,
 ) -> Option<Entity> {
     let positions: Vec<_> = macrochunks_map.keys().copied().collect();
     let (Some(min_x), Some(max_x), Some(min_y), Some(max_y)) = (
@@ -252,13 +526,13 @@ fn render_macrochunks_grid(
             let is_camera_macrochunk = camera_macrochunk_pos == Some(pos);
             let response = ui
                 .interact(cell_rect, id, egui::Sense::click())
-                .on_hover_text(macrochunk_hover_text(cell, id_query));
+                .on_hover_text(cell.hover_text());
 
-            painter.rect_filled(cell_rect, 0.0, macrochunk_fill_color(cell));
+            painter.rect_filled(cell_rect, 0.0, cell.fill_color());
             painter.rect_stroke(
                 cell_rect,
                 0.0,
-                macrochunk_stroke(cell, is_selected, is_camera_macrochunk),
+                cell.stroke(is_selected, is_camera_macrochunk),
                 egui::StrokeKind::Inside,
             );
 
@@ -266,8 +540,12 @@ fn render_macrochunks_grid(
                 let label = match cell.biome_sampling_state {
                     Some(MacrochunkPendingBiomeSamples(remaining_samples)) if remaining_samples > 0 => "..".to_string(),
                     Some(_) => "..".to_string(),
-                    None => dominant_biome(&cell.biome_distribution, id_query)
-                        .map(|(label, _)| short_macrochunk_label(&label))
+                    None => cell
+                        .biome_distribution
+                        .produced_biome_sampler
+                        .iter()
+                        .max_by(|(_, lhs), (_, rhs)| lhs.partial_cmp(rhs).unwrap_or(Ordering::Equal))
+                        .map(|(biome_hash, _)| short_macrochunk_label(&format!("{:?}", biome_hash)))
                         .unwrap_or_else(|| "??".to_string()),
                 };
                 painter.text(
@@ -286,273 +564,6 @@ fn render_macrochunks_grid(
     }
 
     clicked_macrochunk
-}
-
-fn render_chunk_states_map(
-    ui: &mut egui::Ui,
-    cell: &MacroChunkCell,
-    selected_chunk: Option<ChunkPos>,
-    current_chunk: Option<ChunkPos>,
-    origin_counts_by_chunk: &HashMap<ChunkPos, usize>,
-) -> Option<ChunkPos> {
-    let width = MacrochunkPos::SIZE_IN_CHUNKS.0.x as f32;
-    let height = MacrochunkPos::SIZE_IN_CHUNKS.0.y as f32;
-    let available_size = ui.available_size_before_wrap();
-    let max_grid_side = available_size.x.min(available_size.y).min(240.0);
-    let cell_side = (available_size.x / width)
-        .min(max_grid_side / width)
-        .floor()
-        .clamp(4.0, 24.0);
-    let grid_size = egui::vec2(width * cell_side, height * cell_side);
-    let (rect, _) = ui.allocate_exact_size(grid_size, egui::Sense::hover());
-    let painter = ui.painter_at(rect);
-    let macrochunk_origin = cell.pos.to_chunkpos();
-    let mut chunks_by_local_pos: HashMap<(i32, i32), (Entity, ChunkPos, TerrGenState)> = HashMap::default();
-    let mut clicked_chunk = None;
-
-    for &(entity, chunk_pos, terrgen_state) in &cell.chunk_states {
-        let local = chunk_pos.0 - macrochunk_origin.0;
-        chunks_by_local_pos.insert((local.x, local.y), (entity, chunk_pos, terrgen_state));
-    }
-
-    for local_y in (0..MacrochunkPos::SIZE_IN_CHUNKS.0.y as i32).rev() {
-        for local_x in 0..MacrochunkPos::SIZE_IN_CHUNKS.0.x as i32 {
-            let row = (MacrochunkPos::SIZE_IN_CHUNKS.0.y as i32 - 1 - local_y) as f32;
-            let col = local_x as f32;
-            let cell_rect = egui::Rect::from_min_size(
-                egui::pos2(rect.left() + col * cell_side, rect.top() + row * cell_side),
-                egui::vec2(cell_side, cell_side),
-            );
-            let response = ui.interact(
-                cell_rect,
-                ui.make_persistent_id(("macrochunk_chunk_state_cell", cell.entity.index(), local_x, local_y)),
-                egui::Sense::click(),
-            );
-            let chunk_pos = ChunkPos(macrochunk_origin.0 + IVec2::new(local_x, local_y));
-            let origin_count = origin_counts_by_chunk.get(&chunk_pos).copied().unwrap_or(0);
-            if let Some(&(entity, _, terrgen_state)) = chunks_by_local_pos.get(&(local_x, local_y)) {
-                painter.rect_filled(cell_rect, 0.0, chunk_state_color(terrgen_state));
-                let stroke = if current_chunk == Some(chunk_pos) {
-                    egui::Stroke::new(2.0, egui::Color32::YELLOW)
-                } else if selected_chunk == Some(chunk_pos) {
-                    egui::Stroke::new(2.0, egui::Color32::WHITE)
-                } else {
-                    egui::Stroke::new(0.5, egui::Color32::from_gray(35))
-                };
-                painter.rect_stroke(
-                    cell_rect,
-                    0.0,
-                    stroke,
-                    egui::StrokeKind::Inside,
-                );
-                if origin_count > 0 {
-                    let radius = (cell_side * 0.18).clamp(2.5, 5.0);
-                    painter.circle_filled(
-                        egui::pos2(cell_rect.right() - radius - 2.0, cell_rect.top() + radius + 2.0),
-                        radius,
-                        egui::Color32::from_rgb(110, 255, 160),
-                    );
-                    if cell_side >= 18.0 {
-                        painter.text(
-                            egui::pos2(cell_rect.center().x, cell_rect.bottom() - 2.0),
-                            egui::Align2::CENTER_BOTTOM,
-                            origin_count.to_string(),
-                            egui::FontId::proportional((cell_side * 0.3).clamp(8.0, 12.0)),
-                            egui::Color32::BLACK,
-                        );
-                    }
-                }
-                response.clone().on_hover_text(format!(
-                    "Chunk {}\nEntity: {:?}\nState: {}\nOrigin beings: {}",
-                    chunk_pos,
-                    entity,
-                    chunk_state_name(terrgen_state),
-                    origin_count,
-                ));
-            } else {
-                painter.rect_filled(cell_rect, 0.0, egui::Color32::from_gray(18));
-                let stroke = if current_chunk == Some(chunk_pos) {
-                    egui::Stroke::new(2.0, egui::Color32::YELLOW)
-                } else if selected_chunk == Some(chunk_pos) {
-                    egui::Stroke::new(2.0, egui::Color32::WHITE)
-                } else {
-                    egui::Stroke::new(0.5, egui::Color32::from_gray(28))
-                };
-                painter.rect_stroke(
-                    cell_rect,
-                    0.0,
-                    stroke,
-                    egui::StrokeKind::Inside,
-                );
-                if origin_count > 0 {
-                    let radius = (cell_side * 0.18).clamp(2.5, 5.0);
-                    painter.circle_filled(
-                        egui::pos2(cell_rect.right() - radius - 2.0, cell_rect.top() + radius + 2.0),
-                        radius,
-                        egui::Color32::from_rgb(110, 255, 160),
-                    );
-                }
-                response.clone().on_hover_text(format!(
-                    "Chunk {}\nState: Missing\nOrigin beings: {}",
-                    chunk_pos,
-                    origin_count,
-                ));
-            }
-            if response.clicked() {
-                clicked_chunk = Some(chunk_pos);
-            }
-        }
-    }
-
-    clicked_chunk
-}
-
-fn show_macrochunk_details(
-    ui: &mut egui::Ui,
-    window_visible: &mut DubugWindowsVisibility,
-    selected_entities: &mut DebugSelectedEntities,
-    chunking_ui: &mut DebugChunkingUiState,
-    dim_name: &str,
-    dim_ref: DimensionRef,
-    cell: &MacroChunkCell,
-    camera_chunk_pos: Option<ChunkPos>,
-    origin_beings_by_chunk: &HashMap<(DimensionRef, ChunkPos), Vec<OriginBeingEntry>>,
-    id_query: &Query<&StrId>,
-) {
-    ui.heading("Selected MacroChunk");
-    ui.separator();
-    ui.label(format!("Dimension: {}", dim_name));
-    ui.label(format!("Entity: {:?}", cell.entity));
-    ui.label(format!("{}", cell.pos));
-    ui.label(format!("Loaded: {}", cell.loaded));
-    ui.label(format!(
-        "Chunks finalized: {}/{}",
-        cell.chunk_stats.finished_chunks + cell.chunk_stats.disabled_chunks,
-        cell.chunk_stats.total_chunks,
-    ));
-    ui.label(format!("Natural origin beings in macrochunk: {}", cell.natural_origin_beings_count));
-    ui.separator();
-            ui.label(format!(
-                "Final chunk states: finished {} | disabled {} | total {}",
-                cell.chunk_stats.finished_chunks,
-                cell.chunk_stats.disabled_chunks,
-                cell.chunk_stats.total_chunks,
-            ));
-    egui::CollapsingHeader::new("Chunk states map")
-        .default_open(true)
-        .show(ui, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                ui.colored_label(chunk_state_color(TerrGenState::Pending), "Pending");
-                ui.colored_label(chunk_state_color(TerrGenState::Ready), "Ready");
-                ui.colored_label(chunk_state_color(TerrGenState::OpsLaunched), "OpsLaunched");
-                ui.colored_label(chunk_state_color(TerrGenState::Finished), "Finished");
-                ui.colored_label(egui::Color32::from_gray(18), "Missing");
-                ui.colored_label(egui::Color32::YELLOW, "Current chunk");
-                ui.colored_label(egui::Color32::from_rgb(110, 255, 160), "NaturalSpawnOrigin present");
-            });
-            ui.separator();
-
-            if chunking_ui
-                .selected_macrochunk_chunk
-                .is_some_and(|chunk_pos| !cell.pos.contains_chunkpos(chunk_pos))
-            {
-                chunking_ui.selected_macrochunk_chunk = None;
-            }
-
-            let current_chunk = camera_chunk_pos.filter(|chunk_pos| cell.pos.contains_chunkpos(*chunk_pos));
-            let mut origin_counts_by_chunk: HashMap<ChunkPos, usize> = HashMap::default();
-            for (&(entry_dim_ref, chunk_pos), origin_beings) in origin_beings_by_chunk.iter() {
-                if entry_dim_ref == dim_ref && cell.pos.contains_chunkpos(chunk_pos) {
-                    origin_counts_by_chunk.insert(chunk_pos, origin_beings.len());
-                }
-            }
-
-            ui.horizontal_top(|ui| {
-                ui.vertical(|ui| {
-                    if let Some(clicked_chunk) = render_chunk_states_map(
-                        ui,
-                        cell,
-                        chunking_ui.selected_macrochunk_chunk,
-                        current_chunk,
-                        &origin_counts_by_chunk,
-                    ) {
-                        chunking_ui.selected_macrochunk_chunk = Some(clicked_chunk);
-                    }
-                });
-                ui.separator();
-                ui.vertical(|ui| {
-                    ui.set_min_width(240.0);
-                    if let Some(selected_chunk_pos) = chunking_ui.selected_macrochunk_chunk {
-                        let selected_chunk_entity = cell
-                            .chunk_states
-                            .iter()
-                            .find_map(|(entity, chunk_pos, _)| (*chunk_pos == selected_chunk_pos).then_some(*entity));
-                        let selected_chunk_state = cell
-                            .chunk_states
-                            .iter()
-                            .find_map(|(_, chunk_pos, terrgen_state)| (*chunk_pos == selected_chunk_pos).then_some(*terrgen_state));
-                        ui.label(format!("Selected chunk: {}", selected_chunk_pos));
-                        if let Some(terrgen_state) = selected_chunk_state {
-                            ui.label(format!("TerrGenState: {}", chunk_state_name(terrgen_state)));
-                        } else {
-                            ui.label("TerrGenState: Missing");
-                        }
-                        ui.label(format!(
-                            "Origin beings: {}",
-                            origin_beings_by_chunk
-                                .get(&(dim_ref, selected_chunk_pos))
-                                .map(|beings| beings.len())
-                                .unwrap_or(0)
-                        ));
-                        let show_chunk_details = ui.add_enabled(
-                            selected_chunk_entity.is_some(),
-                            egui::Button::new("Show Chunk Details"),
-                        );
-                        if show_chunk_details.clicked() {
-                            selected_entities.selected_chunks.clear();
-                            selected_entities.selected_chunks.insert(selected_chunk_entity.unwrap());
-                            chunking_ui.chunk_details_open_nonce = chunking_ui.chunk_details_open_nonce.wrapping_add(1);
-                            window_visible.chunk_details = true;
-                        }
-                        ui.separator();
-                        egui::ScrollArea::vertical()
-                            .max_height(ui.available_height().max(160.0))
-                            .show(ui, |ui| {
-                                if let Some(origin_beings) = origin_beings_by_chunk.get(&(dim_ref, selected_chunk_pos)) {
-                                    for origin_being in origin_beings {
-                                        ui.label(&origin_being.label);
-                                    }
-                                } else {
-                                    ui.label("No beings have NaturalSpawnOrigin on this chunk.");
-                                }
-                            });
-                    } else {
-                        ui.label("Select a chunk in the map to inspect origin beings.");
-                    }
-                });
-            });
-        });
-    ui.separator();
-    match cell.biome_sampling_state {
-        Some(MacrochunkPendingBiomeSamples(remaining_samples)) if remaining_samples > 0 => {
-            ui.label("Biome finalization pending");
-        }
-        Some(_) => {
-            ui.label("Biome sampling idle");
-        }
-        None => {
-            ui.label("Biome finalized");
-            if let Some((label, weight)) = dominant_biome(&cell.biome_distribution, id_query) {
-                ui.label(format!("Final dominant biome: {} ({:.2})", label, weight));
-            }
-            ui.separator();
-            egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
-                for line in biome_distribution_lines(&cell.biome_distribution, id_query) {
-                    ui.label(line);
-                }
-            });
-        }
-    }
 }
 
 #[allow(unused_parens, )]
@@ -575,6 +586,7 @@ pub fn macrochunks_grid_window(
     camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
     dimension_map: Res<DimensionEntityMap>,
     loaded_macro_chunks: Res<LoadedMacroChunks>,
+    biome_map: Res<BiomeEntityMap>,
     id_query: Query<&StrId>,
     bit_map: Res<BeingInstTemplateEntityMap>,
     race_map: Res<RaceEntityMap>,
@@ -753,7 +765,6 @@ pub fn macrochunks_grid_window(
                             macrochunks_map,
                             selected_entities.selected_macrochunk,
                             if is_camera_dim { camera_macrochunk_pos } else { None },
-                            &id_query,
                         ) {
                             if !(is_camera_dim
                                 && camera_macrochunk_pos
@@ -783,16 +794,16 @@ pub fn macrochunks_grid_window(
                 } else {
                     None
                 };
-                show_macrochunk_details(
+                cell.show_macrochunk_details(
                     ui,
                     &mut window_visible,
                     &mut selected_entities,
                     &mut chunking_ui,
                     dim_name,
                     cell.dim_ref,
-                    cell,
                     current_chunk,
                     &origin_beings_by_chunk,
+                    &biome_map,
                     &id_query,
                 );
             } else if let Some(dim_name) = selected_macrochunk_dimension {

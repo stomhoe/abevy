@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 #[relationship(relationship_target = AppliedModifiers)]
 #[require(
     AssetScoped,
-    SparedFromHotReloading,
 )]
 pub struct ModifierTarget(
     #[relationship]

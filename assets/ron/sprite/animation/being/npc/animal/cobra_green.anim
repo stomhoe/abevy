@@ -1,4 +1,4 @@
-anim cobra_green_south_idle {
+anim cobra_green_s_idle {
     img_path: "texture/being/npc/reptile/cobra_green.png"
     rows_cols: 4 3
     paused: true
@@ -8,7 +8,7 @@ anim cobra_green_south_idle {
     }
 }
 
-anim cobra_green_south_move {
+anim cobra_green_s_move {
     img_path: "texture/being/npc/reptile/cobra_green.png"
     rows_cols: 4 3
     clips {
@@ -16,7 +16,7 @@ anim cobra_green_south_move {
     }
 }
 
-anim cobra_green_north_idle {
+anim cobra_green_n_idle {
     img_path: "texture/being/npc/reptile/cobra_green.png"
     rows_cols: 4 3
     paused: true
@@ -26,7 +26,7 @@ anim cobra_green_north_idle {
     }
 }
 
-anim cobra_green_north_move {
+anim cobra_green_n_move {
     img_path: "texture/being/npc/reptile/cobra_green.png"
     rows_cols: 4 3
     clips {
@@ -34,7 +34,7 @@ anim cobra_green_north_move {
     }
 }
 
-anim cobra_green_west_idle {
+anim cobra_green_w_idle {
     img_path: "texture/being/npc/reptile/cobra_green.png"
     rows_cols: 4 3
     paused: true
@@ -44,7 +44,7 @@ anim cobra_green_west_idle {
     }
 }
 
-anim cobra_green_west_move {
+anim cobra_green_w_move {
     img_path: "texture/being/npc/reptile/cobra_green.png"
     rows_cols: 4 3
     clips {
@@ -52,7 +52,7 @@ anim cobra_green_west_move {
     }
 }
 
-anim cobra_green_east_idle {
+anim cobra_green_e_idle {
     img_path: "texture/being/npc/reptile/cobra_green.png"
     rows_cols: 4 3
     paused: true
@@ -62,7 +62,7 @@ anim cobra_green_east_idle {
     }
 }
 
-anim cobra_green_east_move {
+anim cobra_green_e_move {
     img_path: "texture/being/npc/reptile/cobra_green.png"
     rows_cols: 4 3
     clips {

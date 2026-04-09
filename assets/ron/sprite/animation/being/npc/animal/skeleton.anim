@@ -1,4 +1,4 @@
-anim skeleton_south_idle {
+anim skeleton_s_idle {
     img_path: "texture/being/npc/skeleton/skeleton.png"
     rows_cols: 4 6
     paused: true
@@ -8,7 +8,7 @@ anim skeleton_south_idle {
     }
 }
 
-anim skeleton_south_move {
+anim skeleton_s_move {
     img_path: "texture/being/npc/skeleton/skeleton.png"
     rows_cols: 4 6
     clips {
@@ -16,7 +16,7 @@ anim skeleton_south_move {
     }
 }
 
-anim skeleton_north_idle {
+anim skeleton_n_idle {
     img_path: "texture/being/npc/skeleton/skeleton.png"
     rows_cols: 4 6
     paused: true
@@ -26,7 +26,7 @@ anim skeleton_north_idle {
     }
 }
 
-anim skeleton_north_move {
+anim skeleton_n_move {
     img_path: "texture/being/npc/skeleton/skeleton.png"
     rows_cols: 4 6
     clips {
@@ -34,7 +34,7 @@ anim skeleton_north_move {
     }
 }
 
-anim skeleton_west_idle {
+anim skeleton_w_idle {
     img_path: "texture/being/npc/skeleton/skeleton.png"
     rows_cols: 4 6
     paused: true
@@ -44,7 +44,7 @@ anim skeleton_west_idle {
     }
 }
 
-anim skeleton_west_move {
+anim skeleton_w_move {
     img_path: "texture/being/npc/skeleton/skeleton.png"
     rows_cols: 4 6
     clips {
@@ -52,7 +52,7 @@ anim skeleton_west_move {
     }
 }
 
-anim skeleton_east_idle {
+anim skeleton_e_idle {
     img_path: "texture/being/npc/skeleton/skeleton.png"
     rows_cols: 4 6
     paused: true
@@ -62,7 +62,7 @@ anim skeleton_east_idle {
     }
 }
 
-anim skeleton_east_move {
+anim skeleton_e_move {
     img_path: "texture/being/npc/skeleton/skeleton.png"
     rows_cols: 4 6
     clips {

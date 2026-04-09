@@ -1,3 +1,5 @@
 id: river_region_probe
 extends: region_base
-opfilter_id: river_candidate
+opfilter_id: reland_all
+step_size: 32
+region_multiplier: 3.0

@@ -48,7 +48,7 @@ pub fn on_control_change(
         commands.entity(being_ent).try_remove::<(ComputedLocally, HumanControlled, CameraTarget)>();
     }
     let Ok((self_entity, am_i_host)) = self_player.single() else {
-        debug_once!(target: BEING_CONTROL, "Skipping control refresh until local player is marked Mine");
+        trace_once!(target: BEING_CONTROL, "Skipping control refresh until local player is marked Mine");
         return;
     };
     let mut apply_control_change = |being_ent: Entity, controlled_by: &ComputedBy| {
@@ -91,19 +91,19 @@ pub fn on_control_change(
 }
 
 #[allow(unused_parens, )]
-pub fn sync_ai_melee_targets(
+pub fn add_melee_target_comp_to_ai_controlled(
     mut commands: Commands,
     ai_controlled_beings: Query<
         Entity,
-        (With<Being>, LocalAiControlled, Without<AiMeleeTargets>, ),
+        (With<Being>, LocalAiControlled, Without<AiAutoMeleeTargets>, ),
     >,
-    ceased_tob_ai_controlled: Query<Entity, Added<HumanControlled>>,
+    ceased_2b_ai_controlled: Query<Entity, Added<HumanControlled>>,
 ) {
     for being_ent in ai_controlled_beings.iter() {
-        commands.entity(being_ent).try_insert_if_new(AiMeleeTargets::default());
+        commands.entity(being_ent).try_insert_if_new(AiAutoMeleeTargets::default());
     }
-    for being_ent in ceased_tob_ai_controlled.iter() {
-        commands.entity(being_ent).try_remove::<AiMeleeTargets>();
+    for being_ent in ceased_2b_ai_controlled.iter() {
+        commands.entity(being_ent).try_remove::<AiAutoMeleeTargets>();
     }
 }
 

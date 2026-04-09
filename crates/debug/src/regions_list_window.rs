@@ -10,7 +10,7 @@ use tilemap::regioning::natural::river::{RiverDebugData, RiverRegionDebugInfo};
 use tilemap::regioning::regioning_components::*;
 use ::tilemap_shared::*;
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
 
 fn region_dim_key_for_ref(
     dim_ref: &DimensionRef,
@@ -27,10 +27,11 @@ fn region_dim_key_for_ref(
     }
 }
 
-#[allow(unused_parens)]
+#[allow(unused_parens, )]
 pub fn regions_list_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
+    mut chunking_ui: ResMut<DebugChunkingUiState>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
     mut regions_list_was_open: Local<bool>,
     region_query: Query<(
@@ -106,6 +107,18 @@ pub fn regions_list_window(
     {
         selected_entities.selected_regions.clear();
         selected_entities.selected_regions.insert(entity);
+        selected_entities.selected_river_debug_region = Some(entity);
+    }
+
+    if chunking_ui.follow_camera_region
+        && let (Some(cam_dim_ref), Some(cam_region_pos)) = (camera_dim_ref, camera_region_pos)
+        && let Some((entity, ..)) = region_query.iter().find(|(_, _, dim_ref, region_pos, ..)| {
+            *dim_ref == cam_dim_ref && **region_pos == cam_region_pos
+        })
+    {
+        selected_entities.selected_regions.clear();
+        selected_entities.selected_regions.insert(entity);
+        selected_entities.selected_river_debug_region = Some(entity);
     }
 
     // Sort dimensions with camera dimension first
@@ -127,6 +140,27 @@ pub fn regions_list_window(
         .open(&mut open)
         .show(ctx, |ui| {
             ui.heading(format!("Regions: {}", region_query.iter().count()));
+            ui.separator();
+            egui::Frame::group(ui.style())
+                .inner_margin(egui::Margin::symmetric(8, 6))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.add_sized(
+                            [280.0, 32.0],
+                            egui::Checkbox::new(
+                                &mut chunking_ui.follow_camera_region,
+                                egui::RichText::new("Follow Camera Region").size(18.0).strong(),
+                            ),
+                        );
+                        let status = if chunking_ui.follow_camera_region { "ON" } else { "OFF" };
+                        let status_color = if chunking_ui.follow_camera_region {
+                            egui::Color32::LIGHT_GREEN
+                        } else {
+                            egui::Color32::LIGHT_RED
+                        };
+                        ui.label(egui::RichText::new(status).strong().color(status_color));
+                    });
+                });
             ui.separator();
 
             for dim_key in sorted_dims.iter() {
@@ -168,6 +202,9 @@ pub fn regions_list_window(
                                                 };
 
                                                 if button_response.clicked() {
+                                                    if !(is_camera_dim && is_camera_pos) {
+                                                        chunking_ui.follow_camera_region = false;
+                                                    }
                                                     if is_selected {
                                                         selected_entities.selected_regions.clear();
                                                     } else {
@@ -381,23 +418,6 @@ pub fn regions_list_window(
                             selected_entities.river_samples_show_failed_centers,
                             selected_entities.river_samples_show_none_points,
                         );
-                    });
-                ui.separator();
-
-                egui::CollapsingHeader::new("Recent Events")
-                    .default_open(false)
-                    .show(ui, |ui| {
-                        for event in river_info.recent_events.iter().rev().take(24) {
-                            let color = if event.is_failure {
-                                egui::Color32::RED
-                            } else {
-                                egui::Color32::LIGHT_BLUE
-                            };
-                            ui.label(egui::RichText::new(format!(
-                                "offer {} @ {:?}: {}",
-                                event.offer_i, event.start_chunk, event.reason
-                            )).color(color));
-                        }
                     });
             });
         window_visible.river_debug = river_open;

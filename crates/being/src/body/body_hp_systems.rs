@@ -237,59 +237,100 @@ fn apply_damage_to_part(
     part_damage.0 += amount;
 }
 
-#[allow(unused_parens)]
+#[allow(unused_parens, )]
 pub fn set_bodypart_as_missing_if_0_hp(
     mut cmd: Commands,
-    bodyparts_query: Query<(Entity, &AccuDamage, Has<Vital>), (With<BodypartChildOfBodypart>, Without<Templ>)>,
+    changed_bodyparts_query: Query<
+        (Entity, &AccuDamage, Has<Missing>),
+        (With<BodypartChildOfBodypart>, Without<Templ>, Changed<AccuDamage>),
+    >,
+    bodyparts_query: Query<
+        (&AccuDamage, Has<Vital>, Has<Missing>),
+        (With<BodypartChildOfBodypart>, Without<Templ>),
+    >,
     time: Res<Time>,
     child_of_query: Query<&ChildOf>,
     max_hp_by_part: Res<BodypartMaxHpMap>,
     mut missing_timers: Local<EntityHashMap<Timer>>,
-    mut seen_parts: Local<EntityHashSet>,
+    mut stale_timers: Local<Vec<Entity>>,
+    mut finished_timers: Local<Vec<(Entity, bool)>>,
 ) {
-    seen_parts.clear();
-    for (part_ent, damage, is_vital) in bodyparts_query.iter() {
-        seen_parts.insert(part_ent);
+    for (part_ent, damage, has_missing) in changed_bodyparts_query.iter() {
         let max_hp = max_hp_by_part.0.get(&part_ent).copied().unwrap_or(0.0).max(0.0);
-
         if max_hp <= 0.0 {
             missing_timers.remove(&part_ent);
-            error_once!(
-                target: BODY_HP_SYSTEM,
-                "Skipping Missing update for part {:?}: unresolved max_hp={:.3} (likely pre-init or missing hp modifiers)",
-                part_ent,
-                max_hp,
-            );
+            if has_missing {
+                cmd.entity(part_ent).try_remove::<Missing>();
+            }
             continue;
         }
+
         let current_hp = max_hp - damage.0;
         let current_hp = current_hp.clamp(0.0, max_hp);
 
         if current_hp <= 0.0 {
-            let timer = missing_timers
+            missing_timers
                 .entry(part_ent)
                 .or_insert_with(|| Timer::from_seconds(0.1, TimerMode::Once));
-            timer.tick(time.delta());
-            if timer.is_finished() {
-                cmd.entity(part_ent).try_insert_if_new(Missing);
-                if is_vital {
-                    let Ok(child_of) = child_of_query.get(part_ent) else {
-                        continue;
-                    };
-                    let Ok(child_of) = child_of_query.get(child_of.parent()) else {
-                        continue;
-                    };
-                    let being_ent = child_of.parent();
-                    cmd.entity(being_ent).try_insert_if_new((Dead));
-                }
-            }
         } else {
             missing_timers.remove(&part_ent);
-            cmd.entity(part_ent).try_remove::<Missing>();
+            if has_missing {
+                cmd.entity(part_ent).try_remove::<Missing>();
+            }
         }
     }
 
-    missing_timers.retain(|part_ent, _| seen_parts.contains(part_ent));
+    stale_timers.clear();
+    finished_timers.clear();
+    for (part_ent, timer) in missing_timers.iter_mut() {
+        let Ok((damage, is_vital, has_missing)) = bodyparts_query.get(*part_ent) else {
+            stale_timers.push(*part_ent);
+            continue;
+        };
+
+        let max_hp = max_hp_by_part.0.get(part_ent).copied().unwrap_or(0.0).max(0.0);
+        if max_hp <= 0.0 {
+            stale_timers.push(*part_ent);
+            if has_missing {
+                cmd.entity(*part_ent).try_remove::<Missing>();
+            }
+            continue;
+        }
+
+        let current_hp = (max_hp - damage.0).clamp(0.0, max_hp);
+        if current_hp > 0.0 {
+            stale_timers.push(*part_ent);
+            if has_missing {
+                cmd.entity(*part_ent).try_remove::<Missing>();
+            }
+            continue;
+        }
+
+        timer.tick(time.delta());
+        if timer.is_finished() {
+            finished_timers.push((*part_ent, is_vital));
+            stale_timers.push(*part_ent);
+        }
+    }
+
+    for part_ent in stale_timers.drain(..) {
+        missing_timers.remove(&part_ent);
+    }
+
+    for (part_ent, is_vital) in finished_timers.drain(..) {
+        cmd.entity(part_ent).try_insert_if_new(Missing);
+        if !is_vital {
+            continue;
+        }
+        let Ok(child_of) = child_of_query.get(part_ent) else {
+            continue;
+        };
+        let Ok(child_of) = child_of_query.get(child_of.parent()) else {
+            continue;
+        };
+        let being_ent = child_of.parent();
+        cmd.entity(being_ent).try_insert_if_new((Dead));
+    }
 }
 
 #[derive(SystemParam)]

@@ -6,7 +6,8 @@ use crate::{terrain::terrgen_messages::PendingOp, tile::tile_bundles::* };
 
 use ::tilemap_shared::*;
 use game_common::game_common_components::*;
-use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
+use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
+use crate::tile::{TileEntityMap, TileWeightedSamplerEntityMap};
 
 #[derive(Debug, Clone, Resource, Default, )]
 pub struct MassCollectedTiles  (pub Vec<(Entity, TileMassSpawnBundle)>);
@@ -58,11 +59,20 @@ impl MassCollectedTiles {
                 return;
             };
 
-            if let Some(tiling_ent) = wmap.sample_with_pos(global_pos, gen_settings, dim_hash_id) {
+            if let Some(tiling_hash_id) = wmap.sample_with_pos(global_pos, gen_settings, dim_hash_id) {
                 if depth > 6 {
-                    warn!("Tile insertion depth exceeded 6, stopping recursion for tile {:?}", tiling_ent);
+                    warn!("Tile insertion depth exceeded 6, stopping recursion for tile {:?}", tiling_hash_id);
                     return;
                 }
+                let Some(tiling_ent) = param_set
+                    .tile_map
+                    .0
+                    .get_opt(tiling_hash_id)
+                    .copied()
+                    .or_else(|| param_set.sampler_map.0.get_opt(tiling_hash_id).copied()) else {
+                    warn!("Tile insertion sampled unknown hash {:?} at depth {}", tiling_hash_id, depth);
+                    return;
+                };
                 self.collect_tiles_rec(cmd, tiling_ent, global_pos, dim_hash_id, dim_ref, param_set, depth + 1);
             }
         } else {
@@ -102,8 +112,10 @@ impl MassCollectedTiles {
 #[derive(bevy::ecs::system::SystemParam)]
 #[allow(unused_parens, )]
 pub struct CloneSpawnParamSet<'w, 's> {
-    pub weight_maps: Query<'w, 's, &'static EntityWeightedSampler>,
+    pub weight_maps: Query<'w, 's, &'static HashIdWeightedSampler>,
     pub gen_settings: Query<'w, 's, &'static GlobalGenSettings>,
     pub size_in_tiles: Query<'w, 's, &'static SizeInTiles>,
     pub terrgen_offsets: Query<'w, 's, &'static OffsetForTerrgenPlacement, common::AnyDisabling>,
+    pub tile_map: Res<'w, TileEntityMap>,
+    pub sampler_map: Res<'w, TileWeightedSamplerEntityMap>,
 }

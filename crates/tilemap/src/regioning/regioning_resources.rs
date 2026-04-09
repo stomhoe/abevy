@@ -8,7 +8,7 @@ use common::common_components::*;
 pub use crate::regioning::regioning_sgc_seris::*;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
-#[require(Replicated, Prefix::trunc("StructureGenerationSettings"), AssetScoped, HotReload)]
+#[require(Replicated, Prefix::trunc("StructureGenerationSettings"), AssetScoped, SelectedForHotReload)]
 pub struct StructureGenerationSettings {
     /// Timeout in seconds to wait for StructureBuildCompliance before giving up
     pub structure_build_timeout_secs: f64,
@@ -23,13 +23,13 @@ impl Default for StructureGenerationSettings {
 }
 
 common::define_entity_map_systems!(
-    StructuredGenConfig,
-    (),
-    Sgc,
-    "sgc",
-    "SGC",
-    StructuredGenConfig,
-    common::common_components::StrId,
+    main_component: StructuredGenConfig,
+    with_filters: (),
+    abbreviation: Sgc,
+    target: "sgc",
+    entity_prefix: "SGC",
+    despawn_trigger: StructuredGenConfig,
+    id_type: common::common_components::StrId,
 );
 
 #[derive(Debug, Clone, Default)]
@@ -93,7 +93,7 @@ impl SgcCommandRegistry {
 pub struct LoadedRegions(pub HashMap<(DimensionRef, RegionPos), Entity>);
 
 #[derive(Resource, Default)]
-pub struct Prioritized(pub Vec<Entity>);
+pub struct PrioritizedSgs(pub Vec<Entity>);
 
 #[derive(Resource, Default)]
 pub struct PrioritizedPerRegion(pub HashMap<(DimensionRef, RegionPos), Vec<Entity>>);

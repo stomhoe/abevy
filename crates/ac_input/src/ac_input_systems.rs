@@ -34,14 +34,6 @@ pub fn spawn_input_contexts(mut commands: Commands) {
         actions!(DebugInputContext[
             (Action::<ToggleSimulationAction>::new(), bindings![KeyCode::Space]),
             (
-                Action::<DebugIncreaseSpeedAction>::new(),
-                bindings![KeyCode::NumpadAdd, KeyCode::Equal],
-            ),
-            (
-                Action::<DebugDecreaseSpeedAction>::new(),
-                bindings![KeyCode::NumpadSubtract],
-            ),
-            (
                 Action::<DebugToggleHotReloadWindowAction>::new(),
                 bindings![KeyCode::F12],
             ),
@@ -69,7 +61,7 @@ pub fn add_being_input_context(
     for player_ent in my_player_query.iter() {
         commands.entity(player_ent).try_insert((
             BeingDirectControlInputContext,
-            ::bevy::prelude::related!(bevy_enhanced_input::prelude::Actions<BeingDirectControlInputContext>[(Action::<DcWasdAction>::new(),DeadZone::default(),Bindings::spawn((Cardinal::wasd_keys(),Cardinal::arrows(),Cardinal::dpad(),Axial::left_stick(),)),),(Action::<DcMeleeAttackAction>::new(),bindings![KeyCode::ControlLeft],),(Action::<DcItemPickupAction>::new(),bindings![KeyCode::KeyQ],)]),
+            ::bevy::prelude::related!(bevy_enhanced_input::prelude::Actions<BeingDirectControlInputContext>[(Action::<DcWasdAction>::new(),DeadZone::default(),Bindings::spawn((Cardinal::wasd_keys(),Cardinal::arrows(),Cardinal::dpad(),Axial::left_stick(),)),),(Action::<DcMeleeAttackAction>::new(),bindings![KeyCode::ControlLeft],),(Action::<DcItemPickupAction>::new(),bindings![KeyCode::KeyQ],),(Action::<DcDebugIncreaseSpeedAction>::new(),bindings![KeyCode::NumpadAdd,KeyCode::Equal],),(Action::<DcDebugDecreaseSpeedAction>::new(),bindings![KeyCode::NumpadSubtract],)]),
         ));
     }
     for removed_mine in removed_mine_query.read() {

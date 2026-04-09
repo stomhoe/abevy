@@ -5,6 +5,7 @@ use ::being_shared::*;
 use common::log_targets::WILDLIFE_SYSTEM;
 use ::game_common::*;
 use tilemap::terrain::biome::biome_components::CreatureSampler;
+use tilemap::terrain::biome::biome_resources::BiomeEntityMap;
 use tilemap::terrain::operation_list::operation_list_components::OperationList;
 use tilemap::terrain::operation_list::operation_list_resources::OperationListEntityMap;
 use tilemap::chunking::macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples};
@@ -21,6 +22,10 @@ pub struct SeedQueries<'w, 's> {
     pack_query: Query<'w, 's, (), (With<Pack>, With<Templ>)>,
     race_query: Query<'w, 's, (), (With<Race>, With<Templ>)>,
     bit_query: Query<'w, 's, (), (With<BeingInstTemplate>, With<Templ>)>,
+    biome_map: Res<'w, BiomeEntityMap>,
+    pack_map: Res<'w, PackEntityMap>,
+    race_map: Res<'w, RaceEntityMap>,
+    bit_map: Res<'w, BeingInstTemplateEntityMap>,
 }
 
 #[derive(SystemParam)]
@@ -71,7 +76,6 @@ pub fn request_macrochunk_biome_sampling(
         let expected_samples = sample_positions.len() as u32;
         if expected_samples == 0 {
             cmd.entity(macro_chunk_ent).try_remove::<MacrochunkPendingBiomeSamples>();
-            debug!(target: WILDLIFE_SYSTEM, "Completed biome sampling for macrochunk {} in {:?} without pending samples", macro_chunk_pos, dim_ref);
             continue;
         }
         biome_state.0 = expected_samples;
@@ -106,12 +110,16 @@ pub fn seed_natural_wildlife_for_biomesampled_macrochunks(
         let Ok((&dim_ref, &macro_chunk_pos, distribution)) = queries.macro_chunk_query.get(macro_chunk_ent) else {
             continue;
         };
-        let Some(biome_ent) = distribution.sample_biome_ent(&mut rng) else {
+        let Some(biome_hash_id) = distribution.sample_biome_hash_id(&mut rng) else {
             warn!(target: WILDLIFE_SYSTEM, "Natural spawn found no weighted biome for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
             continue;
         };
+        let Some(biome_ent) = queries.biome_map.0.get_opt(biome_hash_id).copied() else {
+            warn!(target: WILDLIFE_SYSTEM, "Natural spawn found weighted biome hash {:?} with no biome entity for macrochunk {} in {:?}", biome_hash_id, macro_chunk_pos, dim_ref);
+            continue;
+        };
         let number_of_packs: usize = distribution
-            .averaged_pack_count_multiplier_stats(biome_ent)
+            .averaged_pack_count_multiplier_stats(biome_hash_id)
             .sample_pack_count_int_multiplier(&mut rng);
 
         locs.occupied_pack_anchor_chunkpos.clear();
@@ -123,7 +131,10 @@ pub fn seed_natural_wildlife_for_biomesampled_macrochunks(
                 warn!(target: WILDLIFE_SYSTEM, "Natural spawn found no candidate wildlife sampler for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
                 break;
             };
-            let Some(sampled_pack_or_race_or_bit_ent) = biome_pack_sampler.sample_pack_or_race_or_bit_entity(&mut rng) else {
+            let Some(sampled_pack_or_race_or_bit_ent) = biome_pack_sampler.sample_pack_or_race_or_bit_entity(
+                &mut rng,
+                &[&queries.pack_map.0, &queries.race_map.0, &queries.bit_map.0],
+            ) else {
                 warn!(target: WILDLIFE_SYSTEM, "Natural spawn found no available wildlife candidate for macrochunk {} in {:?} after affinity filtering", macro_chunk_pos, dim_ref);
                 break;
             };
@@ -139,7 +150,7 @@ pub fn seed_natural_wildlife_for_biomesampled_macrochunks(
                 = queries.pack_min_sep_query.get(sampled_pack_or_race_or_bit_ent).ok();
             let Some(pack_anchor_cpos) = choose_best_anchor_cpos_for_pack(
                 distribution,
-                biome_ent,
+                biome_hash_id,
                 sampled_pack_or_race_or_bit_ent,
                 macro_chunk_pos,
                 &locs.occupied_pack_anchor_chunkpos,
@@ -164,11 +175,6 @@ pub fn seed_natural_wildlife_for_biomesampled_macrochunks(
                 [pack_anchor_cpos.center_gpos()],
             );
             pending_instance_pack_messages.push(instance_pack_message);
-        }
-
-        if spawned_packs > 0 {
-            debug!(target: WILDLIFE_SYSTEM, "Natural spawn seeded macrochunk {} in {:?} with biome {:?}, packs {}", macro_chunk_pos, dim_ref, biome_ent, spawned_packs);
-        } else {
         }
     }
     instance_pack_writer.write_batch(pending_instance_pack_messages.drain(..));

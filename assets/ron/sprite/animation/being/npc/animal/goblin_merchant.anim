@@ -1,4 +1,4 @@
-anim goblin_merchant_south_idle {
+anim goblin_merchant_s_idle {
     img_path: "texture/being/npc/goblin/goblin_merchant.png"
     rows_cols: 4 8
     paused: true
@@ -8,7 +8,7 @@ anim goblin_merchant_south_idle {
     }
 }
 
-anim goblin_merchant_south_move {
+anim goblin_merchant_s_move {
     img_path: "texture/being/npc/goblin/goblin_merchant.png"
     rows_cols: 4 8
     clips {
@@ -16,7 +16,7 @@ anim goblin_merchant_south_move {
     }
 }
 
-anim goblin_merchant_north_idle {
+anim goblin_merchant_n_idle {
     img_path: "texture/being/npc/goblin/goblin_merchant.png"
     rows_cols: 4 8
     paused: true
@@ -26,7 +26,7 @@ anim goblin_merchant_north_idle {
     }
 }
 
-anim goblin_merchant_north_move {
+anim goblin_merchant_n_move {
     img_path: "texture/being/npc/goblin/goblin_merchant.png"
     rows_cols: 4 8
     clips {
@@ -34,7 +34,7 @@ anim goblin_merchant_north_move {
     }
 }
 
-anim goblin_merchant_west_idle {
+anim goblin_merchant_w_idle {
     img_path: "texture/being/npc/goblin/goblin_merchant.png"
     rows_cols: 4 8
     paused: true
@@ -44,7 +44,7 @@ anim goblin_merchant_west_idle {
     }
 }
 
-anim goblin_merchant_west_move {
+anim goblin_merchant_w_move {
     img_path: "texture/being/npc/goblin/goblin_merchant.png"
     rows_cols: 4 8
     clips {
@@ -52,7 +52,7 @@ anim goblin_merchant_west_move {
     }
 }
 
-anim goblin_merchant_east_idle {
+anim goblin_merchant_e_idle {
     img_path: "texture/being/npc/goblin/goblin_merchant.png"
     rows_cols: 4 8
     paused: true
@@ -62,7 +62,7 @@ anim goblin_merchant_east_idle {
     }
 }
 
-anim goblin_merchant_east_move {
+anim goblin_merchant_e_move {
     img_path: "texture/being/npc/goblin/goblin_merchant.png"
     rows_cols: 4 8
     clips {

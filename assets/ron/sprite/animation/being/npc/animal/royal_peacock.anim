@@ -1,4 +1,4 @@
-anim royal_peacock_south_idle {
+anim royal_peacock_s_idle {
     img_path: "texture/being/npc/bird/royal_peacock.png"
     rows_cols: 4 6
     paused: true
@@ -8,7 +8,7 @@ anim royal_peacock_south_idle {
     }
 }
 
-anim royal_peacock_south_move {
+anim royal_peacock_s_move {
     img_path: "texture/being/npc/bird/royal_peacock.png"
     rows_cols: 4 6
     clips {
@@ -16,7 +16,7 @@ anim royal_peacock_south_move {
     }
 }
 
-anim royal_peacock_north_idle {
+anim royal_peacock_n_idle {
     img_path: "texture/being/npc/bird/royal_peacock.png"
     rows_cols: 4 6
     paused: true
@@ -26,7 +26,7 @@ anim royal_peacock_north_idle {
     }
 }
 
-anim royal_peacock_north_move {
+anim royal_peacock_n_move {
     img_path: "texture/being/npc/bird/royal_peacock.png"
     rows_cols: 4 6
     clips {
@@ -34,7 +34,7 @@ anim royal_peacock_north_move {
     }
 }
 
-anim royal_peacock_west_idle {
+anim royal_peacock_w_idle {
     img_path: "texture/being/npc/bird/royal_peacock.png"
     rows_cols: 4 6
     paused: true
@@ -44,7 +44,7 @@ anim royal_peacock_west_idle {
     }
 }
 
-anim royal_peacock_west_move {
+anim royal_peacock_w_move {
     img_path: "texture/being/npc/bird/royal_peacock.png"
     rows_cols: 4 6
     clips {
@@ -52,7 +52,7 @@ anim royal_peacock_west_move {
     }
 }
 
-anim royal_peacock_east_idle {
+anim royal_peacock_e_idle {
     img_path: "texture/being/npc/bird/royal_peacock.png"
     rows_cols: 4 6
     paused: true
@@ -62,7 +62,7 @@ anim royal_peacock_east_idle {
     }
 }
 
-anim royal_peacock_east_move {
+anim royal_peacock_e_move {
     img_path: "texture/being/npc/bird/royal_peacock.png"
     rows_cols: 4 6
     clips {

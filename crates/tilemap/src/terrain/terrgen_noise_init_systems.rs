@@ -28,7 +28,7 @@ pub fn init_noises(
             *existing_settings = settings_from_defs.clone();
         }
     }
-    info!(target: "terrgen_init", "Loaded Global Gen Settings");
+    trace!(target: "terrgen_init", "Loaded Global Gen Settings");
 
     if !terrgen_map.0.is_empty() { return; }
 
@@ -138,12 +138,12 @@ pub fn init_noises(
             (
                 str_id.clone(),
                 common::AssetScoped,
-                common::RemoveReplicatedAfterClone,
+                common::ReplicateIfServerStarts,
                 FnlNoiseComp { fnl: noise, is_tect: seri.tect },
                 ChildOf(holder),
                 Terrgen,
                 Prefix::trunc("Noise"),
-                common::HotReload,
+                common::SelectedForHotReload,
             ),
         ));
     }

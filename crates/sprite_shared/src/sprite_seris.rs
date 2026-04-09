@@ -2,7 +2,7 @@ use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)]
 use bevy::prelude::*;
 
-#[derive(serde::Deserialize, Default)]
+#[derive(serde::Deserialize, Default, Clone)]
 pub struct SfxEveryNframesSeri {
     #[serde(default)]
     pub paths: Vec<String>,
@@ -10,7 +10,7 @@ pub struct SfxEveryNframesSeri {
     pub n: f32,
 }
 
-#[derive(serde::Deserialize, Default)]
+#[derive(serde::Deserialize, Default, Clone)]
 pub struct SfxTimeIntervalSeri {
     #[serde(default)]
     pub paths: Vec<String>,
@@ -22,7 +22,7 @@ pub struct SfxTimeIntervalSeri {
     pub shorten_with_anim_playing_speed: bool,
 }
 
-#[derive(serde::Deserialize, Default)]
+#[derive(serde::Deserialize, Default, Clone)]
 pub struct SfxLoopSeri {
     #[serde(default)]
     pub paths: Vec<String>,
@@ -30,7 +30,7 @@ pub struct SfxLoopSeri {
     pub condition: String,
 }
 
-#[derive(serde::Deserialize, Asset, TypePath, Default)]
+#[derive(serde::Deserialize, Asset, TypePath, Clone)]
 pub struct SpriteConfigSeri {
     pub id: String,
     pub name: String,
@@ -93,6 +93,46 @@ pub struct SpriteConfigSeri {
     #[serde(default)]
     pub offset_sideways: (f32, f32),
     pub extra_y_offset_per_scale_inc: Option<f32>,
+}
+
+impl Default for SpriteConfigSeri {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            name: String::new(),
+            fallback_img_path: String::new(),
+            z: default_fallback_scalar(),
+            y_sort: default_fallback_scalar(),
+            mapped_anims: HashMap::default(),
+            parent_cat: String::new(),
+            tags: HashSet::default(),
+            shares_tag: Vec::default(),
+            children_sprites: Vec::default(),
+            sfx_every_n_frames: SfxEveryNframesSeri::default(),
+            loop_sfx: SfxLoopSeri::default(),
+            interval_sfx: SfxTimeIntervalSeri::default(),
+            directionable: false,
+            movement_based: false,
+            grounding_based: false,
+            add_up_z_with_anim: false,
+            is_being_root_sprite: false,
+            visibility: None,
+            offset4children: HashMap::default(),
+            exclude_from_sys: false,
+            baseline_move_speed: default_baseline_move_speed(),
+            exclude_from_normal_size_modifier: false,
+            offset: (0.0, 0.0),
+            scale: default_scale_2d(),
+            scale_up_down: default_scale_2d(),
+            scale_sideways: default_scale_2d(),
+            flip_horiz_if_dir: None,
+            offset_up_down: (0.0, 0.0),
+            offset_down: (0.0, 0.0),
+            offset_up: (0.0, 0.0),
+            offset_sideways: (0.0, 0.0),
+            extra_y_offset_per_scale_inc: None,
+        }
+    }
 }
 
 fn default_scale_2d() -> (f32, f32) { (1.0, 1.0) }

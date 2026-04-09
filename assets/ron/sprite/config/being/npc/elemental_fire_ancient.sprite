@@ -1,0 +1,25 @@
+sprite elemental_fire_ancient {
+name "Elemental Fire Ancient"
+z 1000
+mapped_anims {
+    south idle g _ = elemental_fire_ancient_s_idle
+    south move g _ = elemental_fire_ancient_s_move
+    west idle g _ = elemental_fire_ancient_w_idle
+    west move g _ = elemental_fire_ancient_w_move
+    east idle g _ = elemental_fire_ancient_e_idle
+    east move g _ = elemental_fire_ancient_e_move
+    north idle g _ = elemental_fire_ancient_n_idle
+    north move g _ = elemental_fire_ancient_n_move
+}
+children_sprites []
+shares_tag []
+directionable true
+movement_based true
+grounding_based false
+is_being_root_sprite true
+add_up_z_with_anim true
+baseline_move_speed 60.0
+offset 0.0 6.0
+scale 1.2 1.2
+tags []
+}

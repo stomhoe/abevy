@@ -1,4 +1,4 @@
-anim bigfoot_south_idle {
+anim bigfoot_s_idle {
     img_path: "texture/being/npc/monster/bigfoot.png"
     rows_cols: 4 6
     paused: true
@@ -8,7 +8,7 @@ anim bigfoot_south_idle {
     }
 }
 
-anim bigfoot_south_move {
+anim bigfoot_s_move {
     img_path: "texture/being/npc/monster/bigfoot.png"
     rows_cols: 4 6
     clips {
@@ -16,7 +16,7 @@ anim bigfoot_south_move {
     }
 }
 
-anim bigfoot_north_idle {
+anim bigfoot_n_idle {
     img_path: "texture/being/npc/monster/bigfoot.png"
     rows_cols: 4 6
     paused: true
@@ -26,7 +26,7 @@ anim bigfoot_north_idle {
     }
 }
 
-anim bigfoot_north_move {
+anim bigfoot_n_move {
     img_path: "texture/being/npc/monster/bigfoot.png"
     rows_cols: 4 6
     clips {
@@ -34,7 +34,7 @@ anim bigfoot_north_move {
     }
 }
 
-anim bigfoot_west_idle {
+anim bigfoot_w_idle {
     img_path: "texture/being/npc/monster/bigfoot.png"
     rows_cols: 4 6
     paused: true
@@ -44,7 +44,7 @@ anim bigfoot_west_idle {
     }
 }
 
-anim bigfoot_west_move {
+anim bigfoot_w_move {
     img_path: "texture/being/npc/monster/bigfoot.png"
     rows_cols: 4 6
     clips {
@@ -52,7 +52,7 @@ anim bigfoot_west_move {
     }
 }
 
-anim bigfoot_east_idle {
+anim bigfoot_e_idle {
     img_path: "texture/being/npc/monster/bigfoot.png"
     rows_cols: 4 6
     paused: true
@@ -62,7 +62,7 @@ anim bigfoot_east_idle {
     }
 }
 
-anim bigfoot_east_move {
+anim bigfoot_e_move {
     img_path: "texture/being/npc/monster/bigfoot.png"
     rows_cols: 4 6
     clips {

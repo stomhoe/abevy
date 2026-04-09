@@ -5,12 +5,11 @@ use bevy_inspector_egui::bevy_egui::EguiPrimaryContextPass;
 use bevy::ecs::schedule::common_conditions::on_message;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
-use game_common::AcClientSystems;
-use movement::MovementSystems;
+use common::common_states::AssetLoading;
 
     use crate::{
         being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
-        debug_chunking_window::*, debug_fonts::*, debug_messages::*, debug_resources::*,
+        debug_chunking_window::*, debug_fonts::*, debug_resources::*,
         debug_systems::*, debug_window_systems::*,
         gpos_maps_window::*,
         faction_details_inspector::*,
@@ -29,7 +28,10 @@ pub fn plugin(app: &mut App) {
     let debug_enabled = |cfg: Res<DebugUiConfig>| cfg.enable_debug_menus;
 
     app.add_plugins((FpsCounterPlugin))
-        .add_systems(Update, (apply_debug_ui_config_once,))
+        .add_systems(
+            OnEnter(AssetLoading::SpawnReplicatedEntities),
+            load_debug_ui_config,
+        )
         .add_systems(
             Update,
             (
@@ -43,20 +45,12 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             FixedUpdate,
             (
-                debug_increase_speed,
-                receive_speed_update_applied_from_server
-                    .in_set(AcClientSystems)
-                    .run_if(in_state(ClientState::Connected))
-                    .run_if(on_message::<BeingDebugSpeedApplied>)
-                    .before(disable_movement_while_speed_debug_update_pending),
-                (disable_movement_while_speed_debug_update_pending)
-                    .in_set(AcClientSystems)
-                    .before(MovementSystems)
-                    .run_if(in_state(ClientState::Connected)),
-                receive_increase_speed_from_client
-                    .after(debug_increase_speed)
+                receive_debug_increase_speed_request
                     .run_if(in_state(ServerState::Running))
-                    .run_if(on_message::<FromClient<UpdateBeingSpeed>>),
+                    .run_if(on_message::<ac_input::LocalDebugIncreaseSpeedRequest>),
+                receive_debug_decrease_speed_request
+                    .run_if(in_state(ServerState::Running))
+                    .run_if(on_message::<ac_input::LocalDebugDecreaseSpeedRequest>),
             ),
         )
         .add_systems(
@@ -101,13 +95,10 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DubugWindowsVisibility>()
         .init_resource::<DebugSelectedEntities>()
         .init_resource::<DebugChunkingUiState>()
-        .init_resource::<PendingSpeedDebugUpdates>()
         .init_resource::<DebugNoiseWorkshopState>()
         .init_resource::<DebugFontsInitialized>()
         .init_resource::<DebugUiConfig>()
         .init_resource::<WorldTileClickInspectorState>()
         .init_resource::<common::common_states::HotReloadSelection>()
-        .init_resource::<common::common_states::HotReloadRequest>()
-        .add_mapped_client_message::<UpdateBeingSpeed>(Channel::Ordered)
-        .add_mapped_server_message::<BeingDebugSpeedApplied>(Channel::Ordered);
+        .init_resource::<common::common_states::HotReloadRequest>();
 }

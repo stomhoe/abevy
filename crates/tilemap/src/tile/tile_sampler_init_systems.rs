@@ -5,6 +5,8 @@ use common::common_components::{AddHashIdFromStrId, StrId};
 use ::tilemap_shared::*;
 
 use crate::tile::{TileWeightedSamplerEntityMap, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
+use common::common_id_components::HashId;
+use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 
 #[allow(unused_parens)]
 pub fn init_tile_weighted_samplers(
@@ -18,7 +20,7 @@ pub fn init_tile_weighted_samplers(
     for seri in load_tile_weighted_sampler_seri_defs() {
         let Ok(str_id) = StrId::new_with_result(seri.id, 4) else { continue };
         let ent = cmd.spawn_empty().id();
-        comps_to_insert.push((ent, (str_id, AddHashIdFromStrId, EntityWeightedSampler::default(), TileWeightedSampler, )));
+        comps_to_insert.push((ent, (str_id, AddHashIdFromStrId, HashIdWeightedSampler::default(), TileWeightedSampler, )));
     }
     cmd.insert_batch(comps_to_insert);
 }
@@ -35,7 +37,7 @@ pub fn init_tile_weighted_samplers_part_two(
             continue;
         };
         let str_id = &seri.id;
-        let mut weights: Vec<(Entity, f32)> = Vec::new();
+        let mut weights: Vec<(HashId, f32)> = Vec::new();
 
         for (tile_id, weight) in seri.weights.drain(..) {
             if weight < 0.0 {
@@ -43,24 +45,26 @@ pub fn init_tile_weighted_samplers_part_two(
                 continue;
             }
             if !tile_id.ends_with("*") {
-                if let Ok(ent) = tile_ents_map.0.get_cloned(&tile_id) {
-                    if weights.iter().any(|(e, _)| *e == ent) {
-                        error!("TileWeightedSampler {:?} already contains tile entity {:?} for id {:?}, skipping duplicate", str_id, ent, tile_id);
+                let tile_hash_id = HashId::from(tile_id.as_str());
+                if tile_ents_map.0.get_opt(tile_hash_id).is_some() {
+                    if weights.iter().any(|(e, _)| *e == tile_hash_id) {
+                        error!("TileWeightedSampler {:?} already contains tile hash {:?} for id {:?}, skipping duplicate", str_id, tile_hash_id, tile_id);
                         continue;
                     }
-                    weights.push((ent.clone(), weight));
+                    weights.push((tile_hash_id, weight));
                 } else {
                     error!("TileWeightedSampler {:?} references non-existent tile id {:?}, skipping this weighted entry", str_id, tile_id);
                     continue;
                 }
             } else {
                 let sampler_id_trimmed = tile_id.trim_end_matches('*');
-                if let Ok(ent) = hashpos_weighted_map.0.get_cloned(sampler_id_trimmed) {
-                    if weights.iter().any(|(e, _)| *e == ent) {
-                        error!("TileWeightedSampler {:?} already contains sampler entity {:?} for id {:?}, skipping duplicate", str_id, ent, sampler_id_trimmed);
+                if let Ok(_) = hashpos_weighted_map.0.get_cloned(sampler_id_trimmed) {
+                    let sampler_hash_id = HashId::from(sampler_id_trimmed);
+                    if weights.iter().any(|(e, _)| *e == sampler_hash_id) {
+                        error!("TileWeightedSampler {:?} already contains sampler hash {:?} for id {:?}, skipping duplicate", str_id, sampler_hash_id, sampler_id_trimmed);
                         continue;
                     }
-                    weights.push((ent.clone(), weight));
+                    weights.push((sampler_hash_id, weight));
                 } else {
                     error!("TileWeightedSampler {:?} references non-existent tile id {:?}, skipping this weighted entry", str_id, tile_id);
                     continue;
@@ -72,6 +76,10 @@ pub fn init_tile_weighted_samplers_part_two(
             continue;
         }
 
-        cmd.entity(wmap_ent).insert(EntityWeightedSampler::new(&weights));
+        let (wmap, negative_indices) = HashIdWeightedSampler::new(&weights);
+        if !negative_indices.is_empty() {
+            tilemap_shared::log_negative_weighted_sampler_indices!("tile_sampler_init", &str_id, &weights, negative_indices);
+        }
+        cmd.entity(wmap_ent).insert(wmap);
     }
 }

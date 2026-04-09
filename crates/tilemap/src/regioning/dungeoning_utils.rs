@@ -1,8 +1,10 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 use common::{common_components::{HashId, Tag}, common_tag_components::TagSet};
-use game_common::{game_common_components::ArgsDict, game_common_samplers::EntityWeightedSampler};
+use game_common::game_common_components::ArgsDict;
 use ::tilemap_shared::{GlobalGenSettings, GlobalTilePos};
+use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use crate::tile::tile_sampler_components::TileWeightedSampler;
+use crate::tile::{TileEntityMap, TileWeightedSamplerEntityMap};
 use ::tilemap_shared::DeleteOtherTilesInSamePos;
 
 fn parse_delete_other_tiles_tags(selector: &str) -> Vec<Tag> {
@@ -112,8 +114,10 @@ impl DeleteOtherTilesConfigMap {
 }
 
 pub fn resolve_sampled_tile_entity_from_sampler(
-    root_sampler: &EntityWeightedSampler,
-    sampler_query: &Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
+    root_sampler: &HashIdWeightedSampler,
+    sampler_query: &Query<&HashIdWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
+    sampler_map: &TileWeightedSamplerEntityMap,
+    tile_map: &TileEntityMap,
     anchor_gpos: GlobalTilePos,
     settings: &GlobalGenSettings,
     dimension_hash: HashId,
@@ -121,13 +125,16 @@ pub fn resolve_sampled_tile_entity_from_sampler(
     let mut current_sampler = root_sampler;
     let mut depth = 0u8;
     while depth < 8 {
-        let sampled_ent = current_sampler.sample_with_pos(anchor_gpos, settings, dimension_hash)?;
-        if let Ok(next_sampler) = sampler_query.get(sampled_ent) {
+        let sampled_hash_id = current_sampler.sample_with_pos(anchor_gpos, settings, dimension_hash)?;
+        if let Some(sampled_sampler_ent) = sampler_map.0.get_opt(sampled_hash_id).copied() {
+            let Ok(next_sampler) = sampler_query.get(sampled_sampler_ent) else {
+                return None;
+            };
             current_sampler = next_sampler;
             depth += 1;
             continue;
         }
-        return Some(sampled_ent);
+        return tile_map.0.get_opt(sampled_hash_id).copied();
     }
     None
 }

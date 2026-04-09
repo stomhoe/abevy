@@ -1,5 +1,5 @@
-anim dragon_yellow_south_idle {
-    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_south.png"
+anim dragon_yellow_s_idle {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_s.png"
     rows_cols: 4 3
     paused: true
     speed: 1.0
@@ -8,16 +8,16 @@ anim dragon_yellow_south_idle {
     }
 }
 
-anim dragon_yellow_south_move {
-    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_south.png"
+anim dragon_yellow_s_move {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_s.png"
     rows_cols: 4 3
     clips {
         row 1 start_frame 1
     }
 }
 
-anim dragon_yellow_north_idle {
-    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_north.png"
+anim dragon_yellow_n_idle {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_n.png"
     rows_cols: 4 3
     paused: true
     speed: 1.0
@@ -26,16 +26,16 @@ anim dragon_yellow_north_idle {
     }
 }
 
-anim dragon_yellow_north_move {
-    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_north.png"
+anim dragon_yellow_n_move {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_n.png"
     rows_cols: 4 3
     clips {
         row 1 start_frame 1
     }
 }
 
-anim dragon_yellow_west_idle {
-    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_west.png"
+anim dragon_yellow_w_idle {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_w.png"
     rows_cols: 4 3
     paused: true
     speed: 1.0
@@ -44,16 +44,16 @@ anim dragon_yellow_west_idle {
     }
 }
 
-anim dragon_yellow_west_move {
-    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_west.png"
+anim dragon_yellow_w_move {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_w.png"
     rows_cols: 4 3
     clips {
         row 1 start_frame 1
     }
 }
 
-anim dragon_yellow_east_idle {
-    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_east.png"
+anim dragon_yellow_e_idle {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_e.png"
     rows_cols: 4 3
     paused: true
     speed: 1.0
@@ -62,8 +62,8 @@ anim dragon_yellow_east_idle {
     }
 }
 
-anim dragon_yellow_east_move {
-    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_east.png"
+anim dragon_yellow_e_move {
+    img_path: "texture/being/npc/monster/dragon_yellow/dragon_yellow_e.png"
     rows_cols: 4 3
     clips {
         row 1 start_frame 1

@@ -1,4 +1,4 @@
-anim skeleton_armed_south_idle {
+anim skeleton_armed_s_idle {
     img_path: "texture/being/npc/skeleton/skeleton_armed.png"
     rows_cols: 4 6
     paused: true
@@ -8,7 +8,7 @@ anim skeleton_armed_south_idle {
     }
 }
 
-anim skeleton_armed_south_move {
+anim skeleton_armed_s_move {
     img_path: "texture/being/npc/skeleton/skeleton_armed.png"
     rows_cols: 4 6
     clips {
@@ -16,7 +16,7 @@ anim skeleton_armed_south_move {
     }
 }
 
-anim skeleton_armed_north_idle {
+anim skeleton_armed_n_idle {
     img_path: "texture/being/npc/skeleton/skeleton_armed.png"
     rows_cols: 4 6
     paused: true
@@ -26,7 +26,7 @@ anim skeleton_armed_north_idle {
     }
 }
 
-anim skeleton_armed_north_move {
+anim skeleton_armed_n_move {
     img_path: "texture/being/npc/skeleton/skeleton_armed.png"
     rows_cols: 4 6
     clips {
@@ -34,7 +34,7 @@ anim skeleton_armed_north_move {
     }
 }
 
-anim skeleton_armed_west_idle {
+anim skeleton_armed_w_idle {
     img_path: "texture/being/npc/skeleton/skeleton_armed.png"
     rows_cols: 4 6
     paused: true
@@ -44,7 +44,7 @@ anim skeleton_armed_west_idle {
     }
 }
 
-anim skeleton_armed_west_move {
+anim skeleton_armed_w_move {
     img_path: "texture/being/npc/skeleton/skeleton_armed.png"
     rows_cols: 4 6
     clips {
@@ -52,7 +52,7 @@ anim skeleton_armed_west_move {
     }
 }
 
-anim skeleton_armed_east_idle {
+anim skeleton_armed_e_idle {
     img_path: "texture/being/npc/skeleton/skeleton_armed.png"
     rows_cols: 4 6
     paused: true
@@ -62,7 +62,7 @@ anim skeleton_armed_east_idle {
     }
 }
 
-anim skeleton_armed_east_move {
+anim skeleton_armed_e_move {
     img_path: "texture/being/npc/skeleton/skeleton_armed.png"
     rows_cols: 4 6
     clips {

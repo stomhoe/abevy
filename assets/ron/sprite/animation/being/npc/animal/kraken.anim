@@ -1,4 +1,4 @@
-anim kraken_south_idle {
+anim kraken_s_idle {
     img_path: "texture/being/npc/monster/kraken.png"
     rows_cols: 4 3
     paused: true
@@ -8,7 +8,7 @@ anim kraken_south_idle {
     }
 }
 
-anim kraken_south_move {
+anim kraken_s_move {
     img_path: "texture/being/npc/monster/kraken.png"
     rows_cols: 4 3
     clips {
@@ -16,7 +16,7 @@ anim kraken_south_move {
     }
 }
 
-anim kraken_north_idle {
+anim kraken_n_idle {
     img_path: "texture/being/npc/monster/kraken.png"
     rows_cols: 4 3
     paused: true
@@ -26,7 +26,7 @@ anim kraken_north_idle {
     }
 }
 
-anim kraken_north_move {
+anim kraken_n_move {
     img_path: "texture/being/npc/monster/kraken.png"
     rows_cols: 4 3
     clips {
@@ -34,7 +34,7 @@ anim kraken_north_move {
     }
 }
 
-anim kraken_west_idle {
+anim kraken_w_idle {
     img_path: "texture/being/npc/monster/kraken.png"
     rows_cols: 4 3
     paused: true
@@ -44,7 +44,7 @@ anim kraken_west_idle {
     }
 }
 
-anim kraken_west_move {
+anim kraken_w_move {
     img_path: "texture/being/npc/monster/kraken.png"
     rows_cols: 4 3
     clips {
@@ -52,7 +52,7 @@ anim kraken_west_move {
     }
 }
 
-anim kraken_east_idle {
+anim kraken_e_idle {
     img_path: "texture/being/npc/monster/kraken.png"
     rows_cols: 4 3
     paused: true
@@ -62,7 +62,7 @@ anim kraken_east_idle {
     }
 }
 
-anim kraken_east_move {
+anim kraken_e_move {
     img_path: "texture/being/npc/monster/kraken.png"
     rows_cols: 4 3
     clips {

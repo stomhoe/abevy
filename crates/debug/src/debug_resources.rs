@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
 pub use crate::debug_seris::*;
 use common::common_components::HashId;
+use common::common_states::HotReloadSelection;
 use std::collections::HashMap;
 
 #[derive(Resource, Debug, Clone)]
@@ -145,6 +146,7 @@ pub struct WorldTileClickInspectorState {
 #[derive(Resource)]
 pub struct DebugChunkingUiState {
     pub follow_camera_chunk: bool,
+    pub follow_camera_region: bool,
     pub follow_camera_macrochunk: bool,
     pub open_tilemap_type: Option<String>,
     pub chunk_details_open_nonce: u64,
@@ -155,17 +157,13 @@ impl Default for DebugChunkingUiState {
     fn default() -> Self {
         Self {
             follow_camera_chunk: true,
+            follow_camera_region: true,
             follow_camera_macrochunk: true,
             open_tilemap_type: None,
             chunk_details_open_nonce: 0,
             selected_macrochunk_chunk: None,
         }
     }
-}
-
-#[derive(Resource, Default)]
-pub struct PendingSpeedDebugUpdates {
-    pub by_being: EntityHashSet,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -212,6 +210,21 @@ pub struct DebugUiConfig {
     pub enable_debug_menus: bool,
     pub hot_reload_defaults: common::common_states::HotReloadSelection,
     pub windows_open_on_start: DubugWindowsVisibility,
+}
+
+pub fn load_debug_ui_config(
+    mut cfg: ResMut<DebugUiConfig>,
+    mut window_visible: ResMut<DubugWindowsVisibility>,
+    mut selection: ResMut<HotReloadSelection>,
+) {
+    let defs = load_debug_ui_config_seri_defs();
+    let Some(def) = defs.first() else {
+        return;
+    };
+
+    *cfg = def.to_config();
+    *selection = cfg.hot_reload_defaults.clone();
+    *window_visible = cfg.windows_open_on_start.clone();
 }
 
 impl Default for DebugUiConfig {

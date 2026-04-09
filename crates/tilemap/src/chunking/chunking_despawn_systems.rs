@@ -135,7 +135,7 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
                 .map_or(0, |beings| beings.len());
             if beings_within_chunk_count > 0 {
                 bcd_msgs.push(ChunkWithBeingsWantsDespawn { chunk_ent });
-                debug!(target: CHUNK_ACTIVATION, "Delegated chunk {:?} despawn decision for {} beings", chunk_ent, beings_within_chunk_count);
+                trace!(target: CHUNK_ACTIVATION, "Delegated chunk {:?} despawn decision for {} beings", chunk_ent, beings_within_chunk_count);
                 continue;
             }
         }

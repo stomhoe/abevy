@@ -1,4 +1,4 @@
-anim ao_bear_east_idle {
+anim ao_bear_e_idle {
     img_path: "texture/being/npc/bear/ao_bear.png"
     rows_cols: 8 4
     paused: true
@@ -8,7 +8,7 @@ anim ao_bear_east_idle {
     }
 }
 
-anim ao_bear_east_move {
+anim ao_bear_e_move {
     img_path: "texture/being/npc/bear/ao_bear.png"
     rows_cols: 8 4
     alternating_start_frames: 0 2
@@ -18,7 +18,7 @@ anim ao_bear_east_move {
     }
 }
 
-anim ao_bear_north_idle {
+anim ao_bear_n_idle {
     img_path: "texture/being/npc/bear/ao_bear.png"
     rows_cols: 8 4
     paused: true
@@ -28,7 +28,7 @@ anim ao_bear_north_idle {
     }
 }
 
-anim ao_bear_north_move {
+anim ao_bear_n_move {
     img_path: "texture/being/npc/bear/ao_bear.png"
     rows_cols: 8 4
     alternating_start_frames: 2 4
@@ -38,7 +38,7 @@ anim ao_bear_north_move {
     }
 }
 
-anim ao_bear_south_idle {
+anim ao_bear_s_idle {
     img_path: "texture/being/npc/bear/ao_bear.png"
     rows_cols: 8 4
     paused: true
@@ -48,7 +48,7 @@ anim ao_bear_south_idle {
     }
 }
 
-anim ao_bear_south_move {
+anim ao_bear_s_move {
     img_path: "texture/being/npc/bear/ao_bear.png"
     rows_cols: 8 4
     alternating_start_frames: 1 4
@@ -58,7 +58,7 @@ anim ao_bear_south_move {
     }
 }
 
-anim ao_bear_west_idle {
+anim ao_bear_w_idle {
     img_path: "texture/being/npc/bear/ao_bear.png"
     rows_cols: 8 4
     paused: true
@@ -68,7 +68,7 @@ anim ao_bear_west_idle {
     }
 }
 
-anim ao_bear_west_move {
+anim ao_bear_w_move {
     img_path: "texture/being/npc/bear/ao_bear.png"
     rows_cols: 8 4
     alternating_start_frames: 0 4

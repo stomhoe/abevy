@@ -1,3 +1,37 @@
+#[allow(unused_imports)]
+use bevy::prelude::*;
+
+#[macro_export]
+macro_rules! log_negative_weighted_sampler_items {
+    ($target:expr, $sampler_label:expr, $negative_items:expr) => {{
+        for item in $negative_items {
+            error!(
+                target: $target,
+                "Weighted sampler {} encountered a negative weight for value {:?}; clamped to 0.0",
+                $sampler_label,
+                item
+            );
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! log_negative_weighted_sampler_indices {
+    ($target:expr, $sampler_label:expr, $weights:expr, $negative_indices:expr) => {{
+        for index in $negative_indices {
+            let Some((item, _)) = $weights.get(index) else {
+                continue;
+            };
+            error!(
+                target: $target,
+                "Weighted sampler {} encountered a negative weight for value {:?}; clamped to 0.0",
+                $sampler_label,
+                item
+            );
+        }
+    }};
+}
+
 #[macro_export]
 macro_rules! impl_weighted_sampler_serialization {
     ($ty:ident, $inner:ty) => {
@@ -9,18 +43,17 @@ macro_rules! impl_weighted_sampler_serialization {
         impl<'de> Deserialize<'de> for $ty {
             fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                 let weights: Vec<($inner, f32)> = Deserialize::deserialize(deserializer)?;
-                let mut cumulative_weights = Vec::with_capacity(weights.len());
-                let mut acc = 0.0;
-                for &(_, w) in &weights {
-                    acc += w;
-                    cumulative_weights.push(acc);
+                let (sampler, negative_indices) = $ty::build_from_weights(&weights);
+                for index in negative_indices {
+                    let Some((item, _)) = weights.get(index) else {
+                        continue;
+                    };
+                    warn!(
+                        "Negative weight encountered in deserialized weighted sampler for value {:?}; weight clamped to 0.0.",
+                        item
+                    );
                 }
-                let total_weight = acc;
-                Ok($ty {
-                    weights,
-                    cumulative_weights,
-                    total_weight,
-                })
+                Ok(sampler)
             }
         }
     };
@@ -30,17 +63,14 @@ macro_rules! impl_weighted_sampler_serialization {
 macro_rules! define_weightedsampler_impl {
     ($ty:ident, $inner:ty) => {
         impl $ty {
-            pub fn new(weights: &Vec<($inner, f32)>) -> Self {
+            fn build_from_weights(weights: &Vec<($inner, f32)>) -> (Self, Vec<usize>) {
                 let mut weights_vec = Vec::with_capacity(weights.len());
-                for (item, weight) in weights.iter().cloned() {
+                let mut negative_indices = Vec::new();
+                for (idx, (item, weight)) in weights.iter().cloned().enumerate() {
                     if weight < 0.0 {
-                        error!(
-                            "Negative weight ({}) encountered in WeightedSampler for value {:?}, skipping entry.",
-                            weight, item
-                        );
-                        continue;
+                        negative_indices.push(idx);
                     }
-                    weights_vec.push((item, weight));
+                    weights_vec.push((item, weight.max(0.0)));
                 }
                 let mut cumulative_weights = Vec::with_capacity(weights_vec.len());
                 let mut acc = 0.0;
@@ -49,45 +79,60 @@ macro_rules! define_weightedsampler_impl {
                     cumulative_weights.push(acc);
                 }
                 let total_weight = acc;
-                Self {
-                    weights: weights_vec,
-                    cumulative_weights,
-                    total_weight,
-                }
+                (
+                    Self {
+                        weights: weights_vec,
+                        cumulative_weights,
+                        total_weight,
+                    },
+                    negative_indices,
+                )
             }
-            pub fn insert(&mut self, item: $inner, weight: f32) {
+
+            pub fn new(weights: &Vec<($inner, f32)>) -> (Self, Vec<usize>) {
+                Self::build_from_weights(weights)
+            }
+
+            pub fn insert(&mut self, item: $inner, weight: f32) -> Result<(), $inner>
+            where
+                $inner: Clone,
+            {
                 if weight < 0.0 {
-                    warn!(
-                        "Negative weight ({}) encountered in WeightedSampler for value {:?}.",
-                        weight, item
-                    );
+                    let clamped = weight.max(0.0);
+                    self.weights.push((item.clone(), clamped));
+                    self.total_weight += clamped;
+                    self.cumulative_weights.push(self.total_weight);
+                    return Err(item);
                 }
-                let weight = weight.max(0.0);
                 self.weights.push((item, weight));
                 self.total_weight += weight;
                 self.cumulative_weights.push(self.total_weight);
+                Ok(())
             }
 
-            pub fn add_or_accumulate_weight(&mut self, item: $inner, weight: f32)
+            pub fn add_or_accumulate_weight(&mut self, item: $inner, weight: f32) -> Result<(), $inner>
             where
-                $inner: PartialEq,
+                $inner: PartialEq + Clone,
             {
                 if weight < 0.0 {
-                    warn!(
-                        "Negative weight ({}) encountered in WeightedSampler for value {:?}.",
-                        weight, item
-                    );
+                    let clamped = weight.max(0.0);
+                    let Some((_, existing_weight)) = self.weights.iter_mut().find(|(existing_item, _)| *existing_item == item) else {
+                        let result = self.insert(item.clone(), clamped);
+                        return result.map_err(|_| item);
+                    };
+                    *existing_weight += clamped;
+                    self.rebuild();
+                    return Err(item);
                 }
-                let weight = weight.max(0.0);
                 if weight == 0.0 {
-                    return;
+                    return Ok(());
                 }
                 let Some((_, existing_weight)) = self.weights.iter_mut().find(|(existing_item, _)| *existing_item == item) else {
-                    self.insert(item, weight);
-                    return;
+                    return self.insert(item.clone(), weight).map_err(|_| item);
                 };
                 *existing_weight += weight;
                 self.rebuild();
+                Ok(())
             }
 
             fn rebuild(&mut self) {

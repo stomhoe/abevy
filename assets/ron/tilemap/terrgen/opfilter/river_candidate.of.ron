@@ -1,7 +1,0 @@
-(
-    id: "river_candidate",
-    tags: ["river_candidate"],
-    var_name: "inlandness",
-    min_val: -0.05,
-    max_val: inf,
-)

@@ -5,6 +5,7 @@ use bevy::time::common_conditions::on_timer;
 use bevy_replicon::prelude::*;
 use ::being_shared::*;
 use faction::faction_resources::FactionRef;
+use game_common::StatefulSessionSystems;
 use tilemap::terrain::terrgen_messages::ChunkTerrainBuilt;
 
 use common::common_states::AssetLoading;
@@ -81,16 +82,16 @@ pub fn plugin(app: &mut App) {
                 .run_if(on_message::<ChunkWithBeingsWantsDespawn>),
 
             instance_pack_entities.run_if(on_message::<InstantiateTemplPackEntity>),
-        ).in_set(HostSystems),
+        ).in_set(HostSystems).in_set(StatefulSessionSystems),
     ))
     .add_observer(cleanup_being_from_BeingsInCpos_on_despawn)
     .add_systems(Update, (
         on_control_change,
-        sync_ai_melee_targets,
+        add_melee_target_comp_to_ai_controlled,
         sync_predator_squad_marker,
         tick_hunger,
         update_predator_hunting_targets,
-        sync_ai_melee_targets_to_hunt.after(update_predator_hunting_targets),
+        make_hunted_be_melee_targets.after(update_predator_hunting_targets),
         sync_chasing_to_hunt.after(update_predator_hunting_targets),
     ))
     .add_systems(
@@ -99,8 +100,8 @@ pub fn plugin(app: &mut App) {
             (
                 emit_ai_melee_attack_requests.run_if(on_timer(Duration::from_millis(30))),
                 apply_melee_attack,
-            ).in_set(HostSystems),
             validate_added_beings_have_gpos,
+            ).in_set(HostSystems),
 
         )
             .in_set(GameplaySystems),

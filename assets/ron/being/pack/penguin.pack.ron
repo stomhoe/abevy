@@ -6,8 +6,6 @@ pack {
     },
     biome_affinity: {
         artic: 1.0,
-        ocean: 1.2,
-        beach: 0.5,
     },
     pack_spawn_radius: 6,
 }

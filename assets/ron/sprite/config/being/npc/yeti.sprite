@@ -1,0 +1,25 @@
+sprite yeti {
+name Yeti
+z 1000
+mapped_anims {
+    south idle g _ = yeti_s_idle
+    south move g _ = yeti_s_move
+    west idle g _ = yeti_w_idle
+    west move g _ = yeti_w_move
+    east idle g _ = yeti_e_idle
+    east move g _ = yeti_e_move
+    north idle g _ = yeti_n_idle
+    north move g _ = yeti_n_move
+}
+children_sprites []
+shares_tag []
+directionable true
+movement_based true
+grounding_based false
+is_being_root_sprite true
+add_up_z_with_anim true
+baseline_move_speed 70.0
+offset 0.0 80.0
+scale 1.2 1.2
+tags []
+}

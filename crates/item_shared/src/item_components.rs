@@ -14,7 +14,7 @@ use ::sprite_shared::*;
 use tilemap_shared::SnapTransformToGpos;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Default)]
-#[require(Replicated, Prefix::trunc("Item"), AssetScoped, SparedFromHotReloading, Visibility, SnapTransformToGpos::OnChange, )]
+#[require(Replicated, Prefix::trunc("Item"), AssetScoped, Visibility, SnapTransformToGpos::OnChange, )]
 pub struct Item;
 impl Item {
     pub const MIN_ID_LENGTH: u8 = 1;
@@ -71,7 +71,11 @@ impl ItemsGeneratedOnDeath {
         let mut visited = std::collections::HashSet::new();
         let mut weights: Vec<(EntityHashMap<u32>, f32)> = Vec::new();
         Self::append_weights_from_seri(seri, item_map, all_drop_seris, &mut visited, 1.0, &mut weights);
-        Self { sampler: EntityCountMapWeightedSampler::new(&weights), count_multiplier: seri.count_multiplier.max(0.0) }
+        let (sampler, negative_indices) = EntityCountMapWeightedSampler::new(&weights);
+        if !negative_indices.is_empty() {
+            tilemap_shared::log_negative_weighted_sampler_indices!("item_components", &seri.id, &weights, negative_indices);
+        }
+        Self { sampler, count_multiplier: seri.count_multiplier.max(0.0) }
     }
 
     fn append_weights_from_seri(

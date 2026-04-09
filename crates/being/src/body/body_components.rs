@@ -9,7 +9,6 @@ pub use ::being_shared::*;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 #[require(
-    SparedFromHotReloading,
     AssetScoped,
     Prefix::trunc("Body")
 )]

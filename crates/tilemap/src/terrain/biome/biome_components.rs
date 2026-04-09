@@ -1,37 +1,38 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::Replicated;
-use bevy::ecs::entity::EntityHashMap;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::*;
+use common::common_types::HashIdToEntityMap;
 
 #[derive(Component, Debug, Default, Copy, Clone, Deserialize, Serialize)]
-#[require(AssetScoped, Replicated, Prefix::trunc("Biome"), HotReload)]
+#[require(AssetScoped, Replicated, Prefix::trunc("Biome"), SelectedForHotReload)]
 pub struct Biome;
 
 #[derive(Component, Debug, Clone, Default, )]
-pub struct CreatureSampler(pub EntityHashMap<f32>);
+pub struct CreatureSampler(pub HashIdWeightedSampler);
 
 impl CreatureSampler {
-    pub fn add_affinity(&mut self, biome_ent: Entity, weight: f32) {
+    pub fn add_affinity(&mut self, biome_hash_id: common::common_components::HashId, weight: f32) {
         if weight == 0.0 {
             return;
         }
-        *self.0.entry(biome_ent).or_insert(0.0) += weight;
+        if let Err(negative_item) = self.0.add_or_accumulate_weight(biome_hash_id, weight) {
+            tilemap_shared::log_negative_weighted_sampler_items!("biome_components", biome_hash_id, vec![negative_item]);
+        }
     }
 
     pub fn sample_pack_or_race_or_bit_entity(
         &self,
         rng: &mut impl rand::Rng,
+        entity_maps: &[&HashIdToEntityMap],
     ) -> Option<Entity> {
-        let pack_scores = self
-            .0
-            .iter()
-            .filter_map(|(pack_ent, affinity)| (*affinity > 0.0).then_some((*pack_ent, *affinity)))
-            .collect::<Vec<_>>();
-        if pack_scores.is_empty() {
-            return None;
+        let sampled_hash_id = self.0.sample_with_rng(rng)?;
+        for entity_map in entity_maps {
+            if let Some(entity) = entity_map.get_opt(sampled_hash_id).copied() {
+                return Some(entity);
+            }
         }
-        EntityWeightedSampler::new(&pack_scores).sample_with_rng(rng)
+        None
     }
 }

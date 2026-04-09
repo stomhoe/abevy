@@ -4,7 +4,7 @@
 use common::common_components::{AddHashIdFromStrId, StrId};
 use common::common_id_components::HashId;
 use game_common::game_common_components::TemplEntiHashIdRef;
-use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
+use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 
 use crate::body::{body_resources::*, body_sampler::{body_sampler_components::*, body_sampler_resources::*}};
 
@@ -28,7 +28,7 @@ pub fn init_body_weighted_samplers(
             }
             let ent = cmd.spawn_empty().id();
             let hash_id = HashId::from(str_id.as_str());
-            comps_to_insert.push((ent, (str_id, AddHashIdFromStrId, TemplEntiHashIdRef(hash_id), EntityWeightedSampler::default(), ChildOf(holder), BodyWeightedSampler, )));
+            comps_to_insert.push((ent, (str_id, AddHashIdFromStrId, TemplEntiHashIdRef(hash_id), HashIdWeightedSampler::default(), ChildOf(holder), BodyWeightedSampler, )));
         }
     }
     cmd.insert_batch(comps_to_insert);
@@ -48,7 +48,7 @@ pub fn init_body_weighted_samplers_strid_refs(
         };
 
         let str_id = &seri.id;
-        let mut weights: Vec<(Entity, f32)> = Vec::new();
+        let mut weights: Vec<(HashId, f32)> = Vec::new();
 
         for (body_id, weight) in seri.weights.drain(..) {
             if weight < 0.0 {
@@ -57,12 +57,13 @@ pub fn init_body_weighted_samplers_strid_refs(
             }
             if !body_id.ends_with("*") {
                 if let Ok(body_str_id) = StrId::new_with_result(body_id.clone(), 3) {
-                    if let Ok(ent) = body_map.0.get_cloned(&body_str_id) {
-                        if weights.iter().any(|(e, _)| *e == ent) {
-                            error!("BodyWeightedSampler {:?} already contains body entity {:?} for id {:?}, skipping duplicate", str_id, ent, body_id);
+                    let body_hash_id = HashId::from(body_str_id.as_str());
+                    if body_map.0.get_opt(body_hash_id).is_some() {
+                        if weights.iter().any(|(e, _)| *e == body_hash_id) {
+                            error!("BodyWeightedSampler {:?} already contains body hash {:?} for id {:?}, skipping duplicate", str_id, body_hash_id, body_id);
                             continue;
                         }
-                        weights.push((ent.clone(), weight));
+                        weights.push((body_hash_id, weight));
                     } else {
                         error!("BodyWeightedSampler {:?} references non-existent body id {:?}, skipping this weighted entry", str_id, body_id);
                         continue;
@@ -74,12 +75,13 @@ pub fn init_body_weighted_samplers_strid_refs(
             } else {
                 let sampler_id_trimmed = body_id.trim_end_matches('*');
                 if let Ok(sampler_str_id) = StrId::new_with_result(sampler_id_trimmed.to_string(), 3) {
-                    if let Ok(ent) = body_weighted_map.0.get_cloned(&sampler_str_id) {
-                        if weights.iter().any(|(e, _)| *e == ent) {
-                            error!("BodyWeightedSampler {:?} already contains sampler entity {:?} for id {:?}, skipping duplicate", str_id, ent, sampler_id_trimmed);
+                    let sampler_hash_id = HashId::from(sampler_str_id.as_str());
+                    if body_weighted_map.0.get_opt(sampler_hash_id).is_some() {
+                        if weights.iter().any(|(e, _)| *e == sampler_hash_id) {
+                            error!("BodyWeightedSampler {:?} already contains sampler hash {:?} for id {:?}, skipping duplicate", str_id, sampler_hash_id, sampler_id_trimmed);
                             continue;
                         }
-                        weights.push((ent.clone(), weight));
+                        weights.push((sampler_hash_id, weight));
                     } else {
                         error!("BodyWeightedSampler {:?} references non-existent sampler id {:?}, skipping this weighted entry", str_id, sampler_id_trimmed);
                         continue;
@@ -95,6 +97,10 @@ pub fn init_body_weighted_samplers_strid_refs(
             continue;
         }
 
-        cmd.entity(wmap_ent).insert(EntityWeightedSampler::new(&weights));
+        let (wmap, negative_indices) = HashIdWeightedSampler::new(&weights);
+        if !negative_indices.is_empty() {
+            tilemap_shared::log_negative_weighted_sampler_indices!("being_body_sampler_init", &str_id, &weights, negative_indices);
+        }
+        cmd.entity(wmap_ent).insert(wmap);
     }
 }

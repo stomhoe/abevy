@@ -13,7 +13,7 @@ pub use crate::log_targets::*;
 pub use crate::marker_macros::*;
 
 use bevy::ecs::entity_disabling::Disabled;
-use bevy::ecs::schedule::common_conditions::on_message;
+use bevy::ecs::schedule::common_conditions::{on_message, resource_changed};
 use bevy_replicon::prelude::*;
 
 use crate::{common_systems::*, common_tag_systems::*, };
@@ -27,10 +27,12 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update,
             (update_img_sizes_on_load,
                 add_hash_id_from_str_id,
+                add_signature_from_hash_id,
                 add_hashed_tags, ))
         .add_systems(
             Update,
             (
+                sync_replicate_if_server_starts,
                 clone_and_tell_server.run_if(in_state(ClientState::Connected)),
                 remove_replicated_after_clone_from_client
                     .run_if(in_state(ServerState::Running))

@@ -3,6 +3,7 @@ use bevy::{
     platform::collections::HashSet,
     prelude::*,
 };
+use common::common_components::HashId;
 
 use tilemap_shared::*;
 
@@ -17,7 +18,7 @@ pub struct PackAnchorCpos {
 
 pub fn choose_best_anchor_cpos_for_pack(
     distribution: &BiomeDistribution,
-    biome_ent: Entity,
+    biome_hash_id: HashId,
     current_target: Entity,
     macro_chunk_pos: MacrochunkPos,
     prev_selected_anchors: &[PackAnchorCpos],
@@ -25,7 +26,7 @@ pub fn choose_best_anchor_cpos_for_pack(
     pack_min_dists_query: &Query<&PackMinSepToPacksOrRaces>,
 ) -> Option<ChunkPos> {
     let mut seen_candidates = HashSet::<ChunkPos>::default();
-    let sorted_candidates = distribution.sorted_chunk_candidates_for_biome(biome_ent);
+    let sorted_candidates = distribution.sorted_chunk_candidates_for_biome(biome_hash_id);
     for candidate in sorted_candidates {
         if !macro_chunk_pos.contains_chunkpos(candidate) || !seen_candidates.insert(candidate) {
             continue;

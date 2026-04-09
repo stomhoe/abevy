@@ -14,3 +14,19 @@ crate::define_player_action_request_module!(
     extra_binding: (_dim_ref, _gpos),
     log_target: common::log_targets::ITEM_SYSTEM,
 );
+
+crate::define_player_action_request_module!(
+    base: DebugIncreaseSpeed,
+    extra_query: (),
+    extra_binding: _,
+    log_target: common::log_targets::DEBUG,
+    continuous: true,
+);
+
+crate::define_player_action_request_module!(
+    base: DebugDecreaseSpeed,
+    extra_query: (),
+    extra_binding: _,
+    log_target: common::log_targets::DEBUG,
+    continuous: true,
+);

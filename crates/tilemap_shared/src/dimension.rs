@@ -8,7 +8,7 @@ use bevy::platform::collections::{HashSet, HashMap};
 use common::common_tag_components::TagSet;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Hash, PartialEq, )]
-#[require(SparedFromHotReloading, Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
+#[require(Replicated, AssetScoped, Prefix::trunc("DIMENSION"),  )]
 pub struct Dimension;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, )]
@@ -26,8 +26,14 @@ impl Gravity {
 
 
 common::define_entity_map_systems!(
-    Dimension,
-    DimensionSeri, "seri.dimension", "dimension.ron"
+    main_component: Dimension,
+    with_filters: (),
+    abbreviation: Dimension,
+    target: common::log_targets::ENTITY_MAP_SYSTEM,
+    entity_prefix: "dimension",
+    despawn_trigger: Dimension,
+    id_type: common::common_components::StrId,
+    assets: [(DimensionSeri, "seri.dimension", "dimension.ron")],
 );
 impl Dimension{
     pub fn overworld() -> StrId{

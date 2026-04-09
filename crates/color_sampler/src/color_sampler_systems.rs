@@ -42,25 +42,11 @@ pub fn init_color_samplers(
             );
         }
 
-        let mut i = 0;
-        while i < seri.weights.len() {
-            if seri.weights[i].1 < 0.0 {
-                error!(
-                    target: "color_sampler_init",
-                    "Invalid color sampler '{}': negative weight detected at index {} (color value: {:?}, weight: {}). Removing this entry.",
-                    str_id,
-                    i,
-                    seri.weights[i].0,
-                    seri.weights[i].1
-                );
-                seri.weights.swap_remove(i);
-            } else {
-                i += 1;
-            }
-        }
-
         let ent = cmd.spawn_empty().id();
-        let wmap = ColorSampler::new(&seri.weights);
+        let (wmap, negative_indices) = ColorSampler::new(&seri.weights);
+        if !negative_indices.is_empty() {
+            tilemap_shared::log_negative_weighted_sampler_indices!("color_sampler_init", &str_id, &seri.weights, negative_indices);
+        }
         wmap_to_insert.push((ent, (str_id, wmap)));
     }
 

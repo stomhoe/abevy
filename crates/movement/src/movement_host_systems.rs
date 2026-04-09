@@ -2,16 +2,14 @@ use ::being_shared::*;
 use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use common::log_targets::MOVEMENT_SYSTEM;
+use serde::Deserialize;
 use param_sets::BlockingTileParamSet;
 use sprite_animation_shared::MirrorHolderStateForSprite;
 use tilemap::tile::tile_components::Tile;
 use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};
 
-use common::log_targets::MOVEMENT_SYSTEM;
-
-use crate::{movement_components::*, movement_helpers::{secs_per_tile, ticks_per_tile, MAX_GRID_STEPS_PER_FIXED_TICK}, movement_messages::*};
-
-const STEP_EARLY_TOLERANCE: f32 = 0.6;
+use crate::{movement_components::*, movement_helpers::{secs_per_tile, ticks_per_tile}, movement_messages::*};
 
 #[derive(Clone, Copy, Debug)]
 pub struct ClientStepRateState {
@@ -26,9 +24,69 @@ pub struct DeferredStepRequest {
     steps: u16,
 }
 
+#[derive(Resource, Clone, Debug)]
+pub struct MpSettings {
+    pub step_early_tolerance: f32,
+    pub max_grid_steps_per_fixed_tick: u16,
+}
+
+impl Default for MpSettings {
+    fn default() -> Self {
+        Self {
+            step_early_tolerance: 0.6,
+            max_grid_steps_per_fixed_tick: 256,
+        }
+    }
+}
+
+#[derive(Deserialize, Asset, TypePath, Clone, Debug)]
+pub struct MpSettingsSeri {
+    pub id: String,
+    #[serde(default = "default_step_early_tolerance")]
+    pub step_early_tolerance: f32,
+    #[serde(default = "default_max_grid_steps_per_fixed_tick")]
+    pub max_grid_steps_per_fixed_tick: u16,
+}
+
+impl MpSettingsSeri {
+    pub fn to_settings(&self) -> MpSettings {
+        MpSettings {
+            step_early_tolerance: self.step_early_tolerance,
+            max_grid_steps_per_fixed_tick: self.max_grid_steps_per_fixed_tick.max(1),
+        }
+    }
+}
+
+fn default_step_early_tolerance() -> f32 {
+    MpSettings::default().step_early_tolerance
+}
+
+fn default_max_grid_steps_per_fixed_tick() -> u16 {
+    MpSettings::default().max_grid_steps_per_fixed_tick
+}
+
+pub fn load_mp_settings(mut settings: ResMut<MpSettings>) {
+    let db = match common::def_db::DefDatabase::<MpSettingsSeri>::load_from_assets_dir_with_type(
+        stringify!(MpSettingsSeri),
+        &["mp.settings.ron"],
+        |_| "mp_settings",
+    ) {
+        Ok(db) => db,
+        Err(err) => {
+            error!(target: MOVEMENT_SYSTEM, "Failed loading MpSettingsSeri defs: {err:#}");
+            return;
+        }
+    };
+    let Some(first) = db.into_records().into_iter().next() else {
+        return;
+    };
+    *settings = first.value.to_settings();
+}
+
 #[allow(unused_parens, )]
 pub fn receive_step_request_from_client(
     time_fixed: Res<Time<Fixed>>,
+    settings: Res<MpSettings>,
     mut events: MessageReader<FromClient<SendStepRequest>>,
     mut blocking_tiles: BlockingTileParamSet,
     controlled_beings: Query<(&ComputedBy, ), ()>,
@@ -124,7 +182,7 @@ pub fn receive_step_request_from_client(
         if secs_per_step <= 0.0 {
             continue;
         }
-        let requested_steps = steps.max(1).min(MAX_GRID_STEPS_PER_FIXED_TICK);
+        let requested_steps = steps.max(1).min(settings.max_grid_steps_per_fixed_tick);
         let now = time_fixed.elapsed_secs_f64();
         let state = rate_states.entry(being_ent).or_insert(ClientStepRateState {
             last_server_secs: now,
@@ -133,8 +191,8 @@ pub fn receive_step_request_from_client(
         let elapsed = (now - state.last_server_secs).max(0.0) as f32;
         state.last_server_secs = now;
         state.step_credit = (state.step_credit + elapsed / secs_per_step)
-            .min(MAX_GRID_STEPS_PER_FIXED_TICK as f32 + STEP_EARLY_TOLERANCE);
-        if state.step_credit + STEP_EARLY_TOLERANCE < requested_steps as f32 {
+            .min(settings.max_grid_steps_per_fixed_tick as f32 + settings.step_early_tolerance);
+        if state.step_credit + settings.step_early_tolerance < requested_steps as f32 {
             if elapsed <= f32::EPSILON {
                 trace!(
                     target: MOVEMENT_SYSTEM,

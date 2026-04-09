@@ -10,7 +10,7 @@ use game_common::game_common_states::*;
 use tilemap_shared::{ForceAllChunksDespawn, GlobalGenSettings};
 use tilemap::regioning::regioning_resources::StructureGenerationSettings;
 
-use crate::debug_resources::{DebugUiConfig, DubugWindowsVisibility, load_debug_ui_config_seri_defs};
+use crate::debug_resources::DubugWindowsVisibility;
 
 fn render_state_row<T: States + std::fmt::Debug>(ui: &mut egui::Ui, label: &str, state: &State<T>) {
     ui.horizontal(|ui| {
@@ -39,29 +39,6 @@ pub fn debug_toggle_hot_reload_window(
     if hot_reload_toggle_events.contains(ActionEvents::START) && !***main_menu_toggle {
         window_visible.hot_reload_window_open_on_start = !window_visible.hot_reload_window_open_on_start;
     }
-}
-
-pub fn apply_debug_ui_config_once(
-    mut initialized: Local<bool>,
-    mut cfg: ResMut<DebugUiConfig>,
-    mut window_visible: ResMut<DubugWindowsVisibility>,
-    mut selection: ResMut<HotReloadSelection>,
-) {
-    if *initialized {
-        return;
-    }
-
-    let defs = load_debug_ui_config_seri_defs();
-    let Some(def) = defs.first() else {
-        *initialized = true;
-        return;
-    };
-
-    *cfg = def.to_config();
-    *selection = cfg.hot_reload_defaults.clone();
-    *window_visible = cfg.windows_open_on_start.clone();
-
-    *initialized = true;
 }
 
 #[allow(unused_parens)]

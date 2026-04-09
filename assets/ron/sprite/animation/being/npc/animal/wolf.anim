@@ -1,4 +1,4 @@
-anim wolf_south_idle {
+anim wolf_s_idle {
     img_path: "texture/being/npc/wolf.png"
     rows_cols: 4 4
     paused: true
@@ -8,7 +8,7 @@ anim wolf_south_idle {
     }
 }
 
-anim wolf_south_move {
+anim wolf_s_move {
     img_path: "texture/being/npc/wolf.png"
     rows_cols: 4 4
     clips {
@@ -16,7 +16,7 @@ anim wolf_south_move {
     }
 }
 
-anim wolf_north_idle {
+anim wolf_n_idle {
     img_path: "texture/being/npc/wolf.png"
     rows_cols: 4 4
     paused: true
@@ -26,7 +26,7 @@ anim wolf_north_idle {
     }
 }
 
-anim wolf_north_move {
+anim wolf_n_move {
     img_path: "texture/being/npc/wolf.png"
     rows_cols: 4 4
     clips {
@@ -34,7 +34,7 @@ anim wolf_north_move {
     }
 }
 
-anim wolf_west_idle {
+anim wolf_w_idle {
     img_path: "texture/being/npc/wolf.png"
     rows_cols: 4 4
     paused: true
@@ -44,7 +44,7 @@ anim wolf_west_idle {
     }
 }
 
-anim wolf_west_move {
+anim wolf_w_move {
     img_path: "texture/being/npc/wolf.png"
     rows_cols: 4 4
     clips {
@@ -52,7 +52,7 @@ anim wolf_west_move {
     }
 }
 
-anim wolf_east_idle {
+anim wolf_e_idle {
     img_path: "texture/being/npc/wolf.png"
     rows_cols: 4 4
     paused: true
@@ -62,7 +62,7 @@ anim wolf_east_idle {
     }
 }
 
-anim wolf_east_move {
+anim wolf_e_move {
     img_path: "texture/being/npc/wolf.png"
     rows_cols: 4 4
     clips {

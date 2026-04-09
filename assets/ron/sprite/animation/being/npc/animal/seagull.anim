@@ -1,4 +1,4 @@
-anim seagull_south_idle {
+anim seagull_s_idle {
     img_path: "texture/being/npc/bird/seagull.png"
     rows_cols: 4 2
     paused: true
@@ -8,7 +8,7 @@ anim seagull_south_idle {
     }
 }
 
-anim seagull_south_move {
+anim seagull_s_move {
     img_path: "texture/being/npc/bird/seagull.png"
     rows_cols: 4 2
     clips {
@@ -16,7 +16,7 @@ anim seagull_south_move {
     }
 }
 
-anim seagull_north_idle {
+anim seagull_n_idle {
     img_path: "texture/being/npc/bird/seagull.png"
     rows_cols: 4 2
     paused: true
@@ -26,7 +26,7 @@ anim seagull_north_idle {
     }
 }
 
-anim seagull_north_move {
+anim seagull_n_move {
     img_path: "texture/being/npc/bird/seagull.png"
     rows_cols: 4 2
     clips {
@@ -34,7 +34,7 @@ anim seagull_north_move {
     }
 }
 
-anim seagull_west_idle {
+anim seagull_w_idle {
     img_path: "texture/being/npc/bird/seagull.png"
     rows_cols: 4 2
     paused: true
@@ -44,7 +44,7 @@ anim seagull_west_idle {
     }
 }
 
-anim seagull_west_move {
+anim seagull_w_move {
     img_path: "texture/being/npc/bird/seagull.png"
     rows_cols: 4 2
     clips {
@@ -52,7 +52,7 @@ anim seagull_west_move {
     }
 }
 
-anim seagull_east_idle {
+anim seagull_e_idle {
     img_path: "texture/being/npc/bird/seagull.png"
     rows_cols: 4 2
     paused: true
@@ -62,7 +62,7 @@ anim seagull_east_idle {
     }
 }
 
-anim seagull_east_move {
+anim seagull_e_move {
     img_path: "texture/being/npc/bird/seagull.png"
     rows_cols: 4 2
     clips {

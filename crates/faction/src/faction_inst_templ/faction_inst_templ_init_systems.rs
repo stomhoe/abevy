@@ -19,7 +19,18 @@ pub fn init_faction_inst_templates(
     }
 
     for seri in load_faction_inst_templ_seri_defs() {
-        let str_id = StrId::trunc(&seri.id);
+        let str_id = match StrId::new_with_result(seri.id.trim(), 0) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!(
+                    target: "faction_inst_templ_init",
+                    "Skipping faction template with invalid id '{}': {}",
+                    seri.id,
+                    err,
+                );
+                continue;
+            }
+        };
         let mut ecmd = cmd.spawn((FactionInstTempl, str_id.clone(), AddHashIdFromStrId, TemplEntiHashIdRef(HashId::from(str_id.as_str()))));
 
         if !seri.display_name.trim().is_empty() {
@@ -45,14 +56,42 @@ pub fn init_faction_inst_templates(
         }
 
         if !seri.culture_id.trim().is_empty() {
-            ecmd.insert(CultureStrIdRef(StrId::trunc(&seri.culture_id)));
+            let culture_str_id = match StrId::new_with_result(seri.culture_id.trim(), 0) {
+                Ok(culture_str_id) => culture_str_id,
+                Err(err) => {
+                    error!(
+                        target: "faction_inst_templ_init",
+                        "Faction template '{}' has invalid culture_id '{}': {}",
+                        str_id,
+                        seri.culture_id,
+                        err,
+                    );
+                    continue;
+                }
+            };
+            ecmd.insert(CultureStrIdRef(culture_str_id));
         }
 
         if !seri.bit_weightmap.is_empty() {
             let bit_weightmap = seri
                 .bit_weightmap
                 .iter()
-                .map(|(bit_id, weight)| (StrId::trunc(bit_id), (*weight).max(0.0)))
+                .filter_map(|(bit_id, weight)| {
+                    let bit_str_id = match StrId::new_with_result(bit_id.trim(), 0) {
+                        Ok(bit_str_id) => bit_str_id,
+                        Err(err) => {
+                            error!(
+                                target: "faction_inst_templ_init",
+                                "Faction template '{}' has invalid bit id '{}' in bit_weightmap: {}",
+                                str_id,
+                                bit_id,
+                                err,
+                            );
+                            return None;
+                        }
+                    };
+                    Some((bit_str_id, (*weight).max(0.0)))
+                })
                 .collect();
             ecmd.insert(FactionTemplateBitWeightMap(bit_weightmap));
         }

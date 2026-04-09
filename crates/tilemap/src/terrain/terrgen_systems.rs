@@ -1,20 +1,18 @@
 use bevy::{ecs::entity::EntityHashMap, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use camera::camera_components::CameraTarget;
-use common::{common_components::{HashId, HashIdMap}, common_tag_components::HashedTagsVec};
+use common::{common_components::{HashId, HashIdMap}};
 use common::log_targets::TERRGEN_SYSTEM;
 use std::mem::take;
 
 use crate::{
     chunking::{macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples}},
     terrain::{
-        terrprobe::opfilter::opfilter_components::OpFilter,
         operation_list::operation_list_components::*,
         operation_list::operation_list_resources::OperationListEntityMap,
         terrprobe::terrprobe_messages::*,
         terrgen_async_resources::*,
-        terrgen_components::*,
         terrgen_helpers::{
-            build_terrgen_task_context,
+            TerrGenTaskContext,
             pending_root_gpos_count_for_chunk,
             process_pending_ops_batch,
             register_completed_chunk_gpos,
@@ -30,9 +28,6 @@ pub use crate::terrain::terrprobe::terrprobe_systems::search_suitable_positions;
 
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct TerrgenQueries<'w, 's> {
-	pub oplist_query: Query<'w, 's, (&'static HashId, &'static OperationList, &'static OplistSize, Option<&'static HashedTagsVec>), ()>,
-	pub fnl_noises: Query<'w, 's, (&'static HashId, &'static FnlNoiseComp), ()>,
-	pub op_filters: Query<'w, 's, (&'static HashId, &'static OpFilter), ()>,
 	pub dim_hash_query: Query<'w, 's, &'static HashId, common::AnyDisabling>,
 	pub camera_query: Query<'w, 's, (&'static DimensionRef, &'static GlobalTransform), With<CameraTarget>>,
 	pub macro_chunk_biome_distributions: Query<'w, 's, &'static mut BiomeDistribution>,
@@ -43,6 +38,7 @@ pub struct TerrgenQueries<'w, 's> {
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct TerrgenResources<'w> {
     pub collected: ResMut<'w, MassCollectedTiles>,
+    pub(crate) shared_task_data: Res<'w, TerrGenSharedTaskData>,
     pub terrgen_tasks: ResMut<'w, TerrGenAsyncTasks>,
     pub debug_grid: ResMut<'w, TerrGenDebugGrid>,
     pub launch_queue: ResMut<'w, TerrGenLaunchQueue>,
@@ -123,12 +119,10 @@ pub fn process_pending_ops_and_collect_tiles(
     mut local_buffers: TerrgenLocalBuffers,
     mut pending_ops_reader: MessageReader<PendingOp>,
 ) {
-    let oplist_query = &queries.oplist_query;
-    let fnl_noises = &queries.fnl_noises;
-    let op_filters = &queries.op_filters;
     let camera_query = &queries.camera_query;
     let tile_hash_query = &queries.tile_hash_query;
     let collected = &mut resources.collected;
+    let shared_task_data = &resources.shared_task_data;
     let terrgen_tasks = &mut resources.terrgen_tasks;
     let debug_grid = &mut resources.debug_grid;
     let launch_queue = &mut resources.launch_queue;
@@ -301,7 +295,6 @@ pub fn process_pending_ops_and_collect_tiles(
     }
     for macro_chunk_ent in finished_macro_chunk_ents {
         cmd.entity(macro_chunk_ent).try_remove::<MacrochunkPendingBiomeSamples>();
-        debug!(target: TERRGEN_SYSTEM, "Completed biome sampling for macrochunk entity {:?}", macro_chunk_ent);
     }
 
     msg_buffers.sampled_value_writer.write_batch(local_buffers.sampled_value_events.drain(..));
@@ -346,11 +339,12 @@ pub fn process_pending_ops_and_collect_tiles(
     local_buffers.pending_ops_batch.extend(pending_ops_reader.read().cloned());
     if local_buffers.pending_ops_batch.is_empty() { return; }
 
-    let task_context = build_terrgen_task_context(
-        &oplist_query,
-        &fnl_noises,
-        &op_filters,
-    );
+    let Some(shared_task_data) = shared_task_data.shared.as_ref() else {
+        error!(target: TERRGEN_SYSTEM, "TerrGenSharedTaskData was not initialized before processing pending ops");
+        return;
+    };
+
+    let task_context = TerrGenTaskContext::from_shared(shared_task_data);
 
     let pending_ops_batch = take(&mut *local_buffers.pending_ops_batch);
     let capture_debug = debug_grid.enabled;

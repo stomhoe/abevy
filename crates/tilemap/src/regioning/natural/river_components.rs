@@ -15,14 +15,6 @@ pub struct RiverProbeRequest {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct RiverDebugEvent {
-    pub offer_i: u64,
-    pub start_chunk: ChunkPos,
-    pub is_failure: bool,
-    pub reason: String,
-}
-
-#[derive(Debug, Clone, Default)]
 pub struct RiverRegionDebugInfo {
     pub active_probe_chunks: HashSet<ChunkPos>,
     pub claimed_chunks: HashSet<ChunkPos>,
@@ -34,7 +26,6 @@ pub struct RiverRegionDebugInfo {
     pub sampled_none_points: HashSet<GlobalTilePos>,
     pub success_count: u32,
     pub failure_count: u32,
-    pub recent_events: Vec<RiverDebugEvent>,
 }
 
 #[derive(Resource, Debug, Default, Clone)]
@@ -60,9 +51,11 @@ impl RiverDebugData {
         };
         info.active_probe_chunks.remove(&start_chunk);
     }
-    #[allow(dead_code, )]
+    #[allow(dead_code)]
     pub(crate) fn mark_sample(&mut self, dimension_ref: DimensionRef, region_pos: RegionPos, pos: GlobalTilePos, val: f32) {
-        self.region_mut(dimension_ref, region_pos).sampled_points.insert(pos, val);
+        self.region_mut(dimension_ref, region_pos)
+            .sampled_points
+            .insert(pos, val);
     }
 
     pub(crate) fn clear_generated_river(&mut self, dimension_ref: DimensionRef, region_pos: RegionPos) {
@@ -75,5 +68,58 @@ impl RiverDebugData {
     }
 }
 
-#[derive(Resource, Default)]
-pub struct RiverPlans;
+#[derive(Debug, Clone, Copy)]
+pub struct RiverRegisteredOffer {
+    pub region_ent: Entity,
+    pub sgc_ent: Entity,
+    pub offer_i: u64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RiverRegionPlan {
+    pub claimed_chunks: HashSet<ChunkPos>,
+    pub river_tiles: HashSet<GlobalTilePos>,
+    pub river_source_points: HashSet<GlobalTilePos>,
+    pub river_mouth_points: HashSet<GlobalTilePos>,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct RiverPlans {
+    pub registered_offers: HashMap<(DimensionRef, RegionPos), RiverRegisteredOffer>,
+    pub plans_by_region: HashMap<(DimensionRef, RegionPos), RiverRegionPlan>,
+}
+
+impl RiverPlans {
+    pub fn plan(
+        &self,
+        dimension_ref: DimensionRef,
+        region_pos: RegionPos,
+    ) -> Option<&RiverRegionPlan> {
+        self.plans_by_region.get(&(dimension_ref, region_pos))
+    }
+
+    pub fn register_offer(
+        &mut self,
+        dimension_ref: DimensionRef,
+        region_pos: RegionPos,
+        offer: RiverRegisteredOffer,
+    ) -> Option<RiverRegisteredOffer> {
+        self.registered_offers
+            .insert((dimension_ref, region_pos), offer)
+    }
+
+    pub fn registered_offer(
+        &self,
+        dimension_ref: DimensionRef,
+        region_pos: RegionPos,
+    ) -> Option<RiverRegisteredOffer> {
+        self.registered_offers
+            .get(&(dimension_ref, region_pos))
+            .copied()
+    }
+
+    pub fn remove_region(&mut self, dimension_ref: DimensionRef, region_pos: RegionPos) {
+        self.registered_offers.remove(&(dimension_ref, region_pos));
+        self.plans_by_region.remove(&(dimension_ref, region_pos));
+    }
+}

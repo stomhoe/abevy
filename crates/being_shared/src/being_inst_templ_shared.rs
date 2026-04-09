@@ -8,7 +8,7 @@ use crate::WanderSeri;
 use tilemap_shared::InteractionZoneSeri;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
-#[require(Replicated, Prefix::trunc("BeingInstTemplate"), AssetScoped, HotReload)]
+#[require(Replicated, Prefix::trunc("BeingInstTemplate"), AssetScoped, SelectedForHotReload)]
 pub struct BeingInstTemplate{
     pub points: u32,
     pub extra_health_multiplier: f32,

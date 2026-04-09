@@ -1,13 +1,18 @@
 #[allow(unused_imports, )]
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, platform::collections::HashMap, prelude::*};
 use common::common_components::{HashId, HashIdMap};
+use common::common_tag_components::HashedTagsVec;
+use std::sync::Arc;
 
 use crate::terrain::{
     terrgen_components::Terrgen,
     terrgen_async_resources::TerrGenBlockedGposMask,
+    terrgen_components::FnlNoiseComp,
+    operation_list::operation_list_components::OperationList,
+    terrprobe::opfilter::opfilter_components::OpFilter,
     terrgen_seris::*,
 };
-use tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos};
+use tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos, OplistSize};
 
 #[derive(Debug, Clone)]
 pub struct TerrGenDebugSample {
@@ -91,7 +96,28 @@ impl Default for TerrGenDebugGrid {
         }
     }
 }
+
+#[derive(Resource, Debug, Clone, Default)]
+pub(crate) struct TerrGenSharedTaskData {
+    pub(crate) shared: Option<Arc<TerrGenSharedTaskDataInner>>,
+}
+
+#[derive(Debug)]
+pub(crate) struct TerrGenSharedTaskDataInner {
+    pub(crate) oplists: HashIdMap<OperationList>,
+    pub(crate) oplist_debug_var_ids: HashIdMap<Vec<HashId>>,
+    pub(crate) oplist_sizes: HashIdMap<OplistSize>,
+    pub(crate) oplist_tags: HashIdMap<HashedTagsVec>,
+    pub(crate) noises: HashIdMap<FnlNoiseComp>,
+    pub(crate) filters: HashIdMap<OpFilter>,
+}
 common::define_entity_map_systems!(
-    Terrgen,
-    FnlSeri, "seri.tilemap.terrgen.noise", "fnl.ron",
+    main_component: Terrgen,
+    with_filters: (),
+    abbreviation: Terrgen,
+    target: common::log_targets::ENTITY_MAP_SYSTEM,
+    entity_prefix: "terrgen noise",
+    despawn_trigger: Terrgen,
+    id_type: common::common_components::StrId,
+    assets: [(FnlSeri, "seri.tilemap.terrgen.noise", "fnl.ron")],
 );

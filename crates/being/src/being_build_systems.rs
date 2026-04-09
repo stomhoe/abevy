@@ -32,6 +32,7 @@ pub struct BuildBeingsFromRefsQueryParams<'w, 's> {
     race_ref_query: Query<'w, 's, &'static RaceRef>,
     bit_ref_query: Query<'w, 's, &'static BitRef>,
     hash_id_query: Query<'w, 's, &'static HashId>,
+    sex_map: Res<'w, SexEntityMap>,
     bit_map: Res<'w, BeingInstTemplateEntityMap>,
     race_map: Res<'w, RaceEntityMap>,
     dont_extend_from_bit_spawn_whitelist_query: Query<'w, 's, (), With<DontExtendBitSpawnWhitelist>>,
@@ -276,7 +277,10 @@ pub fn build_beings_from_refs(
 
             let mut selected_sex_ent = None;
             if let Ok(sexes_sampler) = queries.sexes_sampler_query.get(race_ent) {
-                selected_sex_ent = sexes_sampler.0.sample_with_rng(&mut rng);
+                selected_sex_ent = sexes_sampler
+                    .0
+                    .sample_with_rng(&mut rng)
+                    .and_then(|sex_hash| queries.sex_map.0.get_cloned(sex_hash).ok());
                 if let Some(sex_ent) = selected_sex_ent {
                     let Ok(&sex_hash) = queries.hash_id_query.get(sex_ent) else {
                         warn!(target: BEING_TEMPLATE_BUILD, "Sex entity {:?} sampled for race {:?} has no HashId", sex_ent, race_ref.0);

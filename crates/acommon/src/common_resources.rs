@@ -10,6 +10,8 @@ use std::sync::{Mutex, OnceLock};
 #[derive(Resource, Default)]
 pub struct ImageSizeMap(pub HashMap<AssetId<Image>, U16Vec2>);
 
+
+
 #[derive(Resource, Debug, Default )]
 pub struct GlobalEntityMap(pub HashMap<String, Entity>);
 impl GlobalEntityMap {

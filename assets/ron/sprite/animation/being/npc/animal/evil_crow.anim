@@ -1,4 +1,4 @@
-anim evil_crow_south_idle {
+anim evil_crow_s_idle {
     img_path: "texture/being/npc/bird/evil_crow.png"
     rows_cols: 4 5
     paused: true
@@ -8,7 +8,7 @@ anim evil_crow_south_idle {
     }
 }
 
-anim evil_crow_south_move {
+anim evil_crow_s_move {
     img_path: "texture/being/npc/bird/evil_crow.png"
     rows_cols: 4 5
     clips {
@@ -16,7 +16,7 @@ anim evil_crow_south_move {
     }
 }
 
-anim evil_crow_north_idle {
+anim evil_crow_n_idle {
     img_path: "texture/being/npc/bird/evil_crow.png"
     rows_cols: 4 5
     paused: true
@@ -26,7 +26,7 @@ anim evil_crow_north_idle {
     }
 }
 
-anim evil_crow_north_move {
+anim evil_crow_n_move {
     img_path: "texture/being/npc/bird/evil_crow.png"
     rows_cols: 4 5
     clips {
@@ -34,7 +34,7 @@ anim evil_crow_north_move {
     }
 }
 
-anim evil_crow_west_idle {
+anim evil_crow_w_idle {
     img_path: "texture/being/npc/bird/evil_crow.png"
     rows_cols: 4 5
     paused: true
@@ -44,7 +44,7 @@ anim evil_crow_west_idle {
     }
 }
 
-anim evil_crow_west_move {
+anim evil_crow_w_move {
     img_path: "texture/being/npc/bird/evil_crow.png"
     rows_cols: 4 5
     clips {
@@ -52,7 +52,7 @@ anim evil_crow_west_move {
     }
 }
 
-anim evil_crow_east_idle {
+anim evil_crow_e_idle {
     img_path: "texture/being/npc/bird/evil_crow.png"
     rows_cols: 4 5
     paused: true
@@ -62,7 +62,7 @@ anim evil_crow_east_idle {
     }
 }
 
-anim evil_crow_east_move {
+anim evil_crow_e_move {
     img_path: "texture/being/npc/bird/evil_crow.png"
     rows_cols: 4 5
     clips {

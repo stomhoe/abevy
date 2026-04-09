@@ -68,7 +68,7 @@ pub fn add_spritechildren_and_comps(
                 warn!(target: "sprite_building", "SpriteConfig entity {:?} for hash {} is missing during build", spritecfg_ent, cfg_hash_id);
                 continue;
             };
-            info!(target: "sprite_building", "Building sprite {}", str_id);
+            trace!(target: "sprite_building", "Building sprite {}", str_id);
 
             let mut already_built = false;
             if let Ok(held_sprites) = held_sprites_query.get(baseholder_ref.base) {

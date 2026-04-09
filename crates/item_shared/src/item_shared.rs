@@ -4,10 +4,12 @@ pub use crate::item_components::*;
 
 
 common::define_entity_map_systems!(
-    Item,
-    (With<game_common::game_common_components::Templ>, common::AnyDisabling),
-    (Item, game_common::game_common_components::Templ),
-    ItemSeri,
-    "seri.item",
-    "item.ron",
+    main_component: Item,
+    with_filters: (With<game_common::game_common_components::Templ>, common::AnyDisabling),
+    abbreviation: Item,
+    target: common::log_targets::ENTITY_MAP_SYSTEM,
+    entity_prefix: "",
+    despawn_trigger: (Item, game_common::game_common_components::Templ),
+    id_type: common::common_components::StrId,
+    assets: [(ItemSeri, "seri.item", "item.ron")],
 );

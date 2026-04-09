@@ -5,7 +5,7 @@ use bevy::platform::collections::HashSet;
 use common::{AnyDisabling, common_components::{HashId, StrId}, };
 
 use game_common::game_common_components::Templ;
-use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
+use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use common::common_components::SampleSpritesamplers;
 use ::sprite_shared::*;
 
@@ -78,8 +78,10 @@ pub fn sample_from_sprite_entities(
     mut cmd: Commands,
     changed_beings: Query<Entity, (Changed<SampleSpritesamplers>, Without<BeingInstTemplate>, Without<Templ>)>,
     being_query: Query<(&SampleSpritesamplers, Has<ScsToBuild>), (Without<BeingInstTemplate>, Without<Templ>, AnyDisabling)>,
-    samplers_query: Query<&EntityWeightedSampler>,
+    samplers_query: Query<&HashIdWeightedSampler>,
     sprite_hash_query: Query<&HashId, (With<SpriteConfig>, AnyDisabling)>,
+    sampler_map: Res<SpriteWeightedSamplerEntityMap>,
+    sprite_map: Res<SpriteConfigEntityMap>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut beings_to_process: Local<Vec<Entity>>,
     mut visited: Local<EntityHashSet>,
@@ -112,6 +114,8 @@ pub fn sample_from_sprite_entities(
                 *entity,
                 &samplers_query,
                 &sprite_hash_query,
+                &sampler_map,
+                &sprite_map,
                 &mut sampled_configs,
                 &mut visited,
             );
@@ -148,8 +152,10 @@ fn resolve_sampler_id_no_sample(
 
 fn sample_from_entity_recursive(
     ent: Entity,
-    sampler_query: &Query<&EntityWeightedSampler>,
+    sampler_query: &Query<&HashIdWeightedSampler>,
     sprite_hash_query: &Query<&HashId, (With<SpriteConfig>, AnyDisabling)>,
+    sampler_map: &SpriteWeightedSamplerEntityMap,
+    sprite_map: &SpriteConfigEntityMap,
     sampled_configs: &mut HashSet<HashId>,
     visited: &mut EntityHashSet,
 ) {
@@ -159,12 +165,23 @@ fn sample_from_entity_recursive(
             return;
         }
             let mut rng = rand::rng();
-            if let Some(sampled_ent) = weighted_sampler.sample_with_rng(&mut rng) {
-                debug!(target: "sprite_sampler_systems", "Sampled entity {:?} from sampler {:?}", sampled_ent, ent);
+            if let Some(sampled_hash_id) = weighted_sampler.sample_with_rng(&mut rng) {
+                debug!(target: "sprite_sampler_systems", "Sampled hash {:?} from sampler {:?}", sampled_hash_id, ent);
+                let Some(sampled_ent) = sampler_map
+                    .0
+                    .get_opt(sampled_hash_id)
+                    .copied()
+                    .or_else(|| sprite_map.0.get_opt(sampled_hash_id).copied()) else {
+                    error!(target: "sprite_sampler_systems", "Sampled hash {:?} from sampler {:?} was not found in sprite/sampler maps", sampled_hash_id, ent);
+                    visited.remove(&ent);
+                    return;
+                };
                 sample_from_entity_recursive(
                     sampled_ent,
                     sampler_query,
                     sprite_hash_query,
+                    sampler_map,
+                    sprite_map,
                     sampled_configs,
                     visited,
                 );

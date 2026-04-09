@@ -8,6 +8,7 @@ use bevy::platform::collections::HashMap;
 use std::hash::{Hash, };
 use crate::{common_types::*};
 use std::fmt::{Debug, Display};
+use bevy_inspector_egui::{egui, inspector_egui_impls::InspectorPrimitive, reflect_inspector::InspectorUi};
 use serde::{Deserialize, Serialize};
 
 macro_rules! define_fixedstr_id {
@@ -187,6 +188,8 @@ pub struct AddHashIdFromStrId;
 #[derive(Component, Default, Deserialize, Serialize, Clone, Hash, PartialEq, Eq, Copy, Reflect)]
 pub struct HashId(u64);
 impl HashId {
+    const DISPLAY_MASK: u64 = 0xFFFFF;
+
     pub fn new(id: u64) -> Self {
         Self(id)
     }
@@ -202,6 +205,9 @@ impl HashId {
         hash = hash.wrapping_mul(PRIME);
         hash ^= hash >> 32;
         HashId(hash)
+    }
+    pub fn short_hex(self) -> String {
+        format!("{:05x}", self.0 & Self::DISPLAY_MASK)
     }
     pub const fn hash(s: &str) -> Self {
         const OFFSET: u64 = 0xcbf29ce484222325;
@@ -224,12 +230,41 @@ impl<S: AsRef<str>> From<S> for HashId {
 }
 impl Display for HashId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "HId({:05})", self.0)
+        write!(f, "HId({})", self.short_hex())
     }
 }
 impl Debug for HashId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "HId({:05})", self.0)
+        write!(f, "HId({})", self.short_hex())
+    }
+}
+impl InspectorPrimitive for HashId {
+    fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        _: &dyn std::any::Any,
+        _: egui::Id,
+        _: InspectorUi<'_, '_>,
+    ) -> bool {
+        let mut s = self.short_hex();
+        if ui.text_edit_singleline(&mut s).changed() {
+            let cleaned = s.trim().trim_start_matches("0x");
+            if let Ok(raw) = u64::from_str_radix(cleaned, 16) {
+                *self = HashId(raw);
+                return true;
+            }
+        }
+        false
+    }
+
+    fn ui_readonly(
+        &self,
+        ui: &mut egui::Ui,
+        _: &dyn std::any::Any,
+        _: egui::Id,
+        _: InspectorUi<'_, '_>,
+    ) {
+        ui.label(self.short_hex());
     }
 }
 

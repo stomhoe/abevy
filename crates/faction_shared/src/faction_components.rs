@@ -2,21 +2,21 @@
 use bevy::prelude::*;
 use bevy::ecs::entity::MapEntities;
 use bevy_replicon::prelude::*;
-use common::common_components::{AssetScoped, Prefix, SparedFromHotReloading};
+use common::common_components::{AssetScoped, Prefix};
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash)]
-#[require(Replicated, Prefix::trunc("Faction"), AssetScoped, SparedFromHotReloading,)]
+#[require(Replicated, Prefix::trunc("Faction"), AssetScoped,)]
 pub struct Faction;
 
 
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash)]
-#[require(Replicated, Prefix::trunc("FactionInstTemplate"), AssetScoped, SparedFromHotReloading,)]
+#[require(Replicated, Prefix::trunc("FactionInstTemplate"), AssetScoped,)]
 pub struct FactionInstTempl;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq, Hash)]
-#[require(Replicated, Prefix::trunc("Culture"), AssetScoped, SparedFromHotReloading,)]
+#[require(Replicated, Prefix::trunc("Culture"), AssetScoped,)]
 pub struct Culture;
 
 #[derive(Component, Debug, Copy, Clone, Eq, PartialEq, Hash)]

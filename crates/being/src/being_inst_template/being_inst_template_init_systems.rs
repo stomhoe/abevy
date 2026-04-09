@@ -45,7 +45,18 @@ pub fn init_being_templates(
     };
 
     for template_seri in load_bit_seri_defs() {
-        let str_id = StrId::trunc(&template_seri.id);
+        let str_id = match StrId::new_with_result(template_seri.id.trim(), 0) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!(
+                    target: "being_template_init",
+                    "Skipping BeingInstTemplate with invalid id '{}': {}",
+                    template_seri.id,
+                    err,
+                );
+                continue;
+            }
+        };
 
 
         let being_inst_template = BeingInstTemplate {
@@ -67,11 +78,35 @@ pub fn init_being_templates(
         }
 
         if !template_seri.fallback_faction.trim().is_empty(){
-            let faction_str_id = StrId::trunc(&template_seri.fallback_faction);
+            let faction_str_id = match StrId::new_with_result(template_seri.fallback_faction.trim(), 0) {
+                Ok(faction_str_id) => faction_str_id,
+                Err(err) => {
+                    error!(
+                        target: "being_template_init",
+                        "BeingInstTemplate '{}' has invalid fallback_faction '{}': {}",
+                        str_id,
+                        template_seri.fallback_faction,
+                        err,
+                    );
+                    continue;
+                }
+            };
             faction_refs_to_insert.push((bit_entity, FactionStrIdRef(faction_str_id)));
         }
         if !template_seri.body.trim().is_empty() {
-            let body_str_id = StrId::trunc(&template_seri.body);
+            let body_str_id = match StrId::new_with_result(template_seri.body.trim(), 0) {
+                Ok(body_str_id) => body_str_id,
+                Err(err) => {
+                    error!(
+                        target: "being_template_init",
+                        "BeingInstTemplate '{}' has invalid body id '{}': {}",
+                        str_id,
+                        template_seri.body,
+                        err,
+                    );
+                    continue;
+                }
+            };
             if body_sampler_map.0.get_cloned(&body_str_id).is_ok() {
                 cmd.entity(bit_entity).insert(BodyWeightedSamplerRef(HashId::from(body_str_id.as_str())));
             } else if body_map.0.get_cloned(&body_str_id).is_ok() {
@@ -132,8 +167,20 @@ pub fn init_being_templates(
             cmd.entity(bit_entity).insert(predator_cfg);
         }
         // Resolve race entity from race string
-        let race_str_id = StrId::trunc(&template_seri.race);
-        let Ok(race_entity) = race_emap.0.get_cloned(&template_seri.race) else {
+        let race_str_id = match StrId::new_with_result(template_seri.race.trim(), 0) {
+            Ok(race_str_id) => race_str_id,
+            Err(err) => {
+                error!(
+                    target: "being_template_init",
+                    "BeingTemplate '{}' has invalid race id '{}': {}",
+                    str_id,
+                    template_seri.race,
+                    err,
+                );
+                continue;
+            }
+        };
+        let Ok(race_entity) = race_emap.0.get_cloned(&race_str_id) else {
             error!(target: "being_template_init", "BeingTemplate '{}' race '{}' not found in RaceEntityMap", str_id, race_str_id);
             continue;
         };
@@ -158,7 +205,7 @@ pub fn init_being_templates(
             let Ok(mut biome_pack_sampler) = biome_pack_samplers.get_mut(biome_ent) else {
                 continue;
             };
-            biome_pack_sampler.add_affinity(bit_entity, *weight);
+            biome_pack_sampler.add_affinity(HashId::from(str_id.as_str()), *weight);
         }
     }
     cmd.try_insert_batch(samples);

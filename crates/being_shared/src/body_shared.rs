@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Clone, Serialize, Deserialize, MapEntities)]
 #[relationship(relationship_target = HeldBody)]
-#[require(Replicated)]
 pub struct BodyOf {
     #[relationship]
     #[entities]

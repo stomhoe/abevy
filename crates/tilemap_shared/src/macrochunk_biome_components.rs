@@ -1,10 +1,11 @@
-use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::*};
+use bevy::{platform::collections::HashMap, prelude::*};
+use common::common_id_components::{HashId, HashIdMap};
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use crate::{
     tilemap_positioning::ChunkPos,
-    tilemap_shared_samplers::EntityWeightedSampler,
+    tilemap_shared_samplers::HashIdWeightedSampler,
 };
 
 
@@ -62,12 +63,15 @@ impl BiomePackCountAvgedNormDists {
 #[derive(Component, Debug, Clone, Default)]
 //TODO borrar cuano ya deje de ser usado
 pub struct BiomeDistribution {
-	pub produced_biome_sampler: EntityWeightedSampler,
-	pub pack_count_multiplier_avged_norm_dists_per_biome: EntityHashMap<BiomePackCountAvgedNormDists>,
-	pub accumulated_chunk_weights_per_biome: EntityHashMap<HashMap<ChunkPos, f32>>,
+	pub produced_biome_sampler: HashIdWeightedSampler,
+	pub pack_count_multiplier_avged_norm_dists_per_biome: HashIdMap<BiomePackCountAvgedNormDists>,
+	pub accumulated_chunk_weights_per_biome: HashIdMap<HashMap<ChunkPos, f32>>,
 }
 impl BiomeDistribution {
-    pub fn sample_biome_ent(&self, rng: &mut impl rand::Rng) -> Option<Entity> {
+    pub fn sample_biome_hash_id(
+        &self,
+        rng: &mut impl rand::Rng,
+    ) -> Option<HashId> {
         self.produced_biome_sampler.sample_with_rng(rng)
     }
 }
@@ -88,15 +92,19 @@ impl BiomeDistribution {
 			}
 			self
 				.pack_count_multiplier_avged_norm_dists_per_biome
+				.0
 				.entry(tag)
 				.or_default()
 				.add_sample(
 					tag_weight.pack_count_multiplier_mean,
 					tag_weight.pack_count_multiplier_std_dev,
 				);
-			self.produced_biome_sampler.add_or_accumulate_weight(tag, weight);
+			if let Err(negative_item) = self.produced_biome_sampler.add_or_accumulate_weight(tag, weight) {
+				crate::log_negative_weighted_sampler_items!("macrochunk_biome", tag, vec![negative_item]);
+			}
 			let chunk_weights = self
 				.accumulated_chunk_weights_per_biome
+				.0
 				.entry(tag)
 				.or_default();
 			let entry = chunk_weights.entry(chunk_pos).or_default();
@@ -104,8 +112,8 @@ impl BiomeDistribution {
 		}
 	}
 
-	pub fn sorted_chunk_candidates_for_biome(&self, biome_ent: Entity) -> Vec<ChunkPos> {
-		let Some(cpos_weight_list) = self.accumulated_chunk_weights_per_biome.get(&biome_ent) else {
+	pub fn sorted_chunk_candidates_for_biome(&self, biome_hash: HashId) -> Vec<ChunkPos> {
+		let Some(cpos_weight_list) = self.accumulated_chunk_weights_per_biome.get_opt(biome_hash) else {
 			return Vec::new();
 		};
 		let mut sorted = cpos_weight_list
@@ -116,8 +124,8 @@ impl BiomeDistribution {
 		sorted.into_iter().map(|(chunk_pos, _)| chunk_pos).collect()
 	}
 
-	pub fn averaged_pack_count_multiplier_stats(&self, biome: Entity) -> BiomePackCountAvgedNormDists {
-		self.pack_count_multiplier_avged_norm_dists_per_biome.get(&biome).copied().unwrap_or(BiomePackCountAvgedNormDists {
+	pub fn averaged_pack_count_multiplier_stats(&self, biome: HashId) -> BiomePackCountAvgedNormDists {
+		self.pack_count_multiplier_avged_norm_dists_per_biome.get_opt(biome).copied().unwrap_or(BiomePackCountAvgedNormDists {
 			mean_sum: 1.0,
 			std_dev_sum: 0.0,
 			samples: 1,
@@ -128,7 +136,7 @@ impl BiomeDistribution {
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct BiomeTagWeightAtMacrochunk {
-	pub biome: Entity,
+	pub biome: HashId,
 	pub weight: f32,
 	pub pack_count_multiplier_mean: f32,
 	pub pack_count_multiplier_std_dev: f32,

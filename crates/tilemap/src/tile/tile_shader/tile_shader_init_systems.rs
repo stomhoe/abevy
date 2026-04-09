@@ -20,18 +20,20 @@ pub fn init_shaders(
     let mut shader_comps_to_insert = Vec::new();
 
     for seri in load_shader_terrbl_seri_defs() {
-            let str_id = match StrId::new_with_result(seri.id.clone(), 1) {
-                Ok(id) => id,
-                Err(err) => {
-                    error!(target: TILE_SHADER_INIT, "Failed to create StrId for shader '{}': {}", seri.id, err);
-                    continue;
-                }
-            };
-            let ent = cmd.spawn_empty().id();
-            shader_comps_to_insert.push((ent, (
-                str_id.clone(),
-                TileShader::TerrBlend(TerrBlendMat::default()),
-            )));
+        let str_id = match StrId::new_with_result(seri.id.clone(), 1) {
+            Ok(id) => id,
+            Err(err) => {
+                error!(target: TILE_SHADER_INIT, "Failed to create StrId for shader '{}': {}", seri.id, err);
+                continue;
+            }
+        };
+        let ent = cmd.spawn_empty().id();
+        shader_comps_to_insert.push((ent, (
+            str_id.clone(),
+            str_id.hash_id(),
+            TileShader::TerrBlend(TerrBlendMat::default()),
+            Replicated
+        )));
     }
     cmd.insert_batch(shader_comps_to_insert);
 }

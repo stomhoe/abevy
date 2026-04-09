@@ -38,6 +38,8 @@ pub(crate) struct InstancePackQueries<'w, 's> {
     no_spawn_squad_query: Query<'w, 's, (), With<NoSpawnSquadEntity>>,
     spawn_count_query: Query<'w, 's, (&'static PackInitialSizeSampler, )>,
     hash_query: Query<'w, 's, &'static HashId>,
+    race_map: Res<'w, RaceEntityMap>,
+    bit_map: Res<'w, BeingInstTemplateEntityMap>,
     dim_map: Res<'w, DimensionEntityMap>,
 }
 
@@ -109,6 +111,8 @@ pub fn instance_pack_entities(
                 &mut rng,
                 &mut locals.sampled_beings,
                 pack_str_id,
+                &queries.race_map,
+                &queries.bit_map,
             );
             if locals.sampled_beings.is_empty() {
                 error!(target: BEING_SYSTEM, "Failed to sample members from pack template {:?} while handling InstancePackEntity", source_ent);
@@ -312,7 +316,7 @@ pub fn instance_pack_entities(
             }
             spawned_members += 1;
         }
-        debug!(
+        trace!(
             target: BEING_SYSTEM,
             "Instanced source {:?} (kind {:?}) with {} beings in {:?}, squad {:?}, radius {}",
             source_ent,
@@ -332,10 +336,19 @@ fn sample_pack_members(
     rng: &mut impl rand::Rng,
     out: &mut Vec<Entity>,
     pack_str_id: Option<&StrId>,
+    race_map: &RaceEntityMap,
+    bit_map: &BeingInstTemplateEntityMap,
 ) {
     out.clear();
     let Some(forced_bounds) = forced_bounds else {
-        being_sampler.0.sample_n_with_rng(target_count, rng, out);
+        let mut sampled_hash_ids = Vec::with_capacity(target_count);
+        being_sampler.0.sample_n_with_rng(target_count, rng, &mut sampled_hash_ids);
+        out.reserve(sampled_hash_ids.len());
+        for sampled_hash_id in sampled_hash_ids {
+            if let Some(sampled_ent) = resolve_pack_hash_id(sampled_hash_id, race_map, bit_map) {
+                out.push(sampled_ent);
+            }
+        }
         return;
     };
 
@@ -369,8 +382,11 @@ fn sample_pack_members(
     let mut attempts_left = target_count.saturating_mul(16).max(32);
     while out.len() < target_count && attempts_left > 0 {
         attempts_left -= 1;
-        let Some(sampled_ent) = being_sampler.0.sample_with_rng(rng) else {
+        let Some(sampled_hash_id) = being_sampler.0.sample_with_rng(rng) else {
             break;
+        };
+        let Some(sampled_ent) = resolve_pack_hash_id(sampled_hash_id, race_map, bit_map) else {
+            continue;
         };
         let current_count = counts.get(&sampled_ent).copied().unwrap_or_default();
         if let Some(&max_count) = max_counts.get(&sampled_ent) {
@@ -391,4 +407,16 @@ fn sample_pack_members(
             target_count,
         );
     }
+}
+
+fn resolve_pack_hash_id(
+    sampled_hash_id: HashId,
+    race_map: &RaceEntityMap,
+    bit_map: &BeingInstTemplateEntityMap,
+) -> Option<Entity> {
+    race_map
+        .0
+        .get_opt(sampled_hash_id)
+        .copied()
+        .or_else(|| bit_map.0.get_opt(sampled_hash_id).copied())
 }

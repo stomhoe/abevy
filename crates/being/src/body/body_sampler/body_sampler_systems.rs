@@ -2,7 +2,7 @@ use ::being_shared::*;
 use bevy::ecs::entity::EntityHashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::common_components::HashId;
-use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
+use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 
 use crate::{
     body::{
@@ -19,8 +19,9 @@ pub fn sample_nested_body_samplers_until_body_is_found(
     mut cmd: Commands,
     being_query: Query<(Entity, &BodyWeightedSamplerRef), (Changed<BodyWeightedSamplerRef>, Without<BeingInstTemplate>, Without<Race>)>,
     body_sampler_map: Res<BodyWeightedSamplerEntityMap>,
+    body_map: Res<BodyEntityMap>,
     body_hash_query: Query<&HashId, With<Body>>,
-    body_samplers_query: Query<(&EntityWeightedSampler), (With<BodyWeightedSampler>,)>,
+    body_samplers_query: Query<(&HashIdWeightedSampler), (With<BodyWeightedSampler>,)>,
     bodies_query: Query<(), (With<Body>, )>,
 ) {
     let mut body_refs_to_insert: Vec<(Entity, BodyRef)> = Vec::new();
@@ -40,7 +41,10 @@ pub fn sample_nested_body_samplers_until_body_is_found(
                 break;
             }
             let Ok(body_sampler) = body_samplers_query.get(curr_ent) else { break; };
-            let Some(next_ent) = body_sampler.sample_with_rng(&mut rng) else { break; };
+            let Some(next_hash_id) = body_sampler.sample_with_rng(&mut rng) else { break; };
+            let Some(next_ent) = body_map.0.get_opt(next_hash_id).copied().or_else(|| body_sampler_map.0.get_opt(next_hash_id).copied()) else {
+                break;
+            };
             curr_ent = next_ent;
         }
     }

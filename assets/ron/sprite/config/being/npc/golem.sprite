@@ -1,0 +1,25 @@
+sprite golem {
+name Golem
+z 1000
+mapped_anims {
+    south idle g _ = golem_s_idle
+    south move g _ = golem_s_move
+    west idle g _ = golem_w_idle
+    west move g _ = golem_w_move
+    east idle g _ = golem_e_idle
+    east move g _ = golem_e_move
+    north idle g _ = golem_n_idle
+    north move g _ = golem_n_move
+}
+children_sprites []
+shares_tag []
+directionable true
+movement_based true
+grounding_based false
+is_being_root_sprite true
+add_up_z_with_anim true
+baseline_move_speed 60.0
+offset 0.0 40.0
+scale 1.2 1.2
+tags []
+}

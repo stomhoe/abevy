@@ -1,5 +1,5 @@
-anim dragon_south_idle {
-    img_path: "texture/being/npc/monster/dragon/dragon_south.png"
+anim dragon_s_idle {
+    img_path: "texture/being/npc/monster/dragon/dragon_s.png"
     rows_cols: 4 3
     paused: true
     speed: 1.0
@@ -8,8 +8,8 @@ anim dragon_south_idle {
     }
 }
 
-anim dragon_south_move {
-    img_path: "texture/being/npc/monster/dragon/dragon_south.png"
+anim dragon_s_move {
+    img_path: "texture/being/npc/monster/dragon/dragon_s.png"
     rows_cols: 4 3
     clips {
         row 0 start_frame 0
@@ -18,8 +18,8 @@ anim dragon_south_move {
     }
 }
 
-anim dragon_north_idle {
-    img_path: "texture/being/npc/monster/dragon/dragon_north.png"
+anim dragon_n_idle {
+    img_path: "texture/being/npc/monster/dragon/dragon_n.png"
     rows_cols: 4 3
     paused: true
     speed: 1.0
@@ -28,8 +28,8 @@ anim dragon_north_idle {
     }
 }
 
-anim dragon_north_move {
-    img_path: "texture/being/npc/monster/dragon/dragon_north.png"
+anim dragon_n_move {
+    img_path: "texture/being/npc/monster/dragon/dragon_n.png"
     rows_cols: 4 3
     clips {
         row 0 start_frame 0
@@ -38,8 +38,8 @@ anim dragon_north_move {
     }
 }
 
-anim dragon_west_idle {
-    img_path: "texture/being/npc/monster/dragon/dragon_west.png"
+anim dragon_w_idle {
+    img_path: "texture/being/npc/monster/dragon/dragon_w.png"
     rows_cols: 4 3
     paused: true
     speed: 1.0
@@ -48,8 +48,8 @@ anim dragon_west_idle {
     }
 }
 
-anim dragon_west_move {
-    img_path: "texture/being/npc/monster/dragon/dragon_west.png"
+anim dragon_w_move {
+    img_path: "texture/being/npc/monster/dragon/dragon_w.png"
     rows_cols: 4 3
     clips {
         row 0 start_frame 0
@@ -58,8 +58,8 @@ anim dragon_west_move {
     }
 }
 
-anim dragon_east_idle {
-    img_path: "texture/being/npc/monster/dragon/dragon_east.png"
+anim dragon_e_idle {
+    img_path: "texture/being/npc/monster/dragon/dragon_e.png"
     rows_cols: 4 3
     paused: true
     speed: 1.0
@@ -68,8 +68,8 @@ anim dragon_east_idle {
     }
 }
 
-anim dragon_east_move {
-    img_path: "texture/being/npc/monster/dragon/dragon_east.png"
+anim dragon_e_move {
+    img_path: "texture/being/npc/monster/dragon/dragon_e.png"
     rows_cols: 4 3
     clips {
         row 0 start_frame 0

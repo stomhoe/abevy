@@ -1,4 +1,4 @@
-anim astaroth_south_idle {
+anim astaroth_s_idle {
     img_path: "texture/being/npc/monster/astaroth.png"
     rows_cols: 4 8
     paused: true
@@ -8,7 +8,7 @@ anim astaroth_south_idle {
     }
 }
 
-anim astaroth_south_move {
+anim astaroth_s_move {
     img_path: "texture/being/npc/monster/astaroth.png"
     rows_cols: 4 8
     clips {
@@ -16,7 +16,7 @@ anim astaroth_south_move {
     }
 }
 
-anim astaroth_north_idle {
+anim astaroth_n_idle {
     img_path: "texture/being/npc/monster/astaroth.png"
     rows_cols: 4 8
     paused: true
@@ -26,7 +26,7 @@ anim astaroth_north_idle {
     }
 }
 
-anim astaroth_north_move {
+anim astaroth_n_move {
     img_path: "texture/being/npc/monster/astaroth.png"
     rows_cols: 4 8
     clips {
@@ -34,7 +34,7 @@ anim astaroth_north_move {
     }
 }
 
-anim astaroth_west_idle {
+anim astaroth_w_idle {
     img_path: "texture/being/npc/monster/astaroth.png"
     rows_cols: 4 8
     paused: true
@@ -44,7 +44,7 @@ anim astaroth_west_idle {
     }
 }
 
-anim astaroth_west_move {
+anim astaroth_w_move {
     img_path: "texture/being/npc/monster/astaroth.png"
     rows_cols: 4 8
     clips {
@@ -52,7 +52,7 @@ anim astaroth_west_move {
     }
 }
 
-anim astaroth_east_idle {
+anim astaroth_e_idle {
     img_path: "texture/being/npc/monster/astaroth.png"
     rows_cols: 4 8
     paused: true
@@ -62,7 +62,7 @@ anim astaroth_east_idle {
     }
 }
 
-anim astaroth_east_move {
+anim astaroth_e_move {
     img_path: "texture/being/npc/monster/astaroth.png"
     rows_cols: 4 8
     clips {

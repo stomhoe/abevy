@@ -10,7 +10,18 @@ pub fn init_sexes(
     mut cmd: Commands,
 ) {
     for sex_seri in load_sex_seri_defs() {
-            let str_id = StrId::trunc(&sex_seri.id);
+            let str_id = match StrId::new_with_result(sex_seri.id.trim(), 0) {
+                Ok(str_id) => str_id,
+                Err(err) => {
+                    error!(
+                        target: "sex_init",
+                        "Skipping sex with invalid id '{}': {}",
+                        sex_seri.id,
+                        err,
+                    );
+                    continue;
+                }
+            };
 
             let ingame_name = DisplayName(sex_seri.name.clone());
             let description = sex_seri.description.as_ref().map(|d| Description(d.clone()));

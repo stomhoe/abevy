@@ -20,24 +20,12 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         (
             (
-                drunkwalk_dungeon_building_system
-                    .after(read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems)
-                    .run_if(on_message::<SgcPrepareTilesOrder>),
-                corridor_dungeon_building_system
-                    .after(read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems)
-                    .run_if(on_message::<SgcPrepareTilesOrder>),
-                spiral_dungeon_building_system
-                    .after(read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems)
-                    .run_if(on_message::<SgcPrepareTilesOrder>),
-                archimedes_spiral_building_system
-                    .after(read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems)
-                    .run_if(on_message::<SgcPrepareTilesOrder>),
-                maze_dungeon_building_system
-                    .after(read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems)
-                    .run_if(on_message::<SgcPrepareTilesOrder>),
-                river_structure_building_system
-                    .after(read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems)
-                    .run_if(on_message::<SgcPrepareTilesOrder>),
+                drunkwalk_dungeon_building_system,
+                corridor_dungeon_building_system,
+                spiral_dungeon_building_system,
+                archimedes_spiral_building_system,
+                maze_dungeon_building_system,
+                river_structure_building_system,
             )
             .in_set(StructureBuildingSystems),
             offer_chunks_of_new_regions_to_dungeoning_systems,
@@ -63,6 +51,9 @@ pub fn plugin(app: &mut App) {
         ).in_set(RegioningSystems),
         despawn_empty_regions,
     ))
+    .configure_sets(Update,
+        (StructureBuildingSystems.after(read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems)).run_if(on_message::<SgcPrepareTilesOrder>)
+    )
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities), (
             init_structured_gen_configs, map_structured_gen_config_id_to_entity,
@@ -71,7 +62,7 @@ pub fn plugin(app: &mut App) {
     .add_observer(on_region_despawn_remove_from_loaded_regions)
 
     .init_resource::<LoadedRegions>()
-    .init_resource::<Prioritized>()
+    .init_resource::<PrioritizedSgs>()
     .init_resource::<PrioritizedPerRegion>()
     .insert_resource(SgcCommandRegistry::with_builtins())
     .init_resource::<RiverPlans>()

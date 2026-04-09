@@ -1,4 +1,4 @@
-anim golem_gold_south_idle {
+anim golem_gold_s_idle {
     img_path: "texture/being/npc/monster/golem_gold.png"
     rows_cols: 4 5
     paused: true
@@ -8,7 +8,7 @@ anim golem_gold_south_idle {
     }
 }
 
-anim golem_gold_south_move {
+anim golem_gold_s_move {
     img_path: "texture/being/npc/monster/golem_gold.png"
     rows_cols: 4 5
     clips {
@@ -16,7 +16,7 @@ anim golem_gold_south_move {
     }
 }
 
-anim golem_gold_north_idle {
+anim golem_gold_n_idle {
     img_path: "texture/being/npc/monster/golem_gold.png"
     rows_cols: 4 5
     paused: true
@@ -26,7 +26,7 @@ anim golem_gold_north_idle {
     }
 }
 
-anim golem_gold_north_move {
+anim golem_gold_n_move {
     img_path: "texture/being/npc/monster/golem_gold.png"
     rows_cols: 4 5
     clips {
@@ -34,7 +34,7 @@ anim golem_gold_north_move {
     }
 }
 
-anim golem_gold_west_idle {
+anim golem_gold_w_idle {
     img_path: "texture/being/npc/monster/golem_gold.png"
     rows_cols: 4 5
     paused: true
@@ -44,7 +44,7 @@ anim golem_gold_west_idle {
     }
 }
 
-anim golem_gold_west_move {
+anim golem_gold_w_move {
     img_path: "texture/being/npc/monster/golem_gold.png"
     rows_cols: 4 5
     clips {
@@ -52,7 +52,7 @@ anim golem_gold_west_move {
     }
 }
 
-anim golem_gold_east_idle {
+anim golem_gold_e_idle {
     img_path: "texture/being/npc/monster/golem_gold.png"
     rows_cols: 4 5
     paused: true
@@ -62,7 +62,7 @@ anim golem_gold_east_idle {
     }
 }
 
-anim golem_gold_east_move {
+anim golem_gold_e_move {
     img_path: "texture/being/npc/monster/golem_gold.png"
     rows_cols: 4 5
     clips {

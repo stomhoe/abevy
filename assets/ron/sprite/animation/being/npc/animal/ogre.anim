@@ -1,4 +1,4 @@
-anim ogre_south_idle {
+anim ogre_s_idle {
     img_path: "texture/being/npc/monster/ogre.png"
     rows_cols: 4 6
     paused: true
@@ -8,7 +8,7 @@ anim ogre_south_idle {
     }
 }
 
-anim ogre_south_move {
+anim ogre_s_move {
     img_path: "texture/being/npc/monster/ogre.png"
     rows_cols: 4 6
     clips {
@@ -16,7 +16,7 @@ anim ogre_south_move {
     }
 }
 
-anim ogre_north_idle {
+anim ogre_n_idle {
     img_path: "texture/being/npc/monster/ogre.png"
     rows_cols: 4 6
     paused: true
@@ -26,7 +26,7 @@ anim ogre_north_idle {
     }
 }
 
-anim ogre_north_move {
+anim ogre_n_move {
     img_path: "texture/being/npc/monster/ogre.png"
     rows_cols: 4 6
     clips {
@@ -34,7 +34,7 @@ anim ogre_north_move {
     }
 }
 
-anim ogre_west_idle {
+anim ogre_w_idle {
     img_path: "texture/being/npc/monster/ogre.png"
     rows_cols: 4 6
     paused: true
@@ -44,7 +44,7 @@ anim ogre_west_idle {
     }
 }
 
-anim ogre_west_move {
+anim ogre_w_move {
     img_path: "texture/being/npc/monster/ogre.png"
     rows_cols: 4 6
     clips {
@@ -52,7 +52,7 @@ anim ogre_west_move {
     }
 }
 
-anim ogre_east_idle {
+anim ogre_e_idle {
     img_path: "texture/being/npc/monster/ogre.png"
     rows_cols: 4 6
     paused: true
@@ -62,7 +62,7 @@ anim ogre_east_idle {
     }
 }
 
-anim ogre_east_move {
+anim ogre_e_move {
     img_path: "texture/being/npc/monster/ogre.png"
     rows_cols: 4 6
     clips {

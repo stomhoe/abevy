@@ -68,9 +68,4 @@ clonar con  .clone tile templs replicadas en client y desp mandar un mensaje par
 problema no se puede latejoinear sin complicar
 
 
-hay demasiadas animation entities y son costosas de iterar por el bevy replicon. hay q hacer q una vez q el cliente las clone, dejen de tener Replicated
-
-
-arreglar q el cliente no puede cargar chunks por su cuenta
-
 mejorar sistemas de asignacion automatica de loadchunksaround

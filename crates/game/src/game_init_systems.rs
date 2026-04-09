@@ -43,8 +43,8 @@ pub struct GameInitSettings {
 impl Default for GameInitSettings {
     fn default() -> Self {
         Self {
-            players_spawn_probe_id: StrId::trunc("land"),
-            players_initial_bit: StrId::trunc("player_warrior"),
+            players_spawn_probe_id: StrId::new_with_result("land", 0).expect("default players_spawn_probe_id must be a valid StrId"),
+            players_initial_bit: StrId::new_with_result("player_warrior", 0).expect("default players_initial_bit must be a valid StrId"),
         }
     }
 }
@@ -59,9 +59,35 @@ pub struct GameInitSettingsSeri {
 }
 impl GameInitSettingsSeri {
     pub fn to_settings(&self) -> GameInitSettings {
+        let players_spawn_probe_id = match StrId::new_with_result(self.players_spawn_probe_id.trim(), 0) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!(
+                    target: GAME_INIT,
+                    "Invalid players_spawn_probe_id '{}' in GameInitSettingsSeri '{}': {}. Falling back to 'land'",
+                    self.players_spawn_probe_id,
+                    self.id,
+                    err,
+                );
+                StrId::new_with_result("land", 0).expect("fallback players_spawn_probe_id must be a valid StrId")
+            }
+        };
+        let players_initial_bit = match StrId::new_with_result(self.players_initial_bit_ref_strid.trim(), 0) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!(
+                    target: GAME_INIT,
+                    "Invalid players_initial_bit_ref_strid '{}' in GameInitSettingsSeri '{}': {}. Falling back to 'player_warrior'",
+                    self.players_initial_bit_ref_strid,
+                    self.id,
+                    err,
+                );
+                StrId::new_with_result("player_warrior", 0).expect("fallback players_initial_bit must be a valid StrId")
+            }
+        };
         GameInitSettings {
-            players_spawn_probe_id: StrId::trunc(self.players_spawn_probe_id.trim()),
-            players_initial_bit: StrId::trunc(self.players_initial_bit_ref_strid.trim()),
+            players_spawn_probe_id,
+            players_initial_bit,
         }
     }
 }
@@ -123,16 +149,29 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
 
 
 
-    let host_faction_id = StrId::trunc("host");
+    let host_faction_id = match StrId::new_with_result("host", 0) {
+        Ok(host_faction_id) => host_faction_id,
+        Err(err) => {
+            error!(target: GAME_INIT, "Invalid hardcoded host faction id 'host': {}", err);
+            return;
+        }
+    };
     let host_faction_hash = HashId::from(host_faction_id.as_str());
     let host_faction = cmd.spawn((Faction, host_faction_id.clone(), host_faction_hash, Mine)).id();
 
     map.0.overwrite(host_faction_id, host_faction);
 
 
+    let host_player_id = match StrId::new_with_result("HOOOOOST", 0) {
+        Ok(host_player_id) => host_player_id,
+        Err(err) => {
+            error!(target: GAME_INIT, "Invalid hardcoded host player id 'HOOOOOST': {}", err);
+            return;
+        }
+    };
     cmd.spawn((
         Mine, HostPlayer,
-        StrId::trunc("HOOOOOST"),
+        host_player_id,
         FactionRef(host_faction_hash),
     ));
     app_state.set(AppState::StatefulGameSession);

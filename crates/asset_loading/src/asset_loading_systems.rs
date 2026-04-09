@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::{ServerState};
 use ac_input::ac_input_actions::AssetReloadAction;
-use common::{common_components::{AssetScoped, HotReload}, common_states::*};
+use common::{common_components::{AssetScoped, SelectedForHotReload}, common_states::*};
 use being::sex::sex_components::Sex;
 use ::being_shared::*;
 use ::sprite_shared::SpriteConfig;
@@ -106,9 +106,9 @@ pub fn despawn_asset_scoped_entities(
     }
 }
 
-pub fn despawn_asset_scoped_entities_except_spared(
+pub fn despawn_selected_asset_scoped_entities(
     mut commands: Commands,
-    query: Query<Entity, (With<AssetScoped>, With<HotReload>, common::AnyDisabling)>,
+    query: Query<Entity, (With<AssetScoped>, With<SelectedForHotReload>, common::AnyDisabling)>,
 ) {
     for entity in &query {
         commands.entity(entity).try_despawn();
@@ -136,47 +136,47 @@ pub fn sync_hot_reload_markers(
     }
 
     for entity in &tiles {
-        if selection.tiles { commands.entity(entity).try_insert_if_new(HotReload); }
-        else { commands.entity(entity).try_remove::<HotReload>(); }
+        if selection.tiles { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
+        else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
     for entity in &sprite_configs {
-        if selection.sprite_configs_and_animations { commands.entity(entity).try_insert_if_new(HotReload); }
-        else { commands.entity(entity).try_remove::<HotReload>(); }
+        if selection.sprite_configs_and_animations { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
+        else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
     for entity in &animations {
-        if selection.sprite_configs_and_animations { commands.entity(entity).try_insert_if_new(HotReload); }
-        else { commands.entity(entity).try_remove::<HotReload>(); }
+        if selection.sprite_configs_and_animations { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
+        else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
     for entity in &operation_lists {
-        if selection.terrain_oplists_and_noises { commands.entity(entity).try_insert_if_new(HotReload); }
-        else { commands.entity(entity).try_remove::<HotReload>(); }
+        if selection.terrain_oplists_and_noises { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
+        else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
     for entity in &noises {
-        if selection.terrain_oplists_and_noises { commands.entity(entity).try_insert_if_new(HotReload); }
-        else { commands.entity(entity).try_remove::<HotReload>(); }
+        if selection.terrain_oplists_and_noises { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
+        else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
     for entity in &probes {
-        if selection.probes_and_filters { commands.entity(entity).try_insert_if_new(HotReload); }
-        else { commands.entity(entity).try_remove::<HotReload>(); }
+        if selection.probes_and_filters { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
+        else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
     for entity in &filters {
-        if selection.probes_and_filters { commands.entity(entity).try_insert_if_new(HotReload); }
-        else { commands.entity(entity).try_remove::<HotReload>(); }
+        if selection.probes_and_filters { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
+        else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
     for entity in &terrgen_settings {
-        if selection.terrgen_settings { commands.entity(entity).try_insert_if_new(HotReload); }
-        else { commands.entity(entity).try_remove::<HotReload>(); }
+        if selection.terrgen_settings { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
+        else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
     for entity in &beings_inst_templates {
-        if selection.beings_inst_templates { commands.entity(entity).try_insert_if_new(HotReload); }
-        else { commands.entity(entity).try_remove::<HotReload>(); }
+        if selection.beings_inst_templates { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
+        else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
     for entity in &races {
-        if selection.races { commands.entity(entity).try_insert_if_new(HotReload); }
-        else { commands.entity(entity).try_remove::<HotReload>(); }
+        if selection.races { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
+        else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
     for entity in &sexes {
-        if selection.sexes { commands.entity(entity).try_insert_if_new(HotReload); }
-        else { commands.entity(entity).try_remove::<HotReload>(); }
+        if selection.sexes { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
+        else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
 }

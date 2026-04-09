@@ -1,0 +1,6 @@
+(
+    id: "desert",
+    tags: ["desert"],
+    min_val: 0.0,
+    max_val: 1.0,
+)

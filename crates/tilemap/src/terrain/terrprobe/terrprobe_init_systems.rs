@@ -36,13 +36,20 @@ pub fn init_terrain_probes(
     let mut comps = Vec::new();
     for def in load_terrain_probe_seri_defs() {
         if def.is_abstract {
-            debug!(target: TERRPROBE_INIT, "Skipping abstract terrain probe '{}' from '{}'", def.seri.id, def.rel_path);
             continue;
         }
         let seri = def.seri;
-        let Ok(str_id) = StrId::new_with_result(seri.id.clone(), 1) else {
-            error!(target: TERRPROBE_INIT, "Failed to create StrId for terrain probe id '{}'", seri.id);
-            continue;
+        let str_id = match StrId::new_with_result(seri.id.clone(), 1) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!(
+                    target: TERRPROBE_INIT,
+                    "Failed to create StrId for terrain probe id '{}': {}",
+                    seri.id,
+                    err,
+                );
+                continue;
+            }
         };
         let opfilter_id = seri.opfilter_id.trim();
         let opfilter_var_name = seri.opfilter_var_name.trim();
@@ -99,13 +106,26 @@ pub fn init_terrain_probes(
                 if seri.opfilter_max_val != f32::INFINITY {
                     opfilter.max_val = seri.opfilter_max_val;
                 }
-                let inline_opfilter_strid = StrId::trunc(format!("{}_inline_opfilter", seri.id));
+                let inline_opfilter_id = format!("{}_inline_opfilter", seri.id);
+                let inline_opfilter_strid = match StrId::new_with_result(inline_opfilter_id.as_str(), 0) {
+                    Ok(inline_opfilter_strid) => inline_opfilter_strid,
+                    Err(err) => {
+                        error!(
+                            target: TERRPROBE_INIT,
+                            "Terrain probe '{}' could not build inline opfilter StrId '{}': {}",
+                            seri.id,
+                            inline_opfilter_id,
+                            err,
+                        );
+                        continue;
+                    }
+                };
                 let _ = cmd.spawn((
                     inline_opfilter_strid.clone(),
                     AddHashIdFromStrId,
                     Replicated,
                     AssetScoped,
-                    HotReload,
+                    SelectedForHotReload,
                     Templ,
                     opfilter,
                 ));
@@ -177,7 +197,7 @@ pub fn init_terrain_probes(
             str_id,
             Replicated,
             AssetScoped,
-            HotReload,
+            SelectedForHotReload,
             templ,
             ChildOf(egui_ent),
         )));

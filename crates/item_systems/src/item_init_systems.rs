@@ -31,8 +31,17 @@ pub fn init_items(
     };
 
     for seri in load_item_seri_defs() {
-        let Ok(str_id) = StrId::new_with_result(seri.id.clone(), Item::MIN_ID_LENGTH) else {
-            continue;
+        let str_id = match StrId::new_with_result(seri.id.clone(), Item::MIN_ID_LENGTH) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!(
+                    target: ITEM_SYSTEM,
+                    "Skipping item with invalid id '{}': {}",
+                    seri.id,
+                    err,
+                );
+                continue;
+            }
         };
 
         let item_ent = cmd.spawn_empty().id();
@@ -51,7 +60,21 @@ pub fn init_items(
             if trimmed.is_empty() {
                 return ScRef(Entity::PLACEHOLDER);
             }
-            let Ok(ent) = sprite_cfg_map.0.get_cloned(StrId::trunc(trimmed)) else {
+            let sprite_cfg_str_id = match StrId::new_with_result(trimmed, 0) {
+                Ok(sprite_cfg_str_id) => sprite_cfg_str_id,
+                Err(err) => {
+                    error!(
+                        target: ITEM_SYSTEM,
+                        "Item '{}' has invalid {} sprite cfg id '{}': {}",
+                        str_id,
+                        label,
+                        trimmed,
+                        err,
+                    );
+                    return ScRef(Entity::PLACEHOLDER);
+                }
+            };
+            let Ok(ent) = sprite_cfg_map.0.get_cloned(&sprite_cfg_str_id) else {
                 error!(
                     target: ITEM_SYSTEM,
                     "Item '{}' could not resolve {} sprite cfg '{}'",
@@ -72,7 +95,20 @@ pub fn init_items(
                     None
                 } else {
                     let sc_ref = resolve_sprite_cfg_ref(trimmed, "equip");
-                    Some((StrId::trunc(trimmed), sc_ref))
+                    let equip_str_id = match StrId::new_with_result(trimmed, 0) {
+                        Ok(equip_str_id) => equip_str_id,
+                        Err(err) => {
+                            error!(
+                                target: ITEM_SYSTEM,
+                                "Item '{}' has invalid equip sprite cfg id '{}': {}",
+                                str_id,
+                                trimmed,
+                                err,
+                            );
+                            return None;
+                        }
+                    };
+                    Some((equip_str_id, sc_ref))
                 }
             })
             .collect();

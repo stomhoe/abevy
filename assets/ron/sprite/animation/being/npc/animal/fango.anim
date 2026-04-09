@@ -1,4 +1,4 @@
-anim fango_south_idle {
+anim fango_s_idle {
     img_path: "texture/being/npc/fango.png"
     rows_cols: 4 3
     paused: true
@@ -8,7 +8,7 @@ anim fango_south_idle {
     }
 }
 
-anim fango_south_move {
+anim fango_s_move {
     img_path: "texture/being/npc/fango.png"
     rows_cols: 4 3
     clips {
@@ -16,7 +16,7 @@ anim fango_south_move {
     }
 }
 
-anim fango_north_idle {
+anim fango_n_idle {
     img_path: "texture/being/npc/fango.png"
     rows_cols: 4 3
     paused: true
@@ -26,7 +26,7 @@ anim fango_north_idle {
     }
 }
 
-anim fango_north_move {
+anim fango_n_move {
     img_path: "texture/being/npc/fango.png"
     rows_cols: 4 3
     clips {
@@ -34,7 +34,7 @@ anim fango_north_move {
     }
 }
 
-anim fango_west_idle {
+anim fango_w_idle {
     img_path: "texture/being/npc/fango.png"
     rows_cols: 4 3
     paused: true
@@ -44,7 +44,7 @@ anim fango_west_idle {
     }
 }
 
-anim fango_west_move {
+anim fango_w_move {
     img_path: "texture/being/npc/fango.png"
     rows_cols: 4 3
     clips {
@@ -52,7 +52,7 @@ anim fango_west_move {
     }
 }
 
-anim fango_east_idle {
+anim fango_e_idle {
     img_path: "texture/being/npc/fango.png"
     rows_cols: 4 3
     paused: true
@@ -62,7 +62,7 @@ anim fango_east_idle {
     }
 }
 
-anim fango_east_move {
+anim fango_e_move {
     img_path: "texture/being/npc/fango.png"
     rows_cols: 4 3
     clips {

@@ -1,0 +1,25 @@
+sprite goblin_merchant {
+name "Goblin Merchant"
+z 1000
+mapped_anims {
+    south idle g _ = goblin_merchant_s_idle
+    south move g _ = goblin_merchant_s_move
+    west idle g _ = goblin_merchant_w_idle
+    west move g _ = goblin_merchant_w_move
+    east idle g _ = goblin_merchant_e_idle
+    east move g _ = goblin_merchant_e_move
+    north idle g _ = goblin_merchant_n_idle
+    north move g _ = goblin_merchant_n_move
+}
+children_sprites []
+shares_tag []
+directionable true
+movement_based true
+grounding_based false
+is_being_root_sprite true
+add_up_z_with_anim true
+baseline_move_speed 60.0
+offset 0.0 6.0
+scale 1.2 1.2
+tags []
+}

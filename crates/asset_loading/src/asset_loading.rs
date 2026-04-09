@@ -35,7 +35,7 @@ pub fn plugin(app: &mut App) {
             despawn_asset_scoped_entities
         )
         .add_systems(OnEnter(AssetLoading::LoadingAssetsIntoHandles),
-            despawn_asset_scoped_entities_except_spared
+            despawn_selected_asset_scoped_entities
         )
         .add_systems(OnEnter(AssetLoading::NotStarted),
             despawn_asset_scoped_entities

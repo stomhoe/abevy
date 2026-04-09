@@ -145,7 +145,8 @@ impl<const N: usize> FixedStr<N> {
         let bytes = s.as_ref().as_bytes();
         let mut arr = [0u8; N];
         let len = bytes.len().min(N);
-        arr[..len].copy_from_slice(&bytes[..len]);
+        let start = bytes.len().saturating_sub(len);
+        arr[..len].copy_from_slice(&bytes[start..]);
         Self(arr)
     }
 

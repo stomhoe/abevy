@@ -9,6 +9,8 @@ pub fn plugin(app: &mut App) {
             EnhancedInputPlugin,
             player_action_requests::melee_attack_plugin,
             player_action_requests::item_pickup_plugin,
+            player_action_requests::debug_increase_speed_plugin,
+            player_action_requests::debug_decrease_speed_plugin,
         ))
         .add_input_context::<DebugInputContext>()
         .add_input_context::<BeingDirectControlInputContext>()

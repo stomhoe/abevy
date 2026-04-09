@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Mine;
 
 #[derive(Debug, Component, Default, Serialize, Deserialize, Clone)]
-#[require(Replicated, Prefix::trunc("Player"), SparedFromHotReloading, )]
+#[require(Replicated, Prefix::trunc("Player"), )]
 pub struct Player;
 
 #[derive(Component, Debug, Default, Clone)]

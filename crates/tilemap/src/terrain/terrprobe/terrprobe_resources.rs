@@ -14,7 +14,6 @@ use crate::terrain::terrprobe::terrprobe_tpt_parser::{
 
 #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Clone)]
 #[require(
-    SparedFromHotReloading,
     AssetScoped,
     Prefix::trunc("EguiTerrProbeTemplHolder"),
     Replicated,

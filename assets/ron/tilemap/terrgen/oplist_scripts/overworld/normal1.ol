@@ -1,0 +1,11 @@
+id: normal1
+debug: [normal_diff, arcticriver]
+let continentness = max(fnl.conti, fnl.penin)
+let continentness = *(continentness, normal_diff)
+let continent_threshold = 0.4
+out = idxmax(continent_threshold, continentness)
+
+
+
+bif "" -> [dblue] biomes: [ocean=0.5(2.7,0.45)]
+bif normal2 -> []

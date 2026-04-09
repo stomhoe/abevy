@@ -1,0 +1,28 @@
+sprite mahubo0 {
+name "Human male body 0"
+z 1000
+mapped_anims {
+    south idle g _ = mahubo0_s_idle
+    west idle g _ = mahubo0_w_idle
+    east idle g _ = mahubo0_e_idle
+    north idle g _ = mahubo0_n_idle
+    south move g _ = mahubo0_s_move
+    west move g _ = mahubo0_w_move
+    east move g _ = mahubo0_e_move
+    north move g _ = mahubo0_n_move
+}
+parent_cat ""
+tags body
+children_sprites []
+shares_tag []
+directionable true
+movement_based true
+grounding_based false
+is_being_root_sprite true
+add_up_z_with_anim true
+baseline_move_speed 400.0
+offset 0.0 16.0
+offset4children {
+    head 0.0 21.0 ""
+}
+}

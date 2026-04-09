@@ -87,7 +87,7 @@ impl ScRef {
 }
 
 #[derive(Component, Debug, Default, Serialize, Deserialize, Clone)]
-#[require(HotReload, AssetScoped, Replicated, Prefix::trunc("SpriteCfg"))]
+#[require(SelectedForHotReload, AssetScoped, Prefix::trunc("SpriteCfg"))]
 pub struct SpriteConfig;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, Copy)]

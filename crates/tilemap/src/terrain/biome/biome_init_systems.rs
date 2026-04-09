@@ -35,10 +35,8 @@ pub fn init_biomes(
         ));
     }
     if biome_comps.is_empty() {
-        debug!(target: BIOME_INIT, "No biome defs were loaded during biome init");
+        error!(target: BIOME_INIT, "No biome defs were loaded during biome init");
         return;
     }
-    let biome_count = biome_comps.len();
     cmd.insert_batch(biome_comps);
-    debug!(target: BIOME_INIT, "Spawned {} biome entities from biome defs", biome_count);
 }

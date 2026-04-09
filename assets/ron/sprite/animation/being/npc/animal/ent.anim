@@ -1,4 +1,4 @@
-anim ent_south_idle {
+anim ent_s_idle {
     img_path: "texture/being/npc/ent.png"
     rows_cols: 4 4
     paused: true
@@ -8,7 +8,7 @@ anim ent_south_idle {
     }
 }
 
-anim ent_south_move {
+anim ent_s_move {
     img_path: "texture/being/npc/ent.png"
     rows_cols: 4 4
     clips {
@@ -16,7 +16,7 @@ anim ent_south_move {
     }
 }
 
-anim ent_north_idle {
+anim ent_n_idle {
     img_path: "texture/being/npc/ent.png"
     rows_cols: 4 4
     paused: true
@@ -26,7 +26,7 @@ anim ent_north_idle {
     }
 }
 
-anim ent_north_move {
+anim ent_n_move {
     img_path: "texture/being/npc/ent.png"
     rows_cols: 4 4
     clips {
@@ -34,7 +34,7 @@ anim ent_north_move {
     }
 }
 
-anim ent_west_idle {
+anim ent_w_idle {
     img_path: "texture/being/npc/ent.png"
     rows_cols: 4 4
     paused: true
@@ -44,7 +44,7 @@ anim ent_west_idle {
     }
 }
 
-anim ent_west_move {
+anim ent_w_move {
     img_path: "texture/being/npc/ent.png"
     rows_cols: 4 4
     clips {
@@ -52,7 +52,7 @@ anim ent_west_move {
     }
 }
 
-anim ent_east_idle {
+anim ent_e_idle {
     img_path: "texture/being/npc/ent.png"
     rows_cols: 4 4
     paused: true
@@ -62,7 +62,7 @@ anim ent_east_idle {
     }
 }
 
-anim ent_east_move {
+anim ent_e_move {
     img_path: "texture/being/npc/ent.png"
     rows_cols: 4 4
     clips {

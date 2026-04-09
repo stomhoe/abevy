@@ -144,7 +144,7 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered::<ChildOf, (Without<TilemapId>)>()
 
 
-    .replicate_filtered::<ChildOf, With<EntityWeightedSampler>>()
+    .replicate_filtered::<ChildOf, With<HashIdWeightedSampler>>()
 
     //usar feature
     .add_message::<SavedTileHadChunkDespawn>()

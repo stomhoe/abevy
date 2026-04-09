@@ -43,8 +43,7 @@ pub fn init_templ_bodys(
         let body_ent = cmd.spawn_empty().id();
         cmd.entity(body_ent).insert((
             body_id.clone(),
-            AddHashIdFromStrId,
-            HashId::from(body_id.as_str()),
+            body_id.hash_id(),
             Body,
             Templ,
             build_being_interaction_zones(
@@ -123,7 +122,7 @@ pub fn init_templ_bodys(
         }
         cmd.entity(body_ent)
             .insert(BodyTreeRef(HashId::from(bodytree_str_id.as_str())));
-        debug!(target: BODY_BUILD, "Body '{}' uses shared bodytree '{}'", body_id, bodytree_str_id);
+        trace!(target: BODY_BUILD, "Body '{}' uses shared bodytree '{}'", body_id, bodytree_str_id);
     }
 }
 

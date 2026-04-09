@@ -1,4 +1,4 @@
-anim yeti_south_idle {
+anim yeti_s_idle {
     img_path: "texture/being/npc/monster/yeti.png"
     rows_cols: 4 8
     paused: true
@@ -8,7 +8,7 @@ anim yeti_south_idle {
     }
 }
 
-anim yeti_south_move {
+anim yeti_s_move {
     img_path: "texture/being/npc/monster/yeti.png"
     rows_cols: 4 8
     clips {
@@ -16,7 +16,7 @@ anim yeti_south_move {
     }
 }
 
-anim yeti_north_idle {
+anim yeti_n_idle {
     img_path: "texture/being/npc/monster/yeti.png"
     rows_cols: 4 8
     paused: true
@@ -26,7 +26,7 @@ anim yeti_north_idle {
     }
 }
 
-anim yeti_north_move {
+anim yeti_n_move {
     img_path: "texture/being/npc/monster/yeti.png"
     rows_cols: 4 8
     clips {
@@ -34,7 +34,7 @@ anim yeti_north_move {
     }
 }
 
-anim yeti_west_idle {
+anim yeti_w_idle {
     img_path: "texture/being/npc/monster/yeti.png"
     rows_cols: 4 8
     paused: true
@@ -44,7 +44,7 @@ anim yeti_west_idle {
     }
 }
 
-anim yeti_west_move {
+anim yeti_w_move {
     img_path: "texture/being/npc/monster/yeti.png"
     rows_cols: 4 8
     clips {
@@ -52,7 +52,7 @@ anim yeti_west_move {
     }
 }
 
-anim yeti_east_idle {
+anim yeti_e_idle {
     img_path: "texture/being/npc/monster/yeti.png"
     rows_cols: 4 8
     paused: true
@@ -62,7 +62,7 @@ anim yeti_east_idle {
     }
 }
 
-anim yeti_east_move {
+anim yeti_e_move {
     img_path: "texture/being/npc/monster/yeti.png"
     rows_cols: 4 8
     clips {

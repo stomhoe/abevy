@@ -1,4 +1,4 @@
-anim rat_south_idle {
+anim rat_s_idle {
     img_path: "texture/being/npc/rat.png"
     rows_cols: 4 3
     paused: true
@@ -8,7 +8,7 @@ anim rat_south_idle {
     }
 }
 
-anim rat_south_move {
+anim rat_s_move {
     img_path: "texture/being/npc/rat.png"
     rows_cols: 4 3
     clips {
@@ -16,7 +16,7 @@ anim rat_south_move {
     }
 }
 
-anim rat_north_idle {
+anim rat_n_idle {
     img_path: "texture/being/npc/rat.png"
     rows_cols: 4 3
     paused: true
@@ -26,7 +26,7 @@ anim rat_north_idle {
     }
 }
 
-anim rat_north_move {
+anim rat_n_move {
     img_path: "texture/being/npc/rat.png"
     rows_cols: 4 3
     clips {
@@ -34,7 +34,7 @@ anim rat_north_move {
     }
 }
 
-anim rat_west_idle {
+anim rat_w_idle {
     img_path: "texture/being/npc/rat.png"
     rows_cols: 4 3
     paused: true
@@ -44,7 +44,7 @@ anim rat_west_idle {
     }
 }
 
-anim rat_west_move {
+anim rat_w_move {
     img_path: "texture/being/npc/rat.png"
     rows_cols: 4 3
     clips {
@@ -52,7 +52,7 @@ anim rat_west_move {
     }
 }
 
-anim rat_east_idle {
+anim rat_e_idle {
     img_path: "texture/being/npc/rat.png"
     rows_cols: 4 3
     paused: true
@@ -62,7 +62,7 @@ anim rat_east_idle {
     }
 }
 
-anim rat_east_move {
+anim rat_e_move {
     img_path: "texture/being/npc/rat.png"
     rows_cols: 4 3
     clips {

@@ -1,5 +1,8 @@
-use bevy::prelude::*;
+use std::time::Duration;
+
+use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy_replicon::prelude::*;
+use common::common_states::AssetLoading;
 use game_common::game_common::SimRunningSystems;
 use tilemap_shared::CardinalDirection;
 
@@ -16,7 +19,9 @@ pub struct MovementSystems;
 const MOVEMENT_SCHEDULE: FixedUpdate = FixedUpdate;
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(
+    app.init_resource::<MpSettings>()
+        .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), load_mp_settings)
+        .add_systems(
             Update,
             (
                 add_grid_locked_movement_requirements,
@@ -48,7 +53,7 @@ pub fn plugin(app: &mut App) {
                 resolve_overlapping_beings,
                 process_input_direction_modifiers,
                 process_speed_modifiers,
-            )
+            ).run_if(on_timer(Duration::from_secs_f32(0.2)))
             .in_set(HostSystems)
             .in_set(MovementSystems),
         )

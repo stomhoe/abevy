@@ -11,6 +11,7 @@ use rand::{seq::SliceRandom, Rng};
 use crate::chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk;
 use crate::terrain::biome::biome_resources::BiomeEntityMap;
 use crate::tile::tile_sampler_components::TileWeightedSampler;
+use crate::tile::{TileEntityMap, TileWeightedSamplerEntityMap};
 use crate::regioning::regioning_messages::ForcedChunkBiomeConfig;
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 use crate::regioning::regioning_resources::SgcCommandRegistry;
@@ -526,7 +527,7 @@ fn parse_biome_tag_weights(
         else {
             continue;
         };
-        let Ok(biome_ent) = biome_map.0.get_cloned(biome_name.trim()) else {
+        let Ok(_) = biome_map.0.get_cloned(biome_name.trim()) else {
             warn!(target: "dungeoning", "Forced biome '{}' not found in BiomeEntityMap", biome_name.trim());
             continue;
         };
@@ -545,7 +546,7 @@ fn parse_biome_tag_weights(
             .unwrap_or(0.0)
             .max(0.0);
         out.push(BiomeTagWeightAtMacrochunk {
-            biome: biome_ent,
+            biome: HashId::from(biome_name.trim()),
             weight,
             pack_count_multiplier_mean,
             pack_count_multiplier_std_dev,
@@ -618,8 +619,10 @@ impl DeleteOtherTilesConfigMap {
 }
 
 pub fn resolve_sampled_tile_entity_from_sampler(
-    root_sampler: &EntityWeightedSampler,
-    sampler_query: &Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
+    root_sampler: &HashIdWeightedSampler,
+    sampler_query: &Query<&HashIdWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
+    sampler_map: &TileWeightedSamplerEntityMap,
+    tile_map: &TileEntityMap,
     anchor_gpos: GlobalTilePos,
     settings: &GlobalGenSettings,
     dimension_hash: HashId,
@@ -627,13 +630,16 @@ pub fn resolve_sampled_tile_entity_from_sampler(
     let mut current_sampler = root_sampler;
     let mut depth = 0u8;
     while depth < 8 {
-        let sampled_ent = current_sampler.sample_with_pos(anchor_gpos, settings, dimension_hash)?;
-        if let Ok(next_sampler) = sampler_query.get(sampled_ent) {
+        let sampled_hash_id = current_sampler.sample_with_pos(anchor_gpos, settings, dimension_hash)?;
+        if let Some(sampled_sampler_ent) = sampler_map.0.get_opt(sampled_hash_id).copied() {
+            let Ok(next_sampler) = sampler_query.get(sampled_sampler_ent) else {
+                return None;
+            };
             current_sampler = next_sampler;
             depth += 1;
             continue;
         }
-        return Some(sampled_ent);
+        return tile_map.0.get_opt(sampled_hash_id).copied();
     }
     None
 }
@@ -680,7 +686,13 @@ impl DungeonRoomPackSpawnConfig {
             }
             weights.push((shape_key.clone(), weight));
         }
-        StringWeightedSampler::new(&weights)
+        {
+            let (sampler, negative_indices) = StringWeightedSampler::new(&weights);
+            if !negative_indices.is_empty() {
+                tilemap_shared::log_negative_weighted_sampler_indices!("dungeoning_utils", "room_spawn_shapes", &weights, negative_indices);
+            }
+            sampler
+        }
     }
 
     pub fn sample_room_spawn_spec<'a>(
@@ -717,7 +729,11 @@ impl DungeonRoomPackSpawnConfig {
             );
             return sampler.sample_with_rng(rng);
         }
-        DungeonRoomPackSpawnSampler::new(&matching_weights).sample_with_rng(rng)
+        let (sampler, negative_indices) = DungeonRoomPackSpawnSampler::new(&matching_weights);
+        if !negative_indices.is_empty() {
+            tilemap_shared::log_negative_weighted_sampler_indices!("dungeoning_utils", room_spawn_key, &matching_weights, negative_indices);
+        }
+        sampler.sample_with_rng(rng)
     }
 
     pub fn from_typed_args(
@@ -738,7 +754,9 @@ impl DungeonRoomPackSpawnConfig {
                 };
                 let entry = out.0.entry(shape_key.clone()).or_default();
                 for (spec, weight) in sampler.iter().cloned() {
-                    entry.insert(spec, weight);
+                    if let Err(negative_item) = entry.insert(spec, weight) {
+                        tilemap_shared::log_negative_weighted_sampler_items!("dungeoning_utils", shape_key, vec![negative_item]);
+                    }
                 }
             }
         }
@@ -764,7 +782,9 @@ impl DungeonRoomPackSpawnConfig {
                 };
                 let entry = out.0.entry(rest.to_string()).or_default();
                 for (spec, weight) in sampler.iter().cloned() {
-                    entry.insert(spec, weight);
+                    if let Err(negative_item) = entry.insert(spec, weight) {
+                        tilemap_shared::log_negative_weighted_sampler_items!("dungeoning_utils", rest, vec![negative_item]);
+                    }
                 }
                 continue;
             }
@@ -835,7 +855,10 @@ impl DungeonRoomPackSpawnConfig {
             if spec.source_template_id.trim().is_empty() {
                 continue;
             }
-            out.0.entry(shape_key).or_default().insert(spec.clone(), spec.weight);
+            let entry = out.0.entry(shape_key.clone()).or_default();
+            if let Err(negative_item) = entry.insert(spec.clone(), spec.weight) {
+                tilemap_shared::log_negative_weighted_sampler_items!("dungeoning_utils", shape_key, vec![negative_item]);
+            }
         }
 
         out.0.retain(|_, sampler| !sampler.is_empty());
@@ -1039,5 +1062,11 @@ fn parse_room_spawn_sampler(value: &SgcArgValue) -> Option<DungeonRoomPackSpawnS
         return None;
     }
     let weights = specs.iter().cloned().map(|spec| (spec.clone(), spec.weight)).collect::<Vec<_>>();
-    Some(DungeonRoomPackSpawnSampler::new(&weights))
+    Some({
+        let (sampler, negative_indices) = DungeonRoomPackSpawnSampler::new(&weights);
+        if !negative_indices.is_empty() {
+            tilemap_shared::log_negative_weighted_sampler_indices!("dungeoning_utils", "room_spawn_sampler", &weights, negative_indices);
+        }
+        sampler
+    })
 }

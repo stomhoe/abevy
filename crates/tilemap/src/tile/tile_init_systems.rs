@@ -70,18 +70,19 @@ pub fn init_tiles(
         let size_in_tiles = SizeInTiles::new(&str_id, Some(seri.size_in_tiles), );
         let tile_index = tile_indexing.register_templ_tile(hash_id);
         let tile_enti = cmd.spawn((
-            Tile, Replicated, str_id.clone(), //PROBLEMA: EL DISABLED HACE Q EL DESPAWNONEXIT NO FUNCIONE
+            Tile,
+            ReplicateIfServerStarts,
+            hash_id,
+            str_id.clone(), //PROBLEMA: EL DISABLED HACE Q EL DESPAWNONEXIT NO FUNCIONE
             Prefix::trunc("Tile"),
             my_z.clone(),
             Templ,
-            hash_id,
             tile_index,
             AddHashIdFromStrId,
             ChildOf(holder),
             AssetScoped,
             size_in_tiles,
             CloneTemplChildren,
-            //SparedFromHotReloading,
         )).id();
         let offset_for_terrgen_placement = OffsetForTerrgenPlacement::from_i32s(seri.terrgen_offset);
         if offset_for_terrgen_placement != OffsetForTerrgenPlacement::default() {
@@ -170,7 +171,11 @@ pub fn init_tiles(
             for (weight, (x, y)) in &seri.offsets_for_portal_arrivals {
                 sampled_offsets.push((GlobalTilePos::new(*x as i32, *y as i32), *weight));
             }
-            cmd.entity(tile_enti).insert(GlobalTilePosWeightedSampler::new(&sampled_offsets));
+            let (portal_sampler, negative_indices) = GlobalTilePosWeightedSampler::new(&sampled_offsets);
+            if !negative_indices.is_empty() {
+                tilemap_shared::log_negative_weighted_sampler_indices!("tile_init", &str_id, &sampled_offsets, negative_indices);
+            }
+            cmd.entity(tile_enti).insert(portal_sampler);
         }
 
         cmd.entity(tile_enti).insert(WalkSpeedMultIfOnTop(seri.walk_speed));
@@ -199,8 +204,12 @@ pub fn init_tiles(
             }
         }
         if !weighted_paths.is_empty() {
+            let (step_sfx, negative_indices) = TileStepSfx::new(&weighted_paths);
+            if !negative_indices.is_empty() {
+                tilemap_shared::log_negative_weighted_sampler_indices!("tile_init", &str_id, &weighted_paths, negative_indices);
+            }
             cmd.entity(tile_enti).insert((
-                TileStepSfx::new(&weighted_paths),
+                step_sfx,
                 TileStepSfxConfig {
                     prevent_repeat: seri.step_sfx.prevent_repeat,
                 },
@@ -257,19 +266,22 @@ pub fn init_tiles(
                 let path_holder = PathHolder::new(path.clone());
                 let spritecfg_str_id_present = !key.trim().is_empty();
 
-                    if path_holder.is_err() && spritecfg_str_id_present
+                if path_holder.is_err() && spritecfg_str_id_present
                 && processing_as_sprite_cfgs != Some(false) {
                     sprite_cfgs.reserve(len);
                     sprite_cfgs.push(std::mem::take(key));
                     processing_as_sprite_cfgs = Some(true);
                 } else if processing_as_sprite_cfgs != Some(true) {
                     let path_holder = path_holder.unwrap();
+                    let sprite_id_raw = format!("{}", path_holder);
+                    let sprite_id_trimmed = trim_world_texture_sprite_id(sprite_id_raw.as_str());
+                    let sprite_child_str_id = StrId::trunc(sprite_id_trimmed);
 
                     let child_sprite = cmd.spawn((
                         TileChildSprite,
                         ChildOf(tile_enti),
                         BaseHolderRef{ base: tile_enti },
-                        StrId::trunc(format!("{}", path_holder).replace("texture/", "")),
+                        sprite_child_str_id,
                         Templ,
                         path_holder,
                         Replicated,
@@ -294,6 +306,22 @@ pub fn init_tiles(
     cmd.spawn((tile_indexing, Replicated));
     cmd.insert_resource(res_tile_tags);
 }
+
+fn trim_world_texture_sprite_id(path: &str) -> String {
+    let trimmed = path.strip_prefix("texture/world/").unwrap_or(path).trim_matches('/');
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    let mut segments = trimmed.rsplit('/');
+    let file_name = segments.next().unwrap_or(trimmed);
+    let containing_dir = segments.next();
+    if let Some(containing_dir) = containing_dir {
+        return format!("{containing_dir}/{file_name}");
+    }
+    file_name.to_string()
+}
+
 fn gather_step_sfx_paths_from_dir(directory: &str) -> Vec<String> {
     let directory = directory.trim().trim_matches('/');
     if directory.is_empty() {

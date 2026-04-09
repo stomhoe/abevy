@@ -2,14 +2,14 @@ use bevy::{ecs::entity::{EntityHashMap, EntityHashSet, MapEntities}, platform::c
 use bevy_replicon::prelude::*;
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
-use tilemap_shared::tilemap_shared_samplers::{EntityWeightedSampler, SpriteGlobalNormalDist};
+use tilemap_shared::tilemap_shared_samplers::{HashIdWeightedSampler, SpriteGlobalNormalDist};
 
 use crate::WanderSeri;
 use common::common_tag_components::TagSet;
 use tilemap_shared::*;
 
 #[derive(Component, Serialize, Deserialize, Clone)]
-#[require(Replicated, Prefix::trunc("Race"), AssetScoped, HotReload)]
+#[require(Replicated, Prefix::trunc("Race"), AssetScoped, SelectedForHotReload)]
 pub struct Race;
 
 /// do not insert this into beings
@@ -30,12 +30,13 @@ impl MapEntities for SetsOfPlayerMonoChoosableSprites {
     }
 }
 
-#[derive(Component, Debug, Default, MapEntities, Clone)]
-pub struct SexesSampler(#[entities] pub EntityWeightedSampler);
+#[derive(Component, Debug, Default, Clone)]
+pub struct SexesSampler(pub HashIdWeightedSampler);
 
 impl SexesSampler {
-    pub fn new(weights: &Vec<(Entity, f32)>) -> Self {
-        Self(EntityWeightedSampler::new(&weights))
+    pub fn new(weights: &Vec<(HashId, f32)>) -> (Self, Vec<usize>) {
+        let (sampler, negative_indices) = HashIdWeightedSampler::new(weights);
+        (Self(sampler), negative_indices)
     }
 }
 

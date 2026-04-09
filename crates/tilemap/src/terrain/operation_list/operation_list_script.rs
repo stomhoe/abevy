@@ -25,7 +25,7 @@ pub fn load_tg_oplists() -> Vec<OpListSeri> {
         let source = match fs::read_to_string(&file) {
             Ok(s) => s,
             Err(err) => {
-                error!(target: "oplist_tg", "Failed reading '{}': {}", file.display(), err);
+                error!(target: OPLIST_INIT, "Failed reading '{}': {}", file.display(), err);
                 continue;
             }
         };
@@ -41,15 +41,15 @@ pub fn load_tg_oplists() -> Vec<OpListSeri> {
                 expr_tree,
             },
             Err(err) => {
-                error!(target: "oplist_tg", "Failed parsing '{}': {}", file.display(), err);
+                error!(target: OPLIST_INIT, "Failed parsing '{}': {}", file.display(), err);
                 continue;
             }
         };
 
         if compiled_by_id.insert(compiled.id.clone(), compiled).is_some() {
             warn!(
-                target: "oplist_tg",
-                "Duplicate TG script id found; later file overrides id '{}'",
+                target: OPLIST_INIT,
+                "Duplicate OL script id found; later file overrides id '{}'",
                 file.display()
             );
         }
@@ -63,7 +63,7 @@ pub fn load_tg_oplists() -> Vec<OpListSeri> {
     for (_, seri) in compiled_by_id {
         out.push(seri);
     }
-    info!(target: "oplist_tg", "Compiled {} TG oplist script(s)", out.len());
+    info!(target: OPLIST_INIT, "Compiled {} OL oplist script(s)", out.len());
     out
 }
 
@@ -86,7 +86,7 @@ fn resolve_oplist_root_dir() -> Option<PathBuf> {
     }
 
     warn!(
-        target: "oplist_tg",
+        target: OPLIST_INIT,
         "Could not locate oplist_scripts directory under assets/ron/tilemap/terrgen/oplist_scripts"
     );
     None
@@ -103,7 +103,7 @@ fn collect_tg_files(dir: &Path, out: &mut Vec<PathBuf>) {
             continue;
         }
         if let Some(name) = path.file_name().and_then(|n| n.to_str())
-            && name.ends_with(".oplist.tg")
+            && name.ends_with(".ol")
         {
             out.push(path);
         }
@@ -352,6 +352,9 @@ fn normalize_operation(op: &str) -> Option<&'static str> {
         "*nm" | "mulnorm" | "multiplynormalized" => Some("*nm"),
         "*nmabs" | "mulnormabs" | "multiplynormalizedabs" => Some("*nmabs"),
         "idxmax" | "imax" => Some("idxmax"),
+        "idxmaxislands" | "imaxislands" | "idxmaxisl" | "imaxisl" => Some("idxmaxislands"),
+        "islanddiff" | "idiff" => Some("islanddiff"),
+        "remap" | "range_remap" | "remapclamp" => Some("remap"),
         "idxnorm" | "inorm" => Some("idxnorm"),
         "lin" | "linear" => Some("lin"),
         "clamp" => Some("clamp"),
@@ -480,6 +483,30 @@ fn build_expression_tree(operation: &str, operands: Vec<Expr>) -> Result<Expr, S
             })
         }
         "idxmax" => Ok(Expr::IndexMax { values: operands }),
+        "idxmaxislands" => {
+            if operands.is_empty() {
+                return Err("IndexMaxIslands requires at least 1 operand (ocean threshold)".to_string());
+            }
+            Ok(Expr::IndexMaxIslands { values: operands })
+        }
+        "islanddiff" => {
+            if operands.len() < 2 {
+                return Err("IslandDiff requires at least 2 operands (index, island_0, ...)".to_string());
+            }
+            Ok(Expr::IslandDiff { values: operands })
+        }
+        "remap" => {
+            if operands.len() < 5 {
+                return Err("Remap requires 5 operands (value, input_min, input_max, output_min, output_max)".to_string());
+            }
+            Ok(Expr::RemapRange {
+                value: Box::new(operands[0].clone()),
+                input_min: Box::new(operands[1].clone()),
+                input_max: Box::new(operands[2].clone()),
+                output_min: Box::new(operands[3].clone()),
+                output_max: Box::new(operands[4].clone()),
+            })
+        }
         "idxnorm" => {
             if operands.len() < 2 {
                 return Err("IndexNorm requires 2 operands".to_string());

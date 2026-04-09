@@ -32,10 +32,10 @@ pub fn init_opfilters(
         let ent = cmd.spawn_empty().id();
         comps.push((ent, (
             str_id,
-            RemoveReplicatedAfterClone,
+            ReplicateIfServerStarts,
             game_common::Templ,
             AssetScoped,
-            HotReload,
+            SelectedForHotReload,
             OpFilter {
                 tags: HashedTagsVec::new(seri.tags.iter()),
                 var_name_hash: if seri.var_name.trim().is_empty() {

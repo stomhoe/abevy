@@ -19,7 +19,7 @@ pub struct Bifurcation{
     pub biome_tags: Vec<BiomeTagWeightAtMacrochunk>,
 }
 #[derive(Component, Debug, Clone, Serialize, Deserialize, Reflect)]
-#[require(Prefix::trunc("OpList"), AssetScoped, HotReload, AddSameHashedTags, AddHashIdFromStrId)]
+#[require(Prefix::trunc("OpList"), AssetScoped, SelectedForHotReload, AddSameHashedTags, AddHashIdFromStrId)]
 pub struct OperationList {
     #[reflect(ignore)]
     pub expr_tree: crate::terrain::terrgen_expression::ExprOpList,

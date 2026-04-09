@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use bevy::{platform::collections::HashSet, prelude::*};
 use common::{common_components::*, common_tag_components::TagSet, log_targets::SGC_INIT};
-use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
+use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use ::tilemap_shared::*;
 
 use crate::{
@@ -134,7 +134,7 @@ pub fn init_structured_gen_configs(
         return;
     }
 
-    let mut ent_w_sampler = EntityWeightedSampler::default();
+    let mut hashid_sampler = HashIdWeightedSampler::default();
     let mut sgcs_comps = Vec::new();
     let mut exclusive_for_dims = Vec::new();
     let mut priority_defs = Vec::new();
@@ -150,16 +150,27 @@ pub fn init_structured_gen_configs(
         let structure_id = structured_gen_seri.structure_id.clone();
         let main_ent = cmd.spawn_empty().id();
 
-        let mut gen_cfg = StructuredGenConfig::new(structure_id.as_str());
-        let sgc_id = StrId::trunc(seri_id.clone());
+        let mut sgc = StructuredGenConfig::new(structure_id.as_str());
+        let sgc_id = match StrId::new_with_result(seri_id.as_str(), 0) {
+            Ok(sgc_id) => sgc_id,
+            Err(err) => {
+                error!(
+                    target: SGC_INIT,
+                    "Skipping StructuredGenConfig with invalid id '{}': {}",
+                    seri_id,
+                    err,
+                );
+                continue;
+            }
+        };
 
-        gen_cfg.max_per_region = structured_gen_seri.max_per_region;
-        gen_cfg.max_being_count = structured_gen_seri.max_being_count;
-        gen_cfg.whitelisted_tags = TagSet::new(structured_gen_seri.whitelisted_tags.iter().map(String::as_str));
-        gen_cfg.blacklisted_tags = TagSet::new(structured_gen_seri.blacklisted_tags.iter().map(String::as_str));
-        gen_cfg.typed_args = structured_gen_seri.args.clone();
-        gen_cfg.args = gen_cfg.typed_args.to_legacy_args_dict();
-        let configured_room_spawn_shapes = gen_cfg.typed_args.room_spawn_shape_keys();
+        sgc.max_per_region = structured_gen_seri.max_per_region;
+        sgc.max_being_count = structured_gen_seri.max_being_count;
+        sgc.whitelisted_tags = TagSet::new(structured_gen_seri.whitelisted_tags.iter().map(String::as_str));
+        sgc.blacklisted_tags = TagSet::new(structured_gen_seri.blacklisted_tags.iter().map(String::as_str));
+        sgc.typed_args = structured_gen_seri.args.clone();
+        sgc.args = sgc.typed_args.to_legacy_args_dict();
+        let configured_room_spawn_shapes = sgc.typed_args.room_spawn_shape_keys();
         if !configured_room_spawn_shapes.is_empty()
             && let Some(allowed_room_spawn_shapes) = sgc_command_registry
                 .allowed_room_spawn_shapes_for(structure_id.as_str())
@@ -216,15 +227,18 @@ pub fn init_structured_gen_configs(
         }
 
         if structured_gen_seri.weight != f32::NEG_INFINITY {
-            ent_w_sampler.insert(main_ent, structured_gen_seri.weight);
+            if let Err(negative_item) = hashid_sampler.insert(sgc_id.hash_id(), structured_gen_seri.weight) {
+                tilemap_shared::log_negative_weighted_sampler_items!("regioning_sgc_init", sgc_id.as_str(), vec![negative_item]);
+            }
         }
-        sgcs_comps.push((main_ent, (sgc_id, gen_cfg)));
+        sgcs_comps.push((main_ent, (sgc_id.hash_id(), sgc_id, sgc, ReplicateIfServerStarts)));
     }
 
     let prioritized_ents = build_prioritized_entities(&priority_defs);
 
     cmd.insert_batch(exclusive_for_dims);
     cmd.insert_batch(sgcs_comps);
-    cmd.insert_resource(Prioritized(prioritized_ents));
-    cmd.spawn((SgcsWeightedSampler, ent_w_sampler, ChildOf(egui_ent)));
+    //todo esto debería ser replicado
+    cmd.insert_resource(PrioritizedSgs(prioritized_ents));
+    cmd.spawn((SgcsWeightedSampler, ReplicateIfServerStarts, hashid_sampler, ChildOf(egui_ent)));
 }

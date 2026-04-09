@@ -1,4 +1,4 @@
-anim golem_south_idle {
+anim golem_s_idle {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     paused: true
@@ -8,7 +8,7 @@ anim golem_south_idle {
     }
 }
 
-anim golem_south_move {
+anim golem_s_move {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     clips {
@@ -16,7 +16,7 @@ anim golem_south_move {
     }
 }
 
-anim golem_north_idle {
+anim golem_n_idle {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     paused: true
@@ -26,7 +26,7 @@ anim golem_north_idle {
     }
 }
 
-anim golem_north_move {
+anim golem_n_move {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     clips {
@@ -34,7 +34,7 @@ anim golem_north_move {
     }
 }
 
-anim golem_west_idle {
+anim golem_w_idle {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     paused: true
@@ -44,7 +44,7 @@ anim golem_west_idle {
     }
 }
 
-anim golem_west_move {
+anim golem_w_move {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     clips {
@@ -52,7 +52,7 @@ anim golem_west_move {
     }
 }
 
-anim golem_east_idle {
+anim golem_e_idle {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     paused: true
@@ -62,7 +62,7 @@ anim golem_east_idle {
     }
 }
 
-anim golem_east_move {
+anim golem_e_move {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     clips {

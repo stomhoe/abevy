@@ -31,7 +31,18 @@ pub fn init_races(
     mut biome_pack_samplers: Query<&mut CreatureSampler>,
 ) {
     for race_seri in load_race_seri_defs() {
-        let str_id = StrId::trunc(&race_seri.id);
+        let str_id = match StrId::new_with_result(race_seri.id.trim(), 0) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!(
+                    target: "race_init",
+                    "Skipping race with invalid id '{}': {}",
+                    race_seri.id,
+                    err,
+                );
+                continue;
+            }
+        };
 
         let ingame_name = DisplayName(race_seri.name.clone());
         let description = race_seri.description.trim();
@@ -57,7 +68,19 @@ pub fn init_races(
                 if trimmed.is_empty() {
                     continue;
                 }
-                let sprite_str_id = StrId::trunc(trimmed);
+                let sprite_str_id = match StrId::new_with_result(trimmed, 0) {
+                    Ok(sprite_str_id) => sprite_str_id,
+                    Err(err) => {
+                        error!(
+                            target: "race_init",
+                            "Race '{}' has invalid sprite id '{}' in fallback/sex sprite list: {}",
+                            str_id,
+                            trimmed,
+                            err,
+                        );
+                        continue;
+                    }
+                };
                 if let Ok(entity) = sprite_map.0.get_cloned(&sprite_str_id) {
                     resolved.push(entity);
                     continue;
@@ -114,7 +137,20 @@ pub fn init_races(
                     }
                 }
                 if !sprite_set.is_empty() {
-                    labeled_monochoosable_sets.push((StrId::trunc(group_label), sprite_set));
+                    let group_str_id = match StrId::new_with_result(group_label.trim(), 0) {
+                        Ok(group_str_id) => group_str_id,
+                        Err(err) => {
+                            error!(
+                                target: "race_init",
+                                "Race '{}' has invalid choosable sprite group label '{}': {}",
+                                str_id,
+                                group_label,
+                                err,
+                            );
+                            continue;
+                        }
+                    };
+                    labeled_monochoosable_sets.push((group_str_id, sprite_set));
                 }
             }
 
@@ -125,7 +161,19 @@ pub fn init_races(
             }
         };
         let mut entity_cmds = cmd.spawn((Race, Templ, str_id.clone(), AddHashIdFromStrId, TemplEntiHashIdRef(HashId::from(str_id.as_str())), ingame_name, singular, plural));
-        let body_str_id = StrId::trunc(&race_seri.body_or_sampler);
+        let body_str_id = match StrId::new_with_result(race_seri.body_or_sampler.trim(), 0) {
+            Ok(body_str_id) => body_str_id,
+            Err(err) => {
+                error!(
+                    target: "race_init",
+                    "Race '{}' has invalid body_or_sampler id '{}': {}",
+                    str_id,
+                    race_seri.body_or_sampler,
+                    err,
+                );
+                continue;
+            }
+        };
         let mut body_ent = None;
 
         if body_sampler_map.0.get_cloned(&body_str_id).is_ok() {
@@ -205,12 +253,12 @@ pub fn init_races(
             .map(|(sexes, _)| sexes);
 
         if let Some(body_sexes) = body_sexes {
-            let mut sex_entities_weights: Vec<(Entity, f32)> = Vec::new();
+            let mut sex_entities_weights: Vec<(HashId, f32)> = Vec::new();
             let mut sex_size_variations = bevy::ecs::entity::EntityHashMap::default();
             for (sex_id, sex_cfg) in &body_sexes.0 {
                 match sexes_map.0.get_cloned(sex_id) {
                     Ok(sex_entity) => {
-                    sex_entities_weights.push((sex_entity, sex_cfg.weight as f32));
+                    sex_entities_weights.push((HashId::from(sex_id.as_str()), sex_cfg.weight as f32));
                     if let Some(size_var) = sex_cfg.size_variation.clone().filter(|v| !v.is_sentinel()) {
                         sex_size_variations.insert(sex_entity, SpriteGlobalNormalDist::new(size_var));
                     }
@@ -242,7 +290,10 @@ pub fn init_races(
                 }
             }
             if !sex_entities_weights.is_empty() {
-                let sex_sampler = SexesSampler::new(&sex_entities_weights);
+                let (sex_sampler, negative_indices) = SexesSampler::new(&sex_entities_weights);
+                if !negative_indices.is_empty() {
+                    tilemap_shared::log_negative_weighted_sampler_indices!("race_init", &str_id, &sex_entities_weights, negative_indices);
+                }
                 cmd.entity(entity).insert(sex_sampler);
             }
             if !sex_size_variations.is_empty() {
@@ -268,7 +319,7 @@ pub fn init_races(
             let Ok(mut biome_pack_sampler) = biome_pack_samplers.get_mut(biome_ent) else {
                 continue;
             };
-            biome_pack_sampler.add_affinity(entity, *weight);
+            biome_pack_sampler.add_affinity(HashId::from(str_id.as_str()), *weight);
         }
 
         trace!(target: "race_init", "Initialized race '{}' with entity {:?}", str_id, entity);

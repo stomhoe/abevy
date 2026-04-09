@@ -104,12 +104,12 @@ pub fn init_oplists_from_assets(
                     if bt.tag.trim().is_empty() || !bt.weight.is_finite() || bt.weight <= 0.0 {
                         return None;
                     }
-                    let Ok(biome_ent) = biome_map.0.get_cloned(bt.tag.trim()) else {
+                    let Ok(_) = biome_map.0.get_cloned(bt.tag.trim()) else {
                         error!(target: "oplist_init", "Biome '{}' not found in BiomeEntityMap", bt.tag.trim());
                         return None;
                     };
                     Some(BiomeTagWeightAtMacrochunk {
-                        biome: biome_ent,
+                        biome: HashId::from(bt.tag.trim()),
                         weight: bt.weight,
                         pack_count_multiplier_mean: bt.pack_count_multiplier_mean.max(0.0),
                         pack_count_multiplier_std_dev: bt.pack_count_multiplier_std_dev.max(0.0),
@@ -150,7 +150,7 @@ pub fn init_oplists_from_assets(
             let _ = oplist.hash_ids_mapped_to_strids.overwrite(hid, debug_var);
         }
 
-        oplist_comps.push((spawned_oplist, (str_id.clone(), str_id.hash_id(), AddHashIdFromStrId, oplist, size, RemoveReplicatedAfterClone, ChildOf(egui_oplist_holder_ent))));
+        oplist_comps.push((spawned_oplist, (str_id.clone(), str_id.hash_id(), oplist, size, ReplicateIfServerStarts, ChildOf(egui_oplist_holder_ent))));
         if seri.is_root() {
             let mut dim_refs = MultipleDimensionRefs::default();
             for dim_id in seri.root_in_dimensions.iter() {

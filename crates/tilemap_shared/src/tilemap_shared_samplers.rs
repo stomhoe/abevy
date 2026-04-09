@@ -1,4 +1,5 @@
 use bevy::{ecs::entity::{EntityHashMap, MapEntities}, prelude::*};
+use common::common_components::HashId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::*;
 
@@ -41,21 +42,13 @@ impl From<CappedNormalDist> for NormalDistSeri {
 }
 
 #[derive(Debug, Clone, Component, Default, )]
-#[component(map_entities)]
-pub struct EntityWeightedSampler {
-    weights: Vec<(Entity, f32)>,
+pub struct HashIdWeightedSampler {
+    weights: Vec<(HashId, f32)>,
     cumulative_weights: Vec<f32>,
     total_weight: f32,
 }
-define_weightedsampler_impl!(EntityWeightedSampler, Entity);
-impl_weighted_sampler_serialization!(EntityWeightedSampler, Entity);
-impl MapEntities for EntityWeightedSampler {
-    fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
-        for (ent, _) in &mut self.weights {
-            *ent = entity_mapper.get_mapped(*ent);
-        }
-    }
-}
+define_weightedsampler_impl!(HashIdWeightedSampler, HashId);
+impl_weighted_sampler_serialization!(HashIdWeightedSampler, HashId);
 
 #[derive(Debug, Clone, Component, Default)]
 #[component(map_entities)]

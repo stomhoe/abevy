@@ -1,5 +1,5 @@
-anim basilisk_south_idle {
-    img_path: "texture/being/npc/monster/basilisk/basilisk_south.png"
+anim basilisk_s_idle {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_s.png"
     rows_cols: 2 4
     paused: true
     speed: 1.0
@@ -8,16 +8,16 @@ anim basilisk_south_idle {
     }
 }
 
-anim basilisk_south_move {
-    img_path: "texture/being/npc/monster/basilisk/basilisk_south.png"
+anim basilisk_s_move {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_s.png"
     rows_cols: 2 4
     clips {
         row 1 start_frame 1
     }
 }
 
-anim basilisk_north_idle {
-    img_path: "texture/being/npc/monster/basilisk/basilisk_north.png"
+anim basilisk_n_idle {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_n.png"
     rows_cols: 2 4
     paused: true
     speed: 1.0
@@ -26,16 +26,16 @@ anim basilisk_north_idle {
     }
 }
 
-anim basilisk_north_move {
-    img_path: "texture/being/npc/monster/basilisk/basilisk_north.png"
+anim basilisk_n_move {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_n.png"
     rows_cols: 2 4
     clips {
         row 1 start_frame 1
     }
 }
 
-anim basilisk_west_idle {
-    img_path: "texture/being/npc/monster/basilisk/basilisk_west.png"
+anim basilisk_w_idle {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_w.png"
     rows_cols: 2 4
     paused: true
     speed: 1.0
@@ -44,16 +44,16 @@ anim basilisk_west_idle {
     }
 }
 
-anim basilisk_west_move {
-    img_path: "texture/being/npc/monster/basilisk/basilisk_west.png"
+anim basilisk_w_move {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_w.png"
     rows_cols: 2 4
     clips {
         row 1 start_frame 1
     }
 }
 
-anim basilisk_east_idle {
-    img_path: "texture/being/npc/monster/basilisk/basilisk_east.png"
+anim basilisk_e_idle {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_e.png"
     rows_cols: 2 4
     paused: true
     speed: 1.0
@@ -62,8 +62,8 @@ anim basilisk_east_idle {
     }
 }
 
-anim basilisk_east_move {
-    img_path: "texture/being/npc/monster/basilisk/basilisk_east.png"
+anim basilisk_e_move {
+    img_path: "texture/being/npc/monster/basilisk/basilisk_e.png"
     rows_cols: 2 4
     clips {
         row 1 start_frame 1

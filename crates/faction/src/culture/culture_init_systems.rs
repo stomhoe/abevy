@@ -15,7 +15,18 @@ pub fn init_cultures(
     }
 
     for culture_seri in load_culture_seri_defs() {
-        let str_id = StrId::trunc(&culture_seri.id);
+        let str_id = match StrId::new_with_result(culture_seri.id.trim(), 0) {
+            Ok(str_id) => str_id,
+            Err(err) => {
+                error!(
+                    target: "culture_init",
+                    "Skipping culture with invalid id '{}': {}",
+                    culture_seri.id,
+                    err,
+                );
+                continue;
+            }
+        };
         let mut ecmd = cmd.spawn((Culture, str_id.clone()));
 
         if !culture_seri.name.trim().is_empty() {
@@ -39,7 +50,22 @@ pub fn init_cultures(
             let bit_weightmap = culture_seri
                 .bit_weightmap
                 .iter()
-                .map(|(id, weight)| (StrId::trunc(id), (*weight).max(0.0)))
+                .filter_map(|(id, weight)| {
+                    let bit_str_id = match StrId::new_with_result(id.trim(), 0) {
+                        Ok(bit_str_id) => bit_str_id,
+                        Err(err) => {
+                            error!(
+                                target: "culture_init",
+                                "Culture '{}' has invalid bit id '{}' in bit_weightmap: {}",
+                                str_id,
+                                id,
+                                err,
+                            );
+                            return None;
+                        }
+                    };
+                    Some((bit_str_id, (*weight).max(0.0)))
+                })
                 .collect();
             ecmd.insert(CultureBitWeightMap(bit_weightmap));
         }
@@ -48,7 +74,22 @@ pub fn init_cultures(
             let races_opinion = culture_seri
                 .races_opinion
                 .iter()
-                .map(|(id, opinion)| (StrId::trunc(id), *opinion))
+                .filter_map(|(id, opinion)| {
+                    let race_str_id = match StrId::new_with_result(id.trim(), 0) {
+                        Ok(race_str_id) => race_str_id,
+                        Err(err) => {
+                            error!(
+                                target: "culture_init",
+                                "Culture '{}' has invalid race id '{}' in races_opinion: {}",
+                                str_id,
+                                id,
+                                err,
+                            );
+                            return None;
+                        }
+                    };
+                    Some((race_str_id, *opinion))
+                })
                 .collect();
             ecmd.insert(CultureRacesOpinionStrIds(races_opinion));
         }

@@ -1,16 +1,15 @@
-use bevy::{ecs::entity::{EntityHashMap, MapEntities}, platform::collections::HashMap, prelude::*};
+use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::*};
 use common::common_components::*;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::*;
 
 #[derive(Component, Serialize, Deserialize, Clone)]
-#[require(Prefix::trunc("Pack"), AssetScoped, HotReload)]
+#[require(Prefix::trunc("Pack"), AssetScoped, SelectedForHotReload)]
 pub struct Pack;
 
 
-#[derive(Component, Debug, Clone, MapEntities, Default)]
-#[component(map_entities)]
-pub struct BeingTemplateSampler(#[entities] pub EntityWeightedSampler);
+#[derive(Component, Debug, Clone, Default)]
+pub struct BeingTemplateSampler(pub HashIdWeightedSampler);
 
 #[derive(Component, Debug, Clone, Default)]
 pub struct PackMemberRankSampler(pub EntityHashMap<CappedNormalDist>);

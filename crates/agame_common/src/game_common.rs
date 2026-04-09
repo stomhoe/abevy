@@ -107,7 +107,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<DespawnOnDeath>()
     .replicate::<ScaleHpAndStrengthWithSampledSize>()
     .replicate_filtered::<ChildOf, Without<TilemapId>>()
-    .replicate::<EntityWeightedSampler>()
+    .replicate::<HashIdWeightedSampler>()
     .replicate::<CloneTemplChildren>()
 
     .replicate_once::<GlobalTransform>()

@@ -1,5 +1,8 @@
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
-use common::{common_components::{HashId, HashIdMap}, common_tag_components::HashedTagsVec};
+use common::{
+    common_components::{HashId, HashIdMap},
+    common_tag_components::{HashedTagsVec, TagSet},
+};
 use std::sync::Arc;
 
 use crate::{
@@ -10,24 +13,14 @@ use crate::{
         terrgen_async_resources::*,
         terrgen_components::*,
         terrgen_messages::{ChunkTerrainBuilt, PendingOp, PendingOpInput, PendingOpPurpose},
-        terrgen_resources::*,
+        terrgen_resources::{TerrGenSharedTaskData, TerrGenSharedTaskDataInner, *},
     },
 };
 use ::tilemap_shared::*;
 
 #[derive(Clone)]
 pub(crate) struct TerrGenTaskContext {
-    shared: Arc<TerrGenSharedTaskData>,
-}
-
-
-struct TerrGenSharedTaskData {
-    oplists: HashIdMap<OperationList>,
-    oplist_debug_var_ids: HashIdMap<Vec<HashId>>,
-    oplist_sizes: HashIdMap<OplistSize>,
-    oplist_tags: HashIdMap<HashedTagsVec>,
-    noises: HashIdMap<FnlNoiseComp>,
-    filters: HashIdMap<OpFilter>,
+    shared: Arc<TerrGenSharedTaskDataInner>,
 }
 
 #[derive(Clone)]
@@ -38,25 +31,61 @@ struct EvalFrame {
     variables: HashIdMap<f32>,
 }
 
-pub(crate) fn build_terrgen_task_context(
-    oplist_query: &Query<(&HashId, &OperationList, &OplistSize, Option<&HashedTagsVec>), ()>,
-    fnl_noises: &Query<(&HashId, &FnlNoiseComp), ()>,
-    op_filters: &Query<(&HashId, &OpFilter), ()>,
-) -> TerrGenTaskContext {
+#[allow(unused_parens, )]
+pub fn init_terrgen_shared_task_data(
+    mut shared_task_data: ResMut<TerrGenSharedTaskData>,
+    oplist_query: Query<
+        (
+            &HashId,
+            &OperationList,
+            &OplistSize,
+            Option<&HashedTagsVec>,
+            Option<&TagSet>,
+        ),
+        (),
+    >,
+    fnl_noises: Query<(&HashId, &FnlNoiseComp), ()>,
+    op_filters: Query<(&HashId, &OpFilter), ()>,
+) {
+    let oplists_count = oplist_query.iter().count();
+    let noises_count = fnl_noises.iter().count();
+    let filters_count = op_filters.iter().count();
+    let any_oplist_has_tags = oplist_query
+        .iter()
+        .any(|(_, _, _, oplist_tags_opt, oplist_tagset_opt, )| {
+            oplist_tags_opt.is_some() || oplist_tagset_opt.is_some()
+        });
+    if let Some(shared) = shared_task_data.shared.as_ref()
+        && shared.oplists.len() == oplists_count
+        && shared.noises.len() == noises_count
+        && shared.filters.len() == filters_count
+        && (!any_oplist_has_tags || !shared.oplist_tags.is_empty())
+    {
+        return;
+    }
+    if oplists_count == 0 || noises_count == 0 {
+        return;
+    }
+
     let mut oplists: HashIdMap<OperationList> = HashIdMap::default();
     let mut oplist_debug_var_ids: HashIdMap<Vec<HashId>> = HashIdMap::default();
     let mut oplist_sizes: HashIdMap<OplistSize> = HashIdMap::default();
     let mut oplist_tags: HashIdMap<HashedTagsVec> = HashIdMap::default();
-    for (&oplist_hash, oplist, &oplist_size, oplist_tags_opt) in oplist_query.iter() {
+    for (&oplist_hash, oplist, &oplist_size, oplist_tags_opt, oplist_tagset_opt) in
+        oplist_query.iter()
+    {
         let _ = oplists.overwrite(oplist_hash, oplist.clone());
         let _ = oplist_debug_var_ids.overwrite(
             oplist_hash,
             oplist.hash_ids_mapped_to_strids.keys().copied().collect::<Vec<_>>(),
         );
         let _ = oplist_sizes.overwrite(oplist_hash, oplist_size);
-        if let Some(tags) = oplist_tags_opt.cloned() {
+        let tags_to_cache = oplist_tags_opt
+            .cloned()
+            .or_else(|| oplist_tagset_opt.map(HashedTagsVec::from));
+        if let Some(tags) = tags_to_cache {
             let _ = oplist_tags.overwrite(oplist_hash, tags);
-        }
+        };
     }
 
     let mut noises: HashIdMap<FnlNoiseComp> = HashIdMap::default();
@@ -69,16 +98,21 @@ pub(crate) fn build_terrgen_task_context(
         let _ = filters.overwrite(filter_hash, filter.clone());
     }
 
-    let shared = TerrGenSharedTaskData {
+    shared_task_data.shared = Some(Arc::new(TerrGenSharedTaskDataInner {
         oplists,
         oplist_debug_var_ids,
         oplist_sizes,
         oplist_tags,
         noises,
         filters,
-    };
-    TerrGenTaskContext {
-        shared: Arc::new(shared),
+    }));
+}
+
+impl TerrGenTaskContext {
+    pub(crate) fn from_shared(shared: &Arc<TerrGenSharedTaskDataInner>) -> Self {
+        Self {
+            shared: Arc::clone(shared),
+        }
     }
 }
 
@@ -294,7 +328,10 @@ fn try_emit_filter_match(
     let Ok(oplist_tags) = context.shared.oplist_tags.get(source_oplist) else {
         return;
     };
-    if !oplist_tags.intersects(&filter.tags) || !passes_filter_value(Some(filter), computed_vars, output_value) {
+    if !oplist_tags.intersects(&filter.tags) {
+        return;
+    }
+    if !passes_filter_value(Some(filter), computed_vars, output_value) {
         return;
     }
     if source_ev.matrix_spec().is_some() {

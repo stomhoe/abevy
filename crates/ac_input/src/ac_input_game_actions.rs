@@ -6,14 +6,6 @@ pub struct ToggleSimulationAction;
 
 #[derive(Debug, InputAction)]
 #[action_output(bool)]
-pub struct DebugIncreaseSpeedAction;
-
-#[derive(Debug, InputAction)]
-#[action_output(bool)]
-pub struct DebugDecreaseSpeedAction;
-
-#[derive(Debug, InputAction)]
-#[action_output(bool)]
 pub struct DebugToggleHotReloadWindowAction;
 
 #[derive(Debug, InputAction)]

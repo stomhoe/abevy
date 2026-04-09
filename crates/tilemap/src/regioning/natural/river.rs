@@ -5,7 +5,6 @@ mod river_systems;
 
 pub use river_components::{
     RiverDebugData,
-    RiverDebugEvent,
     RiverPlans,
     RiverProbeRequest,
     RiverRegionDebugInfo,

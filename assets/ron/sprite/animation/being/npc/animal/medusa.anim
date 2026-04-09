@@ -1,4 +1,4 @@
-anim medusa_south_idle {
+anim medusa_s_idle {
     img_path: "texture/being/npc/monster/medusa.png"
     rows_cols: 4 9
     paused: true
@@ -8,7 +8,7 @@ anim medusa_south_idle {
     }
 }
 
-anim medusa_south_move {
+anim medusa_s_move {
     img_path: "texture/being/npc/monster/medusa.png"
     rows_cols: 4 9
     clips {
@@ -16,7 +16,7 @@ anim medusa_south_move {
     }
 }
 
-anim medusa_north_idle {
+anim medusa_n_idle {
     img_path: "texture/being/npc/monster/medusa.png"
     rows_cols: 4 9
     paused: true
@@ -26,7 +26,7 @@ anim medusa_north_idle {
     }
 }
 
-anim medusa_north_move {
+anim medusa_n_move {
     img_path: "texture/being/npc/monster/medusa.png"
     rows_cols: 4 9
     clips {
@@ -34,7 +34,7 @@ anim medusa_north_move {
     }
 }
 
-anim medusa_west_idle {
+anim medusa_w_idle {
     img_path: "texture/being/npc/monster/medusa.png"
     rows_cols: 4 9
     paused: true
@@ -44,7 +44,7 @@ anim medusa_west_idle {
     }
 }
 
-anim medusa_west_move {
+anim medusa_w_move {
     img_path: "texture/being/npc/monster/medusa.png"
     rows_cols: 4 9
     clips {
@@ -52,7 +52,7 @@ anim medusa_west_move {
     }
 }
 
-anim medusa_east_idle {
+anim medusa_e_idle {
     img_path: "texture/being/npc/monster/medusa.png"
     rows_cols: 4 9
     paused: true
@@ -62,7 +62,7 @@ anim medusa_east_idle {
     }
 }
 
-anim medusa_east_move {
+anim medusa_e_move {
     img_path: "texture/being/npc/monster/medusa.png"
     rows_cols: 4 9
     clips {

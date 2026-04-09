@@ -1,4 +1,4 @@
-anim lich_south_idle {
+anim lich_s_idle {
     img_path: "texture/being/npc/monster/lich.png"
     rows_cols: 4 8
     paused: true
@@ -8,7 +8,7 @@ anim lich_south_idle {
     }
 }
 
-anim lich_south_move {
+anim lich_s_move {
     img_path: "texture/being/npc/monster/lich.png"
     rows_cols: 4 8
     clips {
@@ -16,7 +16,7 @@ anim lich_south_move {
     }
 }
 
-anim lich_north_idle {
+anim lich_n_idle {
     img_path: "texture/being/npc/monster/lich.png"
     rows_cols: 4 8
     paused: true
@@ -26,7 +26,7 @@ anim lich_north_idle {
     }
 }
 
-anim lich_north_move {
+anim lich_n_move {
     img_path: "texture/being/npc/monster/lich.png"
     rows_cols: 4 8
     clips {
@@ -34,7 +34,7 @@ anim lich_north_move {
     }
 }
 
-anim lich_west_idle {
+anim lich_w_idle {
     img_path: "texture/being/npc/monster/lich.png"
     rows_cols: 4 8
     paused: true
@@ -44,7 +44,7 @@ anim lich_west_idle {
     }
 }
 
-anim lich_west_move {
+anim lich_w_move {
     img_path: "texture/being/npc/monster/lich.png"
     rows_cols: 4 8
     clips {
@@ -52,7 +52,7 @@ anim lich_west_move {
     }
 }
 
-anim lich_east_idle {
+anim lich_e_idle {
     img_path: "texture/being/npc/monster/lich.png"
     rows_cols: 4 8
     paused: true
@@ -62,7 +62,7 @@ anim lich_east_idle {
     }
 }
 
-anim lich_east_move {
+anim lich_e_move {
     img_path: "texture/being/npc/monster/lich.png"
     rows_cols: 4 8
     clips {

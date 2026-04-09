@@ -7,7 +7,8 @@ use common::{SPRITE_INIT, common_components::*, common_tag_components::TagSet};
 use game_common::game_common_components::*;
 use sprite_animation_shared::AcAnimationEntityMap;
 
-use crate::{ sprite_resources::*};
+use crate::sprite_config_parser::load_sprite_defs_from_filesystem;
+use crate::sprite_resources::*;
 
 #[allow(unused_parens)]
 pub fn init_sprite_configs(
@@ -24,7 +25,12 @@ pub fn init_sprite_configs(
 
     let mut comps_to_insert = Vec::new();
 
-    for mut seri in load_sprite_config_seri_defs() {
+    for def in load_sprite_defs_from_filesystem() {
+        if def.is_abstract {
+            debug!(target: SPRITE_INIT, "Skipping abstract sprite '{}' from '{}'", def.seri.id, def.rel_path);
+            continue;
+        }
+        let mut seri = def.seri;
 
         let str_id = match StrId::new_with_result(seri.id, 3) {
             Ok(id) => id,
@@ -62,10 +68,10 @@ pub fn init_sprite_configs(
         comps_to_insert.push((
             spritecfg_ent,
             (
+                str_id.hash_id(),
                 str_id.clone(),
-                AddHashIdFromStrId,
-                TemplEntiHashIdRef(HashId::from(str_id.as_str())),
                 SpriteConfig,
+                ReplicateIfServerStarts,
                 visib,
                 offset4children_cats,
                 Templ,

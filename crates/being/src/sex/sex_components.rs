@@ -4,7 +4,7 @@ use common::common_components::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Serialize, Deserialize, Clone)]
-#[require(Replicated, Prefix::trunc("Sex"), AssetScoped, HotReload)]
+#[require(Replicated, Prefix::trunc("Sex"), AssetScoped, SelectedForHotReload)]
 pub struct Sex;
 
 #[derive(Component, Debug, Default, Clone)]

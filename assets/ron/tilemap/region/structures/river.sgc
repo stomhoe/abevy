@@ -12,13 +12,23 @@ sgc {
         river_land_threshold = -0.05
         river_min_island_area_chunks = 225
         river_source_min_inlandness = 0.20
-        river_source_hash_stride = 19
-        river_source_mouth_min_distance = 8
+        river_source_hash_stride = 7
+        river_source_mouth_min_distance = 20
+        river_source_min_separation_steps = 10
         river_main_half_width_start = 1
         river_main_half_width_end = 3
-        river_worm_length = 240
-        river_max_sources = 5
+        river_worm_length = 420
+        river_max_sources = 8
         river_mouth_max_inlandness = 0.05
+        river_trace_neighbor_radius = 2
+        river_directional_inertia = 0.45
+        river_meander_strength = 0.35
+        river_downhill_weight = 3.0
+        river_uphill_penalty = 2.5
+        river_coast_avoid_inlandness = 0.23
+        river_coast_parallel_penalty = 1.30
+        river_curve_iterations = 2
+        river_curve_jitter_tiles = 5.0
         disable_terrgen.floor_tile_id = true
     }
 }

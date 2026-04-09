@@ -15,7 +15,6 @@ use crate::body::bodypart::bodypart_resources::*;
 
 #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Clone)]
 #[require(
-    SparedFromHotReloading,
     AssetScoped,
     Prefix::trunc("BodyTree"),
 )]
@@ -23,7 +22,6 @@ pub struct BodyTreeTemplate;
 
 #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Clone)]
 #[require(
-    SparedFromHotReloading,
     AssetScoped,
     Prefix::trunc("BodyTree"),
 )]
@@ -164,7 +162,7 @@ pub fn init_bodytree_templates(
         };
         cmd.entity(root_ent).insert(TreeRoot);
         spawned_count += 1;
-        debug!(target: BODY_BUILD, "Initialized bodytree template '{}' with root {}", tree_id, root_id);
+        trace!(target: BODY_BUILD, "Initialized bodytree template '{}' with root {}", tree_id, root_id);
     }
     if spawned_count > 0 {
         debug!(target: BODY_BUILD, "Initialized {} bodytree template entities", spawned_count);

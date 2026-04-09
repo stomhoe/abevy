@@ -1,4 +1,4 @@
-anim goblin_south_idle {
+anim goblin_s_idle {
     img_path: "texture/being/npc/goblin/goblin.png"
     rows_cols: 4 8
     paused: true
@@ -8,7 +8,7 @@ anim goblin_south_idle {
     }
 }
 
-anim goblin_south_move {
+anim goblin_s_move {
     img_path: "texture/being/npc/goblin/goblin.png"
     rows_cols: 4 8
     clips {
@@ -16,7 +16,7 @@ anim goblin_south_move {
     }
 }
 
-anim goblin_north_idle {
+anim goblin_n_idle {
     img_path: "texture/being/npc/goblin/goblin.png"
     rows_cols: 4 8
     paused: true
@@ -26,7 +26,7 @@ anim goblin_north_idle {
     }
 }
 
-anim goblin_north_move {
+anim goblin_n_move {
     img_path: "texture/being/npc/goblin/goblin.png"
     rows_cols: 4 8
     clips {
@@ -34,7 +34,7 @@ anim goblin_north_move {
     }
 }
 
-anim goblin_west_idle {
+anim goblin_w_idle {
     img_path: "texture/being/npc/goblin/goblin.png"
     rows_cols: 4 8
     paused: true
@@ -44,7 +44,7 @@ anim goblin_west_idle {
     }
 }
 
-anim goblin_west_move {
+anim goblin_w_move {
     img_path: "texture/being/npc/goblin/goblin.png"
     rows_cols: 4 8
     clips {
@@ -52,7 +52,7 @@ anim goblin_west_move {
     }
 }
 
-anim goblin_east_idle {
+anim goblin_e_idle {
     img_path: "texture/being/npc/goblin/goblin.png"
     rows_cols: 4 8
     paused: true
@@ -62,7 +62,7 @@ anim goblin_east_idle {
     }
 }
 
-anim goblin_east_move {
+anim goblin_e_move {
     img_path: "texture/being/npc/goblin/goblin.png"
     rows_cols: 4 8
     clips {

@@ -4,7 +4,7 @@ use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
 use game_common::game_common_components::TemplEntiRef;
 use rand::{Rng, SeedableRng, seq::SliceRandom};
-use tilemap_shared::tilemap_shared_samplers::EntityWeightedSampler;
+use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use ::tilemap_shared::*;
 
 use crate::regioning::{regioning_components::*, regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder, TerrGenDisabledGposForChunks}, regioning_sgc_components::StructuredGenConfig
@@ -26,7 +26,7 @@ pub fn archimedes_spiral_building_system(
     biome_map: Res<BiomeEntityMap>,
     mut room_pack_spawn: super::super::dungeoning_utils::DungeonRoomPackSpawnSystemParams,
     sampler_map: Res<TileWeightedSamplerEntityMap>,
-    sampler_query: Query<&EntityWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
+    sampler_query: Query<&HashIdWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
     templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
     dimension_hash: Query<&HashId>,
@@ -380,7 +380,7 @@ pub fn archimedes_spiral_building_system(
 
         let mut boulder_anchor_map: Vec<Option<TemplEntiRef>> = vec![None; tile_map_size];
         if boulder_frequency > 0.0 {
-            let boulder_sampler: Option<&EntityWeightedSampler> = sampler_map
+            let boulder_sampler: Option<&HashIdWeightedSampler> = sampler_map
                 .0
                 .get_cloned(boulder_sampler_id)
                 .ok()
@@ -412,6 +412,8 @@ pub fn archimedes_spiral_building_system(
                     let Some(sampled_boulder_ent) = resolve_sampled_tile_entity_from_sampler(
                         boulder_sampler,
                         &sampler_query,
+                        &sampler_map,
+                        &templs_map,
                         anchor_gpos,
                         settings,
                         dimension_hash,

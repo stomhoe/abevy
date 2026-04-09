@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use super::regioning_sgc_seris::SgcArgsDict;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, )]
-#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SGC"), )]
+#[require(AssetScoped, Prefix::trunc("SGC"), )]
 pub struct StructuredGenConfig{
     /// the structure's id, not the sgc's
     structure_id: StrId,
@@ -69,5 +69,5 @@ impl WhitelistedFilterOf{
 pub struct AcceptedFilters(Vec<Entity>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
-#[require(SparedFromHotReloading, AssetScoped, Replicated, Prefix::trunc("SGCsWeightedSampler"), )]
+#[require(AssetScoped, Prefix::trunc("SGCsWeightedSampler"), )]
 pub struct SgcsWeightedSampler;
