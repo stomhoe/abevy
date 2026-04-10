@@ -11,9 +11,10 @@ pub use crate::log_targets::*;
 #[allow(unused_imports, )]pub use crate::query_macros::*;
 #[allow(unused_imports, )]
 pub use crate::marker_macros::*;
+pub use crate::common_systems::expect_single_query;
 
 use bevy::ecs::entity_disabling::Disabled;
-use bevy::ecs::schedule::common_conditions::{on_message, resource_changed};
+use bevy::ecs::schedule::common_conditions::{on_message, };
 use bevy_replicon::prelude::*;
 
 use crate::{common_systems::*, common_tag_systems::*, };

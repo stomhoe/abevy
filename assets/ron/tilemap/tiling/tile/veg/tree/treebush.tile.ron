@@ -1,7 +1,7 @@
 (
     id: "treebush",
     name: "Treebush",
-    tags: ["land", "tree", "veg"],
+    tags: ["tree", "veg"],
     img_paths: [
         ("", "texture/world/veg/tree/treebush.png")
     ],

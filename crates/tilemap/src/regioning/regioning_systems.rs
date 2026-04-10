@@ -1,10 +1,10 @@
-use bevy::ecs::query::QueryFilter;
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)]
 use bevy::prelude::*;
 use common::{
-    common_components::{HashId, Prefix, StrId},
+    common_components::{HashId, Prefix, ReplicateIfServerStarts, StrId},
     common_tag_components::TagSet,
+    expect_single_query,
     log_targets::SGC_CHUNK_CLAIM,
 };
 use debug_unwraps::DebugUnwrapExt;
@@ -57,23 +57,6 @@ fn passes_dimension_tag_filters(
     true
 }
 
-fn expect_single_query<'w, 's, T: Component, F: QueryFilter>(
-    query: &'w Query<'w, 's, &T, F>,
-    missing_msg: &str,
-    multiple_msg: &str,
-) -> Option<&'w T> {
-    let mut iter = query.iter();
-    let Some(first) = iter.next() else {
-        error!(target: SGC_CHUNK_CLAIM, "{}", missing_msg);
-        return None;
-    };
-    if iter.next().is_some() {
-        error!(target: SGC_CHUNK_CLAIM, "{}", multiple_msg);
-        return None;
-    }
-    Some(first)
-}
-
 #[allow(unused_parens)]
 pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
     mut cmd: Commands,
@@ -94,7 +77,6 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
         (),
     >,
     strid_query: Query<&StrId>,
-    hash_id_query: Query<&HashId>,
     dimension_query: Query<
         (
             &HashId,
@@ -107,7 +89,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
     dimension_map: Res<DimensionEntityMap>,
     mut writer: MessageWriter<OfferChunk>,
     mut loaded_regions: ResMut<LoadedRegions>,
-    prioritized: Res<PrioritizedSgs>,
+    prioritized: Query<&PrioritizedSgs>,
     mut prioritized_per_region: ResMut<PrioritizedPerRegion>,
 ) {
     let Some(settings) = expect_single_query(
@@ -121,6 +103,13 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
         &weight_map,
         "Missing SgcsWeightedSampler while offering chunks for new regions",
         "Multiple SgcsWeightedSampler components found while offering chunks for new regions",
+    ) else {
+        return;
+    };
+    let Some(prioritized) = expect_single_query(
+        &prioritized,
+        "Missing PrioritizedSgs singleton while offering chunks for new regions",
+        "Multiple PrioritizedSgs singletons found while offering chunks for new regions",
     ) else {
         return;
     };
@@ -165,13 +154,13 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
                     continue 'next_i;
                 }
 
-                let structured_gen_cfg_ent = if let Some(&ent) = prioritized_queue.first() {
+                let structured_gen_cfg_ent = if let Some(&hash_id) = prioritized_queue.first() {
                     prioritized_queue.remove(0);
-                    let Ok(&ent_hash_id) = hash_id_query.get(ent) else {
+                    weight_map.remove(&hash_id);
+                    let Some(sampled_ent) = sgc_map.0.get_opt(hash_id).copied() else {
                         continue 'next_sgc_attempt;
                     };
-                    weight_map.remove(&ent_hash_id);
-                    ent
+                    sampled_ent
                 } else {
                     let Some(sampled_hash_id) = weight_map.sample_with_rng_and_remove(&mut rng)
                     else {

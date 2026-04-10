@@ -4,7 +4,7 @@ use modifier_shared::AppliedModifiers;
 use sprite_animation_shared::MoveAnimActive;
 use tilemap_shared::SnapTransformToGpos;
 
-use crate::movement_components::*;
+use crate::movement_shared_components::*;
 
 #[derive(Bundle, Debug, Default, Clone)]
 pub struct GridLockedMovementRequirementsBundle(

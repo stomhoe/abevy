@@ -124,7 +124,6 @@ pub fn seed_natural_wildlife_for_biomesampled_macrochunks(
 
         locs.occupied_pack_anchor_chunkpos.clear();
         locs.occupied_pack_anchor_chunkpos.reserve(number_of_packs);
-        let mut spawned_packs = 0usize;
 
         for _ in 0..number_of_packs {
             let Ok(biome_pack_sampler) = queries.biome_pack_samplers.get(biome_ent) else {
@@ -165,7 +164,6 @@ pub fn seed_natural_wildlife_for_biomesampled_macrochunks(
                 pack_ent: sampled_pack_or_race_or_bit_ent,
                 center_chunk: pack_anchor_cpos,
             });
-            spawned_packs += 1;
             let instance_pack_message = InstantiateTemplPackEntity::new(
                 sampled_pack_or_race_or_bit_ent,
                 None,

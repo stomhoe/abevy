@@ -8,7 +8,7 @@ use being_shared::{Grounding, ComputedBy, ComputedLocally};
 use bevy_spritesheet_animation::{prelude::*, };
 use common::{SPRITE_ANIMATION_SYSTEM, common_components::*, file_logging::file_log};
 use game_common::{game_common_components::{Directionable, TemplEntiRef, }, Templ};
-use movement::movement_components::SpeedMagnitude;
+use being_shared::movement_shared_components::SpeedMagnitude;
 use player_shared::player_components::*;
 use ::sprite_animation_shared::*;
 use ::sprite_shared::*;

@@ -9,7 +9,7 @@ use sprite_animation_shared::MirrorHolderStateForSprite;
 use tilemap::tile::tile_components::Tile;
 use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};
 
-use crate::{movement_components::*, movement_helpers::{secs_per_tile, ticks_per_tile}, movement_messages::*};
+use crate::{grid_movement_helpers::{advance_steps_immediate, try_start_step}, movement_helpers::{secs_per_tile, ticks_per_tile}, movement_messages::*};
 
 #[derive(Clone, Copy, Debug)]
 pub struct ClientStepRateState {
@@ -259,7 +259,8 @@ pub fn receive_step_request_from_client(
                 });
                 continue;
             }
-            match glm.try_start_step(
+            match try_start_step(
+                &mut glm,
                 &mut glm_visual,
                 &mut blocking_tiles,
                 dim_ref,
@@ -316,7 +317,8 @@ pub fn receive_step_request_from_client(
                 TryStartStepOutcome::IVec2ZeroDir | TryStartStepOutcome::ZeroStepTicks => continue,
             }
         } else {
-            let steps_taken = glm.advance_steps_immediate(
+            let steps_taken = advance_steps_immediate(
+                &mut glm,
                 &mut glm_visual,
                 &mut blocking_tiles,
                 dim_ref,

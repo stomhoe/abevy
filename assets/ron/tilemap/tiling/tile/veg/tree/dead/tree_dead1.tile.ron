@@ -1,7 +1,7 @@
 (
     id: "tree_dead1",
     name: "Dead tree",
-    tags: ["land", "tree", "veg"],
+    tags: ["tree", "veg"],
     img_paths: [
         ("", "texture/world/veg/tree/dead/tree_dead1.png"),
     ],

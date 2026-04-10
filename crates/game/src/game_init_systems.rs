@@ -5,9 +5,9 @@ use common::{GAME_INIT, common_components::StrId, common_states::AppState};
 use common::common_components::HashId;
 use faction::{faction_resources::*};
 use ::being_shared::JoinedGroups;
+use ::being_shared::movement_shared_components::{GridLockedMovement, GridLockedMovementVisual};
 use faction_shared::Faction;
 use game_common::game_common_components::Templ;
-use movement::movement_components::{GridLockedMovement, GridLockedMovementVisual};
 use player_shared::player_components::*;
 use tilemap::{
     terrain::{

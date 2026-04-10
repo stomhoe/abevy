@@ -8,8 +8,6 @@ pub mod grid_movement_systems;
 pub mod grid_movement_helpers;
 pub mod movement_host_systems;
 pub mod movement_messages;
-pub mod movement_components;
-pub mod movement_bundles;
 pub mod movement_helpers;
 
 
@@ -23,7 +21,5 @@ pub use crate::{
     grid_movement_helpers::*,
     movement_host_systems::*,
     movement_messages::*,
-    movement_components::*,
-    movement_bundles::*,
     movement_helpers::*,
 };

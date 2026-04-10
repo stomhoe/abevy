@@ -4,8 +4,8 @@ size: (1, 1)
 debug: [oasis_feature]
 
 let oasisness = max(fnl.lakesmol, fnl.lakebig)
-let oasisness = *(oasisness, continentness, 1.4)
-let oasisness = *opo(oasisness, dune_sandness)
+let oasisness = *(oasisness, continentness, 1.)
+let oasisness = *opo(oasisness, beachness)
 
 out = idxmax(continent_threshold, oasisness, )
 

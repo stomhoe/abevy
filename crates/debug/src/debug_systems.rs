@@ -6,14 +6,14 @@ use game_common::game_common_components::Templ;
 use modifier_shared::{
     modifier_components::*,
     modifier_move_bundles::SpeedModifier,
-    modifier_types::WalkSpeed,
+    modifier_types::WalkStrength,
 };
 
 fn apply_speed_factor(
     cmd: &mut Commands,
     being_ent: Entity,
     applied_modifiers: &AppliedModifiers,
-    debug_modi_query: &mut Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkSpeed>, Without<Templ>, )>,
+    debug_modi_query: &mut Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkStrength>, Without<Templ>, )>,
     factor: f32,
 ) {
     let debug_hash = HashId::hash("debug");
@@ -52,7 +52,7 @@ pub fn receive_debug_increase_speed_request(
     mut cmd: Commands,
     mut requests: MessageReader<LocalDebugIncreaseSpeedRequest>,
     controlled_beings_query: Query<(&AppliedModifiers, ), ()>,
-    mut debug_modi_query: Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkSpeed>, Without<Templ>, )>,
+    mut debug_modi_query: Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkStrength>, Without<Templ>, )>,
 ) {
     for request in requests.read() {
         let &LocalDebugIncreaseSpeedRequest { being_ent } = request;
@@ -68,7 +68,7 @@ pub fn receive_debug_decrease_speed_request(
     mut cmd: Commands,
     mut requests: MessageReader<LocalDebugDecreaseSpeedRequest>,
     controlled_beings_query: Query<(&AppliedModifiers, ), ()>,
-    mut debug_modi_query: Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkSpeed>, Without<Templ>, )>,
+    mut debug_modi_query: Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkStrength>, Without<Templ>, )>,
 ) {
     for request in requests.read() {
         let &LocalDebugDecreaseSpeedRequest { being_ent } = request;

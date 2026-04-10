@@ -9,7 +9,6 @@ use bevy::{
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::{common_components::*, common_tag_components::TagSet};
-use game_common::game_common_components::*;
 use sprite_animation_shared::AcAnimationProgresses;
 use ::sprite_shared::*;
 

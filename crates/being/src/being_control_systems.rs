@@ -2,9 +2,8 @@ use ::being_shared::*;
 use bevy::prelude::*;
 use common::log_targets::BEING_CONTROL;
 use game_common::game_common_components::CameraTarget;
-use movement::movement_components::*;
-use player_shared::player_components::{HostPlayer, Mine, MyPlayer, Player};
 use ::tilemap_shared::*;
+use player_shared::player_components::{HostPlayer, Mine, MyPlayer, Player};
 
 pub fn add_activates_chunks(
     mut cmd: Commands,

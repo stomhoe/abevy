@@ -7,11 +7,12 @@ use game_common::game_common::SimRunningSystems;
 use tilemap_shared::CardinalDirection;
 
 use crate::{
-    free_movement_systems::*, movement_components::*, movement_modifier_systems::*,
+    free_movement_systems::*, movement_modifier_systems::*,
     movement_secondary_systems::*, grid_movement_systems::*, movement_host_systems::*,
     movement_messages::*,
 };
 use game_common::HostSystems;
+use being_shared::movement_shared_components::*;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct MovementSystems;

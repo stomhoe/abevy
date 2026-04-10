@@ -1,4 +1,4 @@
-use bevy::{ecs::entity::{EntityHashSet, EntityHashMap}, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use bevy::{ecs::{entity::{EntityHashSet, EntityHashMap}}, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use common::common_components::HashId;
 use game_common::game_common_components::TemplEntiRef;
 use crate::terrain::{
@@ -58,13 +58,18 @@ impl<'w, 's> SearchParams<'w, 's> {
     pub fn write_pos_searches(&mut self) {
         self.ew_pos_search.write_batch(self.pos_searches_msgs_to_write.drain(..));
     }
-
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
 #[allow(unused_parens, )]
-pub struct SearchMaps<'w> {
+pub struct SearchLocals<'w, 's>
+{
     pub dimension_map: Res<'w, DimensionEntityMap>,
+    pub found_suitable_positions: Local<'s, EntityHashSet>,
+    pub new_pending_ops: Local<'s, Vec<PendingOp>>,
+    pub new_pos_searches: Local<'s, Vec<TerrProbeJob>>,
+    pub search_failed_evs: Local<'s, Vec<SearchFailed>>,
+    pub failed_entities: Local<'s, Vec<Entity>>,
 }
 
 use serde::{Deserialize, Serialize};
@@ -81,15 +86,18 @@ pub fn search_suitable_positions(
     mut mreader_sampled_value_matrix_found: MessageReader<SampledValuesCollected>,
     terrprobe_query: Query<&TerrProbeTempl>,
     dimensions_query: Query<&DimensionRootOplist>,
-    search_maps: SearchMaps,
     failed_search_oplist_filter_holder: Query<Entity, (With<FailedSearchOplistFilterHolder>)>,
     mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
-    mut found_suitable_positions: Local<EntityHashSet>,
-    mut new_pending_ops: Local<Vec<PendingOp>>,
-    mut new_pos_searches: Local<Vec<TerrProbeJob>>,
-    mut search_failed_evs: Local<Vec<SearchFailed>>,
-    mut failed_entities: Local<Vec<Entity>>,
+    mut search_locals: SearchLocals,
 ) {
+    let SearchLocals {
+        dimension_map,
+        found_suitable_positions,
+        new_pending_ops,
+        new_pos_searches,
+        search_failed_evs,
+        failed_entities,
+    } = &mut search_locals;
     found_suitable_positions.clear();
     new_pending_ops.clear();
     new_pos_searches.clear();
@@ -129,7 +137,7 @@ pub fn search_suitable_positions(
             search_failed_evs.push(SearchFailed(pos_search.requester));
             continue;
         };
-        let Ok(dim_ent) = search_maps.dimension_map.0.get_cloned(pos_search.dimension_ref.0) else {
+        let Ok(dim_ent) = dimension_map.0.get_cloned(pos_search.dimension_ref.0) else {
             search_failed_evs.push(SearchFailed(pos_search.requester));
             continue;
         };
@@ -159,7 +167,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
         let pos_search = input.probe;
 
         if successful_requesters.contains(&pos_search.requester) {
-            info!(target: "pos_search","Found suitable position for {:?}", pos_search.requester);
+            trace!(target: "pos_search","Found suitable position for {:?}", pos_search.requester);
             continue;
         }
         let templ = input.templ;

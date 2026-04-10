@@ -26,8 +26,6 @@ impl MassCollectedTiles {
             //builder.deny::<BundleToDenyOnReleaseBuild>();
         }).id();
 
-        //let tile_size = param_set.size_in_tiles.get(templ_ref.0).cloned().unwrap_or_default();
-
         let tile_bundle = TileBundle {
             position: gpos.to_tilepos(), ..Default::default()
         };

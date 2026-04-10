@@ -1,7 +1,7 @@
 (
     id: "elf_thick_oak",
     name: "Elven thick oak",
-    tags: ["land", "tree", "veg"],
+    tags: ["tree", "veg"],
     img_paths: [
         ("", "texture/world/veg/tree/elf/elf_thick_oak.png")
     ],

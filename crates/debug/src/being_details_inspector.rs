@@ -1,5 +1,6 @@
 use ac_input::ac_input_actions::*;
 use ::being_shared::*;
+use ::being_shared::body_energy::*;
 
 use being::body::{HeldBody, BodySums};
 use bevy::ecs::entity::EntityHashSet;
@@ -10,17 +11,11 @@ use bevy_inspector_egui::bevy_inspector;
 use common::common_components::{DisplayName, HashId, StrId};
 use common::log_targets::DEBUG;
 use game_common::game_common_components::{Templ, TemplEntiRef};
-use item_shared::{
-    item_components::{HeldItems, SlottedItemHolder},
-    ItemOperation,
-};
-use modifier_shared::modifier_components::*;
-use modifier_shared::modifier_types::*;
-use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker, resolve_modifier_component};
-use movement::movement_components::*;
+use ::item_shared::*;
+use ::modifier_shared::*;
 use player_shared::{player_components::*, };
 use ::sprite_shared::*;
-use tilemap_shared::{CardinalDirection, GlobalTilePos, InteractionZone, InteractionZones};
+use ::tilemap_shared::*;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -695,15 +690,23 @@ pub fn being_details_inspector(world: &mut World) {
             Option<&ModifierTags>,
             Has<PainSlowdown>,
         ),
-        (With<WalkSpeed>, Without<Templ>),
+        (With<WalkStrength>, Without<Templ>),
     >();
+    let mut body_energy_store_query = world.query::<&BodyEnergyStore>();
+    let mut body_energy_balance_query = world.query::<&BodyEnergyBalance>();
+    let mut body_energy_profile_query = world.query::<&BodyEnergyProfile>();
+    let mut starvation_config_query = world.query::<&StarvationConfig>();
+    let mut body_condition_query = world.query::<&BodyCondition>();
+    let mut body_strength_scale_query = world.query::<&BodyStrengthScale>();
+    let mut body_weight_sum_query = world.query::<&BodyWeightSum>();
+    let mut predator_query = world.query::<&Predator>();
+    let mut predator_cfg_query = world.query::<&PredatorCfg>();
 
     let Ok(body) = body_query.get(world, selected_being_entity) else {
         return;
     };
     let body_entity = body.entity();
     let bit_map = world.get_resource::<BeingInstTemplateEntityMap>();
-    let race_map = world.get_resource::<RaceEntityMap>();
     let bit_ref_ent = bit_ref_query
         .get(world, selected_being_entity)
         .ok()
@@ -711,7 +714,11 @@ pub fn being_details_inspector(world: &mut World) {
     let race_ref_ent = race_ref_query
         .get(world, selected_being_entity)
         .ok()
-        .and_then(|race_ref| race_map.and_then(|map| map.0.get_cloned(race_ref.0).ok()));
+        .and_then(|race_ref| {
+            world
+                .get_resource::<RaceEntityMap>()
+                .and_then(|map| map.0.get_cloned(race_ref.0).ok())
+        });
     let body_label = part_label(
         body_entity,
         display_name_query.get(world, body_entity).ok(),
@@ -794,6 +801,123 @@ pub fn being_details_inspector(world: &mut World) {
                 ui.label(format!("Manip dex: {:.2}", sums.manip_dex));
                 ui.label(format!("Manip str: {:.2}", sums.manip_str));
             }
+            ui.separator();
+
+            ui.collapsing("Body Energy", |ui| {
+                let body_energy_store = body_energy_store_query.get(world, body_entity).ok().copied();
+                let body_energy_balance = body_energy_balance_query.get(world, body_entity).ok().copied();
+                let body_energy_profile = body_energy_profile_query.get(world, body_entity).ok().copied();
+                let starvation_config = body_templ_ref.and_then(|body_templ_ref| {
+                    starvation_config_query.get(world, body_templ_ref.0).ok().copied()
+                });
+                let body_condition = body_condition_query.get(world, selected_being_entity).ok().copied();
+                let body_strength_scale = body_strength_scale_query.get(world, selected_being_entity).ok().copied();
+                let body_weight_sum = body_weight_sum_query.get(world, selected_being_entity).ok().copied();
+                let predator = predator_query.get(world, selected_being_entity).is_ok();
+                let predator_cfg = predator_cfg_query.get(world, selected_being_entity).ok().cloned().or_else(|| {
+                    race_ref_ent.and_then(|race_ent| predator_cfg_query.get(world, race_ent).ok().cloned())
+                });
+
+                if let Some(body_energy_store) = body_energy_store {
+                    ui.label(format!("Baseline lean mass: {:.2} kg", body_energy_store.baseline_mass_kg));
+                    ui.label(format!("Lean mass: {:.2} kg", body_energy_store.lean_mass_kg));
+                    ui.label(format!("Fat mass: {:.2} kg", body_energy_store.fat_mass_kg));
+                    ui.label(format!("Stomach: {:.2} kcal", body_energy_store.stomach_kcal));
+                    ui.label(format!("Burn: {:.3} kcal/s", body_energy_store.burn_kcal_per_sec));
+                    ui.label(format!("Activity multiplier: {:.3}", body_energy_store.activity_multiplier));
+                    ui.label(format!("Thermal multiplier: {:.3}", body_energy_store.thermal_multiplier));
+                } else {
+                    ui.label("BodyEnergyStore: missing");
+                }
+
+                if let Some(body_energy_balance) = body_energy_balance {
+                    ui.label(format!("Last tick net kcal: {:.3}", body_energy_balance.last_tick_net_kcal));
+                    ui.label(format!("Unresolved deficit kcal: {:.3}", body_energy_balance.unresolved_deficit_kcal));
+                } else {
+                    ui.label("BodyEnergyBalance: missing");
+                }
+
+                if let Some(body_energy_profile) = body_energy_profile {
+                    ui.label(format!("Burn rate multiplier: {:.3}", body_energy_profile.burn_rate_multiplier));
+                    ui.label(format!("Wasting rate multiplier: {:.3}", body_energy_profile.wasting_rate_multiplier));
+                    ui.label(format!("Healthy fat capacity multiplier: {:.3}", body_energy_profile.healthy_fat_capacity_multiplier));
+                } else {
+                    ui.label("BodyEnergyProfile: missing");
+                }
+
+                if let Some(starvation_config) = starvation_config {
+                    ui.label(format!("Max fat mobilization: {:.3} kcal/s", starvation_config.max_fat_mobilization_kcal_per_sec));
+                    ui.label(format!("Max lean catabolism: {:.3} kcal/s", starvation_config.max_lean_catabolism_kcal_per_sec));
+                    ui.label(format!("Damage at zero lean: {:.3} hp/s", starvation_config.damage_per_sec_at_zero_lean));
+                } else {
+                    ui.label("StarvationConfig: missing");
+                }
+
+                if let Some(body_condition) = body_condition {
+                    ui.label(format!("Hunger ratio: {:.3}", body_condition.hunger_ratio));
+                    ui.label(format!("Wasting: {:.3}", body_condition.wasting));
+                    ui.label(format!("Obesity: {:.3}", body_condition.obesity));
+                } else {
+                    ui.label("BodyCondition: missing");
+                }
+
+                if let Some(body_strength_scale) = body_strength_scale {
+                    ui.label(format!("BodyStrengthScale: {:.3}", body_strength_scale.0));
+                } else {
+                    ui.label("BodyStrengthScale: missing");
+                }
+
+                if let Some(body_weight_sum) = body_weight_sum {
+                    ui.label(format!("BodyWeightSum: {:.2}", body_weight_sum.0));
+                } else {
+                    ui.label("BodyWeightSum: missing");
+                }
+
+                ui.label(format!("Predator: {}", predator));
+                if let Some(predator_cfg) = predator_cfg {
+                    ui.label(format!("PredatorCfg.min_hunger_to_hunt: {:.3}", predator_cfg.min_hunger_to_hunt));
+                    ui.label(format!("PredatorCfg.min_hp_ratio_to_hunt: {:.3}", predator_cfg.min_hp_ratio_to_hunt));
+                } else {
+                    ui.label("PredatorCfg: missing on being and race");
+                }
+            });
+            ui.separator();
+
+            ui.collapsing("Race", |ui| {
+                let race_ref = race_ref_query.get(world, selected_being_entity).ok().copied();
+                let Some(race_ref) = race_ref else {
+                    ui.label("RaceRef: missing");
+                    return;
+                };
+                ui.label(format!("RaceRef.0 (hash): {:?}", race_ref.0));
+
+                let Some(race_map) = world.get_resource::<RaceEntityMap>() else {
+                    ui.label("RaceEntityMap: missing resource");
+                    return;
+                };
+                let Ok(race_ent) = race_map.0.get_cloned(race_ref.0) else {
+                    ui.label("RaceRef.0 is not present in RaceEntityMap");
+                    return;
+                };
+                ui.label(format!("Race entity: {:?}", race_ent));
+                ui.label(format!(
+                    "Race StrId: {}",
+                    str_id_query
+                        .get(world, race_ent)
+                        .map_or_else(|_| "missing".to_string(), |str_id| str_id.to_string())
+                ));
+                ui.label(format!(
+                    "Race DisplayName: {}",
+                    display_name_query
+                        .get(world, race_ent)
+                        .map_or_else(|_| "missing".to_string(), |display_name| display_name.0.clone())
+                ));
+                ui.separator();
+                ui.label("Race template components:");
+                unsafe {
+                    bevy_inspector::ui_for_entity(&mut *world_ptr, race_ent, ui);
+                }
+            });
             ui.separator();
 
             egui::CollapsingHeader::new("Movement Details")

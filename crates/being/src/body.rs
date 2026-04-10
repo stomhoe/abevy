@@ -1,10 +1,11 @@
-use ::being_shared::*;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy::ecs::schedule::common_conditions::on_message;
 use bevy::ecs::schedule::ApplyDeferred;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use game_common::{HostSystems, game_common::ModifierSystems};
+use ::being_shared::body_energy::*;
+use crate::body::bodytree::BodyTreeSystems;
 use crate::body::{
     body_systems::*,
     body_hp_systems::*,
@@ -40,13 +41,17 @@ pub fn plugin(app: &mut App) {
     .add_systems(
         Update,
         (
+            ensure_body_energy_components,
+            add_calories_to_being_energy_store.run_if(on_message::<AddCaloriesToBeing>),
+            update_body_energy_activity_multipliers,
+            tick_global_body_energy.run_if(on_timer(core::time::Duration::from_secs(1))),
             update_body_weight_sum,
             apply_damage.run_if(on_message::<IncHealthDamageOrHeal>),
             refresh_template_bodyparts_users_list,
             update_bodypart_max_hp_map.run_if(on_timer(core::time::Duration::from_millis(200))),
             set_bodypart_as_missing_if_0_hp,
             update_body_health_from_parts.run_if(on_timer(core::time::Duration::from_millis(200))),
-            apply_bodypart_hp_regen,
+            apply_bodypart_hp_regen.run_if(on_timer(core::time::Duration::from_millis(200))),
             ensure_pain_slowdown_modifiers,
         ),
     )
@@ -63,9 +68,8 @@ pub fn plugin(app: &mut App) {
     .configure_sets(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (
-            crate::body::bodypart::BodypartSystems.before(BodySystems),
-            crate::body::bodypart::BodypartSystems.before(bodytree::BodyTreeSystems),
-            bodytree::BodyTreeSystems.before(BodySystems),
+            crate::body::bodypart::BodypartSystems.before(BodyTreeSystems),
+            BodyTreeSystems.before(BodySystems),
             BodySystems.before(body_sampler::BodySamplerSystems),
         ),
     )
@@ -77,6 +81,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<BodypartMaxHpMap>()
     .init_resource::<BodypartTemplateByPart>()
     .add_message::<IncHealthDamageOrHeal>()
+    .add_message::<AddCaloriesToBeing>()
     //TEMPORAL
     .register_type::<BodypartChildrenBodyparts>()
     ;

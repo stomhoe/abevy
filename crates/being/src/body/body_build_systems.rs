@@ -10,8 +10,7 @@ use crate::body::BodyRef;
 use crate::body::body_resources::BodyEntityMap;
 use crate::body::body_templ_init_systems::distribute_budgets_among_bodyparts_based_on_weights_and_forcings;
 use crate::body::bodytree::{BodyTreeRef, BodyTreeTemplateEntityMap};
-use crate::body::{body_components::*};
-use ::being_shared::*;
+use crate::body::body_components::*;
 
 #[derive(SystemParam)]
 pub struct BuildBodysOnBeingsQueries<'w, 's> {
@@ -91,7 +90,6 @@ pub fn build_bodys_on_beings(
             TemplEntiHashIdRef(body_hash),
             BodySums::default(),
         )).id();
-
         let Ok((templ_bodyparts, )) = templ_tree_bodyparts_query.get(source_tree_ent) else {
             error!(target: BODY_BUILD, "Body tree {} has no BodypartChildrenBodyparts; skipping {}", entity_dbg(source_tree_ent, &display_name_query), entity_dbg(being_ent, &display_name_query));
             continue;

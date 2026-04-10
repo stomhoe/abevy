@@ -13,7 +13,7 @@ use bevy::{
 use common::common_components::HashId;
 use common::log_targets::BEING_SYSTEM;
 use param_sets::BlockingTileParamSet;
-use movement::movement_components::{InputMaxSpeed, InputSpeedThrottleMult};
+use ::being_shared::movement_shared_components::{InputMaxSpeed, InputSpeedThrottleMult};
 
 use super::being_nav_resources::*;
 use super::being_nav_structs::AiNavGridCache;

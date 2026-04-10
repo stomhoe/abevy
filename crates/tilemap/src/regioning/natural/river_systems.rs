@@ -24,6 +24,7 @@ use crate::{
 use super::river_components::{
     RiverDebugData, RiverPlans, RiverProbeRequest, RiverRegisteredOffer,
 };
+use tilemap_shared::SizeInTiles;
 
 const RIVER: HashId = HashId::hash("river");
 const RIVER_REGION_PROBE_ID: &str = "river_region_probe";
@@ -220,16 +221,18 @@ pub fn claim_chunks_for_river_structures(
             continue;
         };
         let dimension_ref = req.dimension_ref;
-        let info = river_debug.region_mut(dimension_ref, req.region_pos);
-        info.sampled_points.clear();
-        info.sampled_none_points.clear();
         let mut matched_samples = 0_u32;
-        for (sample_pos, sample_val_opt) in sampled_values.matrix.values.iter() {
-            if let Some(sample_val) = sample_val_opt {
-                info.sampled_points.insert(*sample_pos, *sample_val);
-                matched_samples = matched_samples.saturating_add(1);
-            } else {
-                info.sampled_none_points.insert(*sample_pos);
+        {
+            let info = river_debug.region_mut(dimension_ref, req.region_pos);
+            info.sampled_points.clear();
+            info.sampled_none_points.clear();
+            for (sample_pos, sample_val_opt) in sampled_values.matrix.values.iter() {
+                if let Some(sample_val) = sample_val_opt {
+                    info.sampled_points.insert(*sample_pos, *sample_val);
+                    matched_samples = matched_samples.saturating_add(1);
+                } else {
+                    info.sampled_none_points.insert(*sample_pos);
+                }
             }
         }
         if matched_samples > 0 {
@@ -273,6 +276,7 @@ pub fn claim_chunks_for_river_structures(
             sampled_values.matrix.values.len(),
             matched_samples
         );
+        river_debug.bump_revision();
 
         if claim_state.completed_with_samples.contains(&sampled_values.requester) {
             let Ok(cfg) = structured_gens.get(req.sgc_ent) else {
@@ -299,7 +303,7 @@ pub fn claim_chunks_for_river_structures(
                 continue;
             };
             let sampled_points = river_debug
-                .0
+                .data
                 .get(&(dimension_ref, req.region_pos))
                 .map(|info| info.sampled_points.clone())
                 .unwrap_or_default();
@@ -378,6 +382,7 @@ pub fn claim_chunks_for_river_structures(
                 .region_mut(dimension_ref, req.region_pos)
                 .failed_chunks
                 .insert(req.start_chunk);
+            river_debug.bump_revision();
             river_plans.registered_offers.remove(&(dimension_ref, req.region_pos));
             claim_state.skipped_offers.push((req.region_ent, req.offer_i as usize));
             offers_skipped = offers_skipped.saturating_add(1);
@@ -491,6 +496,7 @@ pub fn river_structure_building_system(
         let river_mouths = plan.river_mouth_points.clone();
         let generated_count = generated_tiles.len();
         generated_tiles_total = generated_tiles_total.saturating_add(generated_count);
+        let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
 
         let claimed_chunks: HashSet<ChunkPos> = order.chunks_pos.iter().copied().collect();
         let mut tiles_by_chunk: HashMap<ChunkPos, Vec<(GlobalTilePos, TemplEntiRef, Option<tilemap_shared::DeleteOtherTilesInSamePos>)>> =
@@ -504,6 +510,12 @@ pub fn river_structure_building_system(
                 .entry(chunk_pos)
                 .or_default()
                 .push((gpos, river_tile_ref, None));
+            let blocked_gpos = terrgen_disabled_gpos_for_chunks.0.entry(chunk_pos).or_default();
+            for dy in 0..SizeInTiles::default().y() as i32 {
+                for dx in 0..SizeInTiles::default().x() as i32 {
+                    blocked_gpos.set_gpos(chunk_pos, GlobalTilePos::new(gpos.x() + dx, gpos.y() + dy));
+                }
+            }
         }
 
         let mut chunks: Vec<_> = tiles_by_chunk.into_iter().collect();
@@ -525,15 +537,17 @@ pub fn river_structure_building_system(
         } else {
             info!(
                 target: RIVER_SYSTEM,
-                "Order {}: emitted {} chunks and {} river tiles (generated before clip={}, outside_claimed_tiles={})",
+                "Order {}: emitted {} chunks and {} river tiles (generated before clip={}, outside_claimed_tiles={}, blocked_terrgen_gpos={})",
                 order.i,
                 emitted_chunk_count,
                 emitted_tile_count,
                 generated_count,
-                tiles_outside_claimed
+                tiles_outside_claimed,
+                terrgen_disabled_gpos_for_chunks.count_blocked()
             );
         }
         compliance.chunks = chunks;
+        compliance.terrgen_disabled_gpos_for_chunks = terrgen_disabled_gpos_for_chunks;
 
         river_debug.clear_generated_river(order.dimension_ref, order.region_pos);
         let info = river_debug.region_mut(order.dimension_ref, order.region_pos);
@@ -543,6 +557,7 @@ pub fn river_structure_building_system(
         }));
         info.river_source_points.extend(river_sources);
         info.river_mouth_points.extend(river_mouths);
+        river_debug.bump_revision();
 
         compliances_to_emit.push(compliance);
     }
@@ -646,6 +661,9 @@ fn cache_generated_river_network(
         info.river_mouth_points.extend(region_mouths);
 
         touched_regions_vec.push(region_pos);
+    }
+    if !touched_regions_vec.is_empty() {
+        river_debug.bump_revision();
     }
     touched_regions_vec
 }

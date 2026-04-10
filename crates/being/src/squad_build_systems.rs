@@ -29,7 +29,7 @@ enum InstancePackSourceKind {
 
 #[derive(SystemParam)]
 pub(crate) struct InstancePackQueries<'w, 's> {
-    pack_query: Query<'w, 's, (&'static BeingTemplateSampler, Option<&'static PackMemberSpawnBounds>, Option<&'static StrId>), (With<Pack>, With<Templ>, )>,
+    pack_query: Query<'w, 's, (&'static PackRaceOrBitSampler, Option<&'static PackRaceOrBitSpawnQuotas>, Option<&'static StrId>), (With<Pack>, With<Templ>, )>,
     race_query: Query<'w, 's, (), (With<Race>, With<Templ>, )>,
     bit_query: Query<'w, 's, (), (With<BeingInstTemplate>, With<Templ>, )>,
     whitelist_query: Query<'w, 's, &'static WhitelistedSpawnTileTags, (With<Templ>, )>,
@@ -330,8 +330,8 @@ pub fn instance_pack_entities(
 }
 
 fn sample_pack_members(
-    being_sampler: &BeingTemplateSampler,
-    forced_bounds: Option<&PackMemberSpawnBounds>,
+    being_sampler: &PackRaceOrBitSampler,
+    forced_bounds: Option<&PackRaceOrBitSpawnQuotas>,
     target_count: usize,
     rng: &mut impl rand::Rng,
     out: &mut Vec<Entity>,

@@ -1,6 +1,5 @@
 use bevy::ecs::entity::MapEntities;
 use bevy::prelude::*;
-use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Clone, Serialize, Deserialize, MapEntities)]

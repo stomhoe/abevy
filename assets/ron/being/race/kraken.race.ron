@@ -16,7 +16,7 @@
     blacklisted_tiles_for_spawning: [],
     predator: (
         do_not_hunt_tags: ["kraken"],
-        min_hunger_to_hunt: 40.0,
+        min_hunger_to_hunt: 0.00031,
     ),
     wander: (
         dir_secs_min: 1.0,

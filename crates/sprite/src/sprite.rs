@@ -2,7 +2,7 @@ use ::sprite_shared::*;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::{
-    common_states::{AppState, AssetLoading}
+    common_states::{AssetLoading}
 };
 use game_common::{
     StatefulSessionSystems, game_common::GameplaySystems,

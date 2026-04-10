@@ -1,7 +1,7 @@
 (
     id: "willow_orange",
     name: "Orange willow",
-    tags: ["land", "tree", "veg"],
+    tags: ["tree", "veg"],
     img_paths: [
         ("", "texture/world/veg/tree/willow_orange.png")
     ],

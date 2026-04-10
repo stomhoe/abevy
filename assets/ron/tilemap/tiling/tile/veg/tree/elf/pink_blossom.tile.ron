@@ -1,7 +1,7 @@
 (
     id: "pink_blossom",
     name: "Pink blossom",
-    tags: ["land", "tree", "veg"],
+    tags: ["tree", "veg"],
     img_paths: [
         ("", "texture/world/veg/tree/elf/pink_blossom.png"),
     ],

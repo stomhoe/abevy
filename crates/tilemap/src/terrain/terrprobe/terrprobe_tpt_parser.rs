@@ -102,7 +102,7 @@ pub fn load_terrain_probe_defs_from_filesystem() -> Vec<LoadedTerrainProbeDef> {
     if out.is_empty() {
         error!(target: TERRPROBE_INIT, "No terrain probe defs loaded from filesystem");
     } else {
-        debug!(target: TERRPROBE_INIT, "Loaded {} terrain probe defs from filesystem", out.len());
+        trace!(target: TERRPROBE_INIT, "Loaded {} terrain probe defs from filesystem", out.len());
     }
 
     out

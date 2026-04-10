@@ -15,4 +15,5 @@
     depth: "surface",
     vital: true,
     bleed_rate: 1.2,
+    caloric_burn_rate_multipier: 1,
 )

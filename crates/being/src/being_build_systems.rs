@@ -108,7 +108,7 @@ pub fn build_beings_from_refs(
             }
         }
 
-        let mut bit_ent = bit_ref.and_then(|bit_ref| queries.bit_map.0.get_cloned(bit_ref.0).ok());
+        let bit_ent = bit_ref.and_then(|bit_ref| queries.bit_map.0.get_cloned(bit_ref.0).ok());
         let mut race_ent = race_ref.and_then(|race_ref| queries.race_map.0.get_cloned(race_ref.0).ok());
         if race_ref.is_none() {
             if let Some(bit_ent) = bit_ent {

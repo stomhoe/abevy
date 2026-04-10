@@ -26,7 +26,6 @@ pub fn claim_chunks_for_various_dungeon_types(
     mut writer: MessageWriter<ChunksClaim>,
     region_dimension: Query<&DimensionRef>,
     structured_gens: Query<(&StructuredGenConfig,)>,
-    dimension_hash: Query<&HashId>,
     settings: Query<&GlobalGenSettings>,
     mut claimlists: Query<&mut ClaimList>,
 ) {

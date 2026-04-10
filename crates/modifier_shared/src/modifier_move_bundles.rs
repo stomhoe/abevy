@@ -11,7 +11,7 @@ pub struct SpeedModifier(
     pub ModifierTarget,
     pub BaseValue,
     pub ApplyMode,
-    pub WalkSpeed,
+    pub WalkStrength,
     pub ChildOf,
 );
 impl SpeedModifier {
@@ -20,7 +20,7 @@ impl SpeedModifier {
             ModifierTarget(target),
             BaseValue(value),
             apply_mode,
-            WalkSpeed::default(),
+            WalkStrength::default(),
             ChildOf(parent),
         )
     }
@@ -42,7 +42,7 @@ impl TempSpeedModifier {
 
 #[derive(Bundle, Debug, )]
 pub struct AllSpeeds(
-    WalkSpeed,
-    FlySpeed,
-    SwimSpeed,
+    WalkStrength,
+    FlyStrength,
+    SwimStrength,
 );

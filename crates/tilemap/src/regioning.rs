@@ -62,7 +62,6 @@ pub fn plugin(app: &mut App) {
     .add_observer(on_region_despawn_remove_from_loaded_regions)
 
     .init_resource::<LoadedRegions>()
-    .init_resource::<PrioritizedSgs>()
     .init_resource::<PrioritizedPerRegion>()
     .insert_resource(SgcCommandRegistry::with_builtins())
     .init_resource::<RiverPlans>()
@@ -71,6 +70,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<WhitelistedFilterOf>()
     .replicate::<StructuredGenConfig>()
     .replicate::<StructureGenerationSettings>()
+    .replicate::<PrioritizedSgs>()
     .replicate::<SgcsWeightedSampler>()
     .replicate_once::<crate::regioning::regioning_components::Region>()
 

@@ -20,9 +20,6 @@ pub struct StatBudgetsToDistributeAmongBodyPartsOfTemplBody(pub HashIdMap<f32>);
 #[derive(Component, Debug, Default, Clone)]
 pub struct BodySexes(pub HashMap<String, RaceSexEntrySeri>);
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]
-pub struct CaloricBurnRateMultiplier(pub f32);
-
 #[derive(Component, Debug, Deserialize, Serialize, Clone, )]
 pub struct BodySums {
     pub total_hp: f32,
@@ -68,6 +65,7 @@ impl IncHealthDamageOrHeal {
         }
     }
 }
+
 #[derive(Debug, Copy, Clone, Message, Default)]
 pub enum DamageDistributeMode {
     #[default]

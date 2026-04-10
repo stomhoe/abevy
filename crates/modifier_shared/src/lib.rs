@@ -15,4 +15,5 @@ pub use modifier_tool_types::*;
 pub use modifier_move_bundles::*;
 pub use modifier_bundle::*;
 pub use modifier_helpers::*;
+pub use modifier_types::*;
 pub use modifier_seris::*;

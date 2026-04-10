@@ -1,6 +1,7 @@
 
 use crate::being_nav::AiNavGrids;
 use crate::body::{HeldBody, BodySums};
+use ::being_shared::body_energy::*;
 use ::being_shared::*;
 use bevy::{
     ecs::{
@@ -15,21 +16,6 @@ use tilemap_shared::GlobalTilePos;
 
 const HUNTERS_PER_PREY_TARGET: usize = 4;
 const HUNT_RETARGET_HYSTERESIS_TILES: f32 = 3.0;
-
-
-#[allow(unused_parens, )]
-pub fn tick_hunger(
-    time: Res<Time>,
-    mut query: Query<&mut Hunger, >,
-) {
-    let delta = time.delta_secs();
-    if delta <= 0.0 {
-        return;
-    }
-    for mut hunger in query.iter_mut() {
-        hunger.curr = (hunger.curr + hunger.increase_per_sec * delta).clamp(0.0, hunger.max);
-    }
-}
 
 fn health_ratio(
     being: Entity,
@@ -74,6 +60,24 @@ fn euclidean_dist(a: GlobalTilePos, b: GlobalTilePos) -> f32 {
     (a.0 - b.0).as_vec2().length()
 }
 
+#[allow(unused_parens, )]
+pub fn update_squad_weight_sum(
+    mut cmd: Commands,
+    mut squads_query: Query<(Entity, &'static SquadMembers, Option<&'static mut SquadWeightSum>, ), (With<Predator>, )>,
+    body_weight_query: Query<&'static BodyWeightSum, >,
+) {
+    for (squad_ent, squad_members, squad_weight_sum, ) in squads_query.iter_mut() {
+        let mut total_weight = 0.0;
+        for member_ent in squad_members.iter() {
+            total_weight += body_weight_query.get(member_ent).map(|sum| sum.0).unwrap_or_default();
+        }
+        if let Some(mut squad_weight_sum) = squad_weight_sum {
+            squad_weight_sum.0 = total_weight;
+        } else {
+            cmd.entity(squad_ent).try_insert(SquadWeightSum(total_weight));
+        }
+    }
+}
 
 
 #[allow(unused_parens, )]
@@ -120,7 +124,7 @@ pub struct UpdatePredatorHuntingTargetsQueries<'w, 's> {
             Entity,
             Option<&'static SquadMemberOf>,
             Option<&'static Hunting>,
-            &'static Hunger,
+            &'static BodyCondition,
         ),
         (With<Predator>, LocalAiControlled),
     >,
@@ -130,9 +134,10 @@ pub struct UpdatePredatorHuntingTargetsQueries<'w, 's> {
     pub bit_map: Res<'w, BeingInstTemplateEntityMap>,
     pub race_map: Res<'w, RaceEntityMap>,
     pub body_weight_query: Query<'w, 's, &'static BodyWeightSum, >,
+    pub squad_weight_query: Query<'w, 's, &'static SquadWeightSum, (With<Predator>, )>,
     pub tagset_query: Query<'w, 's, &'static TagSet, >,
     pub squad_member_of_query: Query<'w, 's, &'static SquadMemberOf, >,
-    pub squad_members_query: Query<'w, 's, &'static SquadMembers, (With<Predator>, )>,
+    pub squad_members_query: Query<'w, 's, (Entity, &'static SquadMembers, ), (With<Predator>, )>,
     pub bit_ref_query: Query<'w, 's, &'static BitRef, ()>,
     pub race_ref_query: Query<'w, 's, &'static RaceRef, ()>,
     pub predator_cfg_query: Query<'w, 's, &'static PredatorCfg, >,
@@ -152,7 +157,7 @@ pub fn update_predator_hunting_targets(
     mut locals: UpdatePredatorHuntingTargetsLocals,
 ) {
     let resolve_dim_ent = |dim_ref: &::tilemap_shared::DimensionRef| params.dim_map.0.get_opt(dim_ref.0).copied();
-    for (pred_ent, squad_member_of, hunting, hunger) in params.predators.iter() {
+    for (pred_ent, squad_member_of, hunting, body_condition) in params.predators.iter() {
         if squad_member_of.is_some() {
             continue;
         }
@@ -163,7 +168,9 @@ pub fn update_predator_hunting_targets(
             continue;
         };
         let hp = health_ratio(pred_ent, &params.bodies_query, &params.body_health_query);
-        if hunger.curr < predator_cfg.min_hunger_to_hunt || hp.is_some_and(|hp| hp <= predator_cfg.min_hp_ratio_to_hunt) {
+        let hunger_ratio = body_condition.hunger_ratio.max(0.0);
+        let min_hunger_ratio_to_hunt = predator_cfg.min_hunger_to_hunt.clamp(0.0, 1.0);
+        if hunger_ratio < min_hunger_ratio_to_hunt || hp.is_some_and(|hp| hp <= predator_cfg.min_hp_ratio_to_hunt) {
             cmd.entity(pred_ent).try_remove::<Hunting>();
             continue;
         }
@@ -234,10 +241,12 @@ pub fn update_predator_hunting_targets(
         cmd.entity(pred_ent).try_insert(Hunting { prey: chosen_target, });
     }
 
-    for squad_members in params.squad_members_query.iter() {
+    for (squad_ent, squad_members, ) in params.squad_members_query.iter() {
         if squad_members.iter().next().is_none() {
             continue;
         }
+
+        let squad_weight_newtons = params.squad_weight_query.get(squad_ent).map(|sum| sum.0).unwrap_or_default();
 
         locals.active_member_ents.clear();
         locals.target_list.clear();
@@ -245,8 +254,9 @@ pub fn update_predator_hunting_targets(
         let mut squad_dim = None;
         let mut anchor_sum = IVec2::ZERO;
         let mut active_member_count = 0;
+        let mut pack_predator_cfg: Option<PredatorCfg> = None;
         for member_ent in squad_members.iter() {
-            let Ok((_, _, hunting, hunger)) = params.predators.get(member_ent) else {
+            let Ok((_, _, hunting, body_condition)) = params.predators.get(member_ent) else {
                 continue;
             };
 
@@ -256,8 +266,13 @@ pub fn update_predator_hunting_targets(
                 cmd.entity(member_ent).try_remove::<Hunting>();
                 continue;
             };
+            if pack_predator_cfg.is_none() {
+                pack_predator_cfg = Some(predator_cfg.clone());
+            }
             let hp = health_ratio(member_ent, &params.bodies_query, &params.body_health_query);
-            if hunger.curr < predator_cfg.min_hunger_to_hunt || hp.is_some_and(|hp| hp <= predator_cfg.min_hp_ratio_to_hunt) {
+            let hunger_ratio = body_condition.hunger_ratio.max(0.0);
+            let min_hunger_ratio_to_hunt = predator_cfg.min_hunger_to_hunt.clamp(0.0, 1.0);
+            if hunger_ratio < min_hunger_ratio_to_hunt || hp.is_some_and(|hp| hp <= predator_cfg.min_hp_ratio_to_hunt) {
                 cmd.entity(member_ent).try_remove::<Hunting>();
                 continue;
             }
@@ -319,6 +334,15 @@ pub fn update_predator_hunting_targets(
             if *prey_dim != *squad_dim {
                 continue;
             }
+            if let Some(predator_cfg) = pack_predator_cfg.as_ref() {
+                let prey_weight_newtons = params.body_weight_query.get(prey_ent).map(|sum| sum.0).unwrap_or_default();
+                if predator_cfg.prey_body_size_ratio_tolerance > 0.0
+                    && squad_weight_newtons > 0.0
+                    && prey_weight_newtons > squad_weight_newtons * predator_cfg.prey_body_size_ratio_tolerance
+                {
+                    continue;
+                }
+            }
             let dist = euclidean_dist(*prey_pos, anchor_pos);
             if dist < best_base_dist {
                 best_base_dist = dist;
@@ -343,7 +367,7 @@ pub fn update_predator_hunting_targets(
         }
 
             if let Ok(target_member_of) = params.squad_member_of_query.get(base_target) {
-                if let Ok((target_squad_members)) = params.squad_members_query.get(target_member_of.0) {
+                if let Ok((_, target_squad_members, )) = params.squad_members_query.get(target_member_of.0) {
                     for target_member in target_squad_members.iter() {
                     if squad_members.iter().any(|member_ent| member_ent == target_member) {
                         continue;

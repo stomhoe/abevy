@@ -92,8 +92,8 @@ impl SgcCommandRegistry {
 #[derive(Resource, Default)]
 pub struct LoadedRegions(pub HashMap<(DimensionRef, RegionPos), Entity>);
 
-#[derive(Resource, Default)]
-pub struct PrioritizedSgs(pub Vec<Entity>);
+#[derive(Component, Debug, Clone, Default, Deserialize, Serialize)]
+pub struct PrioritizedSgs(pub Vec<HashId>);
 
 #[derive(Resource, Default)]
-pub struct PrioritizedPerRegion(pub HashMap<(DimensionRef, RegionPos), Vec<Entity>>);
+pub struct PrioritizedPerRegion(pub HashMap<(DimensionRef, RegionPos), Vec<HashId>>);

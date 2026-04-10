@@ -1,7 +1,7 @@
 (
     id: "slender_sapling",
     name: "Slender Sapling",
-    tags: ["land", "tree", "veg"],
+    tags: ["tree", "veg"],
     img_paths: [
         ("", "texture/world/veg/tree/slender_sapling.png"),
     ],

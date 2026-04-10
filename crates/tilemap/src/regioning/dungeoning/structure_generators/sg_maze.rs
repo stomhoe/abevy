@@ -34,7 +34,6 @@ pub fn maze_dungeon_building_system(
     mut room_pack_spawn: super::super::dungeoning_utils::DungeonRoomPackSpawnSystemParams,
     templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
-    dimension_hash: Query<&HashId>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
     mut room_spawn_anchors: Local<Vec<(GlobalTilePos, &'static str)>>,
     mut island_seeds: Local<Vec<(usize, usize, ShapeType)>>,

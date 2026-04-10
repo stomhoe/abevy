@@ -616,10 +616,12 @@ dependencies = [
  "faction_shared",
  "game_common",
  "item_shared",
+ "modifier_shared",
  "paste",
  "rand 0.9.2",
  "serde",
  "smallvec",
+ "sprite_animation_shared",
  "superstate",
  "tilemap_shared",
 ]

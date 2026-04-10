@@ -37,7 +37,7 @@ pub fn plugin(app: &mut App) {
     app
         .add_plugins((plugin_terr_probe_templ,))
         .add_systems(Update, (
-            search_suitable_positions.run_if(in_state(ClientState::Disconnected)),
+            search_suitable_positions,
         ))
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             init_terrain_probes,

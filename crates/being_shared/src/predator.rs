@@ -78,7 +78,7 @@ impl Default for PredatorCfg {
             pack_size_max: 1,
             do_not_hunt_tags: TagSet::default(),
             prey_body_size_ratio_tolerance: -1.0,
-            min_hunger_to_hunt: 40.0,
+            min_hunger_to_hunt: 0.4,
             min_hp_ratio_to_hunt: 0.0,
         }
     }

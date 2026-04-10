@@ -12,7 +12,7 @@ use ::sprite_animation_shared::*;
 use tilemap::tile::tile_components::Tile;
 use tilemap_shared::{BeingsAtGpos, *};
 
-use crate::movement_components::*;
+use being_shared::movement_shared_components::*;
 use crate::grid_movement_helpers::*;
 use crate::movement_helpers::*;
 use crate::movement_messages::*;
@@ -211,7 +211,8 @@ pub fn start_grid_locked_steps(
         let mut moved_tile_pos = false;
         let should_sync_with_others = if step_ticks > 1 {
             burst_step_credit_by_ent.remove(&being_ent);
-            match glm.try_start_step(
+            match try_start_step(
+                &mut glm,
                 &mut glm_visual,
                 &mut blocking_tiles,
                 dim_ref,
@@ -242,7 +243,8 @@ pub fn start_grid_locked_steps(
             *credit = (*credit + tiles_per_tick(speed_magnitude.0, fixed_time.delta_secs(), dir))
                 .min(MAX_GRID_STEPS_PER_FIXED_TICK as f32);
             let requested_steps = credit.floor().min(MAX_GRID_STEPS_PER_FIXED_TICK as f32) as u16;
-            let steps_taken = glm.advance_steps_immediate(
+            let steps_taken = advance_steps_immediate(
+                &mut glm,
                 &mut glm_visual,
                 &mut blocking_tiles,
                 dim_ref,

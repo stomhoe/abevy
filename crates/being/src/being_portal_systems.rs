@@ -3,7 +3,6 @@ use ::tilemap_shared::*;
 use bevy::prelude::*;
 use common::log_targets::BEING_SYSTEM;
 use game_common::game_common_components::TemplEntiRef;
-use movement::movement_components::{GridLockedMovement, GridLockedMovementVisual};
 use modifier_shared::*;
 use tilemap::tile::tile_components::*;
 use crate::being_portal_resources::PortalCrossingIndex;

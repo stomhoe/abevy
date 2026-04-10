@@ -1,5 +1,6 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy::ecs::query::QueryFilter;
 use bevy::ecs::entity::EntityHashSet;
 use bevy_replicon::prelude::*;
 use crate::log_targets::ENTITY_MAP_SYSTEM;
@@ -10,6 +11,24 @@ use crate::{
 //    common_layout::*,
 //    common_events::*,
 };
+
+#[allow(unused_parens, )]
+pub fn expect_single_query<'w, 's, T: Component, F: QueryFilter>(
+    query: &'w Query<'w, 's, &T, F>,
+    missing_msg: &str,
+    multiple_msg: &str,
+) -> Option<&'w T> {
+    let mut iter = query.iter();
+    let Some(first) = iter.next() else {
+        error!(target: ENTITY_MAP_SYSTEM, "{}", missing_msg);
+        return None;
+    };
+    if iter.next().is_some() {
+        error!(target: ENTITY_MAP_SYSTEM, "{}", multiple_msg);
+        return None;
+    }
+    Some(first)
+}
 
 #[allow(unused_parens)]
 pub fn add_hash_id_from_str_id(mut cmd: Commands,
@@ -153,8 +172,9 @@ pub fn clone_and_tell_server(
     children_query: Query<(&Children, ), (Without<EguiHolder>, )>,
     mut writer: MessageWriter<RemoveReplicated>,
     mut local_msgs: Local<Vec<RemoveReplicated>>,
+    mut ents_to_clone: Local<EntityHashSet>,
 ) {
-    let mut ents_to_clone = EntityHashSet::default();
+    ents_to_clone.clear();
     for (entity, _child_of) in query.iter() {
         ents_to_clone.insert(entity);
     }
@@ -182,12 +202,7 @@ pub fn remove_replicated_after_clone_from_client(
     mut remove_requests: MessageReader<FromClient<RemoveReplicated>>,
 ) {
     for from_client in remove_requests.read() {
-        let RemoveReplicated(being_ent) = from_client.message.clone();
-        debug!(
-            target: ENTITY_MAP_SYSTEM,
-            "Server removing Replicated from entity {:?} on client request",
-            being_ent
-        );
-        cmd.entity(being_ent).try_remove::<(Replicated, RemoveReplicatedAfterClone)>();
+        let RemoveReplicated(ent) = from_client.message.clone();
+        cmd.entity(ent).try_remove::<(Replicated, RemoveReplicatedAfterClone)>();
     }
 }

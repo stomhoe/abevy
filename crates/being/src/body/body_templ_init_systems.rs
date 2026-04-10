@@ -17,6 +17,7 @@ use crate::body::{
     body_resources::*,
     bodytree::*,
 };
+use ::being_shared::body_energy::*;
 
 const STAT_BLEED_RATE: HashId = HashId::hash("bleed_rate");
 
@@ -91,10 +92,37 @@ pub fn init_templ_bodys(
             continue;
         }
         let totals_to_distribute = StatBudgetsToDistributeAmongBodyPartsOfTemplBody(totals.clone());
+        let burn_rate_multiplier = if seri.caloric_burn_rate_multiplier <= 0.0 {
+            1.0
+        } else {
+            seri.caloric_burn_rate_multiplier
+        };
+        let wasting_rate_multiplier = if seri.wasting_rate_multiplier <= 0.0 {
+            1.0
+        } else {
+            seri.wasting_rate_multiplier
+        };
+        let healthy_fat_capacity_multiplier = if seri.healthy_fat_capacity_multiplier <= 0.0 {
+            1.0
+        } else {
+            seri.healthy_fat_capacity_multiplier
+        };
+        let max_fat_mobilization_kcal_per_sec = seri.max_fat_mobilization_kcal_per_sec.max(0.0);
+        let max_lean_catabolism_kcal_per_sec = seri.max_lean_catabolism_kcal_per_sec.max(0.0);
+        let damage_per_sec_at_zero_lean = seri.damage_per_sec_at_zero_lean.max(0.0);
         cmd.entity(body_ent).insert((
             totals_to_distribute,
             BodySexes(seri.sexes.clone()),
-            CaloricBurnRateMultiplier(seri.caloric_burn_rate_multiplier),
+            BodyEnergyProfile {
+                burn_rate_multiplier,
+                wasting_rate_multiplier,
+                healthy_fat_capacity_multiplier,
+            },
+            StarvationConfig {
+                max_fat_mobilization_kcal_per_sec,
+                max_lean_catabolism_kcal_per_sec,
+                damage_per_sec_at_zero_lean,
+            },
         ));
         let bodytree_id = seri.bodytree_id.trim();
         if bodytree_id.is_empty() {
@@ -257,19 +285,19 @@ pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
         let walk_strength = forced_or_weighted(forced_walk_strength, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_WALK_STRENGTH), free_walk_strength, sum_w_walk_strength);
         if walk_strength > 0.0 {
             spawned_modifiers += 1;
-            cmd.spawn((ModifierTarget(body_ent), BaseValue(walk_strength), CurrEffectiveValue(walk_strength), ApplyMode::Add, WalkSpeed, ChildOf(part)));
+            cmd.spawn((ModifierTarget(body_ent), BaseValue(walk_strength), CurrEffectiveValue(walk_strength), ApplyMode::Add, WalkStrength, ChildOf(part)));
         }
         let forced_swim_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_SWIM_STRENGTH);
         let swim_strength = forced_or_weighted(forced_swim_strength, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_SWIM_STRENGTH), free_swim_strength, sum_w_swim_strength);
         if swim_strength > 0.0 {
             spawned_modifiers += 1;
-            cmd.spawn((ModifierTarget(body_ent), BaseValue(swim_strength), CurrEffectiveValue(swim_strength), ApplyMode::Add, SwimSpeed, ChildOf(part)));
+            cmd.spawn((ModifierTarget(body_ent), BaseValue(swim_strength), CurrEffectiveValue(swim_strength), ApplyMode::Add, SwimStrength, ChildOf(part)));
         }
         let forced_fly_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_FLY_STRENGTH);
         let fly_strength = forced_or_weighted(forced_fly_strength, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_FLY_STRENGTH), free_fly_strength, sum_w_fly_strength);
         if fly_strength > 0.0 {
             spawned_modifiers += 1;
-            cmd.spawn((ModifierTarget(body_ent), BaseValue(fly_strength), CurrEffectiveValue(fly_strength), ApplyMode::Add, FlySpeed, ChildOf(part)));
+            cmd.spawn((ModifierTarget(body_ent), BaseValue(fly_strength), CurrEffectiveValue(fly_strength), ApplyMode::Add, FlyStrength, ChildOf(part)));
         }
         let forced_manipulation = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_MANIPULATION_DEXTERITY);
         let manip = forced_or_weighted(forced_manipulation, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_MANIPULATION_DEXTERITY), free_manip, sum_w_manip);

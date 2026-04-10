@@ -30,9 +30,9 @@ pub fn init_packs(
     };
     let pack_seris = load_pack_seri_defs();
     let mut pack_by_id: HashMap<StrId, Entity> = HashMap::default();
-    let mut being_samplers_by_pack: EntityHashMap<BeingTemplateSampler> = EntityHashMap::default();
+    let mut being_samplers_by_pack: EntityHashMap<PackRaceOrBitSampler> = EntityHashMap::default();
     let mut rank_sampler_by_pack: EntityHashMap<PackMemberRankSampler> = EntityHashMap::default();
-    let mut spawn_bounds_by_pack: EntityHashMap<PackMemberSpawnBounds> = EntityHashMap::default();
+    let mut spawn_bounds_by_pack: EntityHashMap<PackRaceOrBitSpawnQuotas> = EntityHashMap::default();
     let mut center_rank_multipliers_by_pack: EntityHashMap<CenterWeightRankBasedMultiplier> = EntityHashMap::default();
     let mut min_dists_by_pack: EntityHashMap<PackMinSepToPacksOrRaces> = EntityHashMap::default();
 

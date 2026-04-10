@@ -1,11 +1,8 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-#[allow(unused_imports)] use bevy_asset_loader::prelude::*;
-use common::common_components::{AddHashIdFromStrId, StrId};
-use ::tilemap_shared::*;
 
 use crate::tile::{TileWeightedSamplerEntityMap, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
-use common::common_id_components::HashId;
+use ::common::*;
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 
 #[allow(unused_parens)]

@@ -1,5 +1,4 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_replicon::prelude::Replicated;
 use game_common::game_common_components::ArgsDict;
 
 use bevy::{ecs::entity::MapEntities, };

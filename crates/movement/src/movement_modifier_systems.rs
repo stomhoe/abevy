@@ -1,6 +1,7 @@
 use core::f32;
 
 use being_shared::{HeldBody, BodypartChildrenBodyparts, BodyWeightSum, ComputedLocally};
+use being_shared::body_energy::BodyStrengthScale;
 use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use bevy_replicon::prelude::ClientState;
@@ -8,10 +9,10 @@ use game_common::game_common_components::{Templ, TemplEntiRef};
 
 use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker};
 use modifier_shared::modifier_components::*;
-use modifier_shared::modifier_types::{InvertMovement, WalkSpeed};
+use modifier_shared::modifier_types::{InvertMovement, WalkStrength};
 use tilemap_shared::*;
 
-use crate::movement_components::*;
+use being_shared::movement_shared_components::*;
 
 #[allow(unused_parens, )]
 pub fn process_input_direction_modifiers(
@@ -121,6 +122,7 @@ pub fn process_speed_modifiers(
         Option<&HeldBody>,
         &mut SpeedMagnitude,
         Option<&BodyWeightSum>,
+        Option<&BodyStrengthScale>,
         Option<&InputSpeedThrottleMult>,
         Option<&InputMaxSpeed>,
         Has<ComputedLocally>,
@@ -129,7 +131,7 @@ pub fn process_speed_modifiers(
     modifiers_query: Query<(Entity, Option<&TemplEntiRef>, ), (Without<Templ>, )>,
     curr_values_query: Query<&CurrEffectiveValue>,
     apply_modes_query: Query<&ApplyMode, >,
-    walk_markers_query: Query<(), With<WalkSpeed>>,
+    walk_markers_query: Query<(), With<WalkStrength>>,
     mitigating_only_markers_query: Query<(), With<MitigatingOnly>>,
     bodyparts_query: Query<&BodypartChildrenBodyparts, >,
     templ_refs_query: Query<&TemplEntiRef>,
@@ -145,6 +147,7 @@ pub fn process_speed_modifiers(
         body,
         mut speed_magnitude,
         body_weight_sum,
+        body_strength_scale,
         input_speed_throttle_mult,
         input_max_speed,
         controlled_locally,
@@ -182,7 +185,7 @@ pub fn process_speed_modifiers(
             else {
                 continue;
             };
-            if !modifier_has_marker::<WalkSpeed>(modifier_ent, templ_ref, &walk_markers_query) {
+            if !modifier_has_marker::<WalkStrength>(modifier_ent, templ_ref, &walk_markers_query) {
                 continue;
             }
             let Ok(curr_value) = curr_values_query.get(modifier_ent).or_else(|_| {
@@ -233,6 +236,9 @@ pub fn process_speed_modifiers(
             .min(speed_max)
             .max(0.0);
         final_speed /= total_weight_newtons;
+        if let Some(body_strength_scale) = body_strength_scale {
+            final_speed *= body_strength_scale.0.max(0.0);
+        }
 
         let mut tile_walk_mult: f32 = 1.0;
         let tile_ents = tile_gathering.gather_tiles(dim_ref, *tile_pos);

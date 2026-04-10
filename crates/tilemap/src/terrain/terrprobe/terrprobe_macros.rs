@@ -152,7 +152,7 @@ macro_rules! run_oneshot_suitable_pos_search_logic {
                         probe.requester = $cmd.spawn_empty().id();
                     }
                     let requester = probe.requester;
-                    info!(
+                    trace!(
                         target: $target,
                         "Starting one-shot suitable-pos search for {} with requester {:?}",
                         $searched_label,

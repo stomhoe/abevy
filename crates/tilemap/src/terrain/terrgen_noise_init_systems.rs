@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use ::fnl::*;
-use common::common_components::{AddHashIdFromStrId, Prefix, StrId};
+use common::common_components::{Prefix, StrId};
 use tilemap_shared::GlobalGenSettings;
 use crate::terrain::{
     TerrgenEntityMap,

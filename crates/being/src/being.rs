@@ -3,6 +3,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 use bevy_replicon::prelude::*;
+use ::being_shared::body_energy::*;
 use ::being_shared::*;
 use faction::faction_resources::FactionRef;
 use game_common::StatefulSessionSystems;
@@ -88,8 +89,8 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         on_control_change,
         add_melee_target_comp_to_ai_controlled,
+        update_squad_weight_sum.before(update_predator_hunting_targets),
         sync_predator_squad_marker,
-        tick_hunger,
         update_predator_hunting_targets,
         make_hunted_be_melee_targets.after(update_predator_hunting_targets),
         sync_chasing_to_hunt.after(update_predator_hunting_targets),
@@ -130,6 +131,8 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered::<GlobalTilePos, Without<Being>>()
     .replicate::<BgSimulatedIn>()
     .replicate::<BodyWeightSum>()
+    .replicate::<BodyCondition>()
+    .replicate::<BodyStrengthScale>()
 
     .replicate::<MemberRanks>()
     .replicate::<Predator>()

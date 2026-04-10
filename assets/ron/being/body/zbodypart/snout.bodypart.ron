@@ -14,5 +14,6 @@
     depth: "surface",
     vital: false,
     bleed_rate: 0.9,
+    caloric_burn_rate_multipier: 1,
     smell: Some(1.4),
 )

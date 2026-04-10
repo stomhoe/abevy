@@ -77,7 +77,6 @@ pub fn corridor_dungeon_building_system(
     mut room_pack_spawn: super::super::dungeoning_utils::DungeonRoomPackSpawnSystemParams,
     templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
     settings: Query<&GlobalGenSettings>,
-    dimension_hash: Query<&HashId>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
     mut rooms: Local<Vec<Room>>,
     mut tiles4chunk: Local<TilesFromBuilder>,

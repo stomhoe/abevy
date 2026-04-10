@@ -9,13 +9,13 @@ pub struct Pack;
 
 
 #[derive(Component, Debug, Clone, Default)]
-pub struct BeingTemplateSampler(pub HashIdWeightedSampler);
+pub struct PackRaceOrBitSampler(pub HashIdWeightedSampler);
 
 #[derive(Component, Debug, Clone, Default)]
 pub struct PackMemberRankSampler(pub EntityHashMap<CappedNormalDist>);
 
 #[derive(Component, Debug, Clone, Default)]
-pub struct PackMemberSpawnBounds(pub EntityHashMap<(u32, u32)>);
+pub struct PackRaceOrBitSpawnQuotas(pub EntityHashMap<(u32, u32)>);
 
 #[derive(Component, Debug, Clone, Default)]
 pub struct CenterWeightRankBasedMultiplier(pub EntityHashMap<f32>);

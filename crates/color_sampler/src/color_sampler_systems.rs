@@ -18,7 +18,7 @@ pub fn init_color_samplers(
 
     let mut wmap_to_insert = Vec::new();
 
-    for mut seri in load_weighted_colors_seri_defs() {
+    for seri in load_weighted_colors_seri_defs() {
 
         let str_id = match StrId::new_with_result(seri.id.clone(), WeightedColorsSeri::MIN_ID_LENGTH)
         {

@@ -837,9 +837,9 @@ pub fn ensure_pain_slowdown_modifiers(
             continue;
         }
         cmd.spawn((
-            WalkSpeed,
-            SwimSpeed,
-            FlySpeed,
+            WalkStrength,
+            SwimStrength,
+            FlyStrength,
             ModifierTarget(*being_ent),
             BaseValue(*pain_multiplier),
             CurrEffectiveValue(*pain_multiplier),

@@ -12,7 +12,6 @@ use bevy::{
 };
 use bevy_northstar::prelude::*;
 use common::log_targets::BEING_SYSTEM;
-use movement::movement_components::*;
 use param_sets::BlockingTileParamSet;
 use tilemap::chunking::chunking_components::ActivatingChunks;
 use std::time::Duration;
@@ -374,30 +373,47 @@ fn choose_shared_chase_goal(
     reserved_goal: Option<GlobalTilePos>,
     reserved_goals: &HashMap<GlobalTilePos, Entity>,
 ) -> Option<GlobalTilePos> {
-    if let Some(reserved_goal) = reserved_goal.filter(|goal| flow_field.is_slot_tile(*goal)) {
-        match reserved_goals.get(&reserved_goal) {
-            Some(&owner) if owner != chaser_ent => {}
-            _ => return Some(reserved_goal),
+    let is_open_slot = |slot_tile: GlobalTilePos| {
+        if reserved_goals.contains_key(&slot_tile) {
+            return false;
         }
-    }
-    if flow_field.slot_tiles.is_empty() {
-        return None;
-    }
-
-    for goal_tile in flow_field.slot_tiles.iter().copied() {
-        if reserved_goals.contains_key(&goal_tile) {
-            continue;
-        }
-        let Some(local) = cache.local_from_gpos(goal_tile) else {
-            continue;
+        let Some(local) = cache.local_from_gpos(slot_tile) else {
+            return false;
         };
-        if cache.occupied.contains_key(&local) {
-            continue;
+        !cache.occupied.contains_key(&local)
+    };
+    let open_goal_tile = flow_field
+        .goal_tiles
+        .iter()
+        .copied()
+        .find(|&goal_tile| is_open_slot(goal_tile));
+
+    if let Some(reserved_goal) = reserved_goal.filter(|goal| flow_field.is_slot_tile(*goal)) {
+        let reserved_owned_by_other = reserved_goals
+            .get(&reserved_goal)
+            .is_some_and(|&owner| owner != chaser_ent);
+        if !reserved_owned_by_other {
+            let reserved_blocked_by_other = cache
+                .local_from_gpos(reserved_goal)
+                .and_then(|local| cache.occupied.get(&local).copied())
+                .is_some_and(|occupant| occupant != chaser_ent);
+            if !reserved_blocked_by_other {
+                let reserved_is_goal_tile = flow_field.is_goal_tile(reserved_goal);
+                if reserved_is_goal_tile || open_goal_tile.is_none() {
+                    return Some(reserved_goal);
+                }
+            }
         }
-        return Some(goal_tile);
     }
 
-    None
+    if let Some(open_goal_tile) = open_goal_tile {
+        return Some(open_goal_tile);
+    }
+    flow_field
+        .slot_tiles
+        .iter()
+        .copied()
+        .find(|&slot_tile| is_open_slot(slot_tile))
 }
 
 fn rebuild_shared_chase_plan_for_job(
@@ -1068,8 +1084,6 @@ pub fn goto_behavior(
             last_shared_dirs.remove(&chaser_ent);
             continue;
         };
-        let target_pos = goto.pos;
-
         let shared_target_ent = if goto.source == Some(NavOrderSource::Chasing) {
             chasing.map(|chasing| chasing.target)
         } else if goto.source == Some(NavOrderSource::Wandering)
@@ -1079,6 +1093,9 @@ pub fn goto_behavior(
         } else {
             None
         };
+        let target_pos = shared_target_ent
+            .and_then(|target_ent| blocking_tiles.gpos_query.get(target_ent).ok().copied())
+            .unwrap_or(goto.pos);
         let shared_flow_field = shared_target_ent.and_then(|shared_target_ent| {
                 let cache = grids.by_dim.get(&chaser_dim_ent)?;
                 chase_fields
@@ -1088,10 +1105,7 @@ pub fn goto_behavior(
                     .map(|flow_field| (cache, flow_field))
             });
         let shared_reserved_goal = plans.by_ent.get(&chaser_ent).and_then(|plan| plan.reserved_shared_goal);
-        let shared_reserved_is_support = shared_flow_field
-            .as_ref()
-            .and_then(|(_, flow_field, )| shared_reserved_goal.map(|reserved_goal| !flow_field.is_goal_tile(reserved_goal)))
-            .unwrap_or(false);
+        let follow_shared_reserved_path = shared_flow_field.is_some() && shared_reserved_goal.is_some();
         if let Some((_cache, flow_field, )) = shared_flow_field {
             let shared_target_reached = shared_reserved_goal
                 .map(|reserved_goal| reserved_goal == *chaser_pos)
@@ -1124,7 +1138,7 @@ pub fn goto_behavior(
                     let desired = cardinal_step_toward(next.0 - chaser_pos.0);
                     if desired == IVec2::ZERO {
                         direct_chase_dir
-                    } else if shared_reserved_is_support {
+                    } else if follow_shared_reserved_path {
                         desired.as_vec2()
                     } else {
                         let desired_next_pos = GlobalTilePos(chaser_pos.0 + desired);

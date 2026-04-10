@@ -66,6 +66,10 @@ pub struct SquadMemberOf(#[relationship]#[entities]pub Entity);
 #[relationship_target(relationship = SquadMemberOf)]
 pub struct SquadMembers(Vec<Entity>);
 
+/// Cached total weight of a predator squad for pack-hunting decisions.
+#[derive(Component, Debug, Default, Copy, Clone)]
+pub struct SquadWeightSum(pub f32);
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct NoSpawnSquadEntity;
 

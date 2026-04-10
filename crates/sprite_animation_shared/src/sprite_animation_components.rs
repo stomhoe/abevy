@@ -1,6 +1,5 @@
 use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
-use bevy_replicon::prelude::Replicated;
 use bevy_spritesheet_animation::prelude::{Animation, AnimationProgress, Spritesheet};
 use common::{common_components::*, };
 use serde::{Deserialize, Serialize};

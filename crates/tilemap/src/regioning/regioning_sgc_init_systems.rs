@@ -16,13 +16,14 @@ use crate::{
 
 struct PrioritySgcDef {
     ent: Entity,
+    hash_id: HashId,
     priority: f32,
     tags: TagSet,
     run_before_tags: HashSet<String>,
     run_after_tags: HashSet<String>,
 }
 
-fn build_prioritized_entities(defs: &[PrioritySgcDef]) -> Vec<Entity> {
+fn build_prioritized_hash_ids(defs: &[PrioritySgcDef]) -> Vec<HashId> {
     if defs.is_empty() {
         return Vec::new();
     }
@@ -111,7 +112,7 @@ fn build_prioritized_entities(defs: &[PrioritySgcDef]) -> Vec<Entity> {
         };
 
         remaining.swap_remove(selected_pos);
-        ordered.push(defs[selected_i].ent);
+        ordered.push(defs[selected_i].hash_id);
         for &next in &edges[selected_i] {
             indegree[next] -= 1;
         }
@@ -219,6 +220,7 @@ pub fn init_structured_gen_configs(
         if structured_gen_seri.priority > 0.0 {
             priority_defs.push(PrioritySgcDef {
                 ent: main_ent,
+                hash_id: HashId::hash(structured_gen_seri.structure_id.as_str()),
                 priority: structured_gen_seri.priority,
                 tags: tags_set,
                 run_before_tags: structured_gen_seri.run_before_sgcs_with_tags,
@@ -234,11 +236,10 @@ pub fn init_structured_gen_configs(
         sgcs_comps.push((main_ent, (sgc_id.hash_id(), sgc_id, sgc, ReplicateIfServerStarts)));
     }
 
-    let prioritized_ents = build_prioritized_entities(&priority_defs);
+    let prioritized_hash_ids = build_prioritized_hash_ids(&priority_defs);
 
     cmd.insert_batch(exclusive_for_dims);
     cmd.insert_batch(sgcs_comps);
-    //todo esto debería ser replicado
-    cmd.insert_resource(PrioritizedSgs(prioritized_ents));
+    cmd.spawn((PrioritizedSgs(prioritized_hash_ids), ReplicateIfServerStarts));
     cmd.spawn((SgcsWeightedSampler, ReplicateIfServerStarts, hashid_sampler, ChildOf(egui_ent)));
 }

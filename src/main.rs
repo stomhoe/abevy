@@ -41,6 +41,7 @@ fn build_filter() -> String {
         (log_targets::BEVY_ASSET_LOADER, WARN),
         (log_targets::BEVY_ECS_RELATIONSHIP, ERROR),
         (log_targets::CALLOOP_LOOP_LOGIC, ERROR),
+        (log_targets::BEVY_W_INIT, WARN),
 
         (log_targets::PORTAL_INIT, WARN),
         (log_targets::POSITION_SEARCH, INFO),
@@ -74,6 +75,7 @@ fn build_filter() -> String {
 
         (log_targets::BEING_CONTROL, DEBUG),
         (log_targets::BODY_BUILD, DEBUG),
+        (log_targets::BODY_ENERGY_SYSTEM, DEBUG),
         (log_targets::GAME_COMMON_SYSTEM, INFO),
         (log_targets::GAME_INIT, DEBUG),
 
@@ -106,7 +108,6 @@ fn build_filter() -> String {
     }
     filter
 }
-//Get-ChildItem target\debug -Recurse -Filter "tilemap*" | Remove-Item -Force
 
 /*TRACING
 cargo run -r --features bevy/trace_tracy,bevy/debug
@@ -167,7 +168,9 @@ fn main() {
         ))
         .configure_sets(
             OnEnter(AssetLoading::SpawnReplicatedEntities),(
-            ItemSystems.before(TilingSystems).after(AcSpriteSystems),
+            ItemSystems
+                .before(TilingSystems)
+                .after(AcSpriteSystems),
             ))
         .add_plugins((wildlife::plugin,))
         .run()
@@ -191,10 +194,5 @@ Log Levels
     warn (ADVERTENCIAS, el programa funciona bien pero te avisa que algo podría estar mal)
     error (ERRORES, algo claramente está mal)
     None (you turned off logging)
-
-
-Get-ChildItem target\debug -Recurse -File |
-    Where-Object { $_.Name -like "tilemap*" -or $_.Name -like "libtilemap*" -or $_.Name -like "argentum_coop*" } |
-    Remove-Item -Force
 
 */

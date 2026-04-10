@@ -8,7 +8,7 @@ use ::tilemap_shared::*;
 
 
 #[allow(unused_parens)]
-pub fn replace_dim_string_ref_by_entity_ref(
+pub fn replace_dim_string_ref_by_hash_id_ref(
     mut cmd: Commands,
     dimension_entity_map: Res<DimensionEntityMap>,
     hash_id_query: Query<&HashId>,
@@ -98,7 +98,7 @@ pub fn replace_multiple_string_refs_by_entity_refs(
 }
 
 #[allow(unused_parens)]
-pub fn ensure_childof_for_enti_with_dimension_ref_and_readjust_if_parent_was_dimension(
+pub fn add_childof_for_enti_with_dimension_rer(
     mut cmd: Commands,
     dimension_entity_map: Res<DimensionEntityMap>,
     dimension_query: Query<(Entity),(With<Dimension>)>,
