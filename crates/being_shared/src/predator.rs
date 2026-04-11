@@ -5,9 +5,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(default)]
 pub struct PredatorSeri {
-    pub territorialism: f32,
-    pub pack_size_min: u32,
-    pub pack_size_max: u32,
     pub do_not_hunt_tags: HashSet<String>,
     pub do_not_hunt_same_kind: bool,
     pub prey_body_size_ratio_tolerance: f32,
@@ -16,6 +13,7 @@ pub struct PredatorSeri {
 }
 impl PredatorSeri {
     pub const SERI_UNINITIALIZED: f32 = f32::NEG_INFINITY;
+    pub const DEFAULT_PREY_BODY_SIZE_RATIO_TOLERANCE: f32 = 1.1;
 
     pub fn is_uninitialized(&self) -> bool {
         self.min_hunger_to_hunt == Self::SERI_UNINITIALIZED
@@ -25,12 +23,9 @@ impl PredatorSeri {
 impl Default for PredatorSeri {
     fn default() -> Self {
         Self {
-            territorialism: 0.0,
-            pack_size_min: 1,
-            pack_size_max: 1,
             do_not_hunt_tags: HashSet::default(),
             do_not_hunt_same_kind: true,
-            prey_body_size_ratio_tolerance: -1.0,
+            prey_body_size_ratio_tolerance: Self::DEFAULT_PREY_BODY_SIZE_RATIO_TOLERANCE,
             min_hunger_to_hunt: Self::SERI_UNINITIALIZED,
             min_hp_ratio_to_hunt: 0.0,
         }
@@ -39,9 +34,6 @@ impl Default for PredatorSeri {
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone)]
 pub struct PredatorCfg {
-    pub territorialism: f32,
-    pub pack_size_min: u32,
-    pub pack_size_max: u32,
     pub do_not_hunt_tags: TagSet,
     pub do_not_hunt_same_kind: bool,
     pub prey_body_size_ratio_tolerance: f32,
@@ -49,22 +41,13 @@ pub struct PredatorCfg {
     pub min_hp_ratio_to_hunt: f32,
 }
 impl PredatorCfg {
+    pub const DEFAULT_PREY_BODY_SIZE_RATIO_TOLERANCE: f32 = PredatorSeri::DEFAULT_PREY_BODY_SIZE_RATIO_TOLERANCE;
+
     pub fn from_seri(seri: &PredatorSeri) -> Option<Self> {
         if seri.is_uninitialized() {
             return None;
         }
-        let mut pack_size_min = seri.pack_size_min;
-        let mut pack_size_max = seri.pack_size_max;
-        if pack_size_min == 0 {
-            pack_size_min = 1;
-        }
-        if pack_size_max < pack_size_min {
-            pack_size_max = pack_size_min;
-        }
         Some(Self {
-            territorialism: seri.territorialism.max(0.0),
-            pack_size_min,
-            pack_size_max,
             do_not_hunt_tags: TagSet::new(&seri.do_not_hunt_tags),
             do_not_hunt_same_kind: seri.do_not_hunt_same_kind,
             prey_body_size_ratio_tolerance: seri.prey_body_size_ratio_tolerance,
@@ -77,12 +60,9 @@ impl PredatorCfg {
 impl Default for PredatorCfg {
     fn default() -> Self {
         Self {
-            territorialism: 0.0,
-            pack_size_min: 1,
-            pack_size_max: 1,
             do_not_hunt_tags: TagSet::default(),
             do_not_hunt_same_kind: true,
-            prey_body_size_ratio_tolerance: -1.0,
+            prey_body_size_ratio_tolerance: Self::DEFAULT_PREY_BODY_SIZE_RATIO_TOLERANCE,
             min_hunger_to_hunt: 0.4,
             min_hp_ratio_to_hunt: 0.0,
         }

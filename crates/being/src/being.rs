@@ -101,7 +101,6 @@ pub fn plugin(app: &mut App) {
         Update,
         (
             add_melee_target_comp_to_ai_controlled,
-            update_squad_weight_sum.before(update_predator_hunting_targets),
             update_predator_hunting_targets,
             make_hunted_be_melee_targets.after(update_predator_hunting_targets),
             sync_chasing_to_hunt.after(update_predator_hunting_targets),
@@ -148,6 +147,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate::<MemberRanks>()
     .replicate::<Predator>()
+    .replicate::<PredatorCfg>()
 
 
     .replicate::<HumanControlled>()

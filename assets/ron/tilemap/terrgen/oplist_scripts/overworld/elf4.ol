@@ -5,7 +5,7 @@ let tree_feature = idxmax(hp81, 0.14)
 let tree_feature = avg(fnl.forest.s3, tree_feature)
 let tree_feature = *(tree_feature, pd499)
 
-let bush_feature = idxmax(hp82, 0.07)
+let bush_feature = idxmax(hp82, 0.05)
 let bush_feature = *(bush_feature, pd12)
 let bush_feature = +(bush_feature, -0.0)
 

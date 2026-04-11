@@ -4,7 +4,7 @@ use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use common::{common_tag_components::TagSet, def_db, log_targets::BEING_TEMPLATE_INIT};
 use tilemap_shared::tilemap_shared_samplers::NormalDistSeri;
 
-use being_shared::{FightOrFlightConfig, FightOrFlightReaction, FightingStyle, RangedFightingStyle, WanderSeri};
+use being_shared::{FightOrFlightConfig, FightOrFlightReaction, FightingStyle, PredatorSeri, RangedFightingStyle, WanderSeri};
 
 pub type SpawnWeight = f32;
 pub type RankDist = NormalDistSeri;
@@ -42,6 +42,7 @@ pub struct PackSeri {
     pub avgpos_rank_based_weight_multipliers: HashMap<String, f32>,
     pub biome_affinity: HashMap<String, f32>,
     pub fight_or_flight_config: FightOrFlightConfig,
+    pub member_predator: PredatorSeri,
     pub fighting_style: FightingStyle,
     pub behavior_on_member_attack: String,
     pub attack_alert_effectiveness_falloff: f32,
@@ -66,6 +67,7 @@ impl Default for PackSeri {
                 entire_nearby_squad_counterattacks: true,
                 ..FightOrFlightConfig::default()
             },
+            member_predator: PredatorSeri::default(),
             fighting_style: FightingStyle::default(),
             behavior_on_member_attack: String::default(),
             attack_alert_effectiveness_falloff: 0.05,
@@ -127,6 +129,50 @@ impl PackSeri {
             .and_then(PackArgValue::as_f32)
         {
             out.retaliation_chase_stop_distance_tiles = next.max(0.0);
+        }
+        out
+    }
+
+    fn take_predator_seri(
+        fields: &mut HashMap<String, PackArgValue>,
+        key: &str,
+        default: PredatorSeri,
+    ) -> PredatorSeri {
+        let Some(value) = fields.remove(key) else {
+            return default;
+        };
+        let Some(map) = value.as_map() else {
+            return default;
+        };
+        let mut out = default;
+        if let Some(next) = map.get("do_not_hunt_tags").and_then(PackArgValue::as_list) {
+            out.do_not_hunt_tags.clear();
+            out.do_not_hunt_tags.reserve(next.len());
+            for tag in next {
+                let Some(tag) = tag.as_string() else {
+                    continue;
+                };
+                let tag = tag.trim();
+                if tag.is_empty() {
+                    continue;
+                }
+                out.do_not_hunt_tags.insert(tag.to_string());
+            }
+        }
+        if let Some(next) = map.get("do_not_hunt_same_kind").and_then(PackArgValue::as_bool) {
+            out.do_not_hunt_same_kind = next;
+        }
+        if let Some(next) = map
+            .get("prey_body_size_ratio_tolerance")
+            .and_then(PackArgValue::as_f32)
+        {
+            out.prey_body_size_ratio_tolerance = next;
+        }
+        if let Some(next) = map.get("min_hunger_to_hunt").and_then(PackArgValue::as_f32) {
+            out.min_hunger_to_hunt = next.max(0.0);
+        }
+        if let Some(next) = map.get("min_hp_ratio_to_hunt").and_then(PackArgValue::as_f32) {
+            out.min_hp_ratio_to_hunt = next.clamp(0.0, 1.0);
         }
         out
     }
@@ -703,6 +749,11 @@ fn parse_pack_seri(content: &str, path: &Path) -> Result<PackSeri, String> {
         &mut fields,
         "fight_or_flight_config",
         seri.fight_or_flight_config,
+    );
+    seri.member_predator = PackSeri::take_predator_seri(
+        &mut fields,
+        "member_predator",
+        seri.member_predator,
     );
     seri.fighting_style = PackSeri::take_fighting_style(
         &mut fields,

@@ -81,6 +81,9 @@ pub fn init_packs(
         if pack_seri.fight_or_flight_config != FightOrFlightConfig::default() {
             cmd.entity(pack_entity).insert(pack_seri.fight_or_flight_config);
         }
+        if let Some(member_predator_cfg) = PredatorCfg::from_seri(&pack_seri.member_predator) {
+            cmd.entity(pack_entity).insert(member_predator_cfg);
+        }
         if pack_seri.fighting_style != FightingStyle::default() {
             cmd.entity(pack_entity).insert(pack_seri.fighting_style);
         }

@@ -9,23 +9,15 @@ use bevy::{
     ecs::{entity::EntityHashSet, system::SystemParam},
     platform::collections::{HashMap, HashSet},
     prelude::*,
-    tasks::{AsyncComputeTaskPool, futures_lite::future},
 };
-use bevy_northstar::{grid::GridSettingsBuilder, nav::Nav, prelude::*, CardinalGrid};
+use bevy_northstar::prelude::*;
 use common::log_targets::BEING_SYSTEM;
 use param_sets::BlockingTileParamSet;
 use tilemap::chunking::chunking_components::ActivatingChunks;
 use std::time::Duration;
 
 use super::being_nav_components::RetainedChasePathSnapshot;
-use super::being_nav_resources::{
-    AiNavGrids,
-    ChaserNavPlans,
-    SharedChaseFlowFieldRebuildInput,
-    SharedChaseFlowFieldRebuildResult,
-    SharedChaseFlowFieldRebuildTasks,
-    SharedChaseFlowFields,
-};
+use super::being_nav_resources::{AiNavGrids, ChaserNavPlans, SharedChaseFlowFields};
 use super::being_nav_structs::{AiNavGridCache, ChaserNavPlan, SharedChaseFlowField};
 use super::being_nav_helpers::{
     cardinal_step_toward,
@@ -53,6 +45,9 @@ pub struct RebuildGotoNavPlansScratch<'s> {
     dynamic_blocking: Local<'s, HashMap<UVec3, Entity>>,
     active_chasers: Local<'s, EntityHashSet>,
     active_chase_targets: Local<'s, EntityHashSet>,
+    rebuilt_shared_flow_targets: Local<'s, EntityHashSet>,
+    shared_targets_evaluated: Local<'s, EntityHashSet>,
+    shared_targets_without_flow: Local<'s, EntityHashSet>,
     shared_rebuild_jobs: Local<'s, Vec<SharedChaseRebuildJob>>,
     shared_goal_owners: Local<'s, HashMap<GlobalTilePos, Entity>>,
     chase_zone_tiles: Local<'s, Vec<GlobalTilePos>>,
@@ -178,81 +173,6 @@ fn request_fast_repath(
     if plan.rebuild_timer.duration() > fast_retry {
         plan.clear_path_and_retry(fast_retry, target_pos);
     }
-}
-
-fn collect_blocked_tiles_for_dim(
-    blocked_gpos_counts: &AiNavBlockedGposCounts,
-    dim_ref: DimensionRef,
-    min_tile: IVec2,
-    width: u32,
-    height: u32,
-) -> Vec<UVec2> {
-    let mut blocked_tiles = Vec::with_capacity((width as usize).saturating_mul(height as usize));
-    for ((blocked_dim, blocked_gpos), count) in blocked_gpos_counts.0.iter() {
-        if *blocked_dim != dim_ref || *count == 0 {
-            continue;
-        }
-        let local = blocked_gpos.0 - min_tile;
-        if local.x < 0 || local.y < 0 {
-            continue;
-        }
-        if local.x >= width as i32 || local.y >= height as i32 {
-            continue;
-        }
-        blocked_tiles.push(UVec2::new(local.x as u32, local.y as u32));
-    }
-    blocked_tiles
-}
-
-fn build_shared_chase_flow_field_rebuild_result(
-    input: SharedChaseFlowFieldRebuildInput,
-) -> SharedChaseFlowFieldRebuildResult {
-    let mut grid = CardinalGrid::new(
-        &GridSettingsBuilder::new_2d(input.width, input.height)
-            .chunk_size(8)
-            .build(),
-    );
-    for blocked in input.blocked_tiles {
-        grid.set_nav(UVec3::new(blocked.x, blocked.y, 0), Nav::Impassable);
-    }
-    grid.build();
-    let cache = AiNavGridCache {
-        min: input.min,
-        grid,
-        occupied: HashMap::default(),
-        occupied_initialized: true,
-    };
-    let flow_field = SharedChaseFlowField::build(
-        &cache,
-        input.target_dim,
-        input.target_pos,
-        &input.goal_tiles,
-        &input.slot_tiles,
-        &input.seed_goal_tiles,
-    );
-    SharedChaseFlowFieldRebuildResult {
-        target_ent: input.target_ent,
-        flow_field,
-    }
-}
-
-fn queue_shared_chase_flow_field_rebuild(
-    task_pool: &AsyncComputeTaskPool,
-    rebuild_tasks: &mut SharedChaseFlowFieldRebuildTasks,
-    input: SharedChaseFlowFieldRebuildInput,
-) {
-    if !rebuild_tasks.pending_targets.insert(input.target_ent) {
-        return;
-    }
-    trace!(
-        target: BEING_SYSTEM,
-        "Queued shared chase flow rebuild for {:?}: target {:?}",
-        input.target_ent,
-        input.target_pos
-    );
-    rebuild_tasks.tasks.push(task_pool.spawn(async move {
-        build_shared_chase_flow_field_rebuild_result(input)
-    }));
 }
 
 fn collect_chase_goal_tiles(
@@ -403,6 +323,54 @@ fn collect_chase_goal_tiles(
                 .map(|dist| (goal_tile, dist.saturating_sub(1), ))
         }));
     }
+}
+
+fn rebuild_shared_chase_flow_field(
+    chase_fields: &mut SharedChaseFlowFields,
+    cache: &AiNavGridCache,
+    target_ent: Entity,
+    target_dim: Entity,
+    target_pos: GlobalTilePos,
+    target_bit_ref: Option<&BitRef>,
+    target_race_ref: Option<&RaceRef>,
+    bit_map: &BeingInstTemplateEntityMap,
+    race_map: &RaceEntityMap,
+    interaction_zones_query: &Query<&InteractionZones, >,
+    zone_tiles: &mut Vec<GlobalTilePos>,
+    goal_tiles: &mut Vec<GlobalTilePos>,
+    slot_tiles: &mut Vec<GlobalTilePos>,
+    seed_goal_tiles: &mut Vec<(GlobalTilePos, u32)>,
+    zone_hits: &mut Vec<GlobalTilePos>,
+) -> Option<()> {
+    let collision_zone = resolve_being_interaction_zone(
+        interaction_zones_query.get(target_ent).ok(),
+        target_bit_ref,
+        target_race_ref,
+        InteractionZones::COLLISION,
+        bit_map,
+        race_map,
+        interaction_zones_query,
+    );
+    collect_chase_goal_tiles(
+        cache,
+        target_pos,
+        &collision_zone,
+        zone_tiles,
+        goal_tiles,
+        slot_tiles,
+        seed_goal_tiles,
+        zone_hits,
+    );
+    let flow_field = SharedChaseFlowField::build(
+        cache,
+        target_dim,
+        target_pos,
+        goal_tiles,
+        slot_tiles,
+        seed_goal_tiles,
+    )?;
+    chase_fields.by_target.insert(target_ent, flow_field);
+    Some(())
 }
 
 fn shared_flow_target_reached(
@@ -601,7 +569,6 @@ pub fn cleanup_player_chase_chunk_retention(
 pub fn rebuild_goto_nav_plans(
     time: Res<Time>,
     blocking_tiles: BlockingTileParamSet,
-    blocked_gpos_counts: Res<AiNavBlockedGposCounts>,
     dim_map: Res<DimensionEntityMap>,
     bit_map: Res<BeingInstTemplateEntityMap>,
     race_map: Res<RaceEntityMap>,
@@ -621,51 +588,16 @@ pub fn rebuild_goto_nav_plans(
     targets_query: Query<&DimensionRef, ()>,
     interaction_zones_query: Query<&InteractionZones, >,
     mut chase_fields: ResMut<SharedChaseFlowFields>,
-    mut shared_flow_rebuild_tasks: ResMut<SharedChaseFlowFieldRebuildTasks>,
     mut plans: ResMut<ChaserNavPlans>,
     mut scratch: RebuildGotoNavPlansScratch,
 ) {
     scratch.active_chasers.clear();
     scratch.active_chase_targets.clear();
+    scratch.rebuilt_shared_flow_targets.clear();
+    scratch.shared_targets_evaluated.clear();
+    scratch.shared_targets_without_flow.clear();
     scratch.shared_rebuild_jobs.clear();
     scratch.shared_goal_owners.clear();
-
-    let mut completed_shared_flow_results = Vec::new();
-    {
-        let SharedChaseFlowFieldRebuildTasks {
-            tasks: shared_flow_rebuild_task_queue,
-            pending_targets,
-        } = &mut *shared_flow_rebuild_tasks;
-
-        shared_flow_rebuild_task_queue.retain_mut(|task| {
-            let Some(result) = future::block_on(future::poll_once(task)) else {
-                return true;
-            };
-            completed_shared_flow_results.push(result);
-            false
-        });
-        for result in completed_shared_flow_results.drain(..) {
-            pending_targets.remove(&result.target_ent);
-            let Some(flow_field) = result.flow_field else {
-                chase_fields.by_target.remove(&result.target_ent);
-                trace!(
-                    target: BEING_SYSTEM,
-                    "Shared chase flow rebuild finished without a valid field for {:?}",
-                    result.target_ent
-                );
-                continue;
-            };
-            trace!(
-                target: BEING_SYSTEM,
-                "Shared chase flow rebuild finished for {:?}: goal_tiles={}, slot_tiles={}, seed_goals={}",
-                result.target_ent,
-                flow_field.goal_tiles.len(),
-                flow_field.slot_tiles.len(),
-                flow_field.seed_goal_tiles.len()
-            );
-            chase_fields.by_target.insert(result.target_ent, flow_field);
-        }
-    }
 
     for (chaser_ent, &chaser_dim, goto, chaser_speed, chasing, wander_state, lod_level, ) in goto_beings.iter() {
         let Some(chaser_dim_ent) = dim_map.0.get_opt(chaser_dim.0).copied() else {
@@ -756,77 +688,75 @@ pub fn rebuild_goto_nav_plans(
                 .last_target_pos
                 .map(|prev| (prev.0 - target_pos.0).abs().max_element() >= TARGET_SHIFT_REBUILD_TILES)
                 .unwrap_or(true);
-            let need_rebuild = plan.path_tiles.is_empty() || timer_finished || target_shifted;
-            let target_bit_ref = blocking_tiles.get_being_bit_ref(shared_target_ent);
-            let target_race_ref = blocking_tiles.get_being_race_ref(shared_target_ent);
-
-            let collision_zone = resolve_being_interaction_zone(
-                interaction_zones_query.get(shared_target_ent).ok(),
-                target_bit_ref,
-                target_race_ref,
-                InteractionZones::COLLISION,
-                &bit_map,
-                &race_map,
-                &interaction_zones_query,
-            );
-            collect_chase_goal_tiles(
-                cache,
-                target_pos,
-                &collision_zone,
-                &mut scratch.chase_zone_tiles,
-                &mut scratch.chase_goal_tiles,
-                &mut scratch.chase_slot_tiles,
-                &mut scratch.chase_seed_goal_tiles,
-                &mut scratch.chase_zone_hits,
-            );
-            let needs_flow_rebuild = chase_fields
-                .by_target
-                .get(&shared_target_ent)
-                .map(|field| {
-                    !field.matches_grid(cache, target_dim_ent, target_pos)
-                        || field.goal_tiles != *scratch.chase_goal_tiles
-                        || field.slot_tiles != *scratch.chase_slot_tiles
-                        || field.seed_goal_tiles != *scratch.chase_seed_goal_tiles
-                })
-                .unwrap_or(true);
-            if needs_flow_rebuild {
-                if !shared_flow_rebuild_tasks.pending_targets.contains(&shared_target_ent) {
-                    if scratch.chase_goal_tiles.is_empty()
-                        || scratch.chase_slot_tiles.is_empty()
-                        || scratch.chase_seed_goal_tiles.is_empty()
-                    {
-                        chase_fields.by_target.remove(&shared_target_ent);
-                        plan.clear_path_and_retry(
-                            goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)),
-                            target_pos,
-                        );
-                        trace!(target: BEING_SYSTEM, "Deferred shared flow rebuild for {:?}: target {:?} has no valid goal tiles at {:?}", chaser_ent, shared_target_ent, target_pos);
-                        continue;
+            let mut need_rebuild = plan.path_tiles.is_empty() || timer_finished || target_shifted;
+            if scratch.shared_targets_evaluated.insert(shared_target_ent) {
+                let target_bit_ref = blocking_tiles.get_being_bit_ref(shared_target_ent);
+                let target_race_ref = blocking_tiles.get_being_race_ref(shared_target_ent);
+                let collision_zone = resolve_being_interaction_zone(
+                    interaction_zones_query.get(shared_target_ent).ok(),
+                    target_bit_ref,
+                    target_race_ref,
+                    InteractionZones::COLLISION,
+                    &bit_map,
+                    &race_map,
+                    &interaction_zones_query,
+                );
+                collect_chase_goal_tiles(
+                    cache,
+                    target_pos,
+                    &collision_zone,
+                    &mut scratch.chase_zone_tiles,
+                    &mut scratch.chase_goal_tiles,
+                    &mut scratch.chase_slot_tiles,
+                    &mut scratch.chase_seed_goal_tiles,
+                    &mut scratch.chase_zone_hits,
+                );
+                let needs_flow_rebuild = chase_fields
+                    .by_target
+                    .get(&shared_target_ent)
+                    .map(|field| {
+                        !field.matches_grid(cache, target_dim_ent, target_pos)
+                            || field.goal_tiles != *scratch.chase_goal_tiles
+                            || field.slot_tiles != *scratch.chase_slot_tiles
+                            || field.seed_goal_tiles != *scratch.chase_seed_goal_tiles
+                    })
+                    .unwrap_or(true);
+                if needs_flow_rebuild {
+                    if rebuild_shared_chase_flow_field(
+                        &mut chase_fields,
+                        cache,
+                        shared_target_ent,
+                        target_dim_ent,
+                        target_pos,
+                        target_bit_ref,
+                        target_race_ref,
+                        &bit_map,
+                        &race_map,
+                        &interaction_zones_query,
+                        &mut scratch.chase_zone_tiles,
+                        &mut scratch.chase_goal_tiles,
+                        &mut scratch.chase_slot_tiles,
+                        &mut scratch.chase_seed_goal_tiles,
+                        &mut scratch.chase_zone_hits,
+                    ).is_none() {
+                        scratch.shared_targets_without_flow.insert(shared_target_ent);
+                        trace!(target: BEING_SYSTEM, "Deferred shared flow rebuild for target {:?}: no valid goal tiles at {:?}", shared_target_ent, target_pos);
+                        // Let all chasers for this target take the same retry branch below.
+                        // Keeping this path centralized avoids per-chaser divergence.
+                    } else {
+                        scratch.rebuilt_shared_flow_targets.insert(shared_target_ent);
                     }
-                    let task_pool = AsyncComputeTaskPool::get();
-                    queue_shared_chase_flow_field_rebuild(
-                        &task_pool,
-                        &mut *shared_flow_rebuild_tasks,
-                        SharedChaseFlowFieldRebuildInput {
-                            target_ent: shared_target_ent,
-                            target_dim: target_dim_ent,
-                            target_pos,
-                            min: cache.min,
-                            width: cache.grid.width(),
-                            height: cache.grid.height(),
-                            blocked_tiles: collect_blocked_tiles_for_dim(
-                                &blocked_gpos_counts,
-                                *target_dim,
-                                cache.min,
-                                cache.grid.width(),
-                                cache.grid.height(),
-                            ),
-                            goal_tiles: std::mem::take(&mut scratch.chase_goal_tiles),
-                            slot_tiles: std::mem::take(&mut scratch.chase_slot_tiles),
-                            seed_goal_tiles: std::mem::take(&mut scratch.chase_seed_goal_tiles),
-                        },
-                    );
                 }
+            }
+            if scratch.rebuilt_shared_flow_targets.contains(&shared_target_ent) {
+                need_rebuild = true;
+            }
+            if scratch.shared_targets_without_flow.contains(&shared_target_ent) {
+                plan.clear_path_and_retry(
+                    goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)),
+                    target_pos,
+                );
+                continue;
             }
             let Some(flow_field) = chase_fields.by_target.get(&shared_target_ent) else {
                 plan.clear_path_and_retry(
@@ -854,6 +784,14 @@ pub fn rebuild_goto_nav_plans(
         }
 
         plan.clear_shared_goal();
+        let target_shifted = plan
+            .last_target_pos
+            .map(|prev| (prev.0 - target_pos.0).abs().max_element() >= TARGET_SHIFT_REBUILD_TILES)
+            .unwrap_or(true);
+        let need_rebuild = timer_finished || target_shifted;
+        if !need_rebuild {
+            continue;
+        }
         let Some((start, goal)) = cache.local_path_points(*chaser_gpos, target_pos) else {
             plan.clear_path_and_retry(goto_interval, target_pos);
             continue;
@@ -984,15 +922,6 @@ pub fn rebuild_goto_nav_plans(
         }
         let target_boxed_by_same_target_chasers = open_target_approach_count > 0
             && blocked_target_approach_count >= open_target_approach_count;
-
-        let target_shifted = plan
-            .last_target_pos
-            .map(|prev| (prev.0 - target_pos.0).abs().max_element() >= TARGET_SHIFT_REBUILD_TILES)
-            .unwrap_or(true);
-        let need_rebuild = timer_finished || target_shifted;
-        if !need_rebuild {
-            continue;
-        }
 
         if target_boxed_by_same_target_chasers {
             for delta in BOXED_TARGET_FALLBACK_DELTAS {

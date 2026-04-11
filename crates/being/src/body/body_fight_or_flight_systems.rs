@@ -430,6 +430,14 @@ fn affected_beings_for_damage(
         let Some((config, _style)) = resolve_template_entity_config_with_pack_fallback(pack_ent, queries) else {
             return vec![victim_ent];
         };
+        if matches!(config.reaction, FightOrFlightReaction::Flee) {
+            if let Ok(squad_members) = queries.squad_members_query.get(pack_ent) {
+                locals.pack_members.clear();
+                locals.pack_members.extend(squad_members.iter());
+                return locals.pack_members.clone();
+            }
+            return vec![victim_ent];
+        }
         if config.entire_nearby_squad_counterattacks {
             if let Ok(squad_members) = queries.squad_members_query.get(pack_ent) {
                 locals.pack_members.clear();

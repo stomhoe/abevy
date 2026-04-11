@@ -37,6 +37,7 @@ pub(crate) struct InstancePackQueries<'w, 's> {
     pack_spawn_radius_query: Query<'w, 's, &'static PackSpawnRadius>,
     no_spawn_squad_query: Query<'w, 's, (), With<NoSpawnSquadEntity>>,
     spawn_count_query: Query<'w, 's, (&'static PackInitialSizeSampler, )>,
+    pack_predator_cfg_query: Query<'w, 's, &'static PredatorCfg, (With<Pack>, With<Templ>, )>,
     hash_query: Query<'w, 's, &'static HashId>,
     race_map: Res<'w, RaceEntityMap>,
     bit_map: Res<'w, BeingInstTemplateEntityMap>,
@@ -264,6 +265,11 @@ pub fn instance_pack_entities(
             SquadSpawnMode::ForceSpawn => true,
             SquadSpawnMode::DontSpawn => false,
         };
+        let pack_predator_cfg = if matches!(source_kind, InstancePackSourceKind::Pack) {
+            queries.pack_predator_cfg_query.get(source_ent).ok().cloned()
+        } else {
+            None
+        };
         let squad_ent = spawns_squad.then(|| {
             let pack_entity = cmd.spawn((Pack, )).id();
             if matches!(source_kind, InstancePackSourceKind::Pack) {
@@ -296,6 +302,9 @@ pub fn instance_pack_entities(
             if let Some(squad_ent) = squad_ent {
                 cmd.entity(being_ent).try_insert(SquadMemberOf(squad_ent));
             }
+            if let Some(pack_predator_cfg) = pack_predator_cfg.as_ref() {
+                cmd.entity(being_ent).try_insert(pack_predator_cfg.clone());
+            }
             to_enable_map.insert(being_ent, msg.dim_ref, gpos_chunk);
             let target_is_bit = is_bit_target || queries.bit_query.get(spawn_target).is_ok();
             let target_is_race = is_race_target || queries.race_query.get(spawn_target).is_ok();
@@ -318,13 +327,14 @@ pub fn instance_pack_entities(
         }
         trace!(
             target: BEING_SYSTEM,
-            "Instanced source {:?} (kind {:?}) with {} beings in {:?}, squad {:?}, radius {}",
+            "Instanced source {:?} (kind {:?}) with {} beings in {:?}, squad {:?}, radius {}, solo_member_predator_cfg={}",
             source_ent,
             source_kind,
             spawned_members,
             msg.dim_ref,
             squad_ent,
             density_tiles,
+            pack_predator_cfg.is_some(),
         );
     }
 }
