@@ -151,7 +151,7 @@ pub enum Grounding {
 pub struct TemplEntiRef(#[entities] pub Entity);
 
 #[derive(Component, Debug, Clone, Deserialize, Serialize, Copy, PartialEq, Eq, Hash)]
-pub struct TemplEntiHashIdRef(pub HashId);
+pub struct TemplHashIdRef(pub HashId);
 impl From<u8> for Grounding {
     fn from(value: u8) -> Self {
         match value {

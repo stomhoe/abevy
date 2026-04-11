@@ -1,6 +1,5 @@
 sprite goblin {
 name Goblin
-z 1000
 mapped_anims {
     south idle g _ = goblin_s_idle
     south move g _ = goblin_s_move

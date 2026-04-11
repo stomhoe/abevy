@@ -23,7 +23,6 @@ pub use terrprobe_pattern_region::*;
 pub use opfilter::*;
 
 use bevy::prelude::*;
-use bevy_replicon::prelude::ClientState;
 use common::common_states::AssetLoading;
 use crate::terrain::terrprobe_init_systems::*;
 use crate::terrain::TerrainGenSystems;

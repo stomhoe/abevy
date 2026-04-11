@@ -45,8 +45,8 @@ pub fn plugin(app: &mut App) {
             add_planned_tiles_to_region,
             mark_as_building_started_timed_out.run_if(on_message::<TimedOut>),
             advance_i_on_claimlist_timeout,
-            clonespawn_tiles_on_chunk_spawn
-            .before(crate::tilemap_systems::process_tiles_pre)//removing this breaks it
+
+            clonespawn_tiles_on_chunk_spawn.before(crate::tilemap_systems::process_tiles_pre)//removing this breaks it
             ,
         ).in_set(RegioningSystems),
         despawn_empty_regions,

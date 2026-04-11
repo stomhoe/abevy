@@ -1,6 +1,5 @@
 use bevy::{ecs::{entity::{EntityHashSet, EntityHashMap}}, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use common::common_components::HashId;
-use game_common::game_common_components::TemplEntiRef;
 use crate::terrain::{
     terrprobe::terrprobe_components::TerrProbeTempl,
     terrprobe::terrprobe_pattern_chunk::process_chunk_pattern,
@@ -12,6 +11,7 @@ use crate::terrain::{
     terrgen_messages::PendingOp,
 };
 use ::tilemap_shared::*;
+use crate::tile::tile_resources::*;
 
 #[derive(Clone)]
 struct TerrGenSearchTaskInput {
@@ -29,7 +29,7 @@ pub struct SearchParams<'w, 's>
     pub reader_search_successful: MessageReader<'w, 's, SuitablePosFound>,
     pub reader_sampled_value_matrix: MessageReader<'w, 's, SampledValuesCollected>,
     pub mreader_search_failed: MessageReader<'w, 's, SearchFailed>,
-    pub pending_by_requester: Local<'s, EntityHashMap<Vec<(Entity, GlobalTilePos, DimensionRef, TemplEntiRef)>>>,
+    pub pending_by_requester: Local<'s, EntityHashMap<Vec<(Entity, GlobalTilePos, DimensionRef, TileRef)>>>,
     pub requester_collect_all: Local<'s, EntityHashMap<bool>>,
     pub requester_had_success: Local<'s, EntityHashMap<bool>>,
     pub min_result_distance_by_requester: Local<'s, EntityHashMap<u64>>,

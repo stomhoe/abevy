@@ -17,6 +17,7 @@ use common::common_states::AssetLoading;
         player_details_inspector::*, players_list_window::*, portals_list_window::*, region_details_inspector::*,
         regions_list_window::*, registered_positions_window::*, sprite_cfgs_details_inspector::*,
         sprite_cfgs_list_window::*, terrgen_editor_window::*, terrgen_values_window::*,
+        terrain_visualizer_window::*,
         tile_indices_map_window::*,
         world_tile_click_picker_window::*,
         tile_details_inspector::*,
@@ -43,15 +44,13 @@ pub fn plugin(app: &mut App) {
                 .run_if(debug_enabled),
         )
         .add_systems(
-            FixedUpdate,
+            Update,
             (
                 receive_debug_increase_speed_request
-                    .run_if(in_state(ServerState::Running))
-                    .run_if(on_message::<ac_input::LocalDebugIncreaseSpeedRequest>),
+                .run_if(on_message::<ac_input::LocalDebugIncreaseSpeedRequest>),
                 receive_debug_decrease_speed_request
-                    .run_if(in_state(ServerState::Running))
-                    .run_if(on_message::<ac_input::LocalDebugDecreaseSpeedRequest>),
-            ),
+                .run_if(on_message::<ac_input::LocalDebugDecreaseSpeedRequest>),
+            ).run_if(in_state(ServerState::Running)),
         )
         .add_systems(
             EguiPrimaryContextPass,
@@ -67,6 +66,7 @@ pub fn plugin(app: &mut App) {
                 portals_list_window,
                 sprites_list_window,
                 terrgen_editor_window,
+                terrain_visualizer_window,
                 terrgen_settings_editor_window,
                 hot_reload_window,
                 registered_positions_window,
@@ -99,6 +99,5 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DebugFontsInitialized>()
         .init_resource::<DebugUiConfig>()
         .init_resource::<WorldTileClickInspectorState>()
-        .init_resource::<common::common_states::HotReloadSelection>()
-        .init_resource::<common::common_states::HotReloadRequest>();
+        .init_resource::<common::common_states::HotReloadSelection>();
 }

@@ -7,5 +7,8 @@ pack {
     biome_affinity: {
         elf: 0.5,
     },
+    fight_or_flight_config: {
+        reaction: "flee",
+    },
     pack_spawn_radius: 7,
 }

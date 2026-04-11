@@ -1,6 +1,5 @@
 sprite familiar_water {
 name "Familiar Water"
-z 1000
 mapped_anims {
     south idle g _ = familiar_water_s_idle
     south move g _ = familiar_water_s_move

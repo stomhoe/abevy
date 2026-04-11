@@ -2,17 +2,18 @@ use ::sprite_shared::*;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use common::common_tag_components::TagSet;
-use game_common::game_common_components::*;
 use ::tilemap_shared::{*, DeleteOtherTilesInSamePos};
+use crate::tile::tile_resources::*;
 
 #[derive(SystemParam)]
 pub struct TileDeleteOthersParamSet<'w, 's> {
-    pub tile_templ_ref_query: Query<'w, 's, &'static TemplEntiRef>,
+    pub tile_templ_ref_query: Query<'w, 's, &'static TileRef>,
     pub gpos_query: Query<'w, 's, &'static GlobalTilePos>,
     pub z_query: Query<'w, 's, &'static AcZ, common::AnyDisabling>,
     pub size_query: Query<'w, 's, &'static SizeInTiles, common::AnyDisabling>,
     pub templ_delete_query: Query<'w, 's, &'static DeleteOtherTilesInSamePos>,
     pub tag_set_query: Query<'w, 's, &'static TagSet, common::AnyDisabling>,
+    pub tile_map: Res<'w, TileEntityMap>,
     pub checked_ents: Local<'s, Vec<Entity>>,
     pub msgs: Local<'s, Vec<SafeDespawn>>,
 }
@@ -24,17 +25,21 @@ impl<'w, 's> TileDeleteOthersParamSet<'w, 's> {
         registered_positions: &ImportantRegisteredPositions,
         gather_params: &TileGatheringParamSet,
         newtile_ent: Entity,
-        templ_ref: TemplEntiRef,
+        templ_ref: TileRef,
         dim: DimensionRef,
         gpos: GlobalTilePos,
         newtile_delete_others_excp: Option<&DeleteOtherTilesInSamePos>,
         newtile_tags: Option<&TagSet>,
     ) -> bool {
-        let Ok(newtile_z) = self.z_query.get(templ_ref.0) else {
+        let Ok(newtile_templ_ent) = self.tile_map.0.get_cloned(templ_ref.0) else {
+            warn_once!(target: common::DEBUG_TILE, "Failed to resolve TileRef {:?} for tile entity {:?}, skipping despawn check", templ_ref, newtile_ent);
+            return false;
+        };
+        let Ok(newtile_z) = self.z_query.get(newtile_templ_ent) else {
             warn_once!(target: common::DEBUG_TILE, "Failed to get AcZ for tile entity {:?}, skipping despawn check", newtile_ent);
             return false;
         };
-        let Ok(newtile_size) = self.size_query.get(templ_ref.0) else {
+        let Ok(newtile_size) = self.size_query.get(newtile_templ_ent) else {
             warn_once!(target: common::DEBUG_TILE, "Failed to get SizeInTiles for tile entity {:?}, skipping despawn check", newtile_ent);
             return false;
         };
@@ -58,20 +63,24 @@ impl<'w, 's> TileDeleteOthersParamSet<'w, 's> {
                 trace!(target: "tilemap", "Failed to get prev tile entity {:?}, skipping despawn check", otile_ent);
                 continue;
             };
-            let Ok(otile_z) = self.z_query.get(otile_templ_ref.0) else {
+            let Ok(otile_templ_ent) = self.tile_map.0.get_cloned(otile_templ_ref.0) else {
+                trace!(target: "tilemap", "Failed to resolve TileRef {:?} for prev tile entity {:?}, skipping despawn check", otile_templ_ref, otile_ent);
+                continue;
+            };
+            let Ok(otile_z) = self.z_query.get(otile_templ_ent) else {
                 trace!(target: "tilemap", "Failed to get AcZ for tile entity {:?}, skipping despawn check", otile_ent);
                 continue;
             };
-            let Ok(otile_size) = self.size_query.get(otile_templ_ref.0) else {
+            let Ok(otile_size) = self.size_query.get(otile_templ_ent) else {
                 trace!(target: "tilemap", "Failed to get SizeInTiles for tile entity {:?}, skipping despawn check", otile_ent);
                 continue;
             };
-            let templ_otile_delete_others_excp = self.templ_delete_query.get(otile_templ_ref.0).ok();
+            let templ_otile_delete_others_excp = self.templ_delete_query.get(otile_templ_ent).ok();
             if let Some(newtile_delete_others_excp) = newtile_delete_others_excp {
-                let otile_tags = self.tag_set_query.get(otile_ent).ok().or_else(|| self.tag_set_query.get(otile_templ_ref.0).ok());
+                let otile_tags = self.tag_set_query.get(otile_ent).ok().or_else(|| self.tag_set_query.get(otile_templ_ent).ok());
                 if newtile_delete_others_excp.should_delete_tile_based_on_tag_sets(otile_z, otile_tags) {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, otile_gpos, dim, newtile_ent);
-                    if !registered_positions.is_any_occupied_pos_registered(otile_templ_ref.0, dim, otile_gpos, otile_size.inner().as_ivec2()) && !registered_positions.get_exempted_tile_ents().contains(&otile_ent) {
+                    if !registered_positions.is_any_occupied_pos_registered(otile_templ_ent, dim, otile_gpos, otile_size.inner().as_ivec2()) && !registered_positions.get_exempted_tile_ents().contains(&otile_ent) {
                         self.msgs.push(SafeDespawn(otile_ent));
                     }
                     return true;
@@ -81,7 +90,7 @@ impl<'w, 's> TileDeleteOthersParamSet<'w, 's> {
             if let Some(otile_delete_others_excp) = otile_delete_others_excp {
                 if otile_delete_others_excp.should_delete_tile_based_on_tag_sets(newtile_z, newtile_tags) {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
-                    if !registered_positions.is_any_occupied_pos_registered(templ_ref.0, dim, gpos, newtile_size) && !registered_positions.get_exempted_tile_ents().contains(&newtile_ent) {
+                    if !registered_positions.is_any_occupied_pos_registered(newtile_templ_ent, dim, gpos, newtile_size) && !registered_positions.get_exempted_tile_ents().contains(&newtile_ent) {
                         self.msgs.push(SafeDespawn(newtile_ent));
                     }
                 }
@@ -97,14 +106,17 @@ pub fn process_tile_despawns_from_templ(
     registered_positions: &ImportantRegisteredPositions,
     gather_params: &TileGatheringParamSet,
     newtile_ent: Entity,
-    templ_ref: TemplEntiRef,
+    templ_ref: TileRef,
     dim: DimensionRef,
     gpos: GlobalTilePos,
 ) -> bool {
-    let Some(newtile_delete_others_excp) = paramset.templ_delete_query.get(templ_ref.0).ok().cloned() else {
+    let Some(newtile_templ_ent) = paramset.tile_map.0.get_cloned(templ_ref.0).ok() else {
+        return false;
+    };
+    let Some(newtile_delete_others_excp) = paramset.templ_delete_query.get(newtile_templ_ent).ok().cloned() else {
         return paramset.process_tile_despawns(registered_positions, gather_params, newtile_ent, templ_ref, dim, gpos, None, None);
     };
-    let Some(newtile_tags) = paramset.tag_set_query.get(templ_ref.0).ok().map(|tags| tags as *const TagSet) else {
+    let Some(newtile_tags) = paramset.tag_set_query.get(newtile_templ_ent).ok().map(|tags| tags as *const TagSet) else {
         return paramset.process_tile_despawns(registered_positions, gather_params, newtile_ent, templ_ref, dim, gpos, Some(&newtile_delete_others_excp), None);
     };
     unsafe {
@@ -127,7 +139,7 @@ pub fn process_tile_despawns_from_added_delete_others(
     registered_positions: &ImportantRegisteredPositions,
     gather_params: &TileGatheringParamSet,
     newtile_ent: Entity,
-    templ_ref: TemplEntiRef,
+    templ_ref: TileRef,
     dim: DimensionRef,
     gpos: GlobalTilePos,
     newtile_delete_others_excp: &DeleteOtherTilesInSamePos,

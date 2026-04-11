@@ -2,10 +2,11 @@ use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::{ServerState};
 use ac_input::ac_input_actions::AssetReloadAction;
-use common::{common_components::{AssetScoped, SelectedForHotReload}, common_states::*};
+use common::{common_components::{AssetScoped, SelectedForHotReload, TemplEntiRef}, common_states::*, StrId};
 use being::sex::sex_components::Sex;
 use ::being_shared::*;
-use ::sprite_shared::SpriteConfig;
+use ::sprite_shared::{BaseHolderRef, SpriteConfig};
+use sprite_systems::SpriteConfigEntityMap;
 use sprite_animation_shared::sprite_animation_components::AcAnimation;
 use tilemap_shared::GlobalGenSettings;
 
@@ -23,8 +24,8 @@ use tilemap::{
 
 #[allow(unused_parens, )]
 pub fn reload_assets_while_ingame(
+    mut cmd: Commands,
     asset_reload: Single<&Action<AssetReloadAction>>,
-    mut hot_reload_request: ResMut<HotReloadRequest>,
     client_state: Res<State<ServerState>>,
 ) {
     if !***asset_reload {
@@ -35,24 +36,20 @@ pub fn reload_assets_while_ingame(
         warn!(target: "asset_loading", "You cannot hot-reload assets as a client.");
         return;
     }
-    hot_reload_request.requested = true;
+    cmd.trigger(HotReloadRequest);
 }
 
 #[allow(clippy::too_many_arguments)]
 pub fn process_hot_reload_request(
-    mut hot_reload_request: ResMut<HotReloadRequest>,
+    _: On<HotReloadRequest>,
     mut loading_state: ResMut<NextState<AssetLoading>>,
     mut hot_loading: ResMut<NextState<AssetHotReloadState>>,
     mut regpos: ResMut<tilemap_shared::ImportantRegisteredPositions>,
     mut force_all_chunks_despawn_writer: MessageWriter<ForceAllChunksDespawn>,
     client_state: Res<State<ServerState>>,
 ) {
-    if !hot_reload_request.requested {
-        return;
-    }
     if *client_state.get() != ServerState::Running {
         warn!(target: "asset_loading", "You cannot hot-reload assets as a client.");
-        hot_reload_request.requested = false;
         return;
     }
     info!(target: "asset_loading", "Reloading hot-reloadable entities...");
@@ -60,7 +57,6 @@ pub fn process_hot_reload_request(
     force_all_chunks_despawn_writer.write_default();
     regpos.clear();
     loading_state.set(AssetLoading::LoadingAssetsIntoHandles);
-    hot_reload_request.requested = false;
 }
 #[allow(unused_parens, )]
 pub fn on_assets_loaded(
@@ -69,29 +65,45 @@ pub fn on_assets_loaded(
     hot_loading.set(AssetHotReloadState::Stopped);
 }
 
+#[allow(unused_parens)]
+pub fn remap_broken_sprite_config_refs_after_hotreload(
+    mut cmd: Commands,
+    sprites_query: Query<(Entity, &TemplEntiRef), (Without<SpriteConfig>, With<BaseHolderRef>)>,
+    str_id_query: Query<&StrId>,
+    sprite_map: Res<SpriteConfigEntityMap>,
+) {
+    for (sprite_ent, templ_ref) in sprites_query.iter() {
+        let Ok(sprite_id) = str_id_query.get(templ_ref.0) else {
+            continue;
+        };
+        let Ok(new_cfg_ent) = sprite_map.0.get_cloned(&sprite_id) else {
+            continue;
+        };
+        if new_cfg_ent != templ_ref.0 {
+            cmd.entity(sprite_ent).insert(TemplEntiRef(new_cfg_ent));
+        }
+    }
+}
+
 pub fn validate_defs_after_load(
-    mut runtime: ResMut<common::def_db::DefValidationRuntime>,
     config: Res<common::def_db::DefValidationConfig>,
 ) {
-    if !config.enabled || runtime.completed {
+    if !config.enabled {
         return;
     }
     if !common::def_db::expected_types_loaded() {
         return;
     }
 
-    runtime.attempted = true;
     match common::def_db::validate_global_registry() {
         Ok(_) => {
             info!(target: "def_validation", "Def validation passed");
-            runtime.completed = true;
         }
         Err(err) => {
             error!(target: "def_validation", "{err:#}");
             if config.fail_fast {
                 panic!("Def validation failed, aborting startup");
             }
-            runtime.completed = true;
         }
     }
 }
@@ -131,10 +143,6 @@ pub fn sync_hot_reload_markers(
     races: Query<Entity, (With<AssetScoped>, With<Race>, common::AnyDisabling)>,
     sexes: Query<Entity, (With<AssetScoped>, With<Sex>, common::AnyDisabling)>,
 ) {
-    if !selection.is_changed(){
-        return;
-    }
-
     for entity in &tiles {
         if selection.tiles { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
         else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }

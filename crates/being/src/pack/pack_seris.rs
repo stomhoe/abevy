@@ -4,7 +4,7 @@ use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use common::{common_tag_components::TagSet, def_db, log_targets::BEING_TEMPLATE_INIT};
 use tilemap_shared::tilemap_shared_samplers::NormalDistSeri;
 
-use being_shared::WanderSeri;
+use being_shared::{FightOrFlightConfig, FightOrFlightReaction, FightingStyle, RangedFightingStyle, WanderSeri};
 
 pub type SpawnWeight = f32;
 pub type RankDist = NormalDistSeri;
@@ -41,6 +41,8 @@ pub struct PackSeri {
     pub avgpos_rank_based_weight_multiplier: f32,
     pub avgpos_rank_based_weight_multipliers: HashMap<String, f32>,
     pub biome_affinity: HashMap<String, f32>,
+    pub fight_or_flight_config: FightOrFlightConfig,
+    pub fighting_style: FightingStyle,
     pub behavior_on_member_attack: String,
     pub attack_alert_effectiveness_falloff: f32,
     pub counter_regroup_tightness: f32,
@@ -60,6 +62,11 @@ impl Default for PackSeri {
             avgpos_rank_based_weight_multiplier: 1.0,
             avgpos_rank_based_weight_multipliers: HashMap::default(),
             biome_affinity: HashMap::default(),
+            fight_or_flight_config: FightOrFlightConfig {
+                entire_nearby_squad_counterattacks: true,
+                ..FightOrFlightConfig::default()
+            },
+            fighting_style: FightingStyle::default(),
             behavior_on_member_attack: String::default(),
             attack_alert_effectiveness_falloff: 0.05,
             counter_regroup_tightness: 1.5,
@@ -72,6 +79,95 @@ impl Default for PackSeri {
 impl PackSeri {
     pub fn tags_with_id(&self) -> TagSet {
         TagSet::new(self.tags.iter().chain(std::iter::once(&self.id)))
+    }
+
+    fn parse_fight_or_flight_reaction(value: &PackArgValue) -> Option<FightOrFlightReaction> {
+        let reaction = value.as_string()?.to_lowercase();
+        match reaction.as_str() {
+            "counterattack" | "counter_attack" | "counter-attack" => Some(FightOrFlightReaction::Counterattack),
+            "flee" => Some(FightOrFlightReaction::Flee),
+            _ => None,
+        }
+    }
+
+    fn take_fight_or_flight_config(
+        fields: &mut HashMap<String, PackArgValue>,
+        key: &str,
+        default: FightOrFlightConfig,
+    ) -> FightOrFlightConfig {
+        let Some(value) = fields.remove(key) else {
+            return default;
+        };
+        let Some(map) = value.as_map() else {
+            return default;
+        };
+        let mut out = default;
+        if let Some(reaction_value) = map.get("reaction").and_then(Self::parse_fight_or_flight_reaction) {
+            out.reaction = reaction_value;
+        }
+        if let Some(next) = map
+            .get("min_melee_strength_ratio_to_counterattack")
+            .and_then(PackArgValue::as_f32)
+        {
+            out.min_melee_strength_ratio_to_counterattack = next.max(0.0);
+        }
+        if let Some(next) = map.get("curr_hp_ratio_over_my_max_hp_to_start_fleeing") {
+            out.curr_hp_ratio_over_my_max_hp_to_start_fleeing = match next {
+                PackArgValue::Null => None,
+                other => other.as_f32().map(|value| value.clamp(0.0, 1.0)),
+            };
+        }
+        if let Some(next) = map.get("entire_nearby_squad_counterattacks") {
+            if let Some(value) = next.as_bool() {
+                out.entire_nearby_squad_counterattacks = value;
+            }
+        }
+        if let Some(next) = map
+            .get("retaliation_chase_stop_distance_tiles")
+            .and_then(PackArgValue::as_f32)
+        {
+            out.retaliation_chase_stop_distance_tiles = next.max(0.0);
+        }
+        out
+    }
+
+    fn take_fighting_style(
+        fields: &mut HashMap<String, PackArgValue>,
+        key: &str,
+        default: FightingStyle,
+    ) -> FightingStyle {
+        let Some(value) = fields.remove(key) else {
+            return default;
+        };
+        match value {
+            PackArgValue::Str(value) => match value.to_lowercase().as_str() {
+                "melee" => FightingStyle::Melee,
+                "ranged" => FightingStyle::Ranged(RangedFightingStyle::default()),
+                _ => default,
+            },
+            PackArgValue::Map(map) => {
+                let kind = map
+                    .get("kind")
+                    .or_else(|| map.get("mode"))
+                    .and_then(PackArgValue::as_string)
+                    .unwrap_or_else(|| "melee".to_string())
+                    .to_lowercase();
+                match kind.as_str() {
+                    "ranged" => {
+                        let mut ranged = RangedFightingStyle::default();
+                        if let Some(next) = map
+                            .get("min_speed_ratio_over_enemy_to_bother_keep_distance")
+                            .and_then(PackArgValue::as_f32)
+                        {
+                            ranged.min_speed_ratio_over_enemy_to_bother_keep_distance = next.max(0.0);
+                        }
+                        FightingStyle::Ranged(ranged)
+                    }
+                    _ => FightingStyle::Melee,
+                }
+            }
+            _ => default,
+        }
     }
 }
 
@@ -603,6 +699,16 @@ fn parse_pack_seri(content: &str, path: &Path) -> Result<PackSeri, String> {
     seri.avgpos_rank_based_weight_multipliers =
         take_string_f32_map(&mut fields, "avgpos_rank_based_weight_multipliers");
     seri.biome_affinity = take_string_f32_map(&mut fields, "biome_affinity");
+    seri.fight_or_flight_config = PackSeri::take_fight_or_flight_config(
+        &mut fields,
+        "fight_or_flight_config",
+        seri.fight_or_flight_config,
+    );
+    seri.fighting_style = PackSeri::take_fighting_style(
+        &mut fields,
+        "fighting_style",
+        seri.fighting_style,
+    );
     seri.behavior_on_member_attack = fields
         .remove("behavior_on_member_attack")
         .and_then(|value| value.as_string())

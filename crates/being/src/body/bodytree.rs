@@ -201,7 +201,7 @@ pub(crate) fn rec_build_templ_body_tree_nodes(
         BodypartChildOfBodypart { parent_bodypart },
         ChildOf(templ_owner_ent),
         TemplEntiRef(source_part_ent),
-        TemplEntiHashIdRef(source_part_hash),
+        TemplHashIdRef(source_part_hash),
         UserBodypartInstances::default(),
         Templ,
         Name::default(),

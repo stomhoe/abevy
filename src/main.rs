@@ -75,6 +75,7 @@ fn build_filter() -> String {
 
         (log_targets::BEING_CONTROL, DEBUG),
         (log_targets::BODY_BUILD, DEBUG),
+        (log_targets::BODY_HP_SYSTEM, TRACE),
         (log_targets::BODY_ENERGY_SYSTEM, DEBUG),
         (log_targets::GAME_COMMON_SYSTEM, INFO),
         (log_targets::GAME_INIT, DEBUG),
@@ -91,8 +92,9 @@ fn build_filter() -> String {
         (log_targets::DEF_VALIDATION, INFO),
         (log_targets::CONTROL, WARN),
         (log_targets::BEING_TEMPLATE_INIT, INFO),
-        (log_targets::BEING_TEMPLATE_BUILD, DEBUG),
+        (log_targets::BEING_BUILD, DEBUG),
         (log_targets::BEING_SYSTEM, DEBUG),
+        (log_targets::BEING_MELEE_SYSTEMS, WARN),
         (log_targets::BEING_MELEE_DEBUG, TRACE),
         (log_targets::FACTION_SYSTEM, WARN),
         (log_targets::ENTITY_MAP_SYSTEM, DEBUG),

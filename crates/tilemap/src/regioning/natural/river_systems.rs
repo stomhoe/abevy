@@ -4,7 +4,6 @@ use bevy::{
     prelude::*,
 };
 use common::{common_components::HashId, log_targets::RIVER_SYSTEM};
-use game_common::game_common_components::TemplEntiRef;
 use std::collections::VecDeque;
 use tilemap_shared::{ChunkPos, DimensionRef, GlobalGenSettings, GlobalTilePos, HashablePosVec, RegionPos};
 
@@ -19,7 +18,7 @@ use crate::{
         terrprobe_messages::{SampledValuesCollected, TerrProbeJob},
         terrprobe_resources::TerrProbeTemplEntityMap,
     },
-    tile::tile_resources::TileEntityMap,
+    tile::tile_resources::{TileEntityMap, TileRef},
 };
 use super::river_components::{
     RiverDebugData, RiverPlans, RiverProbeRequest, RiverRegisteredOffer,
@@ -468,7 +467,7 @@ pub fn river_structure_building_system(
             .and_then(|v| v.first())
             .map(|s| HashId::hash(s.as_str()))
             .unwrap_or_else(|| HashId::hash("blue"));
-        let Ok(river_tile_ent) = tiles_map.0.get_cloned(river_tile_id) else {
+        let Ok(_river_tile_ent) = tiles_map.0.get_cloned(river_tile_id) else {
             error!(
                 target: RIVER_SYSTEM,
                 "Missing river_tile_id {:?} for cfg {:?}",
@@ -478,7 +477,7 @@ pub fn river_structure_building_system(
             compliances_to_emit.push(compliance);
             continue;
         };
-        let river_tile_ref = TemplEntiRef(river_tile_ent);
+        let river_tile_ref = TileRef(river_tile_id);
 
         let Some(plan) = river_plans.plan(order.dimension_ref, order.region_pos) else {
             error!(
@@ -499,7 +498,7 @@ pub fn river_structure_building_system(
         let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
 
         let claimed_chunks: HashSet<ChunkPos> = order.chunks_pos.iter().copied().collect();
-        let mut tiles_by_chunk: HashMap<ChunkPos, Vec<(GlobalTilePos, TemplEntiRef, Option<tilemap_shared::DeleteOtherTilesInSamePos>)>> =
+        let mut tiles_by_chunk: HashMap<ChunkPos, Vec<(GlobalTilePos, TileRef, Option<tilemap_shared::DeleteOtherTilesInSamePos>)>> =
             HashMap::default();
         for gpos in generated_tiles.iter().copied() {
             let chunk_pos = gpos.to_chunkpos();
@@ -755,6 +754,7 @@ fn generate_river_network_for_region(
             sampled_points,
             &component_of,
             source_component_i,
+            &generated.river_tiles,
             spacing,
             max_steps,
             &trace_params,
@@ -989,6 +989,7 @@ fn trace_downhill_path(
     sampled_points: &HashMap<GlobalTilePos, f32>,
     component_of: &HashMap<GlobalTilePos, usize>,
     source_component_i: usize,
+    existing_river_tiles: &HashSet<GlobalTilePos>,
     spacing: i32,
     max_steps: usize,
     trace_params: &RiverTraceParams,
@@ -1067,6 +1068,9 @@ fn trace_downhill_path(
                         * coast_factor
                         * trace_params.coast_parallel_penalty;
                 }
+                if existing_river_tiles.contains(&next) {
+                    score += 1000.0;
+                }
                 score -= (ox.abs().max(oy.abs()) as f32 - 1.0).max(0.0) * 0.08;
 
                 if best_scored
@@ -1093,6 +1097,9 @@ fn trace_downhill_path(
         };
         visited.insert(next);
         path.push(next);
+        if existing_river_tiles.contains(&next) {
+            break;
+        }
     }
 
     path

@@ -1,6 +1,5 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
-use game_common::game_common_components::TemplEntiRef;
 use tilemap_shared::ChunkGposMask;
 use tilemap_shared::DimensionRef;
 use tilemap_shared::{ChunkPos, GlobalTilePos, RegionPos};
@@ -8,6 +7,7 @@ use crate::chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk;
 
 use ::tilemap_shared::DeleteOtherTilesInSamePos;
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
+use crate::tile::tile_resources::TileRef;
 
 
 
@@ -47,7 +47,7 @@ pub struct SgcPrepareTilesOrder {
 }
 
 
-pub type StructureTilesForChunk = Vec<(GlobalTilePos, TemplEntiRef, Option<DeleteOtherTilesInSamePos>)>;
+pub type StructureTilesForChunk = Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)>;
 
 #[derive(Debug, Default, Clone)]
 pub struct TerrGenDisabledGposForChunks(pub HashMap<ChunkPos, TerrGenBlockedGposMask>);

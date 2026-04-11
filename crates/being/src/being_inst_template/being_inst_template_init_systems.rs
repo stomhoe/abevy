@@ -4,7 +4,7 @@ use common::common_components::*;
 use common::common_id_components::HashId;
 use ::being_shared::*;
 
-use game_common::{Templ, game_common_components::TemplEntiHashIdRef};
+use game_common::{Templ, game_common_components::TemplHashIdRef};
 use ::sprite_shared::*;
 use tilemap_shared::tilemap_shared_samplers::*;
 
@@ -39,13 +39,8 @@ pub fn init_being_templates(
     let mut race_refs_to_insert = Vec::new();
     let mut faction_refs_to_insert = Vec::new();
 
-    let Some(race_emap) = race_emap else {
-        error!("Race entity map is missing");
-        return;
-    };
-
     for template_seri in load_bit_seri_defs() {
-        let str_id = match StrId::new_with_result(template_seri.id.trim(), 0) {
+        let bit_strid = match StrId::new_with_result(template_seri.id.trim(), 0) {
             Ok(str_id) => str_id,
             Err(err) => {
                 error!(
@@ -65,9 +60,8 @@ pub fn init_being_templates(
         };
         let bit_entity = cmd.spawn((
             being_inst_template,
-            str_id.clone(),
-            AddHashIdFromStrId,
-            TemplEntiHashIdRef(HashId::from(str_id.as_str())),
+            bit_strid.clone(),
+            bit_strid.hash_id(),
             Templ
         )).id();
 
@@ -84,7 +78,7 @@ pub fn init_being_templates(
                     error!(
                         target: "being_template_init",
                         "BeingInstTemplate '{}' has invalid fallback_faction '{}': {}",
-                        str_id,
+                        bit_strid,
                         template_seri.fallback_faction,
                         err,
                     );
@@ -100,7 +94,7 @@ pub fn init_being_templates(
                     error!(
                         target: "being_template_init",
                         "BeingInstTemplate '{}' has invalid body id '{}': {}",
-                        str_id,
+                        bit_strid,
                         template_seri.body,
                         err,
                     );
@@ -112,7 +106,7 @@ pub fn init_being_templates(
             } else if body_map.0.get_cloned(&body_str_id).is_ok() {
                 cmd.entity(bit_entity).insert(BodyRef(HashId::from(body_str_id.as_str())));
             } else{
-                error!(target: "being_template_init", "Body tree/sampler '{}' not found for BeingInstTemplate '{}'", body_str_id, str_id);
+                error!(target: "being_template_init", "Body tree/sampler '{}' not found for BeingInstTemplate '{}'", body_str_id, bit_strid);
             }
         }
         if !template_seri.size_variation.is_sentinel() {
@@ -139,6 +133,12 @@ pub fn init_being_templates(
         }
         if !template_seri.wander.is_disabled() {
             cmd.entity(bit_entity).insert(template_seri.wander.clone().sanitized());
+        }
+        if template_seri.fight_or_flight_config != FightOrFlightConfig::default() {
+            cmd.entity(bit_entity).insert(template_seri.fight_or_flight_config);
+        }
+        if template_seri.fighting_style != FightingStyle::default() {
+            cmd.entity(bit_entity).insert(template_seri.fighting_style);
         }
         if !template_seri.whitelisted_spawn_tile_tags.is_empty() {
             cmd.entity(bit_entity).insert(WhitelistedSpawnTileTags(tilemap_shared::being_components::WhitelistedTags(TagSet::new(&template_seri.whitelisted_spawn_tile_tags))));
@@ -173,18 +173,17 @@ pub fn init_being_templates(
                 error!(
                     target: "being_template_init",
                     "BeingTemplate '{}' has invalid race id '{}': {}",
-                    str_id,
+                    bit_strid,
                     template_seri.race,
                     err,
                 );
                 continue;
             }
         };
-        let Ok(race_entity) = race_emap.0.get_cloned(&race_str_id) else {
-            error!(target: "being_template_init", "BeingTemplate '{}' race '{}' not found in RaceEntityMap", str_id, race_str_id);
-            continue;
-        };
-        race_refs_to_insert.push((bit_entity, RaceRef(HashId::from(race_str_id.as_str()))));
+        if race_emap.as_ref().is_some_and(|race_emap| race_emap.0.get_cloned(&race_str_id).is_err()) {
+            warn!(target: "being_template_init", "BeingTemplate '{}' race '{}' was not present in RaceEntityMap during BIT init; keeping RaceRef hash for deferred resolution", bit_strid, race_str_id);
+        }
+        race_refs_to_insert.push((bit_entity, RaceRef(race_str_id.hash_id())));
         cmd.entity(bit_entity).insert(build_being_interaction_zones_with_fallback(
             None,
             template_seri.melee_attack_zone.clone(),
@@ -192,7 +191,7 @@ pub fn init_being_templates(
         ));
 
         if template_seri.health_multiplier < 0.0 {
-            warn!(target: "being_template_init", "BeingTemplate '{}' has negative health multiplier {}, not applying", str_id, template_seri.health_multiplier);
+            warn!(target: "being_template_init", "BeingTemplate '{}' has negative health multiplier {}, not applying", bit_strid, template_seri.health_multiplier);
         }
 
         for (biome_tag, weight) in &template_seri.biome_affinity {
@@ -205,7 +204,7 @@ pub fn init_being_templates(
             let Ok(mut biome_pack_sampler) = biome_pack_samplers.get_mut(biome_ent) else {
                 continue;
             };
-            biome_pack_sampler.add_affinity(HashId::from(str_id.as_str()), *weight);
+            biome_pack_sampler.add_affinity(HashId::from(bit_strid.as_str()), *weight);
         }
     }
     cmd.try_insert_batch(samples);

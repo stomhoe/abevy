@@ -7,12 +7,10 @@
         "mass_kg": 1.0,
         "hp_capacity": 20.0,
         "hp_regen_rate": 0.6,
-        "blood_capacity": 12.0,
         "pain_sensitivity": 0.0,
         "caloric_burn_rate": 4.0,
     },
     depth: "core",
     vital: true,
     bleed_rate: 2.5,
-    caloric_burn_rate_multipier: 1,
 )

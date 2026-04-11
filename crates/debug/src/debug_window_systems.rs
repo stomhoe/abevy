@@ -7,7 +7,7 @@ use ac_input::ac_input_actions::{
 };
 use common::common_states::*;
 use game_common::game_common_states::*;
-use tilemap_shared::{ForceAllChunksDespawn, GlobalGenSettings};
+use tilemap_shared::GlobalGenSettings;
 use tilemap::regioning::regioning_resources::StructureGenerationSettings;
 
 use crate::debug_resources::DubugWindowsVisibility;
@@ -208,6 +208,7 @@ pub fn main_menu_window(
                 window_visible.portals_list = false;
                 window_visible.terrgen_editor = false;
                 window_visible.terrgen_values = false;
+                window_visible.terrain_visualizer = false;
                 window_visible.settings_editor = false;
                 window_visible.tile_details = false;
                 window_visible.chunk_details = false;
@@ -272,6 +273,9 @@ pub fn main_menu_window(
             if ui.button(egui::RichText::new("▦ Terrain noise values map").size(16.0)).clicked() {
                 window_visible.terrgen_values = !window_visible.terrgen_values;
             }
+            if ui.button(egui::RichText::new("⛰ Terrain visualizer").size(16.0)).clicked() {
+                window_visible.terrain_visualizer = !window_visible.terrain_visualizer;
+            }
             if ui.button(egui::RichText::new("🌐 Global generation settings").size(16.0)).clicked() {
                 window_visible.settings_editor = !window_visible.settings_editor;
             }
@@ -289,12 +293,11 @@ pub fn main_menu_window(
 
 #[allow(unused_parens)]
 pub fn hot_reload_window(
+    mut cmd: Commands,
     hot_reload_action_events: Single<&ActionEvents, With<Action<HotReloadAction>>>,
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selection: ResMut<HotReloadSelection>,
-    mut request: ResMut<HotReloadRequest>,
-    mut force_all_chunks_despawn_writer: MessageWriter<ForceAllChunksDespawn>,
 ) {
     if !window_visible.hot_reload_window_open_on_start {
         return;
@@ -332,14 +335,12 @@ pub fn hot_reload_window(
             }
             ui.separator();
             if ui.button("Hot reload").clicked() {
-                request.requested = true;
-                force_all_chunks_despawn_writer.write(ForceAllChunksDespawn);
+                cmd.trigger(HotReloadRequest);
             }
         });
 
     if open && hot_reload_action_events.contains(ActionEvents::START) {
-        request.requested = true;
-        force_all_chunks_despawn_writer.write(ForceAllChunksDespawn);
+        cmd.trigger(HotReloadRequest);
     }
 
     window_visible.hot_reload_window_open_on_start = open;

@@ -156,7 +156,7 @@ fn sample_overlay_texture(index: u32, uv: vec2<f32>) -> vec4<f32> {
         case 5u: { return textureSample(overlay_tex_5, sprite_sampler, sample_uv); }
         case 6u: { return textureSample(overlay_tex_6, sprite_sampler, sample_uv); }
         case 7u: { return textureSample(overlay_tex_7, sprite_sampler, sample_uv); }
-        default: { return vec4<f32>(1.0, 0.0, 1.0, 1.0); }
+        default: { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }
     }
 }
 
@@ -206,9 +206,9 @@ fn sample_tile_color(tile: vec2<i32>, uv: vec2<f32>, world_uv: vec2<f32>, tint: 
     if !is_mask {
         return base;
     }
-    // Mask matched but tile has no overlay: keep base color unchanged.
+    // Mask matched but tile has no overlay: hide the pixel instead of showing the mask color.
     if !data.has_overlay {
-        return base;
+        return vec4<f32>(0.0, 0.0, 0.0, 0.0);
     }
     let overlay = apply_overlay_tint(data, sample_overlay_only(data, world_uv));
     let composed_rgb = mix(base.rgb, overlay.rgb, clamp(overlay.a, 0.0, 1.0));

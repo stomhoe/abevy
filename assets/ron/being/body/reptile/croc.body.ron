@@ -3,7 +3,7 @@
     name: "Croc0 Body",
     tags: ["quadruped"],
     distributed_totals: {
-        "mass_kg": 180.0,
+        "mass_kg": 400.0,
         "hp_capacity": 508.0,
         "hp_regen_rate": 24.2,
         "blood_capacity": 297.5,

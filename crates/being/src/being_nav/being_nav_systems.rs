@@ -1,6 +1,7 @@
 
 use crate::being_messages::NavOrder;
 use ::being_shared::*;
+use crate::body::BodySums;
 use camera::camera_components::CameraTarget;
 use bevy_northstar::{CardinalGrid, grid::GridSettingsBuilder, nav::Nav};
 use ::tilemap_shared::*;
@@ -195,6 +196,7 @@ fn choose_flee_target_pos(
     being_dim: ::tilemap_shared::DimensionRef,
     being_gpos: GlobalTilePos,
     flee_from_gpos: GlobalTilePos,
+    _desired_distance_tiles: f32,
     avoid_tile_tags: &BlacklistedTags,
 ) -> Option<(GlobalTilePos, i32, u8)> {
     let empty_whitelist = WhitelistedTags::default();
@@ -246,8 +248,8 @@ fn choose_flee_target_pos(
             return None;
         }
 
-        let base_dist = (being_gpos.0 - flee_from_gpos.0).abs().element_sum();
-        let candidate_dist = (candidate.0 - flee_from_gpos.0).abs().element_sum();
+        let base_dist = (being_gpos.0 - flee_from_gpos.0).abs().element_sum() as f32;
+        let candidate_dist = (candidate.0 - flee_from_gpos.0).abs().element_sum() as f32;
         if candidate_dist <= base_dist {
             return None;
         }
@@ -287,11 +289,11 @@ fn choose_flee_target_pos(
             }
         }
 
-        let mut score = candidate_dist * 28
-            + dist_gain * 80
+        let mut score = candidate_dist as i32 * 28
+            + dist_gain as i32 * 80
             + (open_exits as i32) * 26
             + forward_run * 18;
-        if dist_gain < 0 {
+        if dist_gain < 0.0 {
             score -= 220;
         }
         if open_exits <= 1 {
@@ -417,50 +419,45 @@ pub fn update_goto_from_fleeing(
     mut writer: MessageWriter<NavOrder>,
     mut blocking_tiles: BlockingTileParamSet,
     flee_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, Has<DoAvoidBlacklistedSpawnTilesForWander>, ), (With<Being>, LocalAiControlled, )>,
-    flee_from_query: Query<(&::tilemap_shared::DimensionRef, ), (With<Being>, )>,
+    body_weight_query: Query<&BodyWeightSum>,
+    held_body_query: Query<&HeldBody>,
+    body_sums_query: Query<&BodySums>,
     wander_cfg_query: Query<&WanderSeri>,
     blacklisted_spawn_tile_tags_query: Query<&::tilemap_shared::BlacklistedSpawnTileTags>,
     bit_map: Res<BeingInstTemplateEntityMap>,
     race_map: Res<RaceEntityMap>,
     mut messages: Local<Vec<NavOrder>>,
 ) {
-    const FLEE_STOP_DISTANCE_TILES: i32 = 20;
     for (being_ent, &being_dim, fleeing, member_of, has_avoid_blacklisted_spawn_tiles, ) in flee_query.iter() {
         let Ok(&being_gpos) = blocking_tiles.gpos_query.get(being_ent) else {
             continue;
         };
-        let Ok((flee_from_dim, )) = flee_from_query.get(fleeing.flee_from()) else {
-            cmd.entity(being_ent).try_remove::<Fleeing>();
-            messages.push(NavOrder::new(
-                being_ent,
-                255,
-                NavOrderSource::Fleeing,
-                None,
-            ));
-            continue;
-        };
-        let Ok(&flee_from_gpos) = blocking_tiles.gpos_query.get(fleeing.flee_from()) else {
-            cmd.entity(being_ent).try_remove::<Fleeing>();
-            messages.push(NavOrder::new(
-                being_ent,
-                255,
-                NavOrderSource::Fleeing,
-                None,
-            ));
-            continue;
-        };
-        if *flee_from_dim != being_dim {
-            cmd.entity(being_ent).try_remove::<Fleeing>();
-            messages.push(NavOrder::new(
-                being_ent,
-                255,
-                NavOrderSource::Fleeing,
-                None,
-            ));
-            continue;
+        let mut primary_threat: Option<(Entity, GlobalTilePos, f32)> = None;
+        for threat_ent in fleeing.threats.iter().copied() {
+            let Ok(&flee_from_gpos) = blocking_tiles.gpos_query.get(threat_ent) else {
+                continue;
+            };
+            let strength = body_weight_query.get(threat_ent).map_or(0.0, |weight_sum| weight_sum.0.max(0.0))
+                + held_body_query
+                    .get(threat_ent)
+                    .ok()
+                    .and_then(|held_body| body_sums_query.get(held_body.entity()).ok())
+                    .map_or(0.0, |body_sums| body_sums.current_hp.max(0.0));
+            let dist = (being_gpos.0 - flee_from_gpos.0).abs().element_sum().max(1) as f32;
+            let threat_score = strength / dist;
+            if primary_threat
+                .map(|(_, _, best_score)| threat_score > best_score)
+                .unwrap_or(true)
+            {
+                primary_threat = Some((threat_ent, flee_from_gpos, threat_score));
+            }
         }
+        let Some((primary_threat_ent, flee_from_gpos, _)) = primary_threat else {
+            cmd.entity(being_ent).try_remove::<Fleeing>();
+            continue;
+        };
         let flee_dist = (being_gpos.0 - flee_from_gpos.0).abs().element_sum();
-        if flee_dist >= FLEE_STOP_DISTANCE_TILES {
+        if (flee_dist as f32) >= fleeing.desired_distance_tiles {
             cmd.entity(being_ent).try_remove::<Fleeing>();
             messages.push(NavOrder::new(
                 being_ent,
@@ -488,9 +485,11 @@ pub fn update_goto_from_fleeing(
             being_dim,
             being_gpos,
             flee_from_gpos,
+            fleeing.desired_distance_tiles,
             &avoid_tile_tags,
         ) else {
             cmd.entity(being_ent).try_remove::<Fleeing>();
+            cmd.entity(being_ent).try_insert(Hunting::new(primary_threat_ent));
             messages.push(NavOrder::new(
                 being_ent,
                 255,
@@ -513,7 +512,7 @@ pub fn update_goto_from_fleeing(
             being_ent,
             255,
             NavOrderSource::Fleeing,
-            Some(GoTo::new(target_pos, 0.0)),
+            Some(GoTo::new(target_pos, fleeing.desired_distance_tiles)),
         ));
     }
     writer.write_batch(messages.drain(..));

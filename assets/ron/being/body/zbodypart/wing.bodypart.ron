@@ -7,7 +7,6 @@
         "mass_kg": 1.5,
         "hp_capacity": 16.0,
         "hp_regen_rate": 0.8,
-        "blood_capacity": 8.0,
         "fly_strength": 1.4,
         "pain_sensitivity": 1.0,
         "caloric_burn_rate": 1.4,
@@ -15,5 +14,4 @@
     depth: "surface",
     vital: false,
     bleed_rate: 0.7,
-    caloric_burn_rate_multipier: 1,
 )

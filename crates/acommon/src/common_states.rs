@@ -72,7 +72,5 @@ impl Default for HotReloadSelection {
     }
 }
 
-#[derive(Resource, Debug, Default, Clone)]
-pub struct HotReloadRequest {
-    pub requested: bool,
-}
+#[derive(Event, Debug, Default, Clone, Copy)]
+pub struct HotReloadRequest;

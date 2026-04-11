@@ -1,6 +1,5 @@
 sprite bear {
 name Bear
-z 1000
 mapped_anims {
     south idle g _ = bear_s_idle
     south move g _ = bear_s_move

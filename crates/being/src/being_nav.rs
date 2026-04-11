@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 use std::time::Duration;
 
-use game_common::HostSystems;
+use game_common::{HostSystems, game_common::SimRunningSystems};
 use superstate::superstate_plugin;
 use tilemap::chunking::{despawn_chunks, rem_outofrange_chunks_from_activators};
 
@@ -37,15 +37,17 @@ pub fn plugin(app: &mut App) {
             (
                 ensure_loaded_beings_have_nav_state,
                 update_being_lod_levels_from_camera.run_if(on_timer(Duration::from_millis(200))),
+                sync_ai_nav_grids,
+            ),
+            (
                 update_goto_from_chasing,
                 update_goto_from_fleeing,
                 wander_behavior,
                 apply_nav_orders.run_if(on_message::<NavOrder>),
                 clear_nav_outputs_for_beings_without_nav_state,
-                sync_ai_nav_grids,
                 rebuild_goto_nav_plans,
                 goto_behavior,
-            ),
+            ).in_set(SimRunningSystems),
 
             make_chunk_snapshot_for_hunter
                 .after(on_chunk_with_beings_attempt_unload_system)
@@ -59,10 +61,10 @@ pub fn plugin(app: &mut App) {
         (
             cleanup_player_chase_chunk_retention,
             retain_chunks_for_player_faction_chasers,
-        )
-            .chain()
+        ).chain()
             .after(rem_outofrange_chunks_from_activators)
             .before(despawn_chunks)
             .in_set(HostSystems)
+            .in_set(SimRunningSystems)
     );
 }

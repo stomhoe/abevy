@@ -5,7 +5,7 @@ use bevy_replicon::prelude::AppRuleExt;
 use ac_input::player_action_requests::LocalItemPickupRequest;
 use common::common_states::AssetLoading;
 use game_common::HostSystems;
-use game_common::game_common::GameplaySystems;
+use game_common::game_common::{GameplaySystems, SimRunningSystems};
 use ::item_shared::*;
 
 use crate::item_init_systems::*;
@@ -29,11 +29,16 @@ pub fn plugin(app: &mut App) {
                     .run_if(on_message::<LocalItemPickupRequest>)
                     .in_set(HostSystems)
                 ,
-                readjust_child_of_for_items,
                 sync_items_at_gpos,
+            ).in_set(ItemSystems).in_set(SimRunningSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                readjust_child_of_for_items,
                 on_being_held_items_changed,
                 generate_items_on_deaths,
-            ).in_set(GameplaySystems),
+            ).in_set(ItemSystems).in_set(GameplaySystems),
         )
         .add_message::<ItemOperation>()
         .replicate::<Item>()

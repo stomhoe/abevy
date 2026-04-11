@@ -7,7 +7,6 @@
         "mass_kg": 1.1,
         "hp_capacity": 18.0,
         "hp_regen_rate": 0.8,
-        "blood_capacity": 9.0,
         "swim_strength": 0.9,
         "manip_dex": 0.8,
         "manip_str": 0.8,
@@ -17,5 +16,4 @@
     depth: "surface",
     vital: false,
     bleed_rate: 0.8,
-    caloric_burn_rate_multipier: 1,
 )

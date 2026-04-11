@@ -7,7 +7,6 @@
         "mass_kg": 1.4,
         "hp_capacity": 14.0,
         "hp_regen_rate": 0.8,
-        "blood_capacity": 7.5,
         "manip_dex": 0.2,
         "manip_str": 0.5,
         "pain_sensitivity": 1.2,
@@ -19,5 +18,4 @@
     depth: "surface",
     vital: false,
     bleed_rate: 0.6,
-    caloric_burn_rate_multipier: 1,
 )

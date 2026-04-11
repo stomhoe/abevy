@@ -1,11 +1,10 @@
-use being::body::{BodyOf, BodySums};
+use being::body::*;
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::prelude::*;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 use modifier_shared::modifier_components::{AppliedModifiers, CurrEffectiveValue, ModifierTarget};
 use modifier_shared::modifier_types::{ManipulationDexterity, ManipulationStrength};
 use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker, resolve_modifier_component};
-use ::being_shared::*;
 
 
 #[allow(unused_parens, )]
@@ -29,10 +28,11 @@ pub fn update_body_manipulation_totals(
             continue;
         }
         let body_ent = part_of.parent();
-        let mut part_dex = 0.0;
-        let mut part_str = 0.0;
         let mut effects = EntityHashSet::default();
         collect_applied_modifier_entities(&mut effects, part_ent, part_templ_ref, &part_applied_mods_query);
+
+        let mut part_dex = 0.0;
+        let mut part_str = 0.0;
         for mod_ent in effects.iter() {
             let Ok((entity, target, templ_ref, )) = mods.get(*mod_ent) else { continue };
             if target.0 != part_ent

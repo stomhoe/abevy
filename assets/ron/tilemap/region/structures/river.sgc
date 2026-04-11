@@ -8,17 +8,17 @@ sgc {
     max_being_count = 40
     max_per_region = 1
     args {
-        river_tile_id = blue
+        river_tile_id = ocean
         river_land_threshold = -0.05
         river_min_island_area_chunks = 225
         river_source_min_inlandness = 0.20
         river_source_hash_stride = 7
-        river_source_mouth_min_distance = 20
-        river_source_min_separation_steps = 10
+        river_source_mouth_min_distance = 28
+        river_source_min_separation_steps = 16
         river_main_half_width_start = 1
         river_main_half_width_end = 3
-        river_worm_length = 420
-        river_max_sources = 8
+        river_worm_length = 560
+        river_max_sources = 4
         river_mouth_max_inlandness = 0.02
         river_trace_neighbor_radius = 2
         river_directional_inertia = 0.45

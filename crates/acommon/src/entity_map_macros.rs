@@ -47,6 +47,7 @@ macro_rules! __entity_map_emit_shared_items {
         despawn_trigger: $despawn_trigger:ty,
         id_type: $id_type:ty,
         holder_visibility: $holder_visibility:path
+        $(, templ_enti_ref_sync: ($($templ_enti_ref_sync:ty),* $(,)?))?
         $(, ref_reflect: $ref_reflect:ident)?
         $(,)?
     ) => {
@@ -189,8 +190,8 @@ macro_rules! __entity_map_emit_shared_items {
                 mut cmd: Commands,
                 emap: Option<Res<[<$main_component EntityMap>]>>,
                 query: Query<
-                    (Entity, &common::common_components::TemplEntiHashIdRef, Option<&common::common_components::TemplEntiRef>, ),
-                    (With<$main_component>, Or<(Changed<common::common_components::TemplEntiHashIdRef>, Added<$main_component>)>, ),
+                    (Entity, &common::common_components::TemplHashIdRef, Option<&common::common_components::TemplEntiRef>, ),
+                    (Or<(Changed<common::common_components::TemplHashIdRef>, Added<$main_component>)>, ),
                 >,
             ) {
                 let Some(emap) = emap else {
@@ -204,6 +205,114 @@ macro_rules! __entity_map_emit_shared_items {
                         continue;
                     }
                     cmd.entity(entity).insert(common::common_components::TemplEntiRef(templ_ent));
+                }
+            }
+
+            $(
+                $crate::__entity_map_emit_instance_templ_enti_ref_sync_system!(
+                    main_component: $main_component,
+                    abbreviation: $abbreviation,
+                    entity_map: [<$main_component EntityMap>],
+                    target: $target,
+                    templ_enti_ref_sync_filters: ($($templ_enti_ref_sync),*),
+                );
+            )?
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! __entity_map_emit_instance_templ_enti_ref_sync_system {
+    (
+        main_component: $main_component:ident,
+        abbreviation: $abbreviation:ident,
+        entity_map: $entity_map:ty,
+        target: $target:expr,
+        templ_enti_ref_sync_filters: (),
+    ) => {
+        paste::paste! {
+            #[allow(unused_parens, )]
+            pub fn [<sync_ $abbreviation:snake _instance_templ_enti_ref_from_map>](
+                mut cmd: Commands,
+                emap: Option<Res<$entity_map>>,
+                query: Query<
+                    (Entity, &[<$abbreviation Ref>], Option<&common::common_components::TemplEntiRef>, ),
+                    (
+                        Or<(Changed<[<$abbreviation Ref>]>, Added<$main_component>)>,
+                        With<$main_component>,
+                        Without<game_common::game_common_components::Templ>,
+                    ),
+                >,
+            ) {
+                let Some(emap) = emap else {
+                    return;
+                };
+                for (entity, ref_component, templ_ref) in query.iter() {
+                    let Ok(templ_ent) = emap.0.get_cloned(ref_component.0) else {
+                        continue;
+                    };
+                    if templ_ref.map(|templ_ref| templ_ref.0 == templ_ent).unwrap_or(false) {
+                        continue;
+                    }
+                    cmd.entity(entity).insert(common::common_components::TemplEntiRef(templ_ent));
+                    if !$target.is_empty() {
+                        trace!(
+                            target: $target,
+                            "Synced {} entity {:?} to template entity {:?} via {:?}",
+                            stringify!($main_component),
+                            entity,
+                            templ_ent,
+                            ref_component.0,
+                        );
+                    }
+                }
+            }
+        }
+    };
+    (
+        main_component: $main_component:ident,
+        abbreviation: $abbreviation:ident,
+        entity_map: $entity_map:ty,
+        target: $target:expr,
+        templ_enti_ref_sync_filters: ($first_filter:ty $(, $rest_filters:ty)*),
+    ) => {
+        paste::paste! {
+            #[allow(unused_parens, )]
+            pub fn [<sync_ $abbreviation:snake _instance_templ_enti_ref_from_map>](
+                mut cmd: Commands,
+                emap: Option<Res<$entity_map>>,
+                query: Query<
+                    (Entity, &[<$abbreviation Ref>], Option<&common::common_components::TemplEntiRef>, ),
+                    (
+                        Or<(Changed<[<$abbreviation Ref>]>, Added<$main_component>)>,
+                        With<$main_component>,
+                        Without<game_common::game_common_components::Templ>,
+                        $first_filter,
+                        $($rest_filters, )*
+                    ),
+                >,
+            ) {
+                let Some(emap) = emap else {
+                    return;
+                };
+                for (entity, ref_component, templ_ref) in query.iter() {
+                    let Ok(templ_ent) = emap.0.get_cloned(ref_component.0) else {
+                        continue;
+                    };
+                    if templ_ref.map(|templ_ref| templ_ref.0 == templ_ent).unwrap_or(false) {
+                        continue;
+                    }
+                    cmd.entity(entity).insert(common::common_components::TemplEntiRef(templ_ent));
+                    if !$target.is_empty() {
+                        trace!(
+                            target: $target,
+                            "Synced {} entity {:?} to template entity {:?} via {:?}",
+                            stringify!($main_component),
+                            entity,
+                            templ_ent,
+                            ref_component.0,
+                        );
+                    }
                 }
             }
         }
@@ -289,6 +398,7 @@ macro_rules! define_entity_map_systems {
         entity_prefix: $entity_prefix:expr,
         despawn_trigger: $despawn_trigger:ty,
         id_type: $id_type:ty
+        $(, templ_enti_ref_sync: ($($templ_enti_ref_sync:ty),* $(,)?))?
         $(, ref_reflect: $ref_reflect:ident)?
         $(,)?
     ) => {
@@ -301,6 +411,7 @@ macro_rules! define_entity_map_systems {
             despawn_trigger: $despawn_trigger,
             id_type: $id_type,
             holder_visibility: Visibility::Hidden
+            $(, templ_enti_ref_sync: ($($templ_enti_ref_sync),*))?
             $(, ref_reflect: $ref_reflect)?
         );
 
@@ -342,6 +453,7 @@ macro_rules! define_entity_map_systems {
         despawn_trigger: $despawn_trigger:ty,
         id_type: $id_type:ty,
         assets: [$(($seri_type:ty, $dynamic_key:literal, $ron_suffix:literal)),+]
+        $(, templ_enti_ref_sync: ($($templ_enti_ref_sync:ty),* $(,)?))?
         $(, ref_reflect: $ref_reflect:ident)?
         $(,)?
     ) => {
@@ -359,6 +471,7 @@ macro_rules! define_entity_map_systems {
             despawn_trigger: $despawn_trigger,
             id_type: $id_type,
             holder_visibility: Visibility
+            $(, templ_enti_ref_sync: ($($templ_enti_ref_sync),*))?
             $(, ref_reflect: $ref_reflect)?
         );
 
@@ -419,6 +532,7 @@ macro_rules! define_entity_map_systems_no_replicate {
         entity_prefix: $entity_prefix:expr,
         despawn_trigger: $despawn_trigger:ty,
         id_type: $id_type:ty
+        $(, templ_enti_ref_sync: ($($templ_enti_ref_sync:ty),* $(,)?))?
         $(, ref_reflect: $ref_reflect:ident)?
         $(,)?
     ) => {
@@ -431,6 +545,7 @@ macro_rules! define_entity_map_systems_no_replicate {
             despawn_trigger: $despawn_trigger,
             id_type: $id_type,
             holder_visibility: Visibility
+            $(, templ_enti_ref_sync: ($($templ_enti_ref_sync),*))?
             $(, ref_reflect: $ref_reflect)?
         );
 
@@ -459,6 +574,7 @@ macro_rules! define_entity_map_systems_no_replicate {
         despawn_trigger: $despawn_trigger:ty,
         id_type: $id_type:ty,
         assets: [$(($seri_type:ty, $dynamic_key:literal, $ron_suffix:literal)),+]
+        $(, templ_enti_ref_sync: ($($templ_enti_ref_sync:ty),* $(,)?))?
         $(, ref_reflect: $ref_reflect:ident)?
         $(,)?
     ) => {
@@ -476,6 +592,7 @@ macro_rules! define_entity_map_systems_no_replicate {
             despawn_trigger: $despawn_trigger,
             id_type: $id_type,
             holder_visibility: Visibility
+            $(, templ_enti_ref_sync: ($($templ_enti_ref_sync),*))?
             $(, ref_reflect: $ref_reflect)?
         );
 

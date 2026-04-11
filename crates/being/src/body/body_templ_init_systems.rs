@@ -173,7 +173,6 @@ pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
     let mut sum_w_mass = 0.0;
     let mut sum_w_hp = 0.0;
     let mut sum_w_regen = 0.0;
-    let mut sum_w_blood = 0.0;
     let mut sum_w_walk_strength = 0.0;
     let mut sum_w_swim_strength = 0.0;
     let mut sum_w_fly_strength = 0.0;
@@ -186,7 +185,6 @@ pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
     let mut forced_mass_kg = 0.0;
     let mut forced_hp = 0.0;
     let mut forced_regen = 0.0;
-    let mut forced_blood = 0.0;
     let mut forced_walk_strength = 0.0;
     let mut forced_swim_strength = 0.0;
     let mut forced_fly_strength = 0.0;
@@ -205,8 +203,6 @@ pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
         if hp > 0.0 { forced_hp += hp; } else { sum_w_hp += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_HP_CAPACITY); }
         let regen = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_HP_REGEN_RATE);
         if regen > 0.0 { forced_regen += regen; } else { sum_w_regen += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_HP_REGEN_RATE); }
-        let blood = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_BLOOD_CAPACITY);
-        if blood > 0.0 { forced_blood += blood; } else { sum_w_blood += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_BLOOD_CAPACITY); }
         let walk_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_WALK_STRENGTH);
         if walk_strength > 0.0 { forced_walk_strength += walk_strength; } else { sum_w_walk_strength += get_stat_value_from_hashid_map(weights, BodypartStat::STAT_WALK_STRENGTH); }
         let swim_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_SWIM_STRENGTH);
@@ -228,7 +224,6 @@ pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
     let free_mass_kg = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_MASS_KG) - forced_mass_kg).max(0.0);
     let free_hp = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_HP_CAPACITY) - forced_hp).max(0.0);
     let free_regen = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_HP_REGEN_RATE) - forced_regen).max(0.0);
-    let free_blood = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_BLOOD_CAPACITY) - forced_blood).max(0.0);
     let free_walk_strength = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_WALK_STRENGTH) - forced_walk_strength).max(0.0);
     let free_swim_strength = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_SWIM_STRENGTH) - forced_swim_strength).max(0.0);
     let free_fly_strength = (get_stat_value_from_hashid_map(&totals.0, BodypartStat::STAT_FLY_STRENGTH) - forced_fly_strength).max(0.0);
@@ -274,12 +269,6 @@ pub(crate) fn distribute_budgets_among_bodyparts_based_on_weights_and_forcings(
         if regen > 0.0 {
             spawned_modifiers += 1;
             cmd.spawn((ModifierTarget(part), BaseValue(regen), CurrEffectiveValue(regen), ApplyMode::Add, HitpointRegenRate, ChildOf(part)));
-        }
-        let forced_blood_capacity = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_BLOOD_CAPACITY);
-        let blood = forced_or_weighted(forced_blood_capacity, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_BLOOD_CAPACITY), free_blood, sum_w_blood);
-        if blood > 0.0 {
-            spawned_modifiers += 1;
-            cmd.spawn((ModifierTarget(part), BaseValue(blood), CurrEffectiveValue(blood), ApplyMode::Add, BloodCapacity, ChildOf(part)));
         }
         let forced_walk_strength = get_stat_value_from_hashid_map(forced, BodypartStat::STAT_WALK_STRENGTH);
         let walk_strength = forced_or_weighted(forced_walk_strength, get_stat_value_from_hashid_map(weights, BodypartStat::STAT_WALK_STRENGTH), free_walk_strength, sum_w_walk_strength);

@@ -1,4 +1,4 @@
-use game_common::game_common_components::{ TemplEntiRef};
+use crate::tile::tile_resources::TileRef;
 
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use ::tilemap_shared::*;
@@ -58,7 +58,7 @@ impl Default for ClaimList {
 #[derive(Component, Debug, Default, Clone)]
 pub struct CountsOfSgcs (pub EntityHashMap<u32>,);
 
-pub type TilesFromBuilder = Vec<(GlobalTilePos, TemplEntiRef, Option<DeleteOtherTilesInSamePos>)>;
+pub type TilesFromBuilder = Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)>;
 
 #[derive(Debug, Clone)]
 pub struct PendingBuildOrder {
@@ -179,7 +179,7 @@ impl RegionPlannedTiles {
         self.pending_chunks.remove(&chunk_pos);
         self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
     }
-    pub fn planned_tiles_at_gpos(&self, gpos: GlobalTilePos) -> Option<&[(GlobalTilePos, TemplEntiRef, Option<DeleteOtherTilesInSamePos>)]> {
+    pub fn planned_tiles_at_gpos(&self, gpos: GlobalTilePos) -> Option<&[(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)]> {
         let chunk_pos = gpos.to_chunkpos();
         self.tiles_to_spawn_on_chunk_load_map.get(&chunk_pos).map(Vec::as_slice)
     }

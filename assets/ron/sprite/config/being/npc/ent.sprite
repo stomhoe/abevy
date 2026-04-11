@@ -1,6 +1,5 @@
 sprite ent {
 name Ent
-z 1000
 mapped_anims {
     south idle g _ = ent_s_idle
     south move g _ = ent_s_move

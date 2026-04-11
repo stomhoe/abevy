@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::{ClientState, };
 use common::common_states::*;
 use game_common::game_common::*;
+use tilemap::terrain::TerrainProbeSystems;
 
 use crate::game_init_systems::*;
 
@@ -16,7 +17,7 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
-        (load_game_init_settings, server_or_singleplayer_setup).chain()
+        (load_game_init_settings.after(TerrainProbeSystems), server_or_singleplayer_setup).chain()
         .run_if(
             in_state(ClientState::Disconnected)
         )

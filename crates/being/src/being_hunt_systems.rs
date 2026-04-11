@@ -17,6 +17,12 @@ use tilemap_shared::GlobalTilePos;
 const HUNTERS_PER_PREY_TARGET: usize = 4;
 const HUNT_RETARGET_HYSTERESIS_TILES: f32 = 3.0;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum PredatorCfgSource {
+    Bit(BitRef),
+    Race(RaceRef),
+}
+
 fn health_ratio(
     being: Entity,
     bodies_query: &Query<&HeldBody, >,
@@ -40,20 +46,93 @@ fn resolve_predator_cfg(
     bit_map: &BeingInstTemplateEntityMap,
     race_map: &RaceEntityMap,
     bit_cfg_query: &Query<&PredatorCfg>,
-) -> Option<PredatorCfg> {
+) -> Option<(PredatorCfg, PredatorCfgSource)> {
     if let Some(bit_ref) = bit_ref
         && let Ok(bit_ent) = bit_map.0.get_cloned(bit_ref.0)
         && let Ok(cfg) = bit_cfg_query.get(bit_ent)
     {
-        return Some(cfg.clone());
+        return Some((cfg.clone(), PredatorCfgSource::Bit(*bit_ref)));
     }
     if let Some(race_ref) = race_ref
         && let Ok(race_ent) = race_map.0.get_cloned(race_ref.0)
         && let Ok(cfg) = bit_cfg_query.get(race_ent)
     {
-        return Some(cfg.clone());
+        return Some((cfg.clone(), PredatorCfgSource::Race(*race_ref)));
     }
     None
+}
+
+fn prey_matches_predator_cfg(
+    prey_ent: Entity,
+    predator_cfg: &PredatorCfg,
+    predator_cfg_source: PredatorCfgSource,
+    bit_ref_query: &Query<&BitRef, ()>,
+    race_ref_query: &Query<&RaceRef, ()>,
+    tagset_query: &Query<&TagSet, >,
+    bit_map: &BeingInstTemplateEntityMap,
+    race_map: &RaceEntityMap,
+) -> bool {
+    if let Ok(prey_tags) = tagset_query.get(prey_ent)
+        && predator_cfg.do_not_hunt_tags.intersects(prey_tags)
+    {
+        return true;
+    }
+
+    if predator_cfg.do_not_hunt_same_kind {
+        match predator_cfg_source {
+            PredatorCfgSource::Bit(predator_bit_ref) => {
+                if bit_ref_query.get(prey_ent).ok().copied() == Some(predator_bit_ref) {
+                    return true;
+                }
+            }
+            PredatorCfgSource::Race(predator_race_ref) => {
+                if let Some(prey_race_ref) = race_ref_query.get(prey_ent).ok().copied()
+                    && prey_race_ref == predator_race_ref
+                {
+                    return true;
+                }
+                let Some(prey_bit_ref) = bit_ref_query.get(prey_ent).ok().copied() else {
+                    return false;
+                };
+                let Ok(prey_bit_ent) = bit_map.0.get_cloned(prey_bit_ref.0) else {
+                    return false;
+                };
+                let Ok(prey_race_ref) = race_ref_query.get(prey_bit_ent) else {
+                    return false;
+                };
+                if *prey_race_ref == predator_race_ref {
+                    return true;
+                }
+            }
+        }
+    }
+
+    let prey_bit_ref = bit_ref_query.get(prey_ent).ok();
+    if let Some(prey_bit_ref) = prey_bit_ref
+        && let Ok(prey_bit_ent) = bit_map.0.get_cloned(prey_bit_ref.0)
+        && let Ok(prey_bit_tags) = tagset_query.get(prey_bit_ent)
+        && predator_cfg.do_not_hunt_tags.intersects(prey_bit_tags)
+    {
+        return true;
+    }
+
+    let mut prey_race_ref = race_ref_query.get(prey_ent).ok().copied();
+    if prey_race_ref.is_none()
+        && let Some(prey_bit_ref) = prey_bit_ref
+        && let Ok(prey_bit_ent) = bit_map.0.get_cloned(prey_bit_ref.0)
+        && let Ok(bit_race_ref) = race_ref_query.get(prey_bit_ent)
+    {
+        prey_race_ref = Some(*bit_race_ref);
+    }
+    if let Some(prey_race_ref) = prey_race_ref
+        && let Ok(prey_race_ent) = race_map.0.get_cloned(prey_race_ref.0)
+        && let Ok(prey_race_tags) = tagset_query.get(prey_race_ent)
+        && predator_cfg.do_not_hunt_tags.intersects(prey_race_tags)
+    {
+        return true;
+    }
+
+    false
 }
 
 fn euclidean_dist(a: GlobalTilePos, b: GlobalTilePos) -> f32 {
@@ -163,10 +242,32 @@ pub fn update_predator_hunting_targets(
         }
         let bit_ref = params.bit_ref_query.get(pred_ent).ok();
         let race_ref = params.race_ref_query.get(pred_ent).ok();
-        let Some(predator_cfg) = resolve_predator_cfg(bit_ref, race_ref, &params.bit_map, &params.race_map, &params.predator_cfg_query) else {
+        let Some((predator_cfg, predator_cfg_source)) = resolve_predator_cfg(bit_ref, race_ref, &params.bit_map, &params.race_map, &params.predator_cfg_query) else {
             cmd.entity(pred_ent).try_remove::<Hunting>();
             continue;
         };
+        if let Some(hunting) = hunting.filter(|hunting| hunting.retaliating) {
+            let Ok((pred_dim, pred_pos)) = params.pos_dim_query.get(pred_ent) else {
+                cmd.entity(pred_ent).try_remove::<(Hunting, Chasing)>();
+                continue;
+            };
+            let current_prey = hunting.prey;
+            let Some(pred_dim_ent) = resolve_dim_ent(pred_dim) else {
+                cmd.entity(pred_ent).try_remove::<(Hunting, Chasing)>();
+                continue;
+            };
+            let Some((current_prey_dim, current_prey_pos)) = params.pos_dim_query.get(current_prey).ok() else {
+                cmd.entity(pred_ent).try_remove::<(Hunting, Chasing)>();
+                continue;
+            };
+            if *current_prey_dim != *pred_dim
+                || !grids.can_pathfind_between(*pred_pos, *current_prey_pos, pred_dim_ent)
+                || euclidean_dist(*pred_pos, *current_prey_pos) >= hunting.retaliation_stop_distance_tiles.max(0.0)
+            {
+                cmd.entity(pred_ent).try_remove::<(Hunting, Chasing)>();
+            }
+            continue;
+        }
         let hp = health_ratio(pred_ent, &params.bodies_query, &params.body_health_query);
         let hunger_ratio = body_condition.hunger_ratio.max(0.0);
         let min_hunger_ratio_to_hunt = predator_cfg.min_hunger_to_hunt.clamp(0.0, 1.0);
@@ -192,10 +293,17 @@ pub fn update_predator_hunting_targets(
             if prey_dim != pred_dim {
                 continue;
             }
-            if let Ok(prey_tags) = params.tagset_query.get(prey_ent) {
-                if predator_cfg.do_not_hunt_tags.intersects(prey_tags) {
-                    continue;
-                }
+            if prey_matches_predator_cfg(
+                prey_ent,
+                &predator_cfg,
+                predator_cfg_source,
+                &params.bit_ref_query,
+                &params.race_ref_query,
+                &params.tagset_query,
+                &params.bit_map,
+                &params.race_map,
+            ) {
+                continue;
             }
 
             let prey_weight_newtons = params.body_weight_query.get(prey_ent).map(|sum| sum.0).unwrap_or_default();
@@ -238,7 +346,7 @@ pub fn update_predator_hunting_targets(
                 }
             }
         }
-        cmd.entity(pred_ent).try_insert(Hunting { prey: chosen_target, });
+        cmd.entity(pred_ent).try_insert(Hunting::new(chosen_target));
     }
 
     for (squad_ent, squad_members, ) in params.squad_members_query.iter() {
@@ -255,6 +363,7 @@ pub fn update_predator_hunting_targets(
         let mut anchor_sum = IVec2::ZERO;
         let mut active_member_count = 0;
         let mut pack_predator_cfg: Option<PredatorCfg> = None;
+        let mut pack_predator_cfg_source: Option<PredatorCfgSource> = None;
         for member_ent in squad_members.iter() {
             let Ok((_, _, hunting, body_condition)) = params.predators.get(member_ent) else {
                 continue;
@@ -262,12 +371,13 @@ pub fn update_predator_hunting_targets(
 
             let member_bit_ref = params.bit_ref_query.get(member_ent).ok();
             let member_race_ref = params.race_ref_query.get(member_ent).ok();
-            let Some(predator_cfg) = resolve_predator_cfg(member_bit_ref, member_race_ref, &params.bit_map, &params.race_map, &params.predator_cfg_query) else {
+            let Some((predator_cfg, predator_cfg_source)) = resolve_predator_cfg(member_bit_ref, member_race_ref, &params.bit_map, &params.race_map, &params.predator_cfg_query) else {
                 cmd.entity(member_ent).try_remove::<Hunting>();
                 continue;
             };
             if pack_predator_cfg.is_none() {
                 pack_predator_cfg = Some(predator_cfg.clone());
+                pack_predator_cfg_source = Some(predator_cfg_source);
             }
             let hp = health_ratio(member_ent, &params.bodies_query, &params.body_health_query);
             let hunger_ratio = body_condition.hunger_ratio.max(0.0);
@@ -332,6 +442,21 @@ pub fn update_predator_hunting_targets(
                 continue;
             };
             if *prey_dim != *squad_dim {
+                continue;
+            }
+            if let Some(predator_cfg) = pack_predator_cfg.as_ref()
+                && let Some(predator_cfg_source) = pack_predator_cfg_source
+                && prey_matches_predator_cfg(
+                    prey_ent,
+                    predator_cfg,
+                    predator_cfg_source,
+                    &params.bit_ref_query,
+                    &params.race_ref_query,
+                    &params.tagset_query,
+                    &params.bit_map,
+                    &params.race_map,
+                )
+            {
                 continue;
             }
             if let Some(predator_cfg) = pack_predator_cfg.as_ref() {
@@ -446,7 +571,7 @@ pub fn update_predator_hunting_targets(
                 cmd.entity(member_ent).try_remove::<Hunting>();
                 continue;
             };
-            cmd.entity(member_ent).try_insert(Hunting { prey: assigned_target, });
+            cmd.entity(member_ent).try_insert(Hunting::new(assigned_target));
         }
     }
 }

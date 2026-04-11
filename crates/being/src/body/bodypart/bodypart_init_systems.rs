@@ -134,7 +134,7 @@ pub fn init_bodyparts(
             cmd.entity(part_ent).insert(synergies);
         }
         if hp_capacity > 0.0 {
-            cmd.entity(part_ent).try_insert(AccuDamage(0.0));
+            cmd.entity(part_ent).try_insert(AccuDamage::default());
         }
 
         if !part.depth.trim().is_empty() {

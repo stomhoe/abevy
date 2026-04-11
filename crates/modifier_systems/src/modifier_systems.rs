@@ -1,9 +1,12 @@
 use bevy::ecs::entity::EntityHashMap;
+use bevy::ecs::system::SystemParam;
 #[allow(unused_imports)] use bevy::prelude::*;
 use common::common_id_components::*;
-use game_common::game_common_components::{TemplEntiRef, TimeBasedMultiplier};
+use game_common::game_common_components::{Templ, TemplEntiRef, TimeBasedMultiplier};
 
-use modifier_shared::resolve_modifier_component;
+use being::body::*;
+use being::body::body_modifier_effectiveness_helper::bodypart_modifier_effectiveness;
+use modifier_shared::{modifier_has_marker, resolve_modifier_component};
 use modifier_shared::modifier_components::*;
 use modifier_shared::modifier_types::*;
 
@@ -75,37 +78,91 @@ pub struct ResolvedModifier {
     _antidote: Option<Antidote>,
 }
 
+#[derive(SystemParam)]
+pub struct ModifierEffectiveValuesQueries<'w, 's> {
+    modifiers_query: Query<'w, 's, (
+        Entity,
+        &'static ModifierTarget,
+    )>,
+    base_values_query: Query<'w, 's, &'static BaseValue>,
+    time_multipliers_query: Query<'w, 's, &'static TimeBasedMultiplier>,
+    modifier_tags_query: Query<'w, 's, &'static ModifierTags>,
+    offset_vals_query: Query<'w, 's, &'static OffsetValForSelf>,
+    copy_fracs_query: Query<'w, 's, &'static CopyFracOfOthersIntoSelf>,
+    antidotes_query: Query<'w, 's, &'static Antidote>,
+    part_state_query: Query<'w, 's, (Has<Templ>, Has<Missing>), With<BodypartChildOfBodypart>>,
+    templ_ref_query: Query<'w, 's, &'static TemplEntiRef>,
+    part_applied_mods_query: Query<'w, 's, &'static AppliedModifiers>,
+    hp_capacity_markers: Query<'w, 's, (), With<HitpointsCapacity>>,
+    manip_dex_markers: Query<'w, 's, (), With<ManipulationDexterity>>,
+    manip_str_markers: Query<'w, 's, (), With<ManipulationStrength>>,
+    damage_query: Query<'w, 's, &'static AccuDamage>,
+    curr_values_query: Query<'w, 's, &'static mut CurrEffectiveValue>,
+}
+
+#[derive(SystemParam)]
+pub struct ModifierEffectiveValuesLocals<'s> {
+    resolved_modifiers: Local<'s, Vec<ResolvedModifier>>,
+    target_aggs: Local<'s, EntityHashMap<HashIdMap<TargetAggregate>>>,
+}
+
 #[allow(unused_parens)]
 pub fn update_modifier_effective_values(
     mut cmd: Commands,
-    modifiers_query: Query<(
-        Entity,
-        &ModifierTarget,
-        Option<&TemplEntiRef>,
-
-    )>,
-    base_values_query: Query<&BaseValue>,
-    time_multipliers_query: Query<&TimeBasedMultiplier>,
-    modifier_tags_query: Query<&ModifierTags>,
-    offset_vals_query: Query<&OffsetValForSelf>,
-    copy_fracs_query: Query<&CopyFracOfOthersIntoSelf>,
-    antidotes_query: Query<&Antidote>,
-    mut effective_query: Query<&mut CurrEffectiveValue>,
-
-    mut resolved_modifiers: Local<Vec<ResolvedModifier>>,
-    mut target_aggs: Local<EntityHashMap<HashIdMap<TargetAggregate>>>
+    queries: ModifierEffectiveValuesQueries,
+    mut locals: ModifierEffectiveValuesLocals,
 ) {
+    let ModifierEffectiveValuesQueries {
+        modifiers_query,
+        base_values_query,
+        time_multipliers_query,
+        modifier_tags_query,
+        offset_vals_query,
+        copy_fracs_query,
+        antidotes_query,
+        part_state_query,
+        templ_ref_query,
+        part_applied_mods_query,
+        hp_capacity_markers,
+        manip_dex_markers,
+        manip_str_markers,
+        damage_query,
+        curr_values_query,
+    } = queries;
+    let ModifierEffectiveValuesLocals {
+        resolved_modifiers,
+        target_aggs,
+    } = &mut locals;
+    let mut curr_values_query = curr_values_query;
     resolved_modifiers.clear();
     target_aggs.clear();
 
-    for (entity, target, templ_ref, ) in modifiers_query.iter() {
-        let base_value = resolve_modifier_component(entity, templ_ref, &base_values_query);
-        let time_multiplier = resolve_modifier_component(entity, templ_ref, &time_multipliers_query);
-        let Some(raw_value) = compute_time_affected_value(base_value.as_ref(), time_multiplier.as_ref()) else { continue; };
-        let tags = resolve_modifier_component(entity, templ_ref, &modifier_tags_query).unwrap_or_default();
-        let offsets = resolve_modifier_component(entity, templ_ref, &offset_vals_query);
-        let copy_fracs = resolve_modifier_component(entity, templ_ref, &copy_fracs_query);
-        let antidote = resolve_modifier_component(entity, templ_ref, &antidotes_query);
+    for (entity, target, ) in modifiers_query.iter() {
+        let modifier_templ_ref = templ_ref_query.get(entity).ok();
+        let base_value = resolve_modifier_component(entity, modifier_templ_ref, &base_values_query);
+        let time_multiplier = resolve_modifier_component(entity, modifier_templ_ref, &time_multipliers_query);
+        let Some(mut raw_value) = compute_time_affected_value(base_value.as_ref(), time_multiplier.as_ref()) else { continue; };
+        let tags = resolve_modifier_component(entity, modifier_templ_ref, &modifier_tags_query).unwrap_or_default();
+        let offsets = resolve_modifier_component(entity, modifier_templ_ref, &offset_vals_query);
+        let copy_fracs = resolve_modifier_component(entity, modifier_templ_ref, &copy_fracs_query);
+        let antidote = resolve_modifier_component(entity, modifier_templ_ref, &antidotes_query);
+        let effectiveness = if modifier_has_marker::<ManipulationDexterity>(entity, modifier_templ_ref, &manip_dex_markers)
+            || modifier_has_marker::<ManipulationStrength>(entity, modifier_templ_ref, &manip_str_markers)
+        {
+            bodypart_modifier_effectiveness(
+                target.0,
+                &part_state_query,
+                &templ_ref_query,
+                &part_applied_mods_query,
+                &modifiers_query,
+                &curr_values_query,
+                &hp_capacity_markers,
+                &damage_query,
+            )
+        } else {
+            1.0
+        };
+        raw_value *= effectiveness;
 
         let target_agg = target_aggs.entry(target.0).or_insert_with(|| HashIdMap::with_capacity(tags.len()));
         for tag in tags.iter() {
@@ -169,7 +226,7 @@ pub fn update_modifier_effective_values(
         }
         computed_values.insert(resolved.entity, CurrEffectiveValue(value));
     }
-    computed_values.retain(|entity, new_value| match effective_query.get_mut(*entity) {
+    computed_values.retain(|entity, new_value| match curr_values_query.get_mut(*entity) {
         Ok(mut current) => {
             *current = *new_value;
             false

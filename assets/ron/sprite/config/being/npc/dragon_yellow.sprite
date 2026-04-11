@@ -1,6 +1,5 @@
 sprite dragon_yellow {
 name "Yellow Dragon"
-z 1000
 mapped_anims {
     south idle g _ = dragon_yellow_s_idle
     south move g _ = dragon_yellow_s_move

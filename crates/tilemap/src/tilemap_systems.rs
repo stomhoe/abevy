@@ -20,6 +20,7 @@ use crate::{
         tile_despawn_systems::*,
         tile_shader::tile_shader_components::*,
         tile_shader::tile_shader_resources::TileShaderEntityMap,
+        tile_resources::*,
     },
     tile::U16TileIndex,
     tilemap_resources::*,
@@ -32,7 +33,7 @@ use std::{collections::HashMap, mem::take};
 #[derive(SystemParam)]
 pub struct SystemLocals<'s> {
     pub changed_structs: Local<'s, HashSet<MapKey>>,
-    pub tile_runtime_info: Local<'s, EntityHashMap<(TemplEntiRef, TileTextureIndex)>>,
+    pub tile_runtime_info: Local<'s, EntityHashMap<(TileRef, TileTextureIndex)>>,
     pub terrbl_debug_budget: Local<'s, u32>,
 }
 
@@ -50,12 +51,12 @@ pub struct SystemResources<'w> {
     pub tmap_map: ResMut<'w, TmapMap>,
     pub dimension_map: Res<'w, DimensionEntityMap>,
     pub tile_shader_map: Res<'w, TileShaderEntityMap>,
+    pub tile_map: Res<'w, TileEntityMap>,
 }
 
 #[derive(SystemParam)]
 pub struct ComponentsQueries<'w, 's> {
     pub min_dists_query: Query<'w, 's, &'static MinDistancesMap, common::AnyDisabling>,
-    pub hash_id_query: Query<'w, 's, &'static HashId, common::AnyDisabling>,
     pub size_query: Query<'w, 's, &'static SizeInTiles, common::AnyDisabling>,
     pub keep_distance_query: Query<'w, 's, &'static KeepDistanceFrom, common::AnyDisabling>,
     pub persisted_query: Query<'w, 's, (), (With<Persisted>, common::AnyDisabling)>,
@@ -65,7 +66,7 @@ pub struct ComponentsQueries<'w, 's> {
     pub sprite_tile_query: Query<'w, 's, (), (With<SpriteTile>, common::AnyDisabling)>,
     pub color_query: Query<'w, 's, &'static TileColor, common::AnyDisabling>,
     pub y_sort_query: Query<'w, 's, (), (With<YSortOrigin>, common::AnyDisabling)>,
-    pub tile_templ_ref_query: Query<'w, 's, &'static TemplEntiRef>,
+    pub tile_ref_query: Query<'w, 's, &'static TileRef>,
     pub tile_index_query: Query<'w, 's, &'static U16TileIndex, common::AnyDisabling>,
     pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex>,
     pub interaction_zones_query: Query<'w, 's, &'static InteractionZones, common::AnyDisabling>,
@@ -121,33 +122,33 @@ pub fn process_tiles_pre(
             }
         };
         let bundle = unsafe { &mut *bundle_ptr };
-
-        let Ok(&ez_hash_id) = tile_components.hash_id_query.get(bundle.templ_ref.0) else {
+        let Ok(templ_ent) = resources.tile_map.0.get_cloned(bundle.templ_ref.0) else {
             error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} is despawned", bundle.templ_ref.0);
             cmd.entity(tile_ent).try_despawn();
             resources.collected_tiles.0.swap_remove(i);
             continue;
         };
-        let Ok(&size_in_tiles) = tile_components.size_query.get(bundle.templ_ref.0) else {
+
+        let Ok(&size_in_tiles) = tile_components.size_query.get(templ_ent) else {
             error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} missing SizeInTiles", bundle.templ_ref.0);
             cmd.entity(tile_ent).try_despawn();
             resources.collected_tiles.0.swap_remove(i);
             continue;
         };
-        let Ok(&tile_z_index) = tile_components.z_query.get(bundle.templ_ref.0) else {
+        let Ok(&tile_z_index) = tile_components.z_query.get(templ_ent) else {
             error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} missing AcZ query access", bundle.templ_ref.0);
             cmd.entity(tile_ent).try_despawn();
             resources.collected_tiles.0.swap_remove(i);
             continue;
         };
-        let tile_handles = tile_components.handles_query.get(bundle.templ_ref.0).ok().cloned();
-        let shader_ref = tile_components.shader_ref_query.get(bundle.templ_ref.0).ok().copied();
-        let color = tile_components.color_query.get(bundle.templ_ref.0).cloned();
-        let is_spritetile = tile_components.sprite_tile_query.get(bundle.templ_ref.0).is_ok();
-        let y_sort = tile_components.y_sort_query.get(bundle.templ_ref.0).is_ok();
-        let to_persist = tile_components.persisted_query.get(bundle.templ_ref.0).is_ok();
-        let min_dists = tile_components.min_dists_query.get(bundle.templ_ref.0).ok();
-        let keep_distance_from = tile_components.keep_distance_query.get(bundle.templ_ref.0).ok();
+        let tile_handles = tile_components.handles_query.get(templ_ent).ok().cloned();
+        let shader_ref = tile_components.shader_ref_query.get(templ_ent).ok().copied();
+        let color = tile_components.color_query.get(templ_ent).cloned();
+        let is_spritetile = tile_components.sprite_tile_query.get(templ_ent).is_ok();
+        let y_sort = tile_components.y_sort_query.get(templ_ent).is_ok();
+        let to_persist = tile_components.persisted_query.get(templ_ent).is_ok();
+        let min_dists = tile_components.min_dists_query.get(templ_ent).ok();
+        let keep_distance_from = tile_components.keep_distance_query.get(templ_ent).ok();
         let _dim_hash = bundle.dim_ref.0;
         if resources.dimension_map.0.get_cloned(_dim_hash).is_err() {
             error_once!(target: TILEMAP_SYSTEM, "Dimension hash {} is missing from DimensionEntityMap", _dim_hash);
@@ -161,7 +162,7 @@ pub fn process_tiles_pre(
             is_host,
             (
                 tile_ent,
-                bundle.templ_ref.0,
+                templ_ent,
                 bundle.dim_ref,
                 bundle.gpos,
                 min_dists,
@@ -200,7 +201,7 @@ pub fn process_tiles_pre(
                 child_ofs_to_insert.push((tile_ent, ChildOf(dimension_ent)));
                 to_insert_replicated.push((tile_ent, Replicated));
                 if is_spritetile{
-                    let interaction_zones = tile_components.interaction_zones_query.get(bundle.templ_ref.0).ok();
+                    let interaction_zones = tile_components.interaction_zones_query.get(templ_ent).ok();
                     params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
                     spritetiles_to_remove_tmapbundle.push(tile_ent);
                     i += 1;
@@ -219,7 +220,7 @@ pub fn process_tiles_pre(
             resources.collected_tiles.0.swap_remove(i);
             continue;
         };
-        let Ok(&tile_index) = tile_components.tile_index_query.get(bundle.templ_ref.0) else {
+        let Ok(&tile_index) = tile_components.tile_index_query.get(templ_ent) else {
             error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} missing TileIndex", bundle.templ_ref.0);
             cmd.entity(tile_ent).try_despawn();
             resources.collected_tiles.0.swap_remove(i);
@@ -240,7 +241,7 @@ pub fn process_tiles_pre(
 
         if is_spritetile {
             spritetiles_to_remove_tmapbundle.push(tile_ent);
-            let interaction_zones = tile_components.interaction_zones_query.get(bundle.templ_ref.0).ok();
+            let interaction_zones = tile_components.interaction_zones_query.get(templ_ent).ok();
             params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
             child_ofs_to_insert.push((tile_ent, ChildOf(chunk_ent)));
             i += 1;
@@ -259,7 +260,7 @@ pub fn process_tiles_pre(
         process_tile_into_corresponding_tilemap(
             &mut cmd,
             tile_ent,
-            ez_hash_id,
+            bundle.templ_ref.0,
             size_in_tiles,
             &mut bundle.tile_bundle.visible,
             &mut bundle.tile_bundle.texture_index,
@@ -353,7 +354,8 @@ pub fn process_tiles_pre(
             let chunk_h = storage.size.y as i32;
             build_terrbl_material_for_map(
                 &mut resources.images,
-                &tile_components.tile_templ_ref_query,
+                &tile_components.tile_ref_query,
+                &resources.tile_map,
                 &tile_components.tile_texture_index_query,
                 &locals.tile_runtime_info,
                 &params.terrbl_query,

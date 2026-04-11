@@ -1,11 +1,10 @@
 use crate::{
-    tile::{tile_components::*, tile_messages::*},
+    tile::{tile_components::*, tile_messages::*, tile_resources::*},
 };
 use bevy::{ecs::system::SystemParam, platform::collections::{HashMap, HashSet}};
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{map::TilemapId, tiles::TileFlip};
 use common::common_components::HashId;
-use game_common::game_common_components::*;
 use ::tilemap_shared::*;
 
 #[allow(unused_parens)]
@@ -49,8 +48,9 @@ pub struct TileAdjacencyRetextureLocals<'s> {
 #[allow(unused_parens)]
 pub fn tile_adjacency_dependent_retexturing_system(
     mut reader: MessageReader<RecheckTileAdjacency>,
-    mut tile_query: Query<(&TemplEntiRef, &DimensionRef, &GlobalTilePos, Option<&mut sprite_animation_shared::AnimExtraState>, Option<(&mut TileTextureIndex, &mut TileFlip, &TilemapId)>, ), ()>,
-    templ_query: Query<(&HashId, Option<&AdjRetexConfig>), ()>,
+    mut tile_query: Query<(&TileRef, &DimensionRef, &GlobalTilePos, Option<&mut sprite_animation_shared::AnimExtraState>, Option<(&mut TileTextureIndex, &mut TileFlip, &TilemapId)>, ), ()>,
+    templ_query: Query<&AdjRetexConfig, ()>,
+    tile_map: Res<TileEntityMap>,
     params: TileGatheringParamSet,
     mut locals: TileAdjacencyRetextureLocals,
 ) {
@@ -65,7 +65,10 @@ pub fn tile_adjacency_dependent_retexturing_system(
             let Ok((templ_ref, &dim, &gpos, ..)) = tile_query.get(tile_ent) else {
                 continue;
             };
-            let Ok((_, Some(adj_retex_config))) = templ_query.get(templ_ref.0) else {
+            let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
+                continue;
+            };
+            let Ok(adj_retex_config) = templ_query.get(templ_ent) else {
                 continue;
             };
             locals.adj_masks_by_hid.clear();
@@ -82,10 +85,7 @@ pub fn tile_adjacency_dependent_retexturing_system(
                     let Ok((templ_ref, ..)) = tile_query.get(adj_tile_ent) else {
                         continue;
                     };
-                    let Ok((&hid, ..)) = templ_query.get(templ_ref.0) else {
-                        continue;
-                    };
-                    locals.adj_masks_by_hid.entry(hid).or_default().insert(adj_mask);
+                    locals.adj_masks_by_hid.entry(templ_ref.0).or_default().insert(adj_mask);
                 }
             };
             process_adjacent_tiles(DiagonalCardinalDirection::North.adj_mask_bit(), &mut locals.north_adj_tiles_templs);
@@ -103,14 +103,11 @@ pub fn tile_adjacency_dependent_retexturing_system(
             let Ok((templ_ref, .., anim_state, tmap_tile_data)) = tile_query.get_mut(tile_ent) else {
                 continue;
             };
-            let Ok((&tile_hid, ..)) = templ_query.get(templ_ref.0) else {
-                continue;
-            };
             if let Some((mut tex_idx, mut flip, tmap_ent)) = tmap_tile_data {
                 let Ok((_, hash2tex, _)) = params.tilemap_query.get(tmap_ent.0) else {
                     continue;
                 };
-                if let Ok(new_tex_idx) = hash2tex.get(tile_hid, hid_to_use) {
+                if let Ok(new_tex_idx) = hash2tex.get(templ_ref.0, hid_to_use) {
                     *tex_idx = new_tex_idx;
                 }
                 if let Some(new_flip) = new_flip {

@@ -3,7 +3,7 @@
 use common::common_components::*;
 use common::common_tag_components::HashedTagsVec;
 use common::log_targets::TERRPROBE_INIT;
-use game_common::game_common_components::{Templ, TemplEntiRef};
+use game_common::game_common_components::Templ;
 
 use crate::terrain::{
     terrprobe::opfilter::opfilter_resources::{OpFilterEntityMap, OpFilterRef},
@@ -13,7 +13,7 @@ use crate::terrain::{
         terrprobe_resources::{EguiTptsHolder, TerrProbeTemplEntityMap, load_terrain_probe_seri_defs},
     },
 };
-use crate::{regioning::regioning_resources::StructuredGenConfigEntityMap, tile::tile_resources::TemplTileEntsWithinTag};
+use crate::{regioning::regioning_resources::StructuredGenConfigEntityMap, tile::tile_resources::{TemplTileEntsWithinTag, TileRef}};
 #[allow(unused_parens, )]
 pub fn init_terrain_probes(
     mut cmd: Commands,
@@ -21,6 +21,7 @@ pub fn init_terrain_probes(
     sgc_entity_map: Res<StructuredGenConfigEntityMap>,
     opfilter_entity_map: Res<OpFilterEntityMap>,
     opfilter_query: Query<(&OpFilter, &StrId, ), (),>,
+    hash_id_query: Query<&HashId>,
     tile_ents_with_tag: Res<TemplTileEntsWithinTag>,
     entity_zeroes: Query<(&Templ, ), (),>,
     egui_holder_query: Query<(Entity, ), (With<EguiTptsHolder>, ),>,
@@ -159,7 +160,10 @@ pub fn init_terrain_probes(
                 let Ok((_,)) = entity_zeroes.get(tile_ent) else {
                     continue;
                 };
-                let templ_ref = TemplEntiRef(tile_ent);
+                let Ok(&tile_hash_id) = hash_id_query.get(tile_ent) else {
+                    continue;
+                };
+                let templ_ref = TileRef(tile_hash_id);
                 if sgc_admitted_tiles_as_found_pos.iter().all(|existing| *existing != templ_ref) {
                     sgc_admitted_tiles_as_found_pos.push(templ_ref);
                 }

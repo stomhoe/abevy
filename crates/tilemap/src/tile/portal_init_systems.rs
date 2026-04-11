@@ -11,7 +11,7 @@ use crate::{
         operation_list::operation_list_resources::OperationListEntityMap,
         terrprobe::{terrprobe_components::*, terrprobe_resources::*},
         terrprobe::{terrprobe_messages::TerrProbeJob, terrprobe_systems::SearchParams},
-    }, tile::{tile_components::*, tile_resources::*}, tilemap_resources::MassCollectedTiles
+    }, tile::{tile_components::*, tile_resources::*, TileEntityMap}, tilemap_resources::MassCollectedTiles
 };
 
 #[allow(unused_parens)]
@@ -112,7 +112,7 @@ pub fn start_portal_search(
             Entity,
             &DimensionRef,
             &GlobalTilePos,
-            &TemplEntiRef,
+            &TileRef,
             Option<&PortalTo>,
             Option<&SearchingForSuitablePos>,
         ),
@@ -121,19 +121,24 @@ pub fn start_portal_search(
     templ_query: Query<(&TileStrId, Option<&PortalRecipe>), (With<Templ>,)>,
     terrprobe_query: Query<&TerrProbeTempl>,
     dimension_hash_query: Query<&HashId, With<Dimension>>,
+    tile_map: Res<TileEntityMap>,
     mut search_params: SearchParams,
 ) {
     let make_search_request = |_cmd: &mut Commands,
                                portal_ent: Entity,
                                global_pos: GlobalTilePos,
-                               templ_ref: TemplEntiRef|
+                               templ_ref: TileRef|
      -> Option<TerrProbeJob> {
-        let Ok((str_id, portal_recipe_opt)) = templ_query.get(templ_ref.0) else {
-            error!(target: PORTAL_INIT, "Portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, templ_ref.0);
+        let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
+            error!(target: PORTAL_INIT, "Portal tile entity {:?} references TileRef {:?} which no longer exists.", portal_ent, templ_ref.0);
+            return None;
+        };
+        let Ok((str_id, portal_recipe_opt)) = templ_query.get(templ_ent) else {
+            error!(target: PORTAL_INIT, "Portal tile entity {:?} references a template entity {:?} which no longer exists.", portal_ent, templ_ent);
             return None;
         };
         let Some(portal_recipe) = portal_recipe_opt else {
-            error!(target: PORTAL_INIT, "Portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", portal_ent, templ_ref.0);
+            error!(target: PORTAL_INIT, "Portal tile entity {:?} references a template entity {:?} which doesn't have a PortalRecipe.", portal_ent, templ_ent);
             return None;
         };
         let probe_template_ent = portal_recipe.terrprobe_ent;
@@ -209,7 +214,7 @@ pub fn resolve_portal_search_results(
             Entity,
             &DimensionRef,
             &GlobalTilePos,
-            &TemplEntiRef,
+            &TileRef,
             Option<&SearchingForSuitablePos>,
         ),
         (Without<Templ>, With<Tile>),
@@ -218,23 +223,29 @@ pub fn resolve_portal_search_results(
     dimension_hash_query: Query<&HashId, With<Dimension>>,
     mut mass_collected: ResMut<MassCollectedTiles>,
     mut register_pos: ResMut<ImportantRegisteredPositions>,
+    hash_id_query: Query<&HashId>,
+    tile_map: Res<TileEntityMap>,
     mut search_params: SearchParams,
 ) {
     let mut handle_success_event = |cmd: &mut Commands,
                                     portal_ent: Entity,
                                     my_pos: GlobalTilePos,
                                     dim_ref: DimensionRef,
-                                    templ_ref: TemplEntiRef,
+                                    templ_ref: TileRef,
                                     found_pos: GlobalTilePos,
                                     _sampled_val: f32,
                                     _is_last: bool|
      -> bool {
-        let Ok((str_id, portal_recipe_opt)) = templ_query.get(templ_ref.0) else {
-            error!(target: PORTAL_INIT, "SuitablePosFound but portal tile entity {:?} references an EntityZero {:?} which no longer exists.", portal_ent, templ_ref.0);
+        let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
+            error!(target: PORTAL_INIT, "SuitablePosFound but portal tile entity {:?} references TileRef {:?} which no longer exists.", portal_ent, templ_ref.0);
+            return false;
+        };
+        let Ok((str_id, portal_recipe_opt)) = templ_query.get(templ_ent) else {
+            error!(target: PORTAL_INIT, "SuitablePosFound but portal tile entity {:?} references template entity {:?} which no longer exists.", portal_ent, templ_ent);
             return false;
         };
         let Some(portal_recipe) = portal_recipe_opt else {
-            error!(target: PORTAL_INIT, "SuitablePosFound but portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", portal_ent, templ_ref.0);
+            error!(target: PORTAL_INIT, "SuitablePosFound but portal tile entity {:?} references template entity {:?} which doesn't have a PortalRecipe.", portal_ent, templ_ent);
             return false;
         };
         let portal_recipe = portal_recipe.clone();
@@ -247,7 +258,11 @@ pub fn resolve_portal_search_results(
         };
         let oe_dim_ref = DimensionRef(dest_dim_hash);
 
-        let oe_portal_tileref = TemplEntiRef(portal_recipe.oe_portal_tile);
+        let Ok(&oe_portal_hash) = hash_id_query.get(portal_recipe.oe_portal_tile) else {
+            error!(target: PORTAL_INIT, "Portal tile '{}' references oe_portal_tile entity {:?} without HashId", str_id, portal_recipe.oe_portal_tile);
+            return false;
+        };
+        let oe_portal_tileref = TileRef(oe_portal_hash);
         debug!(target: PORTAL_INIT, "OE Portal TileRef: {:?}", oe_portal_tileref);
 
         let oe_portal = mass_collected.clonespawn_and_push_tile(
@@ -255,6 +270,7 @@ pub fn resolve_portal_search_results(
             oe_portal_tileref,
             found_pos,
             oe_dim_ref,
+            &tile_map,
         );
         register_pos.exempt_entity_from_mindist_checks(oe_portal);
 
@@ -273,14 +289,18 @@ pub fn resolve_portal_search_results(
     let handle_pending_failure = |portal_ent: Entity,
                                   global_pos: GlobalTilePos,
                                   dim_ref: DimensionRef,
-                                  tile_ref: TemplEntiRef,
-                                  failed_filter_ent: Entity| {
-        let Ok((str_id, portal_template)) = templ_query.get(tile_ref.0) else {
-            error!(target: PORTAL_INIT, "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which no longer exists or has no StrId.", failed_filter_ent, portal_ent, tile_ref.0);
+        tile_ref: TileRef,
+        failed_filter_ent: Entity| {
+        let Ok(templ_ent) = tile_map.0.get_cloned(tile_ref.0) else {
+            error!(target: PORTAL_INIT, "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references TileRef {:?} which no longer exists or has no StrId.", failed_filter_ent, portal_ent, tile_ref.0);
+            return;
+        };
+        let Ok((str_id, portal_template)) = templ_query.get(templ_ent) else {
+            error!(target: PORTAL_INIT, "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references a template entity {:?} which no longer exists or has no StrId.", failed_filter_ent, portal_ent, templ_ent);
             return;
         };
         let Some(portal_template) = portal_template else {
-            error!(target: PORTAL_INIT, "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references an EntityZero {:?} which doesn't have a PortalRecipe.", failed_filter_ent, portal_ent, tile_ref.0);
+            error!(target: PORTAL_INIT, "SearchFailed for studied_op_ent {:?} portal tile entity {:?} references a template entity {:?} which doesn't have a PortalRecipe.", failed_filter_ent, portal_ent, templ_ent);
             return;
         };
 

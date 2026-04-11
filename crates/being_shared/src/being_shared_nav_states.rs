@@ -46,16 +46,46 @@ impl Chasing {
 #[relationship_target(relationship = Chasing)]
 pub struct Chasers(Vec<Entity>);
 
-#[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, MapEntities)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities)]
 #[require(BehavorialNavState, )]
-pub struct Fleeing(#[entities] pub Entity);
+pub struct Fleeing {
+    #[entities]
+    pub threats: Vec<Entity>,
+    pub desired_distance_tiles: f32,
+}
+impl Default for Fleeing {
+    fn default() -> Self {
+        Self {
+            threats: Vec::default(),
+            desired_distance_tiles: 20.0,
+        }
+    }
+}
 impl Fleeing {
     pub fn new(flee_from: Entity) -> Self {
-        Self(flee_from)
+        Self::with_distance(flee_from, 20.0)
     }
 
-    pub fn flee_from(&self) -> Entity {
-        self.0
+    pub fn with_distance(flee_from: Entity, desired_distance_tiles: f32) -> Self {
+        Self {
+            threats: vec![flee_from],
+            desired_distance_tiles: desired_distance_tiles.max(0.0),
+        }
+    }
+
+    pub fn add_threat(&mut self, threat: Entity) {
+        if self.threats.iter().any(|ent| *ent == threat) {
+            return;
+        }
+        self.threats.push(threat);
+    }
+
+    pub fn primary_threat(&self) -> Option<Entity> {
+        self.threats.first().copied()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.threats.is_empty()
     }
 }
 

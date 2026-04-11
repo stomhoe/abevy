@@ -1,6 +1,5 @@
 sprite frog {
 name Frog
-z 1000
 mapped_anims {
     south idle g _ = frog_s_idle
     south move g _ = frog_s_move

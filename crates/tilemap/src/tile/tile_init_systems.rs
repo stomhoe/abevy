@@ -359,10 +359,10 @@ fn gather_step_sfx_paths_from_dir(directory: &str) -> Vec<String> {
 pub fn init_childrensprite(
     mut cmd: Commands,
     childrensprite_query: Query<
-        (Entity, AnyOf<(&PathHolder, &TemplEntiRef)>),
+        (Entity, AnyOf<(&PathHolder, &TileRef)>),
         (
             With<TileChildSprite>,
-            Or<(Added<TileChildSprite>, Changed<PathHolder>, Changed<TemplEntiRef>)>,
+            Or<(Added<TileChildSprite>, Changed<PathHolder>, Changed<TileRef>)>,
             Without<Sprite>,
             Without<AcAnimationProgresses>,
             Without<TilemapId>,
@@ -372,6 +372,7 @@ pub fn init_childrensprite(
         ),
     >,
     templ_img_path: Query<(Option<&PathHolder>, Has<SpriteConfig>), (With<Templ>,)>,
+    tile_map: Res<TileEntityMap>,
     aserver: Res<AssetServer>,
 ) {
     let mut to_insert = Vec::new();
@@ -386,20 +387,24 @@ pub fn init_childrensprite(
                 },
             ));
         } else if let Some(templ_ref) = templ_ref {
-            let Ok((img_path_holder, is_templ_a_spriteconfig)) = templ_img_path.get(templ_ref.0)
+            let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
+                error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has TileRef {:?} but the referenced tile entity doesn't exist", entity, templ_ref.0);
+                continue;
+            };
+            let Ok((img_path_holder, is_templ_a_spriteconfig)) = templ_img_path.get(templ_ent)
             else {
-                error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has TemplEntiRef {:?} but the referenced entity doesn't exist", entity, templ_ref.0);
+                error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has TileRef {:?} but the referenced tile entity doesn't exist", entity, templ_ref.0);
                 continue;
             };
             if is_templ_a_spriteconfig {
                 continue;
             }
             let Some(img_path_holder): Option<&PathHolder> = img_path_holder else {
-                error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has TemplEntiRef {:?} but the referenced entity has no ImagePathHolder", entity, templ_ref.0);
+                error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has TileRef {:?} but the referenced tile entity has no ImagePathHolder", entity, templ_ref.0);
                 continue;
             };
 
-            trace!(target: CHILDRENSPRITE_INIT, "Inserting Sprite for entity {:?} via TemplEntiRef {:?}, path: {:?}", entity, templ_ref.0, img_path_holder.path());
+            trace!(target: CHILDRENSPRITE_INIT, "Inserting Sprite for entity {:?} via TileRef {:?}, path: {:?}", entity, templ_ref.0, img_path_holder.path());
             to_insert.push((
                 entity,
                 Sprite {
@@ -408,7 +413,7 @@ pub fn init_childrensprite(
                 },
             ));
         } else {
-            error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has neither ImagePathHolder nor TemplEntiRef", entity);
+            error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has neither ImagePathHolder nor TileRef", entity);
         }
     }
     cmd.try_insert_batch(to_insert);

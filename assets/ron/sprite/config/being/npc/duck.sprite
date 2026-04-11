@@ -1,6 +1,5 @@
 sprite duck {
 name Duck
-z 1000
 mapped_anims {
     south idle g _ = duck_s_idle
     south move g _ = duck_s_move

@@ -1,6 +1,5 @@
 sprite evil_crow {
 name "Evil Crow"
-z 1000
 mapped_anims {
     south idle g _ = evil_crow_s_idle
     south move g _ = evil_crow_s_move

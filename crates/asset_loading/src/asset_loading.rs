@@ -1,6 +1,7 @@
 
 
 use bevy_replicon::prelude::ClientState;
+use bevy::ecs::schedule::common_conditions::resource_changed;
 use common::common_states::*;
 use bevy_asset_loader::prelude::*;
 use game_common::{GameplaySystems, };
@@ -21,13 +22,11 @@ pub fn plugin(app: &mut App) {
         .init_state::<AssetLoading>()
         .init_state::<AssetHotReloadState>()
         .init_resource::<HotReloadSelection>()
-        .init_resource::<HotReloadRequest>()
-
         .add_systems(Update, (
             reload_assets_while_ingame,
-            sync_hot_reload_markers,
-            process_hot_reload_request,
-        ).chain())
+            sync_hot_reload_markers.run_if(resource_changed::<HotReloadSelection>),
+        ))
+        .add_observer(process_hot_reload_request)
         .add_systems(OnExit(AppState::StatefulGameSession),
             despawn_asset_scoped_entities
         )
@@ -43,6 +42,7 @@ pub fn plugin(app: &mut App) {
         // Don't use OnExit(AssetLoading::SpawnReplicatedEntities) because clients aren't in that state
 
         .add_systems(OnEnter(AssetLoading::SpawnReplicatedEntities), (
+            remap_broken_sprite_config_refs_after_hotreload,
             on_assets_loaded.in_set(AssetHotReloading),
             validate_defs_after_load.run_if(in_state(ClientState::Disconnected)),
         ))

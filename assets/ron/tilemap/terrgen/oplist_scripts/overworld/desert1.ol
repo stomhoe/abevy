@@ -8,5 +8,5 @@ let continent_threshold = 0.4
 
 out = idxmax(continent_threshold, continentness)
 
-bif "" -> [purple]
+bif "" -> [ocean]
 bif desert2 -> [] biomes: [desert=3.5(5.0,0.35)]

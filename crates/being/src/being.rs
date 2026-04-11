@@ -1,19 +1,16 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
+use bevy::ecs::schedule::common_conditions::resource_changed;
 use bevy::time::common_conditions::on_timer;
 use bevy_replicon::prelude::*;
 use ::being_shared::body_energy::*;
 use ::being_shared::*;
 use faction::faction_resources::FactionRef;
-use game_common::StatefulSessionSystems;
+use ::game_common::*;
 use tilemap::terrain::terrgen_messages::ChunkTerrainBuilt;
 
 use common::common_states::AssetLoading;
-use game_common::{
-    HostSystems,
-    game_common::GameplaySystems,
-};
 use sprite_systems::AcSpriteSystems;
 use crate::being_melee_systems::*;
 use crate::being_messages::*;
@@ -21,7 +18,7 @@ use crate::being_cleanup_systems::*;
 use crate::being_on_chunk_despawn_systems::*;
 use crate::being_enable_systems::*;
 use crate::squad_build_systems::*;
-use crate::being_nav::{AiNavGrids, ChaserNavPlans, SharedChaseFlowFields};
+use crate::being_nav::*;
 use crate::being_simulation_systems::*;
 use crate::being_hunt_systems::*;
 use crate::being_control_systems::*;
@@ -31,6 +28,7 @@ use ::tilemap_shared::*;
 
 use crate::{
     being_inst_template::BeingInstTemplateSystems,
+    being_resources::*,
     being_portal_resources::*,
     being_systems::*,
     body::{self, BodySystems},
@@ -58,22 +56,23 @@ pub fn plugin(app: &mut App) {
     .init_resource::<PortalCrossingIndex>()
     .init_resource::<BeingsToEnableOnChunkLoad>()
     .init_resource::<NextPendingNaturalSpawnGroupId>()
+    .init_resource::<BeingEntityMap>()
 
     .add_systems(Update, (
         (
             build_beings_from_refs,
             sample_sprite_normal_size_variations,
+            assign_being_hash_ids,
         ).chain().in_set(HostSystems),
         (
             add_activates_chunks,
             activate_beings_in_first_time_loaded_chunks.run_if(on_message::<ChunkTerrainBuilt>),
-            sync_player_being_chunk_ranges,
+            sync_being_chunk_ranges_to_resource.run_if(resource_changed::<LoadChunksAround>),
             assign_uncomputed_beings_to_host,
             sync_group_members_from_member_of,
             assign_member_ranks_on_joined_squad,
             refresh_leader_on_member_rank_change,
             rebuild_portal_crossing_index,
-            cross_portal,
             cull_loaded_beings_far_from_humans.run_if(on_timer(Duration::from_secs(10))),
             faithful_sim_being.run_if(on_message::<FaithfulSimBeing>),
             unfreeze_beings_on_chunk_load.run_if(on_message::<ChunkLoaded>),
@@ -86,35 +85,43 @@ pub fn plugin(app: &mut App) {
         ).in_set(HostSystems).in_set(StatefulSessionSystems),
     ))
     .add_observer(cleanup_being_from_BeingsInCpos_on_despawn)
-    .add_systems(Update, (
-        on_control_change,
-        add_melee_target_comp_to_ai_controlled,
-        update_squad_weight_sum.before(update_predator_hunting_targets),
-        sync_predator_squad_marker,
-        update_predator_hunting_targets,
-        make_hunted_be_melee_targets.after(update_predator_hunting_targets),
-        sync_chasing_to_hunt.after(update_predator_hunting_targets),
-    ))
+    .add_observer(remove_being_hash_id_from_map_on_despawn)
+    .add_systems(
+        Update,
+        (
+            on_control_change,
+            sync_predator_squad_marker,
+            validate_added_beings_have_gpos.in_set(HostSystems).in_set(GameplaySystems),
+        ),
+    )
+    .add_systems(
+        Update,
+        (
+            add_melee_target_comp_to_ai_controlled,
+            update_squad_weight_sum.before(update_predator_hunting_targets),
+            update_predator_hunting_targets,
+            make_hunted_be_melee_targets.after(update_predator_hunting_targets),
+            sync_chasing_to_hunt.after(update_predator_hunting_targets),
+        ).in_set(SimRunningSystems),
+    )
     .add_systems(
         Update,
         (
             (
                 emit_ai_melee_attack_requests.run_if(on_timer(Duration::from_millis(30))),
                 apply_melee_attack,
-            validate_added_beings_have_gpos,
-            ).in_set(HostSystems),
-
-        )
-            .in_set(GameplaySystems),
+            ).in_set(HostSystems).in_set(SimRunningSystems),
+        ),
+    )
+    .add_systems(
+        Update,
+        cross_portal.in_set(HostSystems),
     )
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
         RaceSystems.after(tilemap::terrain::biome::BiomeSystems),
-        BeingInstTemplateSystems.after(tilemap::terrain::biome::BiomeSystems),
-        PackSystems.after(tilemap::terrain::biome::BiomeSystems),
         RaceSystems.after(BodySystems),
         RaceSystems.after(AcSpriteSystems),
         BeingInstTemplateSystems.after(RaceSystems),
-        PackSystems.after(RaceSystems),
         PackSystems.after(BeingInstTemplateSystems),
     ))
     .replicate::<Being>()
@@ -124,6 +131,8 @@ pub fn plugin(app: &mut App) {
     .replicate::<CharacterCreatedBy>()
     .replicate::<DirectControllable>()
     .replicate::<Chasing>()
+    .replicate::<FightOrFlightConfig>()
+    .replicate::<FightingStyle>()
     .replicate::<WanderState>()
     .replicate::<Fleeing>()
     .replicate::<DoAvoidBlacklistedSpawnTilesForWander>()

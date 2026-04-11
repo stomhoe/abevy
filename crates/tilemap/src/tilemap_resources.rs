@@ -5,9 +5,8 @@ use common::{common_components::HashId};
 use crate::{terrain::terrgen_messages::PendingOp, tile::tile_bundles::* };
 
 use ::tilemap_shared::*;
-use game_common::game_common_components::*;
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
-use crate::tile::{TileEntityMap, TileWeightedSamplerEntityMap};
+use crate::tile::{TileEntityMap, TileRef, TileWeightedSamplerEntityMap};
 
 #[derive(Debug, Clone, Resource, Default, )]
 pub struct MassCollectedTiles  (pub Vec<(Entity, TileMassSpawnBundle)>);
@@ -16,12 +15,17 @@ impl MassCollectedTiles {
     pub fn clonespawn_and_push_tile(
         &mut self,
         cmd: &mut Commands,
-        templ_ref: TemplEntiRef,
+        templ_ref: TileRef,
         gpos: GlobalTilePos,
         dim_ref: DimensionRef,
+        tile_map: &TileEntityMap,
         //param_set: &CloneSpawnParamSet,
     ) -> Entity {
-        let tile_instance = cmd.entity(templ_ref.0).clone_and_spawn_with_opt_out(|builder|{
+        let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
+            error!("Failed to resolve TileRef {:?} while spawning tile instance at {:?}", templ_ref, gpos);
+            return Entity::PLACEHOLDER;
+        };
+        let tile_instance = cmd.entity(templ_ent).clone_and_spawn_with_opt_out(|builder|{
             builder.deny::<ToDenyOnTileClone>();
             //builder.deny::<BundleToDenyOnReleaseBuild>();
         }).id();
@@ -74,7 +78,11 @@ impl MassCollectedTiles {
                 self.collect_tiles_rec(cmd, tiling_ent, global_pos, dim_hash_id, dim_ref, param_set, depth + 1);
             }
         } else {
-            self.clonespawn_and_push_tile(cmd, TemplEntiRef(tiling_ent), global_pos, dim_ref, );
+            let Ok(&templ_hash_id) = param_set.hash_id_query.get(tiling_ent) else {
+                warn!("Tile insertion template entity {:?} is missing HashId", tiling_ent);
+                return;
+            };
+            self.clonespawn_and_push_tile(cmd, TileRef(templ_hash_id), global_pos, dim_ref, &param_set.tile_map);
         }
     }
     pub fn collect_tiles(&mut self,
@@ -113,6 +121,7 @@ pub struct CloneSpawnParamSet<'w, 's> {
     pub weight_maps: Query<'w, 's, &'static HashIdWeightedSampler>,
     pub gen_settings: Query<'w, 's, &'static GlobalGenSettings>,
     pub size_in_tiles: Query<'w, 's, &'static SizeInTiles>,
+    pub hash_id_query: Query<'w, 's, &'static HashId>,
     pub terrgen_offsets: Query<'w, 's, &'static OffsetForTerrgenPlacement, common::AnyDisabling>,
     pub tile_map: Res<'w, TileEntityMap>,
     pub sampler_map: Res<'w, TileWeightedSamplerEntityMap>,

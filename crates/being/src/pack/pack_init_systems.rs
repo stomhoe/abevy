@@ -78,6 +78,12 @@ pub fn init_packs(
             cmd.entity(pack_entity)
                 .insert(pack_seri.wander.clone().sanitized());
         }
+        if pack_seri.fight_or_flight_config != FightOrFlightConfig::default() {
+            cmd.entity(pack_entity).insert(pack_seri.fight_or_flight_config);
+        }
+        if pack_seri.fighting_style != FightingStyle::default() {
+            cmd.entity(pack_entity).insert(pack_seri.fighting_style);
+        }
         if pack_seri.avgpos_rank_based_weight_multiplier != 1.0 {
             cmd.entity(pack_entity).insert(GlobalCenterRankWeightMultiplier(
                 pack_seri.avgpos_rank_based_weight_multiplier,

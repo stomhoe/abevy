@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
 };
 
-use ::being_shared::{movement_shared_bundles::*, movement_shared_components::*, *};
+use ::being_shared::{movement_shared_components::*, *};
 use tilemap::chunking::chunking_components::*;
 use tilemap_shared::{LoadChunksAround, ChunkPos, DimensionRef, GlobalTilePos, };
 

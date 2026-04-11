@@ -1,6 +1,5 @@
 sprite ghost_he {
 name "Ghost Head"
-z 1000
 mapped_anims {
     south idle g _ = ghost_he_s_idle
     south move g _ = ghost_he_s_move

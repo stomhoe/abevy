@@ -2,8 +2,10 @@ use bevy::prelude::*;
 use bevy::ecs::system::SystemParam;
 use common::common_components::HashId;
 use common::common_components::*;
-use game_common::game_common_components::{Templ, TemplEntiHashIdRef, TemplEntiRef};
+use game_common::game_common_components::{Templ, TemplHashIdRef, TemplEntiRef};
 use common::log_targets::BODY_BUILD;
+use modifier_shared::modifier_components::{ApplyMode, BaseValue, CurrEffectiveValue, ModifierTarget};
+use modifier_shared::modifier_types::BloodCapacity;
 use modifier_shared::modifier_components::{AppliedModifiers, ModifierSynergies};
 
 use crate::body::BodyRef;
@@ -69,6 +71,12 @@ pub fn build_bodys_on_beings(
             error!(target: BODY_BUILD, "Body template {} is missing distributed totals; skipping build for {}", entity_dbg(body_templ_ent, &display_name_query), entity_dbg(being_ent, &display_name_query));
             continue;
         };
+        let blood_capacity = totals_to_distribute
+            .0
+            .get_opt(BodypartStat::STAT_BLOOD_CAPACITY)
+            .copied()
+            .unwrap_or_default()
+            .max(0.0);
         let Ok(bodytree_ref) = bodytree_ref_query.get(body_templ_ent) else {
             error!(target: BODY_BUILD, "Body template {} is missing BodyTreeRef; skipping build for {}", entity_dbg(body_templ_ent, &display_name_query), entity_dbg(being_ent, &display_name_query));
             continue;
@@ -87,9 +95,23 @@ pub fn build_bodys_on_beings(
             BodyOf { being: being_ent },
             ChildOf(being_ent),
             TemplEntiRef(body_templ_ent),
-            TemplEntiHashIdRef(body_hash),
-            BodySums::default(),
+            TemplHashIdRef(body_hash),
+            BodySums {
+                blood_capacity,
+                blood: blood_capacity,
+                ..Default::default()
+            },
         )).id();
+        if blood_capacity > 0.0 {
+            cmd.spawn((
+                ModifierTarget(body_ent),
+                BaseValue(blood_capacity),
+                CurrEffectiveValue(blood_capacity),
+                ApplyMode::Add,
+                BloodCapacity,
+                ChildOf(body_ent),
+            ));
+        }
         let Ok((templ_bodyparts, )) = templ_tree_bodyparts_query.get(source_tree_ent) else {
             error!(target: BODY_BUILD, "Body tree {} has no BodypartChildrenBodyparts; skipping {}", entity_dbg(source_tree_ent, &display_name_query), entity_dbg(being_ent, &display_name_query));
             continue;
@@ -161,7 +183,7 @@ fn walk_and_clone_tree(
         BodypartChildOfBodypart { parent_bodypart },
         ChildOf(body_ent),
         TemplEntiRef(templtree_curr_node_ent),
-        TemplEntiHashIdRef(source_part_hash),
+        TemplHashIdRef(source_part_hash),
         Name::default(),
     ));
     cloned_parts_to_source.push((cloned_bodypart_ent, templtree_curr_node_ent));

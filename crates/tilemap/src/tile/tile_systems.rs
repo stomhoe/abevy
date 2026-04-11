@@ -1,5 +1,5 @@
 use crate::{
-    tile::{tile_components::*, tile_messages::*},
+    tile::{tile_components::*, tile_messages::*, tile_resources::*},
 
 };
 use avian2d::prelude::*;
@@ -111,9 +111,10 @@ pub fn add_spawned_tiles_to_gpos_map(
     mut map: ResMut<SpriteTilesAtGpos>,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
     query: Query<
-        (Entity, &DimensionRef, &GlobalTilePos, &TemplEntiRef),
+        (Entity, &DimensionRef, &GlobalTilePos, &TileRef),
         (common::AnyDisabling, Without<Templ>, Without<TilemapId>),
     >,
+    tile_map: Res<TileEntityMap>,
     interaction_zones_query: Query<&InteractionZones, common::AnyDisabling>,
     mut entities: Local<EntityHashSet>,
 ) {
@@ -126,13 +127,18 @@ pub fn add_spawned_tiles_to_gpos_map(
         let interaction_zones = query
             .get(changed_pos.entity)
             .ok()
-            .and_then(|(_, _, _, templ_ref)| interaction_zones_query.get(templ_ref.0).ok());
+            .and_then(|(_, _, _, templ_ref)| tile_map.0.get_cloned(templ_ref.0).ok())
+            .and_then(|templ_ent| interaction_zones_query.get(templ_ent).ok());
         map.remove_tile(old.dim, old.gpos, changed_pos.entity, interaction_zones);
         entities.insert(changed_pos.entity);
     }
     for ent in entities.drain() {
         let Ok((ent, &dimension_ref, &gpos, templ_ref)) = query.get(ent) else { continue };
-        let interaction_zones = interaction_zones_query.get(templ_ref.0).ok();
+        let interaction_zones = tile_map
+            .0
+            .get_cloned(templ_ref.0)
+            .ok()
+            .and_then(|templ_ent| interaction_zones_query.get(templ_ent).ok());
         map.insert(ent, dimension_ref, gpos, interaction_zones);
     }
 }

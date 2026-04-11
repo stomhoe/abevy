@@ -4,7 +4,7 @@ use common::common_components::*;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::tilemap_shared_samplers::{HashIdWeightedSampler, SpriteGlobalNormalDist};
 
-use crate::WanderSeri;
+use crate::{FightOrFlightConfig, FightingStyle, WanderSeri};
 use common::common_tag_components::TagSet;
 use tilemap_shared::*;
 
@@ -79,6 +79,8 @@ pub struct RaceSeri {
     pub whitelisted_tiles_for_spawning: HashSet<String>,
     pub blacklisted_tiles_for_spawning: HashSet<String>,
     pub predator: crate::PredatorSeri,
+    pub fight_or_flight_config: FightOrFlightConfig,
+    pub fighting_style: FightingStyle,
     pub wander: WanderSeri,
     pub melee_interaction_zone: InteractionZoneSeri,
     pub collision_zone: InteractionZoneSeri,
@@ -124,6 +126,8 @@ impl Default for RaceSeri {
             whitelisted_tiles_for_spawning: HashSet::default(),
             blacklisted_tiles_for_spawning: HashSet::default(),
             predator: crate::PredatorSeri::default(),
+            fight_or_flight_config: FightOrFlightConfig::default(),
+            fighting_style: FightingStyle::default(),
             wander: WanderSeri::default(),
             melee_interaction_zone: InteractionZoneSeri::default(),
             collision_zone: InteractionZoneSeri::default(),

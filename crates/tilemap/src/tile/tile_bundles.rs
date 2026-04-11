@@ -10,7 +10,7 @@ use item_shared::ItemsGeneratedOnDeath;
 use ::tilemap_shared::{*, DeleteOtherTilesInSamePos, PortalSeri};
 
 use crate::tile::tile_components::*;
-use crate::tile::tile_resources::TileImagePaths;
+use crate::tile::tile_resources::{TileImagePaths, TileRef};
 use crate::tile::tile_shader::tile_shader_components::*;
 
 
@@ -58,7 +58,7 @@ struct ToDenyOnReleaseBuild(Name);
 
 #[derive(Bundle, Debug, Clone)]
 pub struct TileMassSpawnBundle {
-    pub templ_ref: TemplEntiRef,
+    pub templ_ref: TileRef,
     pub gpos: GlobalTilePos,
     pub snap_to_gpos: SnapTransformToGpos,
     pub dim_ref: DimensionRef,

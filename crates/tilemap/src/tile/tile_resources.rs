@@ -21,7 +21,8 @@ common::define_entity_map_systems!(
     entity_prefix: "tile",
     despawn_trigger: Tile,
     id_type: common::common_components::StrId,
-    assets: [(TileSeri, "seri.tilemap.tile", "tile.ron")]
+    assets: [(TileSeri, "seri.tilemap.tile", "tile.ron")],
+    templ_enti_ref_sync: (common::AnyDisabling,),
 );
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]

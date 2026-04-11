@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
+use common::common_components::HashId;
 use common::log_targets::BEING_SYSTEM;
 use faction_shared::BelongsToAPlayerFaction;
 use ::tilemap_shared::*;
 
 use ::being_shared::*;
+use crate::being_resources::BeingEntityMap;
 
 pub const MAX_LOADED_BEINGS: usize = 300;
 
@@ -80,4 +82,24 @@ pub fn cleanup_being_from_BeingsInCpos_on_despawn(
         dim_ref,
         chunk_pos,
     );
+}
+
+#[allow(unused_parens, )]
+pub fn remove_being_hash_id_from_map_on_despawn(
+    trigger: On<Despawn, Being>,
+    hash_id_query: Query<&HashId, With<Being>>,
+    mut being_entity_map: ResMut<BeingEntityMap>,
+) {
+    let Ok(&hash_id) = hash_id_query.get(trigger.entity) else {
+        return;
+    };
+    if hash_id == HashId::default() {
+        return;
+    }
+    let Some(prev_ent) = being_entity_map.0.get_cloned(hash_id).ok() else {
+        return;
+    };
+    if prev_ent == trigger.entity {
+        being_entity_map.remove(hash_id);
+    }
 }

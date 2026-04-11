@@ -160,6 +160,23 @@ pub fn update_body_weight_sum(
                 energy_store.baseline_mass_kg = total_mass;
                 energy_store.lean_mass_kg = total_mass;
                 energy_store.fat_mass_kg = total_mass * 0.12;
+            } else if total_mass < energy_store.baseline_mass_kg {
+                let prev_baseline_mass = energy_store.baseline_mass_kg;
+                let prev_lean_mass = energy_store.lean_mass_kg;
+                let mass_loss = (prev_baseline_mass - total_mass).max(0.0);
+                energy_store.baseline_mass_kg = total_mass;
+                energy_store.lean_mass_kg = (energy_store.lean_mass_kg - mass_loss).max(0.0);
+                trace!(
+                    target: BODY_ENERGY_SYSTEM,
+                    "Shrank body energy baseline for body {:?} being {:?}: structural_mass {:.3}->{:.3} lean {:.3}->{:.3} fat {:.3}",
+                    body_ent,
+                    body_of.being,
+                    prev_baseline_mass,
+                    energy_store.baseline_mass_kg,
+                    prev_lean_mass,
+                    energy_store.lean_mass_kg,
+                    energy_store.fat_mass_kg,
+                );
             }
             let dynamic_delta_mass = (energy_store.lean_mass_kg + energy_store.fat_mass_kg - energy_store.baseline_mass_kg).max(-energy_store.baseline_mass_kg * 0.9);
             total_mass = (total_mass + dynamic_delta_mass).max(0.0);
@@ -308,6 +325,7 @@ pub fn tick_global_body_energy(
                 let starvation_damage = (deficit_kcal / 80.0).max(starvation_config.damage_per_sec_at_zero_lean * dt);
                 damage_messages.write(IncHealthDamageOrHeal {
                     target_ent: body_of.being,
+                    source_ent: Entity::PLACEHOLDER,
                     amount: starvation_damage,
                     distribute_mode: DamageDistributeMode::EquitativelyDistributedBetweenAllBasedOnRatioOverBodyTotalHitpointsCapacity,
                 });

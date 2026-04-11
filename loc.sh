@@ -17,19 +17,21 @@ fi
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
+workers="$(command -v nproc >/dev/null 2>&1 && nproc || getconf _NPROCESSORS_ONLN || echo 4)"
 find "${targets[@]}" -type f \( -name '*.rs' -o -name '*.ron' -o -name '*.g' \) -print0 \
-  | while IFS= read -r -d '' f; do
+  | xargs -0 -n 1 -P "$workers" sh -c '
+      f=$1
       lines=$(wc -l < "$f")
-      words=$(tr '.' ' ' < "$f" | wc -w)
-      nonblank_chars=$(tr -d '[:space:]' < "$f" | wc -c)
+      words=$(tr "." " " < "$f" | wc -w)
+      nonblank_chars=$(tr -d "[:space:]" < "$f" | wc -c)
       case "$f" in
         *.rs)  ext="rs" ;;
         *.ron) ext="ron" ;;
         *.g)   ext="tg" ;; # requested label
         *)     ext="other" ;;
       esac
-      printf "%s\t%s\t%s\t%s\t%s\n" "$ext" "$lines" "$words" "$nonblank_chars" "1" >> "$tmp"
-    done
+      printf "%s\t%s\t%s\t%s\t%s\n" "$ext" "$lines" "$words" "$nonblank_chars" "1"
+    ' sh >> "$tmp"
 
 awk -F'\t' '
   {

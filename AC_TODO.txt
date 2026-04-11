@@ -51,7 +51,6 @@ hacer q ghosts peudan transpasar beings y walls pero q no puedan agarrar nada
 
 posibilidad de anclar wanderers a posiciones así n
 
-mejorar caza de depredadores
 
 hacer q algunos sean hostil a todo lo q vean
 

@@ -70,6 +70,7 @@ pub fn plugin(app: &mut App) {
         add_projectile_colliders_to_tiles,
         (snap_transform_to_gpos).chain(),
         add_handles,
+        sync_tile_instance_templ_enti_ref_from_map,
         init_childrensprite,
         emit_global_tile_pos_change,
         validate_portal_recipes,

@@ -3,7 +3,7 @@
 #[allow(unused_imports)] use bevy_asset_loader::prelude::*;
 use common::common_components::{AddHashIdFromStrId, StrId};
 use common::common_id_components::HashId;
-use game_common::game_common_components::TemplEntiHashIdRef;
+use game_common::game_common_components::TemplHashIdRef;
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 
 use crate::body::{body_resources::*, body_sampler::{body_sampler_components::*, body_sampler_resources::*}};
@@ -28,7 +28,7 @@ pub fn init_body_weighted_samplers(
             }
             let ent = cmd.spawn_empty().id();
             let hash_id = HashId::from(str_id.as_str());
-            comps_to_insert.push((ent, (str_id, AddHashIdFromStrId, TemplEntiHashIdRef(hash_id), HashIdWeightedSampler::default(), ChildOf(holder), BodyWeightedSampler, )));
+            comps_to_insert.push((ent, (str_id, AddHashIdFromStrId, TemplHashIdRef(hash_id), HashIdWeightedSampler::default(), ChildOf(holder), BodyWeightedSampler, )));
         }
     }
     cmd.insert_batch(comps_to_insert);

@@ -1,6 +1,5 @@
 sprite basilisk {
 name Basilisk
-z 1000
 mapped_anims {
     south idle g _ = basilisk_s_idle
     south move g _ = basilisk_s_move

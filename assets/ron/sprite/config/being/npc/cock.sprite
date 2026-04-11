@@ -1,6 +1,5 @@
 sprite cock {
 name Cock
-z 1000
 mapped_anims {
     south idle g _ = cock_s_idle
     south move g _ = cock_s_move

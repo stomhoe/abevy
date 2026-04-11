@@ -1,7 +1,7 @@
 use ::being_shared::*;
 use ::tilemap_shared::*;
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
-use common::log_targets::BEING_SYSTEM;
+use common::log_targets::BEING_MELEE_SYSTEMS;
 use game_common::game_common_components::TemplEntiRef;
 use param_sets::BlockingTileParamSet;
 use tilemap::tile::tile_components::TileFlip;
@@ -141,7 +141,7 @@ pub fn emit_ai_melee_attack_requests(
         cooldown.set_duration(TEMP_AI_MELEE_ATTACK_COOLDOWN);
         cooldown.reset();
         debug!(
-            target: BEING_SYSTEM,
+            target: BEING_MELEE_SYSTEMS,
             "AI melee request queued for {:?} at dim {:?}",
             attacker_ent,
             attacker_dim
@@ -179,11 +179,11 @@ pub fn apply_melee_attack(
         let Ok((&attacker_dim, attacker_transform, )) =
             beings_query.get(attacker_ent)
         else {
-            info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} not found", attacker_ent);
+            info!(target: BEING_MELEE_SYSTEMS, "Melee ignored: attacker {:?} not found", attacker_ent);
             continue;
         };
         let Ok(attacker_direction) = tile_gathering.cardinal_direction_query().get_mut(attacker_ent) else {
-            info!(target: BEING_SYSTEM, "Melee ignored: attacker {:?} has no facing direction", attacker_ent);
+            info!(target: BEING_MELEE_SYSTEMS, "Melee ignored: attacker {:?} has no facing direction", attacker_ent);
             continue;
         };
         let attacker_direction = *attacker_direction;
@@ -207,7 +207,7 @@ pub fn apply_melee_attack(
         let mut hit_tiles = 0usize;
 
         info!(
-            target: BEING_SYSTEM,
+            target: BEING_MELEE_SYSTEMS,
             "Melee started by {:?} at dim {:?}, facing {:?}",
             attacker_ent,
             attacker_dim,
@@ -269,12 +269,13 @@ pub fn apply_melee_attack(
                 }
                 incoming_damage_messages.push(IncHealthDamageOrHeal {
                     target_ent,
+                    source_ent: attacker_ent,
                     amount: MELEE_DAMAGE,
                     distribute_mode: DamageDistributeMode::SampledBodyPart,
                 });
                 hit_beings += 1;
                 hit_done = true;
-                info!(target: BEING_SYSTEM, "Melee hit being {:?}", target_ent);
+                info!(target: BEING_MELEE_SYSTEMS, "Melee hit being {:?}", target_ent);
                 break;
             }
             if hit_done {
@@ -291,16 +292,16 @@ pub fn apply_melee_attack(
             let tile_entities = tile_gathering.gather_tiles(attacker_dim, candidate_gpos).to_vec();
             for target_ent in tile_entities {
                 if !hit_entities.insert(target_ent) {
-                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} already hit", target_ent);
+                    error!(target: BEING_MELEE_SYSTEMS, "Melee hit entity {:?} already hit", target_ent);
                     continue;
                 }
                 let Ok((&TemplEntiRef(tile_templ), _tile_flip)) = tile_instances.get(target_ent)
                 else {
-                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} has no tile_templ", target_ent);
+                    error!(target: BEING_MELEE_SYSTEMS, "Melee hit entity {:?} has no tile_templ", target_ent);
                     continue;
                 };
                 let Ok(&tile_origin) = tile_gathering.gpos_query.get(target_ent) else {
-                    error!(target: BEING_SYSTEM, "Melee hit entity {:?} has no tile position", target_ent);
+                    error!(target: BEING_MELEE_SYSTEMS, "Melee hit entity {:?} has no tile position", target_ent);
                     continue;
                 };
                 let tile_direction = tile_gathering
@@ -324,13 +325,14 @@ pub fn apply_melee_attack(
                 }
                 incoming_damage_messages.push(IncHealthDamageOrHeal {
                     target_ent,
+                    source_ent: attacker_ent,
                     amount: MELEE_DAMAGE,
                     distribute_mode: DamageDistributeMode::SampledBodyPart,
                 });
                 hit_tiles += 1;
                 hit_done = true;
                 info!(
-                    target: BEING_SYSTEM,
+                    target: BEING_MELEE_SYSTEMS,
                     "Melee hit tile instance {:?} (templ {:?})",
                     target_ent,
                     tile_templ
@@ -340,10 +342,10 @@ pub fn apply_melee_attack(
         }
 
         if hit_beings == 0 && hit_tiles == 0 {
-            info!(target: BEING_SYSTEM, "Melee ended: no valid receiver hit");
+            info!(target: BEING_MELEE_SYSTEMS, "Melee ended: no valid receiver hit");
         } else {
             info!(
-                target: BEING_SYSTEM,
+                target: BEING_MELEE_SYSTEMS,
                 "Melee ended: {} being hit(s), {} tile hit(s)",
                 hit_beings,
                 hit_tiles

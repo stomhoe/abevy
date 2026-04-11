@@ -2,7 +2,7 @@
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use common::common_components::*;
 use common::common_id_components::HashId;
-use game_common::game_common_components::{Templ, TemplEntiHashIdRef};
+use game_common::game_common_components::{Templ, TemplHashIdRef};
 use game_common::game_common_string_components::*;
 use common::common_components::{AddHashIdFromStrId, SampleSpritesamplers};
 use sprite_systems::{sprite_resources::SpriteConfigEntityMap, sprite_sampler::SpriteWeightedSamplerEntityMap};
@@ -160,7 +160,7 @@ pub fn init_races(
                 None
             }
         };
-        let mut entity_cmds = cmd.spawn((Race, Templ, str_id.clone(), AddHashIdFromStrId, TemplEntiHashIdRef(HashId::from(str_id.as_str())), ingame_name, singular, plural));
+        let mut entity_cmds = cmd.spawn((Race, Templ, str_id.clone(), AddHashIdFromStrId, TemplHashIdRef(HashId::from(str_id.as_str())), ingame_name, singular, plural));
         let body_str_id = match StrId::new_with_result(race_seri.body_or_sampler.trim(), 0) {
             Ok(body_str_id) => body_str_id,
             Err(err) => {
@@ -235,6 +235,12 @@ pub fn init_races(
         }
         if !race_seri.wander.is_disabled() {
             cmd.entity(entity).insert(race_seri.wander.clone().sanitized());
+        }
+        if race_seri.fight_or_flight_config != FightOrFlightConfig::default() {
+            cmd.entity(entity).insert(race_seri.fight_or_flight_config);
+        }
+        if race_seri.fighting_style != FightingStyle::default() {
+            cmd.entity(entity).insert(race_seri.fighting_style);
         }
         if !race_seri.whitelisted_spawn_tile_tags.is_empty() {
             cmd.entity(entity).insert(WhitelistedSpawnTileTags::new(&race_seri.whitelisted_spawn_tile_tags));

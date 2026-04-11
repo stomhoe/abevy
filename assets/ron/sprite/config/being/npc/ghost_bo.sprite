@@ -1,6 +1,5 @@
 sprite ghost_bo {
 name "Ghost Body"
-z 1000
 mapped_anims {
     south idle g _ = ghost_bo_s_idle
     south move g _ = ghost_bo_s_move

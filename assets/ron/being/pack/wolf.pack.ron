@@ -1,12 +1,13 @@
+
 pack {
     id: "wolf",
-    spawn_being_count_normal_dist: { min_dev: 2.0, max_dev: 4.0, mean: 6.0, std_dev: 2.0 },
+    spawn_being_count_normal_dist: { min_dev: 3.0, max_dev: 2.0, mean: 4.0, std_dev: 2.0 },
     ids: {
         wolf: 1.0,
     },
     biome_affinity: {
         ocean: -2.5,
-        temp: 999990.6,
+        temp: 0.6,
     },
     pack_spawn_radius: 7,
 }

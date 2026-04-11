@@ -415,6 +415,7 @@ dependencies = [
  "game_common",
  "sprite_animation_shared",
  "sprite_shared",
+ "sprite_systems",
  "tilemap",
  "tilemap_shared",
 ]

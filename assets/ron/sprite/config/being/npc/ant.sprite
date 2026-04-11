@@ -1,6 +1,5 @@
 sprite ant {
 name Ant
-z 1000
 mapped_anims {
     south idle g _ = ant_s_idle
     south move g _ = ant_s_move

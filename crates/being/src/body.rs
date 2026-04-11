@@ -3,17 +3,19 @@ use bevy::ecs::schedule::common_conditions::on_message;
 use bevy::ecs::schedule::ApplyDeferred;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
-use game_common::{HostSystems, game_common::ModifierSystems};
+use game_common::{HostSystems, game_common::{ModifierSystems, SimRunningSystems}};
 use ::being_shared::body_energy::*;
 use crate::body::bodytree::BodyTreeSystems;
 use crate::body::{
     body_systems::*,
     body_hp_systems::*,
+    body_fight_or_flight_systems::*,
     body_build_systems::*,
     body_templ_init_systems::*,
 };
 
 pub mod body_components;
+pub mod body_modifier_effectiveness_helper;
 pub mod bodypart;
 pub mod body_resources;
 pub mod body_seris;
@@ -21,6 +23,7 @@ pub mod body_sampler;
 pub mod bodytree;
 mod body_systems;
 mod body_hp_systems;
+mod body_fight_or_flight_systems;
 mod body_build_systems;
 mod body_templ_init_systems;
 #[allow(unused_imports)] pub use body_components::*;
@@ -42,23 +45,30 @@ pub fn plugin(app: &mut App) {
         Update,
         (
             ensure_body_energy_components,
+            update_body_weight_sum,
+            refresh_template_bodyparts_users_list,
+        ).in_set(BodySystems),
+    )
+    .add_systems(
+        Update,
+        (
             add_calories_to_being_energy_store.run_if(on_message::<AddCaloriesToBeing>),
             update_body_energy_activity_multipliers,
             tick_global_body_energy.run_if(on_timer(core::time::Duration::from_secs(1))),
-            update_body_weight_sum,
             apply_damage.run_if(on_message::<IncHealthDamageOrHeal>),
-            refresh_template_bodyparts_users_list,
             update_bodypart_max_hp_map.run_if(on_timer(core::time::Duration::from_millis(200))),
-            set_bodypart_as_missing_if_0_hp,
             update_body_health_from_parts.run_if(on_timer(core::time::Duration::from_millis(200))),
+            set_bodypart_as_missing_if_0_hp.after(update_body_health_from_parts),
+            handle_fight_or_flight_reactions.after(apply_damage).run_if(on_message::<IncHealthDamageOrHeal>),
             apply_bodypart_hp_regen.run_if(on_timer(core::time::Duration::from_millis(200))),
             ensure_pain_slowdown_modifiers,
-        ),
+        ).in_set(BodySystems).in_set(SimRunningSystems),
     )
     .add_systems(
         Update,
         build_bodys_on_beings.in_set(HostSystems).in_set(ModifierSystems),
     )
+    .configure_sets(Update, BodySystems.after(ModifierSystems))
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (
@@ -78,6 +88,10 @@ pub fn plugin(app: &mut App) {
     .replicate_filtered::<ChildOf, With<BodyOf>>()
     .replicate_filtered::<ChildOf, With<BodypartChildOfBodypart>>()
     .replicate::<BodySums>()
+    .replicate::<BodyEnergyStore>()
+    .replicate::<BodyEnergyBalance>()
+    .replicate::<BodyEnergyProfile>()
+    .replicate::<StarvationConfig>()
     .init_resource::<BodypartMaxHpMap>()
     .init_resource::<BodypartTemplateByPart>()
     .add_message::<IncHealthDamageOrHeal>()

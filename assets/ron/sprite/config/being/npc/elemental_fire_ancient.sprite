@@ -1,6 +1,5 @@
 sprite elemental_fire_ancient {
 name "Elemental Fire Ancient"
-z 1000
 mapped_anims {
     south idle g _ = elemental_fire_ancient_s_idle
     south move g _ = elemental_fire_ancient_s_move

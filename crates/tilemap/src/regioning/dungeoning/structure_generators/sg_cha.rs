@@ -2,7 +2,6 @@
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
-use game_common::game_common_components::TemplEntiRef;
 use rand::{Rng, SeedableRng};
 use rand_distr::num_traits::Float;
 use ::tilemap_shared::*;
@@ -123,7 +122,7 @@ pub fn corridor_dungeon_building_system(
         let terrgen_disable_by_tile_id = super::super::dungeoning_utils::TerrGenDisableConfigMap::from_args(&structured_gen_cfg.args);
 
         let floor_entity = match templs_map.0.get_cloned(floor_tile_id) {
-            Ok(entity) => TemplEntiRef(entity),
+            Ok(_) => TileRef(floor_tile_id),
             Err(_) => {
                 error!(target: "dungeoning", "TileTempl '{:?}' not found", floor_tile_id);
                 continue;
@@ -131,7 +130,7 @@ pub fn corridor_dungeon_building_system(
         };
 
         let wall_entity = match templs_map.0.get_cloned(wall_tile_id) {
-            Ok(entity) => TemplEntiRef(entity),
+            Ok(_) => TileRef(wall_tile_id),
             Err(_) => {
                 error!(target: "dungeoning", "TileTempl '{:?}' not found", wall_tile_id);
                 continue;
@@ -139,11 +138,17 @@ pub fn corridor_dungeon_building_system(
         };
 
         let lava_entity = match templs_map.0.get_cloned(lava_tile_id) {
-            Ok(entity) => TemplEntiRef(entity),
+            Ok(_) => TileRef(lava_tile_id),
             Err(_) => {
                 error!(target: "dungeoning", "TileTempl '{:?}' not found", lava_tile_id);
                 continue;
             }
+        };
+        let Ok(floor_entity_ent) = templs_map.0.get_cloned(floor_entity.0) else {
+            continue;
+        };
+        let Ok(lava_entity_ent) = templs_map.0.get_cloned(lava_entity.0) else {
+            continue;
         };
 
         let chunk_positions = &build_order.chunks_pos;
@@ -707,13 +712,13 @@ pub fn corridor_dungeon_building_system(
                 if hazard_map[map_idx] {
                     tiles4chunk.push((tile_pos, lava_entity, lava_delete_other_tiles.clone()));
                     if disable_lava_terrgen {
-                        let size = templ_size_query.get(lava_entity.0).copied().unwrap_or_default().inner();
+                        let size = templ_size_query.get(lava_entity_ent).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, size);
                     }
                 } else if floor_map[map_idx] {
                     tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
-                        let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
+                        let size = templ_size_query.get(floor_entity_ent).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, size);
                     }
                 } else if wall_map[map_idx] {

@@ -1,6 +1,5 @@
 sprite evil_tree {
 name "Evil Tree"
-z 1000
 mapped_anims {
     south idle g _ = evil_tree_s_idle
     south move g _ = evil_tree_s_move

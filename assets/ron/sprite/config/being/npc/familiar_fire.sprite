@@ -1,6 +1,5 @@
 sprite familiar_fire {
 name "Familiar Fire"
-z 1000
 mapped_anims {
     south idle g _ = familiar_fire_s_idle
     south move g _ = familiar_fire_s_move

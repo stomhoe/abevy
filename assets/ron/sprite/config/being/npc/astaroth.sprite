@@ -1,6 +1,5 @@
 sprite astaroth {
 name Astaroth
-z 1000
 mapped_anims {
     south idle g _ = astaroth_s_idle
     south move g _ = astaroth_s_move

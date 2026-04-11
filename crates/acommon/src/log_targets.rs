@@ -15,7 +15,7 @@ pub const WGPU_HAL: &str = "wgpu_hal";
 pub const WGPU_CORE: &str = "wgpu_core";
 pub const BEVY_ECS_TILEMAP: &str = "bevy_ecs_tilemap";
 pub const BEVY_ECS_RELATIONSHIP: &str = "bevy_ecs_relationship";
-pub const BEVY_W_INIT: &str = "bevy_w_init";
+pub const BEVY_W_INIT: &str = "bevy_winit::system";
 
 pub const BEVY_EGUI: &str = "bevy_egui";
 pub const BEVY_REPLICON: &str = "bevy_replicon";
@@ -57,7 +57,7 @@ pub const GAME_INIT: &str = "game_init";
 // BUILD & CONFIGURATION SYSTEMS (format: <name>_build)
 // ============================================================================
 pub const SPRITE_BUILD: &str = "sprite_build";
-pub const BEING_TEMPLATE_BUILD: &str = "being_template_build";
+pub const BEING_BUILD: &str = "being_build";
 pub const BODY_BUILD: &str = "body_build";
 pub const BODY_TEMPL_INIT: &str = "body_templ_init";
 pub const GAME_COMMON_SYSTEM: &str = "game_common_system";
@@ -97,6 +97,7 @@ pub const RIVER_SYSTEM: &str = "river_system";
 // RUNTIME SYSTEMS - GAMEPLAY (format: <name>_system)
 // ============================================================================
 pub const BEING_SYSTEM: &str = "being_system";
+pub const BEING_MELEE_SYSTEMS: &str = "being_melee_systems";
 pub const WANDER_SYSTEM: &str = "wander_system";
 pub const BODY_HP_SYSTEM: &str = "body_hp_system";
 pub const BODY_ENERGY_SYSTEM: &str = "body_energy_system";

@@ -1,6 +1,5 @@
 sprite cobra_green {
 name "Cobra Green"
-z 1000
 mapped_anims {
     south idle g _ = cobra_green_s_idle
     south move g _ = cobra_green_s_move

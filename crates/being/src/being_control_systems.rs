@@ -20,13 +20,10 @@ pub fn add_activates_chunks(
     cmd.try_insert_batch(activates_chunks);
 }
 
-pub fn sync_player_being_chunk_ranges(
+pub fn sync_being_chunk_ranges_to_resource(
     default_chunk_range_for_player_beings: Res<LoadChunksAround>,
-    mut query: Query<&mut LoadChunksAround, (With<Being>, With<HumanControlled>)>,
+    mut query: Query<&mut LoadChunksAround, With<Being>>,
 ) {
-    if !default_chunk_range_for_player_beings.is_changed() {
-        return;
-    }
     for mut chunk_range in query.iter_mut() {
         *chunk_range = *default_chunk_range_for_player_beings;
     }

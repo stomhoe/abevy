@@ -33,8 +33,7 @@ anim golem_n_move {
         row 1 start_frame 1
     }
 }
-
-anim golem_w_idle {
+anim golem_e_idle {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     paused: true
@@ -44,7 +43,7 @@ anim golem_w_idle {
     }
 }
 
-anim golem_w_move {
+anim golem_e_move {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     clips {
@@ -52,7 +51,7 @@ anim golem_w_move {
     }
 }
 
-anim golem_e_idle {
+anim golem_w_idle {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     paused: true
@@ -62,7 +61,7 @@ anim golem_e_idle {
     }
 }
 
-anim golem_e_move {
+anim golem_w_move {
     img_path: "texture/being/npc/monster/golem.png"
     rows_cols: 4 8
     clips {

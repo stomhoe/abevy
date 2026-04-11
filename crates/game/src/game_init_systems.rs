@@ -115,7 +115,10 @@ fn place_player_being_at(
     ));
 }
 
-pub fn load_game_init_settings(mut settings: ResMut<GameInitSettings>) {
+pub fn load_game_init_settings(
+    mut settings: ResMut<GameInitSettings>,
+    terrprobe_entity_map: Res<TerrProbeTemplEntityMap>,
+) {
     let db = match common::def_db::DefDatabase::<GameInitSettingsSeri>::load_from_assets_dir_with_type(
         stringify!(GameInitSettingsSeri),
         &["game_init.settings.ron"],
@@ -130,7 +133,28 @@ pub fn load_game_init_settings(mut settings: ResMut<GameInitSettings>) {
     let Some(first) = db.into_records().into_iter().next() else {
         return;
     };
-    *settings = first.value.to_settings();
+    let mut loaded_settings = first.value.to_settings();
+    let requested_probe_id = loaded_settings.players_spawn_probe_id.clone();
+    if terrprobe_entity_map.0.get_cloned(requested_probe_id.clone()).is_err() {
+        error!(
+            target: GAME_INIT,
+            "Configured players_spawn_probe_id '{}' in GameInitSettingsSeri '{}' does not match any loaded terrain probe. Falling back to 'land'",
+            requested_probe_id,
+            first.value.id,
+        );
+        let fallback_probe_id = StrId::new_with_result("land", 0)
+            .expect("fallback players_spawn_probe_id must be a valid StrId");
+        if terrprobe_entity_map.0.get_cloned(fallback_probe_id.clone()).is_err() {
+            error!(
+                target: GAME_INIT,
+                "Fallback terrain probe 'land' is also missing after loading GameInitSettingsSeri '{}'; keeping default GameInitSettings",
+                first.value.id,
+            );
+            return;
+        }
+        loaded_settings.players_spawn_probe_id = fallback_probe_id;
+    }
+    *settings = loaded_settings;
 }
 
 
@@ -242,6 +266,11 @@ pub fn find_common_player_spawn_origin(
         };
 
         let Ok(probe_template_ent) = terrprobe_entity_map.0.get_cloned(settings.players_spawn_probe_id.clone()) else {
+            error_once!(
+                target: GAME_INIT,
+                "Failed to find TerrProbe template for players_spawn_probe_id '{}'; no common player spawn origin can be found",
+                settings.players_spawn_probe_id.as_str(),
+            );
             return None;
         };
         let Ok(probe_template) = terrprobe_query.get(probe_template_ent) else {

@@ -45,6 +45,7 @@ pub struct RebuildGotoNavPlansScratch<'s> {
     dynamic_blocking: Local<'s, HashMap<UVec3, Entity>>,
     active_chasers: Local<'s, EntityHashSet>,
     active_chase_targets: Local<'s, EntityHashSet>,
+    rebuilt_shared_flow_targets: Local<'s, EntityHashSet>,
     shared_rebuild_jobs: Local<'s, Vec<SharedChaseRebuildJob>>,
     shared_goal_owners: Local<'s, HashMap<GlobalTilePos, Entity>>,
     chase_zone_tiles: Local<'s, Vec<GlobalTilePos>>,
@@ -344,17 +345,6 @@ fn rebuild_shared_chase_flow_field(
         slot_tiles,
         seed_goal_tiles,
     )?;
-    debug!(
-        target: BEING_SYSTEM,
-        "Built shared chase flow target={:?} dim={:?} anchor={:?} goals={} slots={} open_goals={} zone_tiles={}",
-        target_ent,
-        target_dim,
-        target_pos,
-        flow_field.goal_tiles.len(),
-        flow_field.slot_tiles.len(),
-        flow_field.seed_goal_tiles.len(),
-        zone_tiles.len(),
-    );
     chase_fields.by_target.insert(target_ent, flow_field);
     Some(())
 }
@@ -579,6 +569,7 @@ pub fn rebuild_goto_nav_plans(
 ) {
     scratch.active_chasers.clear();
     scratch.active_chase_targets.clear();
+    scratch.rebuilt_shared_flow_targets.clear();
     scratch.shared_rebuild_jobs.clear();
     scratch.shared_goal_owners.clear();
 
@@ -671,7 +662,7 @@ pub fn rebuild_goto_nav_plans(
                 .last_target_pos
                 .map(|prev| (prev.0 - target_pos.0).abs().max_element() >= TARGET_SHIFT_REBUILD_TILES)
                 .unwrap_or(true);
-            let need_rebuild = plan.path_tiles.is_empty() || timer_finished || target_shifted;
+            let mut need_rebuild = plan.path_tiles.is_empty() || timer_finished || target_shifted;
             let target_bit_ref = blocking_tiles.get_being_bit_ref(shared_target_ent);
             let target_race_ref = blocking_tiles.get_being_race_ref(shared_target_ent);
 
@@ -729,6 +720,10 @@ pub fn rebuild_goto_nav_plans(
                     trace!(target: BEING_SYSTEM, "Deferred shared flow rebuild for {:?}: target {:?} has no valid goal tiles at {:?}", chaser_ent, shared_target_ent, target_pos);
                     continue;
                 };
+                scratch.rebuilt_shared_flow_targets.insert(shared_target_ent);
+            }
+            if scratch.rebuilt_shared_flow_targets.contains(&shared_target_ent) {
+                need_rebuild = true;
             }
             let Some(flow_field) = chase_fields.by_target.get(&shared_target_ent) else {
                 plan.clear_path_and_retry(

@@ -7,12 +7,11 @@ use bevy::{
 };
 use bevy_ecs_tilemap::prelude::*;
 use common::TILEMAP_SYSTEM;
-use game_common::game_common_components::{TemplEntiRef};
 use sprite_shared::AcZ;
 use ::tilemap_shared::*;
 
 use crate::{
-    tile::tile_shader::{tile_shader_components::*, tile_shader_resources::TileShaderEntityMap},
+    tile::{tile_resources::*, tile_shader::{tile_shader_components::*, tile_shader_resources::TileShaderEntityMap}},
     tilemap_structs::{MapKey, NeedsTerrblRefresh},
 };
 
@@ -22,7 +21,8 @@ pub struct RefreshTerrblTilemapsParams<'w, 's> {
     pub images: ResMut<'w, Assets<Image>>,
     pub shader_query: Query<'w, 's, &'static TileShader>,
     pub shader_map: Res<'w, TileShaderEntityMap>,
-    pub templ_ref_query: Query<'w, 's, &'static TemplEntiRef>,
+    pub tile_ref_query: Query<'w, 's, &'static TileRef>,
+    pub tile_map: Res<'w, TileEntityMap>,
     pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex>,
     pub terrbl_params_query: Query<'w, 's, &'static TerrBlendParams>,
     pub tilemaps: Query<'w, 's, (
@@ -93,7 +93,8 @@ pub fn refresh_terrbl_tilemaps(
                 let chunk_h = storage.size.y as i32;
                 let Some(material) = build_terrbl_material_for_map(
                     &mut params.images,
-                    &params.templ_ref_query,
+                    &params.tile_ref_query,
+                    &params.tile_map,
                     &params.tile_texture_index_query,
                     &EntityHashMap::default(),
                     &params.terrbl_params_query,
@@ -178,9 +179,10 @@ pub fn refresh_terrbl_tilemaps(
 
 pub fn build_terrbl_material_for_map(
     images: &mut Assets<Image>,
-    tile_templ_ref_query: &Query<&TemplEntiRef>,
+    tile_ref_query: &Query<&TileRef>,
+    tile_map: &TileEntityMap,
     tile_texture_index_query: &Query<&TileTextureIndex>,
-    tile_runtime_info: &EntityHashMap<(TemplEntiRef, TileTextureIndex)>,
+    tile_runtime_info: &EntityHashMap<(TileRef, TileTextureIndex)>,
     templ_terrbl_query: &Query<&TerrBlendParams>,
     storage: &TileStorage,
     tmap_ent: Entity,
@@ -221,7 +223,7 @@ pub fn build_terrbl_material_for_map(
             let (templ_ref, base_texture_index) = if let Some((templ_ref, base_texture_index)) = tile_runtime_info.get(&tile_ent) {
                 (*templ_ref, *base_texture_index)
             } else if let (Ok(templ_ref), Ok(base_texture_index)) = (
-                tile_templ_ref_query.get(tile_ent),
+                tile_ref_query.get(tile_ent),
                 tile_texture_index_query.get(tile_ent),
             ) {
                 (*templ_ref, *base_texture_index)
@@ -234,10 +236,17 @@ pub fn build_terrbl_material_for_map(
             };
             let px_i = ((y as usize) * (padded_width as usize) + (x as usize)) * 4;
             encode_u16(&mut tile_indices_data, px_i, base_texture_index.0 as u16);
-            let Ok(params) = templ_terrbl_query.get(templ_ref.0) else {
+            let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
                 if *terrbl_debug_budget > 0 {
                     *terrbl_debug_budget -= 1;
-                    error!(target: TILEMAP_SYSTEM, "terrbl debug: no TerrBlendParams on templ {:?} local ({}, {})", templ_ref.0, local_x, local_y);
+                    error!(target: TILEMAP_SYSTEM, "terrbl debug: no template entity for tile ref {:?} local ({}, {})", templ_ref, local_x, local_y);
+                }
+                continue;
+            };
+            let Ok(params) = templ_terrbl_query.get(templ_ent) else {
+                if *terrbl_debug_budget > 0 {
+                    *terrbl_debug_budget -= 1;
+                    error!(target: TILEMAP_SYSTEM, "terrbl debug: no TerrBlendParams on templ {:?} local ({}, {})", templ_ent, local_x, local_y);
                 }
                 continue;
             };

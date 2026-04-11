@@ -53,6 +53,7 @@ impl Default for BodySums {
 #[derive(Debug, Copy, Clone, Message)]
 pub struct IncHealthDamageOrHeal {
     pub target_ent: Entity,
+    pub source_ent: Entity,
     pub amount: f32,
     pub distribute_mode: DamageDistributeMode,
 }
@@ -60,6 +61,7 @@ impl IncHealthDamageOrHeal {
     pub fn new(target: Entity, amount: f32, ) -> Self {
         Self {
             target_ent: target,
+            source_ent: Entity::PLACEHOLDER,
             amount,
             distribute_mode: DamageDistributeMode::default(),
         }

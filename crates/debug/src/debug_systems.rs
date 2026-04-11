@@ -59,7 +59,7 @@ pub fn receive_debug_increase_speed_request(
         let Ok((applied_modifiers, )) = controlled_beings_query.get(being_ent) else {
             continue;
         };
-        apply_speed_factor(&mut cmd, being_ent, applied_modifiers, &mut debug_modi_query, 1.05);
+        apply_speed_factor(&mut cmd, being_ent, applied_modifiers, &mut debug_modi_query, 1.02);
     }
 }
 
@@ -75,6 +75,6 @@ pub fn receive_debug_decrease_speed_request(
         let Ok((applied_modifiers, )) = controlled_beings_query.get(being_ent) else {
             continue;
         };
-        apply_speed_factor(&mut cmd, being_ent, applied_modifiers, &mut debug_modi_query, 0.95);
+        apply_speed_factor(&mut cmd, being_ent, applied_modifiers, &mut debug_modi_query, 0.98);
     }
 }

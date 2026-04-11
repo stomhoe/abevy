@@ -2,6 +2,8 @@
 
 pub mod being;
 pub use being::*;
+pub mod being_resources;
+pub use being_resources::*;
 
 mod being_messages;
 mod being_systems;

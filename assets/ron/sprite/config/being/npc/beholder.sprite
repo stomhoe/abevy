@@ -1,6 +1,5 @@
 sprite beholder {
 name Beholder
-z 1000
 mapped_anims {
     south idle g _ = beholder_s_idle
     south move g _ = beholder_s_move

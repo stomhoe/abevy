@@ -2,7 +2,6 @@
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
-use game_common::game_common_components::TemplEntiRef;
 use rand::{Rng, SeedableRng, seq::SliceRandom};
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use ::tilemap_shared::*;
@@ -28,6 +27,7 @@ pub fn archimedes_spiral_building_system(
     sampler_map: Res<TileWeightedSamplerEntityMap>,
     sampler_query: Query<&HashIdWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
     templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
+    templ_hash_query: Query<&HashId>,
     settings: Query<&GlobalGenSettings>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
     mut candidates: Local<Vec<(usize, usize)>>,
@@ -70,7 +70,7 @@ pub fn archimedes_spiral_building_system(
         let terrgen_disable_by_tile_id = super::super::dungeoning_utils::TerrGenDisableConfigMap::from_args(&structured_gen_cfg.args);
 
         let floor_entity = match templs_map.0.get_cloned(floor_tile_id) {
-            Ok(entity) => TemplEntiRef(entity),
+            Ok(_) => TileRef(floor_tile_id),
             Err(_) => {
                 error!(target: "dungeoning", "TileTempl '{:?}' not found for archimedes spiral dungeon", floor_tile_id);
                 continue;
@@ -78,11 +78,14 @@ pub fn archimedes_spiral_building_system(
         };
 
         let wall_entity = match templs_map.0.get_cloned(wall_tile_id) {
-            Ok(entity) => TemplEntiRef(entity),
+            Ok(_) => TileRef(wall_tile_id),
             Err(_) => {
                 error!(target: "dungeoning", "TileTempl '{:?}' not found for archimedes spiral dungeon", wall_tile_id);
                 continue;
             }
+        };
+        let Ok(floor_entity_ent) = templs_map.0.get_cloned(floor_entity.0) else {
+            continue;
         };
         let boulder_sampler_id = structured_gen_cfg.args
             .get("boulder_sampler_id")
@@ -377,7 +380,7 @@ pub fn archimedes_spiral_building_system(
             border_seal_margin,
         );
 
-        let mut boulder_anchor_map: Vec<Option<TemplEntiRef>> = vec![None; tile_map_size];
+        let mut boulder_anchor_map: Vec<Option<TileRef>> = vec![None; tile_map_size];
         if boulder_frequency > 0.0 {
             let boulder_sampler: Option<&HashIdWeightedSampler> = sampler_map
                 .0
@@ -419,6 +422,9 @@ pub fn archimedes_spiral_building_system(
                     ) else {
                         continue;
                     };
+                    let Ok(&sampled_boulder_hash) = templ_hash_query.get(sampled_boulder_ent) else {
+                        continue;
+                    };
                     let size = templ_size_query
                         .get(sampled_boulder_ent)
                         .copied()
@@ -444,7 +450,7 @@ pub fn archimedes_spiral_building_system(
                     if !can_place {
                         continue;
                     }
-                    boulder_anchor_map[y * tile_width + x] = Some(TemplEntiRef(sampled_boulder_ent));
+                    boulder_anchor_map[y * tile_width + x] = Some(TileRef(sampled_boulder_hash));
                     placed += 1;
 
                     let start_x = x.saturating_sub(padding);
@@ -482,7 +488,7 @@ pub fn archimedes_spiral_building_system(
                     if floor_map[map_idx] {
                         tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                         if disable_floor_terrgen {
-                            let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
+                            let size = templ_size_query.get(floor_entity_ent).copied().unwrap_or_default().inner();
                             extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, size);
                         }
                     }
@@ -492,7 +498,7 @@ pub fn archimedes_spiral_building_system(
                 } else if floor_map[map_idx] {
                     tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
-                        let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
+                        let size = templ_size_query.get(floor_entity_ent).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, size);
                     }
                 }

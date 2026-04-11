@@ -7,5 +7,5 @@ out = idxmax(continent_threshold, continentness)
 
 
 
-bif "" -> [dblue] biomes: [ocean=0.5(2.7,0.45)]
+bif "" -> [ocean] biomes: [ocean=0.5(2.7,0.45)]
 bif normal2 -> []

@@ -2,7 +2,7 @@ use bevy::platform::collections::HashMap;
 #[allow(unused_imports)]
 use bevy::prelude::*;
 use common::{
-    common_components::{HashId, Prefix, ReplicateIfServerStarts, StrId},
+    common_components::{HashId, Prefix, StrId},
     common_tag_components::TagSet,
     expect_single_query,
     log_targets::SGC_CHUNK_CLAIM,
@@ -30,6 +30,7 @@ use crate::{
         regioning_sgc_components::*,
     },
     tilemap_resources::MassCollectedTiles,
+    tile::TileEntityMap,
 };
 
 use bitvec::prelude::*;
@@ -641,6 +642,7 @@ pub fn clonespawn_tiles_on_chunk_spawn(
     >,
     chunk_query: Query<(Entity, &ChunkPos, &DimensionRef, &TerrGenState), With<Chunk>>,
     mut collected: ResMut<MassCollectedTiles>,
+    tile_map: Res<TileEntityMap>,
     mut blocked_terrgen_gpos: ResMut<TerrGenDisabledGposByChunk>,
 ) {
     let mut ready = Vec::new();
@@ -663,7 +665,7 @@ pub fn clonespawn_tiles_on_chunk_spawn(
             if let Some(tiles_to_spawn) = reg_planned.get(&chunk_pos) {
                 debug!(target: "structure_spawn", "Spawning {} structure tiles in chunk at {:?}", tiles_to_spawn.len(), chunk_pos);
                 for (tile_gpos, templ_ref, delete_others) in tiles_to_spawn {
-                    let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *templ_ref, *tile_gpos, dimension_ref, );
+                    let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *templ_ref, *tile_gpos, dimension_ref, &tile_map);
                     if let Some(delete_others) = delete_others {
                         to_insert_delete_others.push((tile_ent, (delete_others.clone())));
                     }

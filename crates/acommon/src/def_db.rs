@@ -358,12 +358,6 @@ impl Default for DefValidationConfig {
     }
 }
 
-#[derive(Resource, Debug, Default, Clone)]
-pub struct DefValidationRuntime {
-    pub attempted: bool,
-    pub completed: bool,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum OneOrMany<T> {

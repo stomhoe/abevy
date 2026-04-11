@@ -9,5 +9,8 @@ pack {
         beach: 1.0,
         temp: 0.8,
     },
+    fight_or_flight_config: {
+        reaction: "flee",
+    },
     pack_spawn_radius: 7,
 }

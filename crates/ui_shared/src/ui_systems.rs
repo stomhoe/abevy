@@ -5,14 +5,12 @@ pub fn update_line_edits_text(
     input_focus: Res<InputFocus>,
     mut outline_query: Query<(Entity, &mut Outline)>,
 ) {
-    if input_focus.is_changed() {
-        println!("Input focus changed: {:?}", input_focus.0);
-        for (entity, mut outline) in outline_query.iter_mut() {
-            if input_focus.0.is_some_and(|active| active == entity) {
-                outline.color = Color::WHITE;
-            } else {
-                outline.color = GREY.into();
-            }
+    println!("Input focus changed: {:?}", input_focus.0);
+    for (entity, mut outline) in outline_query.iter_mut() {
+        if input_focus.0.is_some_and(|active| active == entity) {
+            outline.color = Color::WHITE;
+        } else {
+            outline.color = GREY.into();
         }
     }
 }

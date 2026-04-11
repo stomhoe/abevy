@@ -48,7 +48,6 @@ pub fn plugin(app: &mut App) {
         .init_resource::<ImageSizeMap>()
         .init_resource::<GlobalEntityMap>()
         .init_resource::<crate::def_db::DefValidationConfig>()
-        .init_resource::<crate::def_db::DefValidationRuntime>()
 
         .replicate::<Name>()
         .replicate::<Prefix>()

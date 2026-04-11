@@ -1,6 +1,6 @@
 use crate::{
     chunking::MacroChunkU16IndexMatrix,
-    tile::{tile_components::*, tile_delete_others_systems::*, tile_messages::*},
+    tile::{tile_components::*, tile_delete_others_systems::*, tile_messages::*, tile_resources::*},
 };
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
@@ -15,20 +15,25 @@ pub use crate::tile::tile_delete_others_systems::{process_tile_despawns_from_tem
 #[allow(unused_parens)]
 pub fn on_spritetile_despawn(
     trig: On<Despawn, (Tile, Transform, SpriteTile)>,
-    query: Query<(&DimensionRef, &GlobalTilePos, &TemplEntiRef), (Without<TilemapId>, Without<TilePos>, Without<Templ>, AnyDisabling)>,
+    query: Query<(&DimensionRef, &GlobalTilePos, &TileRef), (Without<TilemapId>, Without<TilePos>, Without<Templ>, AnyDisabling)>,
+    tile_map: Res<TileEntityMap>,
     interaction_zones_query: Query<&InteractionZones, common::AnyDisabling>,
     mut spritetiles_at_gpos: ResMut<SpriteTilesAtGpos>,
 ) {
     let Ok((&dim_ref, &gpos, templ_ref)) = query.get(trig.entity) else {
         return;
     };
-    let interaction_zones = interaction_zones_query.get(templ_ref.0).ok();
+    let interaction_zones = tile_map
+        .0
+        .get_cloned(templ_ref.0)
+        .ok()
+        .and_then(|templ_ent| interaction_zones_query.get(templ_ent).ok());
     spritetiles_at_gpos.remove_tile(dim_ref, gpos, trig.entity, interaction_zones);
 }
 
 pub fn despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_tiles(
     query: Query<
-        (Entity, &DimensionRef, &GlobalTilePos, &TemplEntiRef, &DeleteOtherTilesInSamePos, Option<&TagSet>),
+        (Entity, &DimensionRef, &GlobalTilePos, &TileRef, &DeleteOtherTilesInSamePos, Option<&TagSet>),
         (Added<DeleteOtherTilesInSamePos>, common::AnyDisabling, Without<Templ>),
     >,
     registered_positions: Res<ImportantRegisteredPositions>,
@@ -44,7 +49,7 @@ pub fn despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_t
 
 pub fn despawn_other_tiles_in_same_pos_if_not_excepted(
     query: Query<
-        (Entity, &DimensionRef, &GlobalTilePos, &TemplEntiRef),
+        (Entity, &DimensionRef, &GlobalTilePos, &TileRef),
         (common::AnyDisabling, Without<Templ>),
     >,
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
@@ -72,8 +77,8 @@ pub fn safe_despawn_tile_at(
     macro_chunk_ref_query: Query<&MacroChunkRef>,
     mut macro_chunk_tile_indices_query: Query<&mut MacroChunkU16IndexMatrix>,
     mut tilemap_query: Query<(&mut TileStorage, &HashIdToTexIndex)>,
-    hash_id_query: Query<&common::HashId, common::AnyDisabling>,
-    templ_ref_query: Query<&TemplEntiRef, (With<Tile>, common::AnyDisabling)>,
+    tile_map: Res<TileEntityMap>,
+    templ_ref_query: Query<&TileRef, (With<Tile>, common::AnyDisabling)>,
     tile_index_query: Query<&U16TileIndex, common::AnyDisabling>,
     dim_query: Query<&DimensionRef, (With<Tile>, common::AnyDisabling)>,
     gpos_query: Query<&GlobalTilePos, (With<Tile>, common::AnyDisabling)>,
@@ -88,10 +93,12 @@ pub fn safe_despawn_tile_at(
             cmd.entity(tile_ent).try_despawn();
             continue;
         };
-        if let Ok(&hash_id) = hash_id_query.get(templ_ref.0) {
-            card_at_gpos.0.remove(&(hash_id, gpos));
-        }
-        let Ok(&tile_index) = tile_index_query.get(templ_ref.0) else {
+        card_at_gpos.0.remove(&(templ_ref.0, gpos));
+        let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
+            cmd.entity(tile_ent).try_despawn();
+            continue;
+        };
+        let Ok(&tile_index) = tile_index_query.get(templ_ent) else {
             cmd.entity(tile_ent).try_despawn();
             continue;
         };

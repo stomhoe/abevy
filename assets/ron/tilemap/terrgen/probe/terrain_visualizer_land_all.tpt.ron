@@ -1,0 +1,5 @@
+id: terrain_visualizer_probe
+extends: region_base
+opfilter_id: reland_all
+step_size: 64
+region_multiplier: 6.0

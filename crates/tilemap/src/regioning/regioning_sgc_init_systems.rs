@@ -240,6 +240,6 @@ pub fn init_structured_gen_configs(
 
     cmd.insert_batch(exclusive_for_dims);
     cmd.insert_batch(sgcs_comps);
-    cmd.spawn((PrioritizedSgs(prioritized_hash_ids), ReplicateIfServerStarts));
+    cmd.spawn((PrioritizedSgs(prioritized_hash_ids), ReplicateIfServerStarts, Name::new("PrioritizedSgs"), ChildOf(egui_ent)));
     cmd.spawn((SgcsWeightedSampler, ReplicateIfServerStarts, hashid_sampler, ChildOf(egui_ent)));
 }

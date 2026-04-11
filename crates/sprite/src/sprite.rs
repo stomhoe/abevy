@@ -17,6 +17,7 @@ use crate::{
     sprite_systems::*,
     sprite_scale_systems::*,
     sprite_offset_systems::*,
+    z_sort_system::*,
 };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -36,20 +37,13 @@ pub fn plugin(app: &mut App) {
             sprite_change_detection,
             disable_children_sprites_of_disabled,
             (
-                apply_offsets
-                    .after(sprite_change_detection)
-                    .run_if(on_message::<SpriteChangedScaleOrOffsetOrParent>),
-                apply_scales
-                    .after(sprite_change_detection)
-                    .run_if(on_message::<SpriteChangedScaleOrOffsetOrParent>),
-            ),
+                apply_offsets,
+                apply_scales,
+            ).after(sprite_change_detection)
+            .run_if(on_message::<SpriteChangedScaleOrOffsetOrParent>),
             become_child_of_sprite_with_tag,
             add_spritechildren_and_comps,
             z_sort_system,
-            (
-                remap_broken_sprite_config_refs_after_hotreload,
-            )
-            .run_if(in_state(ClientState::Disconnected)),
         )
             .in_set(AcSpriteSystems),
     )

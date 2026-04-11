@@ -4,7 +4,7 @@ use tilemap_shared::tilemap_shared_samplers::NormalDistSeri;
 use common::common_components::*;
 use common::common_tag_components::TagSet;
 use serde::{Deserialize, Serialize};
-use crate::WanderSeri;
+use crate::{FightOrFlightConfig, FightingStyle, WanderSeri};
 use tilemap_shared::InteractionZoneSeri;
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
@@ -51,6 +51,8 @@ pub struct BitSeri {
     pub whitelisted_tiles_for_spawning: HashSet<String>,
     pub blacklisted_tiles_for_spawning: HashSet<String>,
     pub predator: crate::PredatorSeri,
+    pub fight_or_flight_config: FightOrFlightConfig,
+    pub fighting_style: FightingStyle,
     pub melee_attack_zone: InteractionZoneSeri,
     pub collision_zone: InteractionZoneSeri,
     pub spawn_pack_size_normal_dist: NormalDistSeri,
@@ -93,6 +95,8 @@ impl Default for BitSeri {
             whitelisted_tiles_for_spawning: HashSet::default(),
             blacklisted_tiles_for_spawning: HashSet::default(),
             predator: crate::PredatorSeri::default(),
+            fight_or_flight_config: FightOrFlightConfig::default(),
+            fighting_style: FightingStyle::default(),
             melee_attack_zone: InteractionZoneSeri::default(),
             collision_zone: InteractionZoneSeri::default(),
             spawn_pack_size_normal_dist: NormalDistSeri::default(),

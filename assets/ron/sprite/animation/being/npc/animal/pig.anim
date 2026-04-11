@@ -31,6 +31,9 @@ anim pig_n_move {
     img_path: "texture/being/npc/boar/pig.png"
     rows_cols: 4 8
     alternating_start_frames: 1 5
+    clips {
+        row 1 start_frame 1
+    }
 }
 
 anim pig_w_idle {

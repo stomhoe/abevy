@@ -114,27 +114,6 @@ pub fn add_spritechildren_and_comps(
 }
 
 #[allow(unused_parens)]
-pub fn remap_broken_sprite_config_refs_after_hotreload(
-    mut cmd: Commands,
-    sprites_query: Query<(Entity, &TemplEntiRef), (Without<SpriteConfig>, With<BaseHolderRef>)>,
-    str_id_query: Query<&StrId>,
-    sprite_map: Res<SpriteConfigEntityMap>,
-) {
-    for (sprite_ent, templ_ref) in sprites_query.iter() {
-        let Ok(sprite_id) = str_id_query.get(templ_ref.0)
-        else {
-            continue;
-        };
-        let Ok(new_cfg_ent) = sprite_map.0.get_cloned(&sprite_id) else {
-            continue;
-        };
-        if new_cfg_ent != templ_ref.0 {
-            cmd.entity(sprite_ent).insert(TemplEntiRef(new_cfg_ent));
-        }
-    }
-}
-
-#[allow(unused_parens)]
 pub fn become_child_of_sprite_with_tag(
     mut cmd: Commands,
     changed_new_sprites: Query<Entity, (Without<SpriteConfig>, Changed<TemplEntiRef>,  common::AnyDisabling)>,

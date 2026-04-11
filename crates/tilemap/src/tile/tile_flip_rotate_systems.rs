@@ -1,4 +1,4 @@
-use crate::tile::{tile_components::*, tile_messages::*};
+use crate::tile::{tile_components::*, tile_messages::*, tile_resources::*};
 use bevy::prelude::*;
 use bevy_ecs_tilemap::tiles::TileFlip;
 use game_common::game_common_components::*;
@@ -9,7 +9,7 @@ use ::tilemap_shared::*;
 pub fn flip_tile_based_on_initial_pos_hash(
     settings: Query<&GlobalGenSettings>,
     mut tile_query: Query<
-        (&mut TileFlip, &InitialPos, &TemplEntiRef),
+        (&mut TileFlip, &InitialPos, &TileRef),
         (Changed<InitialPos>, Without<Templ>, common::AnyDisabling,),
     >,
     templ_query: Query<(
@@ -19,6 +19,7 @@ pub fn flip_tile_based_on_initial_pos_hash(
         ),
         (),
     >,
+    tile_map: Res<TileEntityMap>,
 ) {
     if tile_query.is_empty() {
         return;
@@ -29,8 +30,10 @@ pub fn flip_tile_based_on_initial_pos_hash(
     };
     tile_query.iter_mut().for_each(
         |(mut tile_flip, initial_pos, templ_ref)| {
-
-            let Ok((do_flip_hori, do_flip_vert, do_flip_diag)) = templ_query.get(templ_ref.0) else {
+            let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
+                return;
+            };
+            let Ok((do_flip_hori, do_flip_vert, do_flip_diag)) = templ_query.get(templ_ent) else {
                 return;
             };
 
@@ -59,7 +62,7 @@ pub fn rotate_tile_based_on_initial_pos_hash(
             Option<&mut CardinalDirection>,
             Option<&mut Transform>,
             &InitialPos,
-            &TemplEntiRef,
+            &TileRef,
         ),
         (
             Changed<InitialPos>,
@@ -69,6 +72,7 @@ pub fn rotate_tile_based_on_initial_pos_hash(
     >,
     templ_query: Query<(Has<RotateTransform>), (With<ChangeFacingDirectionBasedOnHash>,),
     >,
+    tile_map: Res<TileEntityMap>,
 ) {
     if tile_query.is_empty() {
         return;
@@ -80,7 +84,10 @@ pub fn rotate_tile_based_on_initial_pos_hash(
     for (ent, direction, maybe_transform, initial_pos, templ_ref) in
         tile_query.iter_mut()
     {
-        let Ok((do_transform_rotate)) = templ_query.get(templ_ref.0) else {
+        let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
+            continue;
+        };
+        let Ok((do_transform_rotate)) = templ_query.get(templ_ent) else {
             continue;
         };
         let dimension_hash = initial_pos.dim.0;
@@ -147,9 +154,8 @@ pub fn sync_sprite_flips_with_tileflip(
 
 #[allow(unused_parens, )]
 pub fn track_non_default_tile_cardinal_direction_changes(
-    hash_id_query: Query<&common::HashId>,
     query: Query<
-        (&CardinalDirection, &GlobalTilePos, &TemplEntiRef),
+        (&CardinalDirection, &GlobalTilePos, &TileRef),
         (With<Tile>, Without<Templ>, Changed<CardinalDirection>, common::AnyDisabling, ),
     >,
     mut card_at_gpos: ResMut<CardinalDirAtGpos>,
@@ -158,10 +164,7 @@ pub fn track_non_default_tile_cardinal_direction_changes(
         if card_dir == CardinalDirection::default() {
             continue;
         }
-        let Ok(&hash_id) = hash_id_query.get(templ.0) else {
-            continue;
-        };
-        card_at_gpos.0.insert((hash_id, gpos), card_dir);
+        card_at_gpos.0.insert((templ.0, gpos), card_dir);
     }
 }
 
@@ -169,10 +172,9 @@ pub fn track_non_default_tile_cardinal_direction_changes(
 pub fn sync_cardinal_dir_at_gpos_on_gpos_change(
     mut changed_pos: MessageReader<GlobalTilePosChanged>,
     query: Query<
-        (&CardinalDirection, &GlobalTilePos, &TemplEntiRef),
+        (&CardinalDirection, &GlobalTilePos, &TileRef),
         (With<Tile>, Without<Templ>, common::AnyDisabling, ),
     >,
-    hash_id_query: Query<&common::HashId>,
     mut card_at_gpos: ResMut<CardinalDirAtGpos>,
 ) {
     for changed in changed_pos.read() {
@@ -182,14 +184,11 @@ pub fn sync_cardinal_dir_at_gpos_on_gpos_change(
         let Ok((&card_dir, &gpos, templ)) = query.get(changed.entity) else {
             continue;
         };
-        let Ok(&hash_id) = hash_id_query.get(templ.0) else {
-            continue;
-        };
         if card_dir == CardinalDirection::default() {
-            card_at_gpos.0.remove(&(hash_id, old.gpos));
+            card_at_gpos.0.remove(&(templ.0, old.gpos));
         } else {
-            card_at_gpos.0.remove(&(hash_id, old.gpos));
-            card_at_gpos.0.insert((hash_id, gpos), card_dir);
+            card_at_gpos.0.remove(&(templ.0, old.gpos));
+            card_at_gpos.0.insert((templ.0, gpos), card_dir);
         }
     }
 }

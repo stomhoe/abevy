@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
 };
 #[allow(unused_imports, )]
-use common::{AnyDisabling, common_components::{HashId, SampleSpritesamplers, StrId}, common_tag_components::TagSet, log_targets::{BEING_TEMPLATE_BUILD, BEING_SYSTEM}};
+use common::{AnyDisabling, common_components::{HashId, SampleSpritesamplers, StrId}, common_tag_components::TagSet, log_targets::{BEING_BUILD, BEING_SYSTEM}};
 use faction::faction_resources::FactionRef;
 use game_common::game_common_components::TemplEntiRef;
 use game_common::game_common_timers::Templ;
@@ -85,24 +85,24 @@ pub fn build_beings_from_refs(
         if let Ok(&TemplEntiRef(templ_ent)) = queries.templ_ref_query.get(being_ent) {
             if queries.bit_query.get(templ_ent).is_ok() {
                 let Ok(&templ_hash) = queries.hash_id_query.get(templ_ent) else {
-                    warn!(target: BEING_TEMPLATE_BUILD, "Templ BIT entity {:?} has no HashId", templ_ent);
+                    warn!(target: BEING_BUILD, "Templ BIT entity {:?} has no HashId", templ_ent);
                     continue;
                 };
                 let templ_bit_ref = BitRef(templ_hash);
                 if bit_ref != Some(templ_bit_ref) {
                     cmd.entity(being_ent).insert(templ_bit_ref);
-                    debug!(target: BEING_TEMPLATE_BUILD, "Resolved TemplEntiRef {:?} for being {:?} as BitRef", templ_ent, being_ent);
+                    debug!(target: BEING_BUILD, "Resolved TemplEntiRef {:?} for being {:?} as BitRef", templ_ent, being_ent);
                 }
                 bit_ref = Some(templ_bit_ref);
             } else if queries.race_query.get(templ_ent).is_ok() {
                 let Ok(&templ_hash) = queries.hash_id_query.get(templ_ent) else {
-                    warn!(target: BEING_TEMPLATE_BUILD, "Templ Race entity {:?} has no HashId", templ_ent);
+                    warn!(target: BEING_BUILD, "Templ Race entity {:?} has no HashId", templ_ent);
                     continue;
                 };
                 let templ_race_ref = RaceRef(templ_hash);
                 if race_ref != Some(templ_race_ref) {
                     cmd.entity(being_ent).insert(templ_race_ref);
-                    debug!(target: BEING_TEMPLATE_BUILD, "Resolved TemplEntiRef {:?} for being {:?} as RaceRef", templ_ent, being_ent);
+                    debug!(target: BEING_BUILD, "Resolved TemplEntiRef {:?} for being {:?} as RaceRef", templ_ent, being_ent);
                 }
                 race_ref = Some(templ_race_ref);
             }
@@ -191,8 +191,9 @@ pub fn build_beings_from_refs(
         }
 
 
+        let should_attempt_bit_to_race_resolution = bit_ref.is_some() && queries.race_ref_query.get(being_ent).is_err();
         match locals.prev_refs_by_ent.get(&being_ent).copied() {
-            Some(prev_refs) if prev_refs == current_refs => continue,
+            Some(prev_refs) if prev_refs == current_refs && !should_attempt_bit_to_race_resolution => continue,
             Some(prev_refs) => {
                 if current_refs == (None, None) {
                     locals.prev_refs_by_ent.remove(&being_ent);
@@ -200,7 +201,7 @@ pub fn build_beings_from_refs(
                     locals.prev_refs_by_ent.insert(being_ent, current_refs);
                 }
                 debug!(
-                    target: BEING_TEMPLATE_BUILD,
+                    target: BEING_BUILD,
                     "Rebuilding being {:?}: bit_ref {:?}->{:?} race_ref {:?}->{:?}",
                     being_ent,
                     prev_refs.0,
@@ -223,11 +224,11 @@ pub fn build_beings_from_refs(
 
         if let Some(bit_ref) = bit_ref {
             let Some(bit_ent) = bit_ent else {
-                warn!(target: BEING_TEMPLATE_BUILD, "BitRef hash {:?} could not be resolved to template entity", bit_ref.0);
+                warn!(target: BEING_BUILD, "BitRef hash {:?} could not be resolved to template entity", bit_ref.0);
                 continue;
             };
             let Ok((template, )) = queries.bit_query.get(bit_ent) else {
-                warn!(target: BEING_TEMPLATE_BUILD, "BitRef entity {:?} could not be resolved to BeingInstTemplate", bit_ref.0);
+                warn!(target: BEING_BUILD, "BitRef entity {:?} could not be resolved to BeingInstTemplate", bit_ref.0);
                 continue;
             };
             if !has_sample_sprites_now && let Ok(sample_sprites) = queries.sample_sprite_ents_query.get(bit_ent) {
@@ -248,12 +249,14 @@ pub fn build_beings_from_refs(
             }
 
             if let Ok(&race_ref_from_bit) = queries.race_ref_query.get(bit_ent) {
-                if race_ref != Some(race_ref_from_bit) {
+                if queries.race_ref_query.get(being_ent).ok().copied() != Some(race_ref_from_bit) {
                     cmd.entity(being_ent).insert(race_ref_from_bit);
-                    debug!(target: BEING_TEMPLATE_BUILD, "Resolved bit {:?} for being {:?} to RaceRef {:?}", bit_ref.0, being_ent, race_ref_from_bit.0);
+                    debug!(target: BEING_BUILD, "Resolved bit {:?} for being {:?} to RaceRef {:?}", bit_ref.0, being_ent, race_ref_from_bit.0);
                 }
                 race_ref = Some(race_ref_from_bit);
                 race_ent = queries.race_map.0.get_cloned(race_ref_from_bit.0).ok();
+            } else {
+                warn!(target: BEING_BUILD, "Bit template {:?} has no RaceRef while building being {:?} from BitRef {:?}", bit_ent, being_ent, bit_ref.0);
             }
             if template.extra_health_multiplier != 1.0 {
                 // add in a modifier
@@ -262,7 +265,7 @@ pub fn build_beings_from_refs(
 
         if let Some(race_ref) = race_ref {
             let Some(race_ent) = race_ent else {
-                warn!(target: BEING_TEMPLATE_BUILD, "RaceRef hash {:?} could not be resolved to template entity", race_ref.0);
+                warn!(target: BEING_BUILD, "RaceRef hash {:?} could not be resolved to template entity", race_ref.0);
                 continue;
             };
             if !has_body_ref_now {
@@ -283,7 +286,7 @@ pub fn build_beings_from_refs(
                     .and_then(|sex_hash| queries.sex_map.0.get_cloned(sex_hash).ok());
                 if let Some(sex_ent) = selected_sex_ent {
                     let Ok(&sex_hash) = queries.hash_id_query.get(sex_ent) else {
-                        warn!(target: BEING_TEMPLATE_BUILD, "Sex entity {:?} sampled for race {:?} has no HashId", sex_ent, race_ref.0);
+                        warn!(target: BEING_BUILD, "Sex entity {:?} sampled for race {:?} has no HashId", sex_ent, race_ref.0);
                         continue;
                     };
                     sex_refs_to_ins.push((being_ent, SexRef(sex_hash)));

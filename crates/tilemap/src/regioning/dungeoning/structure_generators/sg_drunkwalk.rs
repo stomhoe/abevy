@@ -2,7 +2,6 @@
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
-use game_common::game_common_components::TemplEntiRef;
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use rand::{Rng, SeedableRng, seq::SliceRandom};
 use rand_distr::{Distribution, Normal};
@@ -39,6 +38,7 @@ pub fn drunkwalk_dungeon_building_system(
     mut room_pack_spawn: super::super::dungeoning_utils::DungeonRoomPackSpawnSystemParams,
     sampler_query: Query<&HashIdWeightedSampler, (With<TileWeightedSampler>, common::AnyDisabling)>,
     templ_size_query: Query<&SizeInTiles, (With<game_common::game_common_components::Templ>, common::AnyDisabling)>,
+    templ_hash_query: Query<&HashId>,
     settings: Query<&GlobalGenSettings>,
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
     mut chambers: Local<Vec<Chamber>>,
@@ -104,7 +104,7 @@ pub fn drunkwalk_dungeon_building_system(
             .clamp(0.0, 1.0);
 
         let floor_entity = match templs_map.0.get_cloned(floor_tile_id) {
-            Ok(entity) => TemplEntiRef(entity),
+            Ok(_) => TileRef(floor_tile_id),
             Err(_) => {
                 error!(target: "dungeoning", "TileTempl with id '{:?}' not found in TileEntityMap when making DrunkwalkDungeon, skipping structure spawn", floor_tile_id);
                 continue;
@@ -112,7 +112,7 @@ pub fn drunkwalk_dungeon_building_system(
         };
 
         let wall_entity = match templs_map.0.get_cloned(wall_tile_id) {
-            Ok(entity) => TemplEntiRef(entity),
+            Ok(_) => TileRef(wall_tile_id),
             Err(_) => {
                 error!(target: "dungeoning", "TileTempl with id '{:?}' not found in TileEntityMap when making DrunkwalkDungeon, skipping structure spawn", wall_tile_id);
                 continue;
@@ -120,11 +120,17 @@ pub fn drunkwalk_dungeon_building_system(
         };
 
         let lava_entity = match templs_map.0.get_cloned(lava_tile_id) {
-            Ok(entity) => TemplEntiRef(entity),
+            Ok(_) => TileRef(lava_tile_id),
             Err(_) => {
                 error!(target: "dungeoning", "TileTempl with id '{:?}' not found in TileEntityMap when making DrunkwalkDungeon, skipping structure spawn", lava_tile_id);
                 continue;
             }
+        };
+        let Ok(floor_entity_ent) = templs_map.0.get_cloned(floor_entity.0) else {
+            continue;
+        };
+        let Ok(lava_entity_ent) = templs_map.0.get_cloned(lava_entity.0) else {
+            continue;
         };
 
         let chunk_positions = &build_order.chunks_pos;
@@ -485,7 +491,7 @@ pub fn drunkwalk_dungeon_building_system(
                 }
             }
         }
-        let mut boulder_anchor_map: Vec<Option<TemplEntiRef>> = vec![None; tile_map_size];
+        let mut boulder_anchor_map: Vec<Option<TileRef>> = vec![None; tile_map_size];
         if boulder_frequency > 0.0 {
             let boulder_sampler: Option<&HashIdWeightedSampler> = sampler_map
                 .0
@@ -527,6 +533,9 @@ pub fn drunkwalk_dungeon_building_system(
                     ) else {
                         continue;
                     };
+                    let Ok(&sampled_boulder_hash) = templ_hash_query.get(sampled_boulder_ent) else {
+                        continue;
+                    };
                     let size = templ_size_query
                         .get(sampled_boulder_ent)
                         .copied()
@@ -552,7 +561,7 @@ pub fn drunkwalk_dungeon_building_system(
                     if !can_place {
                         continue;
                     }
-                    boulder_anchor_map[y * tile_width + x] = Some(TemplEntiRef(sampled_boulder_ent));
+                    boulder_anchor_map[y * tile_width + x] = Some(TileRef(sampled_boulder_hash));
                     placed += 1;
 
                     let start_x = x.saturating_sub(padding);
@@ -607,7 +616,7 @@ pub fn drunkwalk_dungeon_building_system(
                     if floor_map[map_idx] {
                         tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                         if disable_floor_terrgen {
-                            let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
+                            let size = templ_size_query.get(floor_entity_ent).copied().unwrap_or_default().inner();
                             extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, size);
                         }
                     }
@@ -615,13 +624,13 @@ pub fn drunkwalk_dungeon_building_system(
                 } else if hazard_map[map_idx] {
                     tiles4chunk.push((tile_pos, lava_entity, lava_delete_other_tiles.clone()));
                     if disable_lava_terrgen {
-                        let size = templ_size_query.get(lava_entity.0).copied().unwrap_or_default().inner();
+                        let size = templ_size_query.get(lava_entity_ent).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, size);
                     }
                 } else if floor_map[map_idx] {
                     tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
-                        let size = templ_size_query.get(floor_entity.0).copied().unwrap_or_default().inner();
+                        let size = templ_size_query.get(floor_entity_ent).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, size);
                     }
                 } else if wall_map[map_idx] {

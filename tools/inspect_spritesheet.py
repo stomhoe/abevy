@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 from typing import TypedDict, cast
 
-from anim_format import extract_anim_blocks, get_field_value, parse_clip_line, parse_header, parse_text_value
+from anim_format import (
+    extract_anim_blocks,
+    get_field_value,
+    parse_clip_line,
+    parse_header,
+    parse_text_value,
+)
 
 """
 Inspect a spritesheet image and report both its coarse grid shape and the

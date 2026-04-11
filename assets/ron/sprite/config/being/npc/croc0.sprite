@@ -1,6 +1,5 @@
 sprite croc0 {
 name Croc0
-z 1000
 mapped_anims {
     south idle g _ = croc0_s_idle
     south move g _ = croc0_s_move

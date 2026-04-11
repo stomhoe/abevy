@@ -9,6 +9,7 @@ game_common = { path = "../agame_common" }
 tilemap = { path = "../tilemap" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 sprite_shared = { path = "../sprite_shared" }
+sprite_systems = { path = "../sprite" }
 being = { path = "../being" }
 being_shared = { path = "../being_shared" }
 ac_input = { path = "../ac_input" }

@@ -7,6 +7,7 @@ use common::log_targets::BEING_SYSTEM;
 use faction::faction_resources::{FactionEntityMap, FactionRef};
 use game_common::Templ;
 use game_common::game_common_components::TemplEntiRef;
+use crate::being_resources::BeingEntityMap;
 
 fn missing_gpos_entity_label(
     ent: Entity,
@@ -25,6 +26,45 @@ fn missing_gpos_entity_label(
         label.push_str(&format!(" DisplayName={}", display_name));
     }
     label
+}
+
+#[allow(unused_parens, )]
+pub fn assign_being_hash_ids(
+    mut cmd: Commands,
+    mut being_entity_map: ResMut<BeingEntityMap>,
+    mut next_hash_id: Local<u64>,
+    query: Query<(Entity, Option<&HashId>, ), (Added<Being>, )>,
+) {
+    if *next_hash_id == 0 {
+        *next_hash_id = 1;
+    }
+
+    for (being_ent, existing_hash_id) in query.iter() {
+        let hash_id = if let Some(&hash_id) = existing_hash_id.filter(|hash_id| **hash_id != HashId::default()) {
+            hash_id
+        } else {
+            let mut candidate = HashId::new(*next_hash_id);
+            while being_entity_map.0.contains_key(candidate) {
+                *next_hash_id = (*next_hash_id).saturating_add(1);
+                candidate = HashId::new(*next_hash_id);
+            }
+            cmd.entity(being_ent).insert(candidate);
+            *next_hash_id = (*next_hash_id).saturating_add(1);
+            candidate
+        };
+
+        if let Some(prev_ent) = being_entity_map.insert(hash_id, being_ent) {
+            if prev_ent != being_ent {
+                error!(
+                    target: BEING_SYSTEM,
+                    "Duplicate stable HashId {:?} for beings {:?} and {:?}",
+                    hash_id,
+                    prev_ent,
+                    being_ent,
+                );
+            }
+        }
+    }
 }
 
 #[allow(unused_parens, )]

@@ -2,7 +2,7 @@ use ac_input::ac_input_actions::*;
 use ::being_shared::*;
 use ::being_shared::body_energy::*;
 
-use being::body::{HeldBody, BodySums};
+use being::body::{BodySums, HeldBody};
 use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::{Action, Actions};
@@ -806,7 +806,9 @@ pub fn being_details_inspector(world: &mut World) {
             ui.collapsing("Body Energy", |ui| {
                 let body_energy_store = body_energy_store_query.get(world, body_entity).ok().copied();
                 let body_energy_balance = body_energy_balance_query.get(world, body_entity).ok().copied();
-                let body_energy_profile = body_energy_profile_query.get(world, body_entity).ok().copied();
+                let body_energy_profile = body_templ_ref.and_then(|body_templ_ref| {
+                    body_energy_profile_query.get(world, body_templ_ref.0).ok().copied()
+                });
                 let starvation_config = body_templ_ref.and_then(|body_templ_ref| {
                     starvation_config_query.get(world, body_templ_ref.0).ok().copied()
                 });
@@ -1371,8 +1373,8 @@ pub fn being_details_inspector(world: &mut World) {
                 ui.label(format!("Part: {:?}", selected_part_entity));
                 let part_damage = bodypart_damage_query
                     .get(world, selected_part_entity)
-                    .map_or(0.0, |damage| damage.0);
-                ui.label(format!("Part damage: {:.2}", part_damage));
+                    .map_or((0.0, 0usize), |damage| (damage.total, damage.hits.len()));
+                ui.label(format!("Part damage: {:.2} ({} hit(s))", part_damage.0, part_damage.1));
 
                 let source_part_ent = templ_refs_query.get(world, selected_part_entity).ok().map(|refe| refe.0);
                 ui.label(format!(

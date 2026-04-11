@@ -52,8 +52,60 @@ pub struct Vital;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct Missing;
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
-pub struct AccuDamage(pub f32);
+#[derive(Debug, Deserialize, Serialize, Clone, )]
+pub struct Hit {
+    pub damage: f32,
+    pub source_ent: Entity,
+}
+impl Default for Hit {
+    fn default() -> Self {
+        Self {
+            damage: 0.0,
+            source_ent: Entity::PLACEHOLDER,
+        }
+    }
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
+pub struct AccuDamage {
+    pub total: f32,
+    pub hits: Vec<Hit>,
+}
+impl AccuDamage {
+    pub fn with_hit(damage: f32, source_ent: Entity) -> Self {
+        let mut this = Self::default();
+        this.push_hit(damage, source_ent);
+        this
+    }
+
+    pub fn push_hit(&mut self, damage: f32, source_ent: Entity) {
+        if damage <= 0.0 {
+            self.heal(-damage);
+            return;
+        }
+        self.total += damage;
+        self.hits.push(Hit { damage, source_ent });
+    }
+
+    pub fn heal(&mut self, mut amount: f32) {
+        if amount <= 0.0 || self.hits.is_empty() {
+            return;
+        }
+        while amount > 0.0 {
+            let Some(first_hit) = self.hits.first_mut() else {
+                break;
+            };
+            let healed = first_hit.damage.min(amount);
+            first_hit.damage -= healed;
+            self.total = (self.total - healed).max(0.0);
+            amount -= healed;
+            if first_hit.damage > 0.0 {
+                break;
+            }
+            self.hits.remove(0);
+        }
+    }
+}
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub enum BodypartDepth {
