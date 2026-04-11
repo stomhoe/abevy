@@ -80,10 +80,13 @@ fn consider_chase_goal_candidate(
     best_path_is_partial: &mut bool,
     best_path_remaining: &mut f32,
     best_path_cost: &mut u32,
+    best_goal_chaser_dist: &mut u32,
+    best_goal_line_deviation: &mut i64,
     dynamic_blocking: &mut HashMap<UVec3, Entity>,
     cache: &AiNavGridCache,
     chaser_ent: Entity,
     target_ent: Entity,
+    target_pos: GlobalTilePos,
     chaser_gpos: GlobalTilePos,
     start: UVec3,
     goal: UVec3,
@@ -106,17 +109,36 @@ fn consider_chase_goal_candidate(
         .collect();
     let end_pos = path_tiles.last().copied().unwrap_or(chaser_gpos);
     let remaining = end_pos.taxicab_tile_distance(GlobalTilePos(goal.xy().as_ivec2() + cache.min));
+    let goal_pos = GlobalTilePos(goal.xy().as_ivec2() + cache.min);
+    let goal_chaser_dist = chaser_gpos.taxicab_tile_distance(goal_pos) as u32;
+    let target_delta = target_pos.0 - chaser_gpos.0;
+    let goal_delta = goal_pos.0 - chaser_gpos.0;
+    let line_deviation = (
+        i64::from(goal_delta.x) * i64::from(target_delta.y)
+            - i64::from(goal_delta.y) * i64::from(target_delta.x)
+    ).abs();
     let is_better = best_path_tiles.is_empty()
         || (*best_path_is_partial && !path.is_partial())
         || (*best_path_is_partial == path.is_partial() && remaining < *best_path_remaining)
         || (*best_path_is_partial == path.is_partial()
             && (remaining - *best_path_remaining).abs() <= f32::EPSILON
-            && path.cost() < *best_path_cost);
+            && path.cost() < *best_path_cost)
+        || (*best_path_is_partial == path.is_partial()
+            && (remaining - *best_path_remaining).abs() <= f32::EPSILON
+            && path.cost() == *best_path_cost
+            && goal_chaser_dist < *best_goal_chaser_dist)
+        || (*best_path_is_partial == path.is_partial()
+            && (remaining - *best_path_remaining).abs() <= f32::EPSILON
+            && path.cost() == *best_path_cost
+            && goal_chaser_dist == *best_goal_chaser_dist
+            && line_deviation < *best_goal_line_deviation);
     if is_better {
         *best_path_tiles = path_tiles;
         *best_path_is_partial = path.is_partial();
         *best_path_remaining = remaining;
         *best_path_cost = path.cost();
+        *best_goal_chaser_dist = goal_chaser_dist;
+        *best_goal_line_deviation = line_deviation;
     }
 }
 
@@ -762,6 +784,8 @@ pub fn rebuild_goto_nav_plans(
         let mut best_path_is_partial = true;
         let mut best_path_remaining = f32::INFINITY;
         let mut best_path_cost = u32::MAX;
+        let mut best_goal_chaser_dist = u32::MAX;
+        let mut best_goal_line_deviation = i64::MAX;
         for delta in [IVec2::X, -IVec2::X, IVec2::Y, -IVec2::Y] {
             let local = target_pos.0 + delta - cache.min;
             if local.x < 0
@@ -783,10 +807,13 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_is_partial,
                     &mut best_path_remaining,
                     &mut best_path_cost,
+                    &mut best_goal_chaser_dist,
+                    &mut best_goal_line_deviation,
                     &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
                     Entity::PLACEHOLDER,
+                    target_pos,
                     *chaser_gpos,
                     start,
                     local,
@@ -800,10 +827,13 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_is_partial,
                     &mut best_path_remaining,
                     &mut best_path_cost,
+                    &mut best_goal_chaser_dist,
+                    &mut best_goal_line_deviation,
                     &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
                     Entity::PLACEHOLDER,
+                    target_pos,
                     *chaser_gpos,
                     start,
                     local,
@@ -817,10 +847,13 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_is_partial,
                     &mut best_path_remaining,
                     &mut best_path_cost,
+                    &mut best_goal_chaser_dist,
+                    &mut best_goal_line_deviation,
                     &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
                     Entity::PLACEHOLDER,
+                    target_pos,
                     *chaser_gpos,
                     start,
                     local,
@@ -835,10 +868,13 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_is_partial,
                     &mut best_path_remaining,
                     &mut best_path_cost,
+                    &mut best_goal_chaser_dist,
+                    &mut best_goal_line_deviation,
                     &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
                     Entity::PLACEHOLDER,
+                    target_pos,
                     *chaser_gpos,
                     start,
                     local,
@@ -852,10 +888,13 @@ pub fn rebuild_goto_nav_plans(
                 &mut best_path_is_partial,
                 &mut best_path_remaining,
                 &mut best_path_cost,
+                &mut best_goal_chaser_dist,
+                &mut best_goal_line_deviation,
                 &mut scratch.dynamic_blocking,
                 cache,
                 chaser_ent,
                 Entity::PLACEHOLDER,
+                target_pos,
                 *chaser_gpos,
                 start,
                 local,
@@ -894,10 +933,13 @@ pub fn rebuild_goto_nav_plans(
                         &mut best_path_is_partial,
                         &mut best_path_remaining,
                         &mut best_path_cost,
+                        &mut best_goal_chaser_dist,
+                        &mut best_goal_line_deviation,
                         &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
                         Entity::PLACEHOLDER,
+                        target_pos,
                         *chaser_gpos,
                         start,
                         local,
@@ -911,10 +953,13 @@ pub fn rebuild_goto_nav_plans(
                         &mut best_path_is_partial,
                         &mut best_path_remaining,
                         &mut best_path_cost,
+                        &mut best_goal_chaser_dist,
+                        &mut best_goal_line_deviation,
                         &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
                         Entity::PLACEHOLDER,
+                        target_pos,
                         *chaser_gpos,
                         start,
                         local,
@@ -928,10 +973,13 @@ pub fn rebuild_goto_nav_plans(
                         &mut best_path_is_partial,
                         &mut best_path_remaining,
                         &mut best_path_cost,
+                        &mut best_goal_chaser_dist,
+                        &mut best_goal_line_deviation,
                         &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
                         Entity::PLACEHOLDER,
+                        target_pos,
                         *chaser_gpos,
                         start,
                         local,
@@ -945,10 +993,13 @@ pub fn rebuild_goto_nav_plans(
                         &mut best_path_is_partial,
                         &mut best_path_remaining,
                         &mut best_path_cost,
+                        &mut best_goal_chaser_dist,
+                        &mut best_goal_line_deviation,
                         &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
                         Entity::PLACEHOLDER,
+                        target_pos,
                         *chaser_gpos,
                         start,
                         local,
@@ -961,10 +1012,13 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_is_partial,
                     &mut best_path_remaining,
                     &mut best_path_cost,
+                    &mut best_goal_chaser_dist,
+                    &mut best_goal_line_deviation,
                     &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
                     Entity::PLACEHOLDER,
+                    target_pos,
                     *chaser_gpos,
                     start,
                     local,
