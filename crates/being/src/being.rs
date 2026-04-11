@@ -50,6 +50,8 @@ pub fn plugin(app: &mut App) {
     ))
     .init_resource::<BeingsAtGpos>()
     .init_resource::<AiNavGrids>()
+    .init_resource::<AiNavGridRebuildTasks>()
+    .init_resource::<SharedChaseFlowFieldRebuildTasks>()
     .init_resource::<SharedChaseFlowFields>()
     .init_resource::<ChaserNavPlans>()
     .init_resource::<FrozenBgSimulatedBeingsMap>()
@@ -85,6 +87,7 @@ pub fn plugin(app: &mut App) {
         ).in_set(HostSystems).in_set(StatefulSessionSystems),
     ))
     .add_observer(cleanup_being_from_BeingsInCpos_on_despawn)
+    .add_observer(cleanup_being_from_BeingsAtGpos_on_despawn)
     .add_observer(remove_being_hash_id_from_map_on_despawn)
     .add_systems(
         Update,

@@ -9,6 +9,7 @@ pub struct AiNavGridCache {
     pub min: IVec2,
     pub grid: CardinalGrid,
     pub occupied: HashMap<UVec3, Entity>,
+    pub occupied_initialized: bool,
 }
 
 impl AiNavGridCache {

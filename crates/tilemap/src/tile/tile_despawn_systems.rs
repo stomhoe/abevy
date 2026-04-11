@@ -2,7 +2,7 @@ use crate::{
     chunking::MacroChunkU16IndexMatrix,
     tile::{tile_components::*, tile_delete_others_systems::*, tile_messages::*, tile_resources::*},
 };
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
 use common::{AnyDisabling, common_tag_components::TagSet};
 use game_common::game_common_components::*;
@@ -10,14 +10,38 @@ use ::tilemap_shared::{*, DeleteOtherTilesInSamePos};
 
 pub use crate::tile::tile_delete_others_systems::{process_tile_despawns_from_templ, };
 
+#[derive(SystemParam)]
+#[allow(unused_parens, )]
+pub struct SafeDespawnTileQueries<'w, 's> {
+    pub loaded_chunks: Res<'w, LoadedChunks>,
+    pub chunk_children: Query<'w, 's, &'static Tilemaps>,
+    pub macro_chunk_ref_query: Query<'w, 's, &'static MacroChunkRef>,
+    pub macro_chunk_tile_indices_query: Query<'w, 's, &'static mut MacroChunkU16IndexMatrix>,
+    pub tilemap_query: Query<'w, 's, (&'static mut TileStorage, &'static HashIdToTexIndex)>,
+    pub tile_map: Res<'w, TileEntityMap>,
+    pub templ_ref_query: Query<'w, 's, &'static TileRef, (With<Tile>, common::AnyDisabling)>,
+    pub tile_index_query: Query<'w, 's, &'static U16TileIndex, common::AnyDisabling>,
+    pub dim_query: Query<'w, 's, &'static DimensionRef, (With<Tile>, common::AnyDisabling)>,
+    pub gpos_query: Query<'w, 's, &'static GlobalTilePos, (With<Tile>, common::AnyDisabling)>,
+    pub walk_speed_query: Query<'w, 's, &'static WalkSpeedMultIfOnTop, common::AnyDisabling>,
+    pub interaction_zones_query: Query<'w, 's, &'static InteractionZones, common::AnyDisabling>,
+    pub sprite_tile_query: Query<'w, 's, (), With<SpriteTile>>,
+    pub ai_nav_blocked_gpos_counts: ResMut<'w, AiNavBlockedGposCounts>,
+}
 
+#[derive(SystemParam)]
+#[allow(unused_parens, )]
+pub struct SafeDespawnTileLocals<'s> {
+    pub rechecks: Local<'s, Vec<RecheckTileAdjacency>>,
+}
 
-#[allow(unused_parens)]
 pub fn on_spritetile_despawn(
     trig: On<Despawn, (Tile, Transform, SpriteTile)>,
     query: Query<(&DimensionRef, &GlobalTilePos, &TileRef), (Without<TilemapId>, Without<TilePos>, Without<Templ>, AnyDisabling)>,
     tile_map: Res<TileEntityMap>,
     interaction_zones_query: Query<&InteractionZones, common::AnyDisabling>,
+    walk_speed_query: Query<&WalkSpeedMultIfOnTop, common::AnyDisabling>,
+    mut ai_nav_blocked_gpos_counts: ResMut<AiNavBlockedGposCounts>,
     mut spritetiles_at_gpos: ResMut<SpriteTilesAtGpos>,
 ) {
     let Ok((&dim_ref, &gpos, templ_ref)) = query.get(trig.entity) else {
@@ -28,6 +52,13 @@ pub fn on_spritetile_despawn(
         .get_cloned(templ_ref.0)
         .ok()
         .and_then(|templ_ent| interaction_zones_query.get(templ_ent).ok());
+    let is_low_speed = tile_map
+        .0
+        .get_cloned(templ_ref.0)
+        .ok()
+        .and_then(|templ_ent| walk_speed_query.get(templ_ent).ok())
+        .is_some_and(|walk_speed| walk_speed.is_extremely_low());
+    ai_nav_blocked_gpos_counts.remove_blocked_positions(dim_ref, gpos, interaction_zones, is_low_speed);
     spritetiles_at_gpos.remove_tile(dim_ref, gpos, trig.entity, interaction_zones);
 }
 
@@ -72,18 +103,27 @@ pub fn safe_despawn_tile_at(
     mut reader: MessageReader<SafeDespawn>,
     mut recheck_writer: MessageWriter<RecheckTileAdjacency>,
     mut card_at_gpos: ResMut<CardinalDirAtGpos>,
-    loaded_chunks: Res<LoadedChunks>,
-    chunk_children: Query<&Tilemaps>,
-    macro_chunk_ref_query: Query<&MacroChunkRef>,
-    mut macro_chunk_tile_indices_query: Query<&mut MacroChunkU16IndexMatrix>,
-    mut tilemap_query: Query<(&mut TileStorage, &HashIdToTexIndex)>,
-    tile_map: Res<TileEntityMap>,
-    templ_ref_query: Query<&TileRef, (With<Tile>, common::AnyDisabling)>,
-    tile_index_query: Query<&U16TileIndex, common::AnyDisabling>,
-    dim_query: Query<&DimensionRef, (With<Tile>, common::AnyDisabling)>,
-    gpos_query: Query<&GlobalTilePos, (With<Tile>, common::AnyDisabling)>,
-    mut rechecks: Local<Vec<RecheckTileAdjacency>>,
+    mut queries: SafeDespawnTileQueries,
+    mut locals: SafeDespawnTileLocals,
 ) {
+    let SafeDespawnTileQueries {
+        loaded_chunks,
+        chunk_children,
+        macro_chunk_ref_query,
+        macro_chunk_tile_indices_query,
+        tilemap_query,
+        tile_map,
+        templ_ref_query,
+        tile_index_query,
+        dim_query,
+        gpos_query,
+        walk_speed_query,
+        interaction_zones_query,
+        sprite_tile_query,
+        ai_nav_blocked_gpos_counts,
+    } = &mut queries;
+    let SafeDespawnTileLocals { rechecks } = &mut locals;
+
     for &SafeDespawn(tile_ent) in reader.read() {
         let (Ok(&dim), Ok(&gpos)) = (dim_query.get(tile_ent), gpos_query.get(tile_ent)) else {
             cmd.entity(tile_ent).try_despawn();
@@ -93,6 +133,20 @@ pub fn safe_despawn_tile_at(
             cmd.entity(tile_ent).try_despawn();
             continue;
         };
+        let interaction_zones = tile_map
+            .0
+            .get_cloned(templ_ref.0)
+            .ok()
+            .and_then(|templ_ent| interaction_zones_query.get(templ_ent).ok());
+        let is_low_speed = tile_map
+            .0
+            .get_cloned(templ_ref.0)
+            .ok()
+            .and_then(|templ_ent| walk_speed_query.get(templ_ent).ok())
+            .is_some_and(|walk_speed| walk_speed.is_extremely_low());
+        if sprite_tile_query.get(tile_ent).is_err() {
+            ai_nav_blocked_gpos_counts.remove_blocked_positions(dim, gpos, interaction_zones, is_low_speed);
+        }
         card_at_gpos.0.remove(&(templ_ref.0, gpos));
         let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
             cmd.entity(tile_ent).try_despawn();
@@ -120,7 +174,7 @@ pub fn safe_despawn_tile_at(
 
         cmd.entity(tile_ent).try_despawn();
         rechecks.push(RecheckTileAdjacency { dim, gpos });
-        RecheckTileAdjacency::append_all_adjacent_pos(&mut rechecks, dim, gpos);
+        RecheckTileAdjacency::append_all_adjacent_pos(rechecks, dim, gpos);
 
         let Ok(tilemaps) = chunk_children.get(chunk_ent) else {
             continue;

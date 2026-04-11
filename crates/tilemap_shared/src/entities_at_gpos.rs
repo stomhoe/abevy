@@ -68,6 +68,110 @@ impl SpriteTilesAtGpos {
 }
 
 #[derive(Resource, Debug, Default)]
+pub struct AiNavBlockedGposCounts(pub HashMap<(DimensionRef, GlobalTilePos), u16>);
+impl AiNavBlockedGposCounts {
+    pub fn is_blocked(&self, dim: DimensionRef, gpos: GlobalTilePos) -> bool {
+        self.0.get(&(dim, gpos)).copied().unwrap_or(0) > 0
+    }
+
+    pub fn reserve_capacity(&mut self, additional: usize) {
+        self.0.reserve(additional);
+    }
+
+    pub fn insert_blocked_positions(
+        &mut self,
+        dim: DimensionRef,
+        tile_gpos: GlobalTilePos,
+        interaction_zones: Option<&InteractionZones>,
+        is_low_speed: bool,
+    ) {
+        let mut blocked_positions = Vec::new();
+        if let Some(interaction_zones) = interaction_zones {
+            if let Some(collision_mask) = interaction_zones.get_collision_mask() {
+                collision_mask.gather_zone_positions(
+                    CardinalDirection::South,
+                    tile_gpos.to_pixelpos(),
+                    &mut blocked_positions,
+                );
+            }
+        }
+        if blocked_positions.is_empty() && is_low_speed {
+            blocked_positions.push(tile_gpos);
+        }
+        if blocked_positions.is_empty() {
+            return;
+        }
+        blocked_positions.sort_unstable_by_key(|pos| (pos.0.x, pos.0.y));
+        blocked_positions.dedup();
+        for blocked_gpos in blocked_positions {
+            *self.0.entry((dim, blocked_gpos)).or_insert(0) += 1;
+        }
+    }
+
+    pub fn remove_blocked_positions(
+        &mut self,
+        dim: DimensionRef,
+        tile_gpos: GlobalTilePos,
+        interaction_zones: Option<&InteractionZones>,
+        is_low_speed: bool,
+    ) {
+        let mut blocked_positions = Vec::new();
+        if let Some(interaction_zones) = interaction_zones {
+            if let Some(collision_mask) = interaction_zones.get_collision_mask() {
+                collision_mask.gather_zone_positions(
+                    CardinalDirection::South,
+                    tile_gpos.to_pixelpos(),
+                    &mut blocked_positions,
+                );
+            }
+        }
+        if blocked_positions.is_empty() && is_low_speed {
+            blocked_positions.push(tile_gpos);
+        }
+        if blocked_positions.is_empty() {
+            return;
+        }
+        blocked_positions.sort_unstable_by_key(|pos| (pos.0.x, pos.0.y));
+        blocked_positions.dedup();
+        for blocked_gpos in blocked_positions {
+            let Some(count) = self.0.get_mut(&(dim, blocked_gpos)) else {
+                continue;
+            };
+            *count = count.saturating_sub(1);
+            if *count == 0 {
+                self.0.remove(&(dim, blocked_gpos));
+            }
+        }
+    }
+
+    pub fn insert_being_positions(
+        &mut self,
+        dim: DimensionRef,
+        positions: &[GlobalTilePos],
+    ) {
+        for gpos in positions.iter().copied() {
+            *self.0.entry((dim, gpos)).or_insert(0) += 1;
+        }
+    }
+
+    pub fn remove_being_positions(
+        &mut self,
+        dim: DimensionRef,
+        positions: &[GlobalTilePos],
+    ) {
+        for gpos in positions.iter().copied() {
+            let Some(count) = self.0.get_mut(&(dim, gpos)) else {
+                continue;
+            };
+            *count = count.saturating_sub(1);
+            if *count == 0 {
+                self.0.remove(&(dim, gpos));
+            }
+        }
+    }
+}
+
+#[derive(Resource, Debug, Default)]
 pub struct BeingsAtGpos {
     pub by_pos: HashMap<(DimensionRef, GlobalTilePos), EntiSmallVec>,
     by_ent: EntityHashMap<(DimensionRef, BeingOccupiedPositions)>,
@@ -79,21 +183,28 @@ impl BeingsAtGpos {
             .map(|entities| entities.as_slice())
             .unwrap_or(&[])
     }
-    pub fn update_being_occupy(&mut self, being_ent: Entity, dim_ref: DimensionRef, colmask: &[GlobalTilePos]) {
+    pub fn update_being_occupy(
+        &mut self,
+        being_ent: Entity,
+        dim_ref: DimensionRef,
+        colmask: &[GlobalTilePos],
+    ) -> Option<(DimensionRef, Vec<GlobalTilePos>)> {
         let Some((prev_dim_ref, prev_positions)) = self.by_ent.get(&being_ent) else {
             self.occupy_colmask(being_ent, dim_ref, colmask);
-            return;
+            return None;
         };
         if *prev_dim_ref == dim_ref && prev_positions.as_slice() == colmask {
-            return;
+            return None;
         }
-        self.remove_being_ent_entries(being_ent);
+        let previous = self.remove_being_ent_entries(being_ent);
         self.occupy_colmask(being_ent, dim_ref, colmask);
+        previous
     }
-    pub fn remove_being_ent_entries(&mut self, being_ent: Entity) {
+    pub fn remove_being_ent_entries(&mut self, being_ent: Entity) -> Option<(DimensionRef, Vec<GlobalTilePos>)> {
         let Some((dim_ref, positions)) = self.by_ent.remove(&being_ent) else {
-            return;
+            return None;
         };
+        let removed_positions = positions.as_slice().to_vec();
         for gpos in positions {
             let key = (dim_ref, gpos);
             let Some(entities) = self.by_pos.get_mut(&key) else {
@@ -107,6 +218,7 @@ impl BeingsAtGpos {
                 self.by_pos.remove(&key);
             }
         }
+        Some((dim_ref, removed_positions))
     }
 
 

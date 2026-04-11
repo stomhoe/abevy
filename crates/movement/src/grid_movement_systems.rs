@@ -24,6 +24,7 @@ const TILE_CORRECTION_INTERVAL_SECS: f32 = 2.0;
 #[allow(unused_parens)]
 pub fn sync_occupancy_for_beings_at_gpos_res(
     mut beings_at_gpos: ResMut<BeingsAtGpos>,
+    mut ai_nav_blocked_gpos_counts: ResMut<AiNavBlockedGposCounts>,
     mut removed_beings: RemovedComponents<Being>,
     query: Query<
         (
@@ -40,7 +41,9 @@ pub fn sync_occupancy_for_beings_at_gpos_res(
     mut reused_colmask_vec: Local<Vec<GlobalTilePos>>,
 ) {
     for ent in removed_beings.read() {
-        beings_at_gpos.remove_being_ent_entries(ent);
+        if let Some((dim_ref, positions)) = beings_at_gpos.remove_being_ent_entries(ent) {
+            ai_nav_blocked_gpos_counts.remove_being_positions(dim_ref, positions.as_slice());
+        }
     }
     for (being_ent, &dim_ref, &gpos, facing_dir, interaction_zones) in query.iter() {
         reused_colmask_vec.clear();
@@ -55,7 +58,14 @@ pub fn sync_occupancy_for_beings_at_gpos_res(
         if reused_colmask_vec.is_empty() {
             reused_colmask_vec.push(gpos);
         }
-        beings_at_gpos.update_being_occupy(being_ent, dim_ref, reused_colmask_vec.as_slice());
+        if let Some((prev_dim_ref, prev_positions)) = beings_at_gpos.update_being_occupy(
+            being_ent,
+            dim_ref,
+            reused_colmask_vec.as_slice(),
+        ) {
+            ai_nav_blocked_gpos_counts.remove_being_positions(prev_dim_ref, prev_positions.as_slice());
+        }
+        ai_nav_blocked_gpos_counts.insert_being_positions(dim_ref, reused_colmask_vec.as_slice());
     }
 }
 

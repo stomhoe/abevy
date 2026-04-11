@@ -52,6 +52,7 @@ pub struct SystemResources<'w> {
     pub dimension_map: Res<'w, DimensionEntityMap>,
     pub tile_shader_map: Res<'w, TileShaderEntityMap>,
     pub tile_map: Res<'w, TileEntityMap>,
+    pub ai_nav_blocked_gpos_counts: ResMut<'w, AiNavBlockedGposCounts>,
 }
 
 #[derive(SystemParam)]
@@ -70,6 +71,7 @@ pub struct ComponentsQueries<'w, 's> {
     pub tile_index_query: Query<'w, 's, &'static U16TileIndex, common::AnyDisabling>,
     pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex>,
     pub interaction_zones_query: Query<'w, 's, &'static InteractionZones, common::AnyDisabling>,
+    pub walk_speed_query: Query<'w, 's, &'static WalkSpeedMultIfOnTop, common::AnyDisabling>,
     pub macro_chunk_ref_query: Query<'w, 's, &'static MacroChunkRef>,
     pub macro_chunk_tile_indices_query: Query<'w, 's, &'static mut MacroChunkU16IndexMatrix>,
     pub delete_others_paramset: TileDeleteOthersParamSet<'w, 's>,
@@ -149,6 +151,11 @@ pub fn process_tiles_pre(
         let to_persist = tile_components.persisted_query.get(templ_ent).is_ok();
         let min_dists = tile_components.min_dists_query.get(templ_ent).ok();
         let keep_distance_from = tile_components.keep_distance_query.get(templ_ent).ok();
+        let interaction_zones = tile_components.interaction_zones_query.get(templ_ent).ok();
+        let is_low_speed = tile_components
+            .walk_speed_query
+            .get(templ_ent)
+            .is_ok_and(|walk_speed| walk_speed.is_extremely_low());
         let _dim_hash = bundle.dim_ref.0;
         if resources.dimension_map.0.get_cloned(_dim_hash).is_err() {
             error_once!(target: TILEMAP_SYSTEM, "Dimension hash {} is missing from DimensionEntityMap", _dim_hash);
@@ -201,8 +208,13 @@ pub fn process_tiles_pre(
                 child_ofs_to_insert.push((tile_ent, ChildOf(dimension_ent)));
                 to_insert_replicated.push((tile_ent, Replicated));
                 if is_spritetile{
-                    let interaction_zones = tile_components.interaction_zones_query.get(templ_ent).ok();
                     params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
+                    resources.ai_nav_blocked_gpos_counts.insert_blocked_positions(
+                        bundle.dim_ref,
+                        bundle.gpos,
+                        interaction_zones,
+                        is_low_speed,
+                    );
                     spritetiles_to_remove_tmapbundle.push(tile_ent);
                     i += 1;
                     continue;
@@ -280,6 +292,12 @@ pub fn process_tiles_pre(
             y_sort,
             &mut child_ofs_to_insert,
             to_persist,
+        );
+        resources.ai_nav_blocked_gpos_counts.insert_blocked_positions(
+            bundle.dim_ref,
+            bundle.gpos,
+            interaction_zones,
+            is_low_speed,
         );
         locals.tile_runtime_info.insert(tile_ent, (bundle.templ_ref, bundle.tile_bundle.texture_index));
         i += 1;

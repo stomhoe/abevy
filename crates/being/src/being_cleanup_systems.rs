@@ -85,6 +85,18 @@ pub fn cleanup_being_from_BeingsInCpos_on_despawn(
 }
 
 #[allow(unused_parens, )]
+pub fn cleanup_being_from_BeingsAtGpos_on_despawn(
+    trigger: On<Despawn, Being>,
+    mut beings_at_gpos: ResMut<BeingsAtGpos>,
+    mut ai_nav_blocked_gpos_counts: ResMut<AiNavBlockedGposCounts>,
+) {
+    let Some((dim_ref, positions)) = beings_at_gpos.remove_being_ent_entries(trigger.entity) else {
+        return;
+    };
+    ai_nav_blocked_gpos_counts.remove_being_positions(dim_ref, positions.as_slice());
+}
+
+#[allow(unused_parens, )]
 pub fn remove_being_hash_id_from_map_on_despawn(
     trigger: On<Despawn, Being>,
     hash_id_query: Query<&HashId, With<Being>>,
