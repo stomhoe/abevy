@@ -687,9 +687,9 @@ impl DungeonRoomPackSpawnConfig {
             weights.push((shape_key.clone(), weight));
         }
         {
-            let (sampler, negative_indices) = StringWeightedSampler::new(&weights);
-            if !negative_indices.is_empty() {
-                tilemap_shared::log_negative_weighted_sampler_indices!("dungeoning_utils", "room_spawn_shapes", &weights, negative_indices);
+            let (sampler, negative_items) = StringWeightedSampler::new(&weights);
+            for negative_item in negative_items {
+                error!(target: "dungeoning_utils", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", "room_spawn_shapes", negative_item);
             }
             sampler
         }
@@ -729,9 +729,9 @@ impl DungeonRoomPackSpawnConfig {
             );
             return sampler.sample_with_rng(rng);
         }
-        let (sampler, negative_indices) = DungeonRoomPackSpawnSampler::new(&matching_weights);
-        if !negative_indices.is_empty() {
-            tilemap_shared::log_negative_weighted_sampler_indices!("dungeoning_utils", room_spawn_key, &matching_weights, negative_indices);
+        let (sampler, negative_items) = DungeonRoomPackSpawnSampler::new(&matching_weights);
+        for negative_item in negative_items {
+            error!(target: "dungeoning_utils", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", room_spawn_key, negative_item);
         }
         sampler.sample_with_rng(rng)
     }
@@ -755,7 +755,7 @@ impl DungeonRoomPackSpawnConfig {
                 let entry = out.0.entry(shape_key.clone()).or_default();
                 for (spec, weight) in sampler.iter().cloned() {
                     if let Err(negative_item) = entry.insert(spec, weight) {
-                        tilemap_shared::log_negative_weighted_sampler_items!("dungeoning_utils", shape_key, vec![negative_item]);
+                        error!(target: "dungeoning_utils", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", shape_key, negative_item);
                     }
                 }
             }
@@ -783,7 +783,7 @@ impl DungeonRoomPackSpawnConfig {
                 let entry = out.0.entry(rest.to_string()).or_default();
                 for (spec, weight) in sampler.iter().cloned() {
                     if let Err(negative_item) = entry.insert(spec, weight) {
-                        tilemap_shared::log_negative_weighted_sampler_items!("dungeoning_utils", rest, vec![negative_item]);
+                        error!(target: "dungeoning_utils", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", rest, negative_item);
                     }
                 }
                 continue;
@@ -857,7 +857,7 @@ impl DungeonRoomPackSpawnConfig {
             }
             let entry = out.0.entry(shape_key.clone()).or_default();
             if let Err(negative_item) = entry.insert(spec.clone(), spec.weight) {
-                tilemap_shared::log_negative_weighted_sampler_items!("dungeoning_utils", shape_key, vec![negative_item]);
+                error!(target: "dungeoning_utils", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", shape_key, negative_item);
             }
         }
 
@@ -1063,10 +1063,10 @@ fn parse_room_spawn_sampler(value: &SgcArgValue) -> Option<DungeonRoomPackSpawnS
     }
     let weights = specs.iter().cloned().map(|spec| (spec.clone(), spec.weight)).collect::<Vec<_>>();
     Some({
-        let (sampler, negative_indices) = DungeonRoomPackSpawnSampler::new(&weights);
-        if !negative_indices.is_empty() {
-            tilemap_shared::log_negative_weighted_sampler_indices!("dungeoning_utils", "room_spawn_sampler", &weights, negative_indices);
-        }
+        let (sampler, negative_items) = DungeonRoomPackSpawnSampler::new(&weights);
+            for negative_item in negative_items {
+                error!(target: "dungeoning_utils", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", "room_spawn_sampler", negative_item);
+            }
         sampler
     })
 }

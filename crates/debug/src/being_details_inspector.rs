@@ -3,12 +3,13 @@ use ::being_shared::*;
 use ::being_shared::body_energy::*;
 
 use being::body::{BodySums, HeldBody};
+use being::being_nav::RetainedChasePathSnapshot;
 use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
-use common::common_components::{DisplayName, HashId, StrId};
+use common::common_components::{DisplayName, StrId};
 use common::log_targets::DEBUG;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 use ::item_shared::*;
@@ -256,19 +257,6 @@ fn paint_meeting_slots_preview(
         .shrink(2.0);
         painter.rect_filled(cell_rect, 1.0, ui.visuals().selection.bg_fill);
     }
-}
-
-fn interaction_zone_label(zone_id: HashId) -> String {
-    if zone_id == InteractionZones::COLLISION {
-        return "Collision Mask".to_string();
-    }
-    if zone_id == InteractionZones::MELEE_ATTACK {
-        return "Melee Attack".to_string();
-    }
-    if zone_id == InteractionZones::ENTER {
-        return "Enter".to_string();
-    }
-    format!("{:?}", zone_id)
 }
 
 fn resolve_interaction_zones_with_source(
@@ -651,6 +639,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut held_sprites_query = world.query::<&HeldSprites>();
     let mut slot_holder_query = world.query::<&SlottedItemHolder>();
     let mut norm_move_dir_query = world.query::<&FinalNormMoveDir>();
+    let mut speed_potential_query = world.query::<&SpeedPotential>();
     let mut speed_magnitude_query = world.query::<&SpeedMagnitude>();
     let mut input_move_dir_query = world.query::<&InputMoveDir>();
     let mut computed_by_query = world.query::<&ComputedBy>();
@@ -701,6 +690,14 @@ pub fn being_details_inspector(world: &mut World) {
     let mut body_weight_sum_query = world.query::<&BodyWeightSum>();
     let mut predator_query = world.query::<&Predator>();
     let mut predator_cfg_query = world.query::<&PredatorCfg>();
+    let mut go_to_query = world.query::<&GoTo>();
+    let mut chasing_query = world.query::<&Chasing>();
+    let mut fleeing_query = world.query::<&Fleeing>();
+    let mut lod_level_query = world.query::<&LodLevel>();
+    let mut behavorial_nav_state_query = world.query::<Has<BehavorialNavState>>();
+    let mut final_norm_move_dir_query = world.query::<&FinalNormMoveDir>();
+    let mut grid_locked_movement_visual_query = world.query::<&GridLockedMovementVisual>();
+    let mut retained_chase_path_snapshot_query = world.query::<&RetainedChasePathSnapshot>();
 
     let Ok(body) = body_query.get(world, selected_being_entity) else {
         return;
@@ -755,10 +752,11 @@ pub fn being_details_inspector(world: &mut World) {
     }
 
     let mut clear_selection = false;
+    let mut open_nav_log = false;
     let mut is_open = true;
     let world_ptr = world as *mut World;
 
-    egui::Window::new("Selected Being Details")
+    egui::Window::new("Being Debug Window (bdw)")
         .default_width(700.0)
         .default_height(560.0)
         .default_pos([screen_rect.right() - 720.0, screen_rect.top() + 10.0])
@@ -769,6 +767,9 @@ pub fn being_details_inspector(world: &mut World) {
             ui.horizontal(|ui| {
                 if ui.button("Show Full Components").clicked() {
                     show_full_components = !show_full_components;
+                }
+                if ui.button("NavLog").clicked() {
+                    open_nav_log = true;
                 }
                 if ui.button("Clear Selection").clicked() {
                     clear_selection = true;
@@ -869,6 +870,10 @@ pub fn being_details_inspector(world: &mut World) {
                     ui.label("BodyStrengthScale: missing");
                 }
 
+                if let Ok(speed_potential) = speed_potential_query.get(world, selected_being_entity) {
+                    ui.label(format!("SpeedPotential: {:.2}", speed_potential.0));
+                }
+
                 if let Some(body_weight_sum) = body_weight_sum {
                     ui.label(format!("BodyWeightSum: {:.2}", body_weight_sum.0));
                 } else {
@@ -958,6 +963,9 @@ pub fn being_details_inspector(world: &mut World) {
                         norm_move_dir.0.x, norm_move_dir.0.y
                     ));
                 }
+                if let Ok(speed_potential) = speed_potential_query.get(world, selected_being_entity) {
+                    ui.label(format!("SpeedPotential: {:.2}", speed_potential.0));
+                }
                 if let Ok(speed_magnitude) = speed_magnitude_query.get(world, selected_being_entity) {
                     ui.label(format!("SpeedMagnitude: {:.2}", speed_magnitude.0));
                 }
@@ -966,6 +974,14 @@ pub fn being_details_inspector(world: &mut World) {
                         "InputMoveDir: [{:.2}, {:.2}]",
                         input_move_dir.0.x, input_move_dir.0.y
                     ));
+                }
+                if let Some(input_speed_throttle_mult) =
+                    world.get::<InputSpeedThrottleMult>(selected_being_entity)
+                {
+                    ui.label(format!("InputSpeedThrottleMult: {:.2}", input_speed_throttle_mult.0));
+                }
+                if let Some(input_max_speed) = world.get::<InputMaxSpeed>(selected_being_entity) {
+                    ui.label(format!("InputMaxSpeed: {:.2}", input_max_speed.0));
                 }
                 if grid_move_query.get(world, selected_being_entity).is_ok() {
                     if let Ok(gpos) = gpos_query.get(world, selected_being_entity) {
@@ -1163,6 +1179,98 @@ pub fn being_details_inspector(world: &mut World) {
                         });
                     },
                 );
+                ui.separator();
+
+                ui.collapsing("Pathfinding", |ui| {
+                    let has_nav_state = behavorial_nav_state_query
+                        .get(world, selected_being_entity)
+                        .unwrap_or(false);
+                    let has_wander_state = wander_state_query.get(world, selected_being_entity).is_ok();
+                    let chasing = chasing_query.get(world, selected_being_entity).ok();
+                    let fleeing = fleeing_query.get(world, selected_being_entity).ok();
+                    let go_to = go_to_query.get(world, selected_being_entity).ok();
+                    let lod_level = lod_level_query.get(world, selected_being_entity).ok().copied();
+                    let final_norm_move_dir = final_norm_move_dir_query
+                        .get(world, selected_being_entity)
+                        .ok()
+                        .copied();
+                    let grid_locked_movement_visual = grid_locked_movement_visual_query
+                        .get(world, selected_being_entity)
+                        .ok()
+                        .copied();
+                    let retained_chase_path_snapshot = retained_chase_path_snapshot_query
+                        .get(world, selected_being_entity)
+                        .ok();
+
+                    let nav_mode = if chasing.is_some() {
+                        "Chasing"
+                    } else if fleeing.is_some() {
+                        "Fleeing"
+                    } else if has_wander_state {
+                        "Wandering"
+                    } else if has_nav_state {
+                        "Nav-state only"
+                    } else {
+                        "Idle"
+                    };
+
+                    ui.label(format!("Derived nav mode: {nav_mode}"));
+                    ui.label(format!("WanderState: {has_wander_state}"));
+                    match chasing {
+                        Some(chasing) => {
+                            ui.label(format!(
+                                "Chasing: target {:?}, stop {:.2}",
+                                chasing.target,
+                                chasing.stop_distance,
+                            ));
+                        }
+                        None => {
+                            ui.label("Chasing: missing");
+                        }
+                    }
+                    match fleeing {
+                        Some(fleeing) => {
+                            ui.label(format!(
+                                "Fleeing: threats {:?}, desired {:.2}",
+                                fleeing.threats,
+                                fleeing.desired_distance_tiles,
+                            ));
+                        }
+                        None => {
+                            ui.label("Fleeing: missing");
+                        }
+                    }
+                    match go_to {
+                        Some(go_to) => {
+                            ui.label(format!(
+                                "GoTo: pos [{}, {}], stop {:.2}, source {:?}, tick {}",
+                                go_to.pos.0.x,
+                                go_to.pos.0.y,
+                                go_to.stop_distance,
+                                go_to.source,
+                                go_to.updated_tick,
+                            ));
+                        }
+                        None => {
+                            ui.label("GoTo: missing");
+                        }
+                    }
+                    ui.label(format!(
+                        "LodLevel: {}",
+                        lod_level.map_or_else(|| "missing".to_string(), |lod_level| lod_level.0.to_string())
+                    ));
+                    ui.label(format!(
+                        "RetainedChasePathSnapshot: {}",
+                        retained_chase_path_snapshot
+                            .map(|snapshot| format!(
+                                "chunks={} trail={} last_target={:?}",
+                                snapshot.chunk_positions.len(),
+                                snapshot.target_chunk_trail.len(),
+                                snapshot.last_target_chunk_pos,
+                            ))
+                            .unwrap_or_else(|| "missing".to_string())
+                    ));
+                });
             });
             ui.separator();
 
@@ -1207,7 +1315,7 @@ pub fn being_details_inspector(world: &mut World) {
                 egui::ComboBox::from_label("Zone")
                     .selected_text(
                         selected_interaction_zone
-                            .map(interaction_zone_label)
+                            .map(InteractionZones::interaction_zone_label)
                             .unwrap_or_else(|| "None".to_string()),
                     )
                     .show_ui(ui, |ui| {
@@ -1215,7 +1323,7 @@ pub fn being_details_inspector(world: &mut World) {
                             ui.selectable_value(
                                 &mut selected_interaction_zone,
                                 Some(*zone_id),
-                                interaction_zone_label(*zone_id),
+                                InteractionZones::interaction_zone_label(*zone_id),
                             );
                         }
                     });
@@ -1229,7 +1337,10 @@ pub fn being_details_inspector(world: &mut World) {
                     return;
                 };
 
-                ui.label(format!("Selected zone: {}", interaction_zone_label(zone_id)));
+                ui.label(format!(
+                    "Selected zone: {}",
+                    InteractionZones::interaction_zone_label(zone_id)
+                ));
                 ui.label(format!("Being gpos: [{}, {}]", being_gpos.0.x, being_gpos.0.y));
                 ui.label(format!("Facing: {:?}", facing));
                 paint_interaction_zone_preview(ui, zone, facing, *being_gpos);
@@ -1454,6 +1565,20 @@ pub fn being_details_inspector(world: &mut World) {
             selected_entities.selected_being_interaction_zone = selected_interaction_zone;
             selected_entities.selected_being_bodypart = selected_part;
             selected_entities.show_full_being_components = show_full_components;
+        }
+    }
+
+    if open_nav_log {
+        let should_track = behavorial_nav_state_query
+            .get(world, selected_being_entity)
+            .unwrap_or(false);
+        if should_track {
+            if let Some(mut nav_debug) = world.get_resource_mut::<DebuggingBeingNav>() {
+                nav_debug.track_being(selected_being_entity);
+            }
+        }
+        if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
+            window_visible.being_nav_log = true;
         }
     }
 

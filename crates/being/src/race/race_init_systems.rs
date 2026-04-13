@@ -296,9 +296,9 @@ pub fn init_races(
                 }
             }
             if !sex_entities_weights.is_empty() {
-                let (sex_sampler, negative_indices) = SexesSampler::new(&sex_entities_weights);
-                if !negative_indices.is_empty() {
-                    tilemap_shared::log_negative_weighted_sampler_indices!("race_init", &str_id, &sex_entities_weights, negative_indices);
+                let (sex_sampler, negative_items) = SexesSampler::new(&sex_entities_weights);
+                for negative_item in negative_items {
+                    error!(target: "race_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", &str_id, negative_item);
                 }
                 cmd.entity(entity).insert(sex_sampler);
             }

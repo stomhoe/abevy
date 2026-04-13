@@ -124,6 +124,40 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         self.race_ref_query.get(being).ok()
     }
 
+    pub fn get_macro_chunk_tile_indices(&self, macro_chunk_ent: Entity) -> Option<&MacroChunkU16IndexMatrix> {
+        self.macro_chunk_tile_indices.get(macro_chunk_ent).ok()
+    }
+
+    pub fn loaded_macrochunk_occupied_bounds_for_dim(
+        &self,
+        dim_ref: DimensionRef,
+    ) -> Option<(IVec2, IVec2)> {
+        let mut bounds: Option<(IVec2, IVec2)> = None;
+        for (&(loaded_dim_ref, macro_chunk_pos), &macro_chunk_ent) in self.loaded_macro_chunks.0.iter() {
+            if loaded_dim_ref != dim_ref {
+                continue;
+            }
+            let Ok(macro_chunk_tile_indices) = self.macro_chunk_tile_indices.get(macro_chunk_ent) else {
+                continue;
+            };
+            let Some((min_gpos, max_gpos)) = macro_chunk_tile_indices.occupied_bounds_at_gpos(
+                macro_chunk_pos.to_chunkpos().to_tilepos(),
+            ) else {
+                continue;
+            };
+            let min = min_gpos.0;
+            let max = max_gpos.0;
+            match &mut bounds {
+                Some((curr_min, curr_max)) => {
+                    *curr_min = curr_min.min(min);
+                    *curr_max = curr_max.max(max);
+                }
+                None => bounds = Some((min, max)),
+            }
+        }
+        bounds
+    }
+
     pub fn find_nearest_unblocked_gpos_in_chunk(
         &mut self,
         dim_ref: DimensionRef,

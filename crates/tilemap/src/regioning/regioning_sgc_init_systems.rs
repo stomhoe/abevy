@@ -230,7 +230,7 @@ pub fn init_structured_gen_configs(
 
         if structured_gen_seri.weight != f32::NEG_INFINITY {
             if let Err(negative_item) = hashid_sampler.insert(sgc_id.hash_id(), structured_gen_seri.weight) {
-                tilemap_shared::log_negative_weighted_sampler_items!("regioning_sgc_init", sgc_id.as_str(), vec![negative_item]);
+                error!(target: "regioning_sgc_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", sgc_id.as_str(), negative_item);
             }
         }
         sgcs_comps.push((main_ent, (sgc_id.hash_id(), sgc_id, sgc, ReplicateIfServerStarts)));

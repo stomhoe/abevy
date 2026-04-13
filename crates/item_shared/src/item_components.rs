@@ -71,9 +71,9 @@ impl ItemsGeneratedOnDeath {
         let mut visited = std::collections::HashSet::new();
         let mut weights: Vec<(EntityHashMap<u32>, f32)> = Vec::new();
         Self::append_weights_from_seri(seri, item_map, all_drop_seris, &mut visited, 1.0, &mut weights);
-        let (sampler, negative_indices) = EntityCountMapWeightedSampler::new(&weights);
-        if !negative_indices.is_empty() {
-            tilemap_shared::log_negative_weighted_sampler_indices!("item_components", &seri.id, &weights, negative_indices);
+        let (sampler, negative_items) = EntityCountMapWeightedSampler::new(&weights);
+        for negative_item in negative_items {
+            error!(target: "item_components", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", &seri.id, negative_item);
         }
         Self { sampler, count_multiplier: seri.count_multiplier.max(0.0) }
     }

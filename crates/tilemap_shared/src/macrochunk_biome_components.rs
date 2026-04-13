@@ -100,7 +100,7 @@ impl BiomeDistribution {
 					tag_weight.pack_count_multiplier_std_dev,
 				);
 			if let Err(negative_item) = self.produced_biome_sampler.add_or_accumulate_weight(tag, weight) {
-				crate::log_negative_weighted_sampler_items!("macrochunk_biome", tag, vec![negative_item]);
+				error!(target: "macrochunk_biome", "Weighted sampler {:?} encountered a negative weight for value {:?}; rejected", tag, negative_item);
 			}
 			let chunk_weights = self
 				.accumulated_chunk_weights_per_biome

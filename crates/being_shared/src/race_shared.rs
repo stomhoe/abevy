@@ -34,9 +34,9 @@ impl MapEntities for SetsOfPlayerMonoChoosableSprites {
 pub struct SexesSampler(pub HashIdWeightedSampler);
 
 impl SexesSampler {
-    pub fn new(weights: &Vec<(HashId, f32)>) -> (Self, Vec<usize>) {
-        let (sampler, negative_indices) = HashIdWeightedSampler::new(weights);
-        (Self(sampler), negative_indices)
+    pub fn new(weights: &Vec<(HashId, f32)>) -> (Self, Vec<HashId>) {
+        let (sampler, negative_items) = HashIdWeightedSampler::new(weights);
+        (Self(sampler), negative_items)
     }
 }
 

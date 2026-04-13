@@ -17,11 +17,11 @@ impl Default for InputSpeedThrottleMult {
 }
 
 #[derive(Component, Debug, Clone, Copy)]
-//for limiting on speed via a max speed magnitude (dont mutate SpeedMagnitude's value with this, just use this as a .max on its value when its used)
+//for capping the final applied speed when SpeedMagnitude is computed
 pub struct InputMaxSpeed(pub f32);
 impl Default for InputMaxSpeed {
     fn default() -> Self {
-        Self(f32::MAX)
+        Self(f32::INFINITY)
     }
 }
 
@@ -60,6 +60,11 @@ impl FinalNormMoveDir {
 }
 
 #[derive(Component, Debug, Default, Clone, Copy, Deserialize, Serialize, PartialEq, )]
+//stable movement potential before input throttles, tile effects, and other final runtime clamps
+pub struct SpeedPotential(pub f32);
+
+#[derive(Component, Debug, Default, Clone, Copy, Deserialize, Serialize, PartialEq, )]
+//final processed movement speed after inputs, tile effects, and clamps have been applied
 pub struct SpeedMagnitude(pub f32);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy)]

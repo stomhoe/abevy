@@ -6,9 +6,12 @@ use bevy::ecs::schedule::common_conditions::on_message;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
+use ::being_shared::{BeingNavDebugLine, DebuggingBeingNav};
 
     use crate::{
         being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
+        being_tile_click_picker::*,
+        being_nav_log_window::*,
         debug_chunking_window::*, debug_fonts::*, debug_resources::*,
         debug_systems::*, debug_window_systems::*,
         gpos_maps_window::*,
@@ -40,6 +43,8 @@ pub fn plugin(app: &mut App) {
                 debug_toggle_hot_reload_window,
                 debug_toggle_main_menu,
                 capture_world_tile_click_selection,
+                capture_world_being_click_selection,
+                capture_world_being_nav_selection,
             )
                 .run_if(debug_enabled),
         )
@@ -58,6 +63,7 @@ pub fn plugin(app: &mut App) {
                 main_menu_window,
                 states_window,
                 all_states_window,
+                collect_being_nav_debug_messages.run_if(on_message::<BeingNavDebugLine>),
                 debug_chunking_window,
                 macrochunks_grid_window,
                 regions_list_window,
@@ -66,6 +72,12 @@ pub fn plugin(app: &mut App) {
                 portals_list_window,
                 sprites_list_window,
                 terrgen_editor_window,
+            )
+                .run_if(debug_enabled),
+        )
+        .add_systems(
+            EguiPrimaryContextPass,
+            (
                 terrain_visualizer_window,
                 terrgen_settings_editor_window,
                 hot_reload_window,
@@ -73,6 +85,7 @@ pub fn plugin(app: &mut App) {
                 gpos_maps_window_system,
                 tile_indices_map_window,
                 world_tile_click_picker_window,
+                nav_log_window,
                 terrgen_debug_window_system
                     .run_if(|visible: Res<DubugWindowsVisibility>| visible.terrgen_values),
             )
@@ -99,5 +112,8 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DebugFontsInitialized>()
         .init_resource::<DebugUiConfig>()
         .init_resource::<WorldTileClickInspectorState>()
+        .init_resource::<BeingTileClickInspectorState>()
+        .init_resource::<DebugBeingNavUiState>()
+        .init_resource::<DebuggingBeingNav>()
         .init_resource::<common::common_states::HotReloadSelection>();
 }

@@ -1,6 +1,6 @@
 pack {
     id: "frog",
-    spawn_being_count_normal_dist: { min_dev: 3.0, max_dev: 7.0, mean: 8.0, std_dev: 3.0 },
+    spawn_being_count_normal_dist: { min_dev: 3.0, max_dev: 7.0, mean: 6.0, std_dev: 3.0 },
     ids: {
         frog: 1.0,
     },

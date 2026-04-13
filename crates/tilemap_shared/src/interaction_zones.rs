@@ -59,6 +59,18 @@ impl InteractionZones {
         }
         Self(zones)
     }
+    pub fn interaction_zone_label(zone_id: HashId) -> String {
+        if zone_id == Self::COLLISION {
+            return "Collision Mask".to_string();
+        }
+        if zone_id == Self::MELEE_ATTACK {
+            return "Melee Attack".to_string();
+        }
+        if zone_id == Self::ENTER {
+            return "Enter".to_string();
+        }
+        format!("{:?}", zone_id)
+    }
     pub fn new_collision_mask_zone_tiles_only(
         rows: &[String],
         size_in_tiles: SizeInTiles,

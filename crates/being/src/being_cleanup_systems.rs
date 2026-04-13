@@ -84,7 +84,7 @@ pub fn cleanup_being_from_BeingsInCpos_on_despawn(
     );
 }
 
-#[allow(unused_parens, )]
+#[allow(unused_parens, nonstandard_style)]
 pub fn cleanup_being_from_BeingsAtGpos_on_despawn(
     trigger: On<Despawn, Being>,
     mut beings_at_gpos: ResMut<BeingsAtGpos>,

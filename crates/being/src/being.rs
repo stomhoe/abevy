@@ -144,6 +144,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<BodyWeightSum>()
     .replicate::<BodyCondition>()
     .replicate::<BodyStrengthScale>()
+    .replicate::<SpeedPotential>()
 
     .replicate::<MemberRanks>()
     .replicate::<Predator>()
@@ -166,6 +167,7 @@ pub fn plugin(app: &mut App) {
 
     .add_message::<MakeChunkSnapshotForChaser>()
     .add_message::<NavOrder>()
+    .add_message::<BeingNavDebugLine>()
     .add_message::<FaithfulSimBeing>()
     .add_message::<InstantiateTemplPackEntity>()
 

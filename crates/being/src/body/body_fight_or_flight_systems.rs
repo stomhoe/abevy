@@ -40,7 +40,7 @@ pub struct FightOrFlightReactionQueries<'w, 's> {
     body_weight_sum_query: Query<'w, 's, &'static BodyWeightSum>,
     held_body_query: Query<'w, 's, &'static HeldBody>,
     body_sums_query: Query<'w, 's, &'static BodySums>,
-    speed_query: Query<'w, 's, &'static SpeedMagnitude>,
+    speed_query: Query<'w, 's, &'static SpeedPotential>,
     fleeing_query: Query<'w, 's, &'static Fleeing>,
     bit_map: Res<'w, BeingInstTemplateEntityMap>,
     race_map: Res<'w, RaceEntityMap>,
@@ -142,7 +142,7 @@ fn euclidean_dist(a: GlobalTilePos, b: GlobalTilePos) -> f32 {
 fn speed_ratio_over_attacker(
     victim_ent: Entity,
     attacker_ent: Entity,
-    speed_query: &Query<&SpeedMagnitude>,
+    speed_query: &Query<&SpeedPotential>,
 ) -> f32 {
     let victim_speed = speed_query.get(victim_ent).map_or(1.0, |speed| speed.0.max(0.0));
     let attacker_speed = speed_query.get(attacker_ent).map_or(1.0, |speed| speed.0.max(0.0));
@@ -391,7 +391,7 @@ fn apply_reaction_to_being(
         && let Some(current_hunting) = queries.hunting_query.get(being_ent).ok()
     {
         if should_preserve_current_hunt_for_pack_counterattack(being_ent, attacker_ent, current_hunting, queries, grids) {
-            debug!(
+            trace!(
                 target: BEING_SYSTEM,
                 "Pack reaction kept current hunt for {:?}: current prey {:?} is retaliating and closer than attacker {:?}",
                 being_ent,
@@ -401,7 +401,7 @@ fn apply_reaction_to_being(
             return;
         }
 
-        debug!(
+        trace!(
             target: BEING_SYSTEM,
             "Pack reaction retargeted {:?} from {:?} to attacker {:?}",
             being_ent,

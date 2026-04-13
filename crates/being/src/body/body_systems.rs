@@ -237,6 +237,7 @@ pub fn update_body_energy_activity_multipliers(
     mut bodies_query: Query<(&'static BodyOf, &'static mut BodyEnergyStore, ), (With<BodyOf>, Without<Templ>, )>,
     speed_query: Query<&'static SpeedMagnitude, (With<Being>, )>,
 ) {
+    return;
     for (body_of, mut body_energy_store, ) in bodies_query.iter_mut() {
         let speed_magnitude = speed_query.get(body_of.being).map_or(0.0, |speed| speed.0.max(0.0));
         body_energy_store.activity_multiplier = (1.0 + speed_magnitude * 0.35).clamp(0.5, 3.0);

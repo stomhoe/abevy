@@ -113,18 +113,14 @@ pub fn apply_input_vec_modi_mul_to_final_norm_move_dir(
 }
 
 #[allow(unused_parens, )]
-pub fn process_speed_modifiers(
+pub fn process_speed_potential_modifiers(
     state: Res<State<ClientState>>,
     mut being_query: Query<(
         Entity,
-        &DimensionRef,
-        &GlobalTilePos,
         Option<&HeldBody>,
-        &mut SpeedMagnitude,
+        &mut SpeedPotential,
         Option<&BodyWeightSum>,
         Option<&BodyStrengthScale>,
-        Option<&InputSpeedThrottleMult>,
-        Option<&InputMaxSpeed>,
         Has<ComputedLocally>,
     )>,
     applied_mods_query: Query<&AppliedModifiers, >,
@@ -135,21 +131,15 @@ pub fn process_speed_modifiers(
     mitigating_only_markers_query: Query<(), With<MitigatingOnly>>,
     bodyparts_query: Query<&BodypartChildrenBodyparts, >,
     templ_refs_query: Query<&TemplEntiRef>,
-    tile_walk_speed_mults: Query<&WalkSpeedMultIfOnTop>,
     mut effects: Local<EntityHashSet>,
-    mut tile_gathering: TileGatheringParamSet,
 ) {
     let is_client = state.get() == &ClientState::Connected;
     for (
         being_ent,
-        &dim_ref,
-        tile_pos,
         body,
-        mut speed_magnitude,
+        mut speed_potential,
         body_weight_sum,
         body_strength_scale,
-        input_speed_throttle_mult,
-        input_max_speed,
         controlled_locally,
     ) in being_query.iter_mut()
     {
@@ -240,6 +230,46 @@ pub fn process_speed_modifiers(
             final_speed *= body_strength_scale.0.max(0.0);
         }
 
+        final_speed *= 5000.;
+        if (speed_potential.0 - final_speed).abs() > f32::EPSILON {
+            speed_potential.0 = final_speed;
+        }
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn process_speed_magnitude(
+    state: Res<State<ClientState>>,
+    mut being_query: Query<(
+        Entity,
+        &DimensionRef,
+        &GlobalTilePos,
+        &SpeedPotential,
+        &mut SpeedMagnitude,
+        Option<&InputSpeedThrottleMult>,
+        Option<&InputMaxSpeed>,
+        Has<ComputedLocally>,
+    )>,
+    templ_refs_query: Query<&TemplEntiRef>,
+    tile_walk_speed_mults: Query<&WalkSpeedMultIfOnTop>,
+    mut tile_gathering: TileGatheringParamSet,
+) {
+    let is_client = state.get() == &ClientState::Connected;
+    for (
+        _being_ent,
+        &dim_ref,
+        tile_pos,
+        speed_potential,
+        mut speed_magnitude,
+        input_speed_throttle_mult,
+        input_max_speed,
+        controlled_locally,
+    ) in being_query.iter_mut()
+    {
+        if is_client && !controlled_locally {
+            continue;
+        }
+        let mut final_speed = speed_potential.0;
         let mut tile_walk_mult: f32 = 1.0;
         let tile_ents = tile_gathering.gather_tiles(dim_ref, *tile_pos);
         for &tile_ent in tile_ents {
@@ -251,8 +281,7 @@ pub fn process_speed_modifiers(
             };
             tile_walk_mult = tile_walk_mult.min(tile_walk_mult_cfg.0);
         }
-        let final_speed = final_speed * tile_walk_mult.max(0.0);
-        let mut final_speed = final_speed * 5000.;
+        final_speed *= tile_walk_mult.max(0.0);
         let speed_throttle = input_speed_throttle_mult.map(|v| v.0).unwrap_or(1.0).clamp(0.0, 1.0);
         final_speed *= speed_throttle;
         if let Some(input_max_speed) = input_max_speed {

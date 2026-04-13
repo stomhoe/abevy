@@ -132,8 +132,8 @@ pub fn init_packs(
                 continue;
             };
             let resolved_hash = HashId::from(trimmed);
-            if let Err(negative_items) = being_sampler.0.insert(resolved_hash, weight) {
-                tilemap_shared::log_negative_weighted_sampler_items!("being_pack_init", pack_seri.id.as_str(), vec![negative_items]);
+            if let Err(negative_item) = being_sampler.0.insert(resolved_hash, weight) {
+                error!(target: "being_pack_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", pack_seri.id.as_str(), negative_item);
             }
             leader_priority.0.insert(resolved_ent, CappedNormalDist::from_seri(priority.clone()));
             if min_count > 0 || max_count < u32::MAX {
@@ -281,7 +281,7 @@ pub fn init_packs(
                 .0
                 .insert(HashId::from(race_id.as_str()), 1.0)
             {
-                tilemap_shared::log_negative_weighted_sampler_items!("being_pack_init", race_id.as_str(), vec![negative_item]);
+                error!(target: "being_pack_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", race_id.as_str(), negative_item);
             }
             rank_sampler_by_pack
                 .entry(pack_ent)
@@ -333,7 +333,7 @@ pub fn init_packs(
                 .0
                 .insert(HashId::from(bit_id.as_str()), 1.0)
             {
-                tilemap_shared::log_negative_weighted_sampler_items!("being_pack_init", bit_id.as_str(), vec![negative_item]);
+                error!(target: "being_pack_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", bit_id.as_str(), negative_item);
             }
             rank_sampler_by_pack
                 .entry(pack_ent)

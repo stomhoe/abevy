@@ -26,7 +26,6 @@ impl Default for AiNavGrids {
 #[derive(Debug, Clone)]
 pub struct AiNavGridRebuildInput {
     pub dim: Entity,
-    pub generation: u64,
     pub min_tile: IVec2,
     pub width: u32,
     pub height: u32,
@@ -37,7 +36,6 @@ pub struct AiNavGridRebuildInput {
 
 pub struct AiNavGridRebuildResult {
     pub dim: Entity,
-    pub generation: u64,
     pub center: IVec2,
     pub cache: AiNavGridCache,
 }
@@ -46,8 +44,6 @@ pub struct AiNavGridRebuildResult {
 pub struct AiNavGridRebuildTasks {
     pub tasks: Vec<Task<Vec<AiNavGridRebuildResult>>>,
     pub pending_dims: EntityHashSet,
-    pub pending_generation_by_dim: EntityHashMap<u64>,
-    pub next_generation: u64,
 }
 
 #[derive(Clone)]

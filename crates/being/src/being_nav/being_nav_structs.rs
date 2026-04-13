@@ -342,6 +342,7 @@ impl ChaserNavPlan {
         self.next_step_ix = 0;
         self.last_target_pos = Some(target_pos);
         self.holds_at_partial_endpoint = false;
+        self.reserved_shared_goal = None;
         self.rebuild_timer = Timer::new(interval, TimerMode::Once);
     }
 

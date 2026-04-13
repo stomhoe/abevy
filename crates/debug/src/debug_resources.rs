@@ -6,6 +6,8 @@ use common::common_components::HashId;
 use common::common_states::HotReloadSelection;
 use std::collections::HashMap;
 
+use tilemap_shared::GlobalTilePos;
+
 #[derive(Resource, Debug, Clone)]
 pub struct DubugWindowsVisibility{
     pub states: bool,
@@ -26,6 +28,8 @@ pub struct DubugWindowsVisibility{
     pub region_details: bool,
     pub tilemap_details: bool,
     pub being_details: bool,
+    pub being_nav_log: bool,
+    pub being_tile_click_picker: bool,
     pub faction_details: bool,
     pub player_details: bool,
     pub registered_positions: bool,
@@ -60,6 +64,8 @@ impl Default for DubugWindowsVisibility {
             region_details: false,
             tilemap_details: false,
             being_details: false,
+            being_nav_log: false,
+            being_tile_click_picker: false,
             faction_details: false,
             player_details: false,
             registered_positions: false,
@@ -73,6 +79,14 @@ impl Default for DubugWindowsVisibility {
             river_debug: false,
         }
     }
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct DebugBeingNavUiState {
+    pub track_new_being: bool,
+    pub last_clicked_dim: Option<HashId>,
+    pub last_clicked_gpos: Option<GlobalTilePos>,
+    pub last_selected_being: Option<Entity>,
 }
 
 #[derive(Resource)]
@@ -143,6 +157,37 @@ pub struct WorldTileClickInspectorState {
     pub entities_at_gpos: Vec<Entity>,
     pub click_generation: u64,
     pub last_opened_click_generation: u64,
+}
+
+#[derive(Resource, Debug)]
+pub struct BeingTileClickInspectorState {
+    pub last_clicked_dim: Option<HashId>,
+    pub last_clicked_gpos: Option<tilemap_shared::GlobalTilePos>,
+    pub last_selected_being: Option<Entity>,
+    pub inactivity_timer: Timer,
+}
+
+impl Default for BeingTileClickInspectorState {
+    fn default() -> Self {
+        Self {
+            last_clicked_dim: None,
+            last_clicked_gpos: None,
+            last_selected_being: None,
+            inactivity_timer: Timer::from_seconds(10.0, TimerMode::Once),
+        }
+    }
+}
+
+impl BeingTileClickInspectorState {
+    pub fn clear_selection(&mut self) {
+        self.last_clicked_dim = None;
+        self.last_clicked_gpos = None;
+        self.last_selected_being = None;
+    }
+
+    pub fn reset_inactivity_timer(&mut self) {
+        self.inactivity_timer.reset();
+    }
 }
 
 #[derive(Resource)]

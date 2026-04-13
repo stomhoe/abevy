@@ -11,6 +11,7 @@ pub struct GridLockedMovementRequirementsBundle(
     pub InputMoveDir,
     pub InputInvMul,
     pub FinalNormMoveDir,
+    pub SpeedPotential,
     pub SpeedMagnitude,
     pub AppliedModifiers,
     pub SnapTransformToGpos,

@@ -14,11 +14,11 @@ pub struct CreatureSampler(pub HashIdWeightedSampler);
 
 impl CreatureSampler {
     pub fn add_affinity(&mut self, biome_hash_id: common::common_components::HashId, weight: f32) {
-        if weight == 0.0 {
+        if weight <= 0.0 {
             return;
         }
         if let Err(negative_item) = self.0.add_or_accumulate_weight(biome_hash_id, weight) {
-            tilemap_shared::log_negative_weighted_sampler_items!("biome_components", biome_hash_id, vec![negative_item]);
+            error!(target: "biome_components", "Weighted sampler {:?} encountered a negative weight for value {:?}; rejected", biome_hash_id, negative_item);
         }
     }
 

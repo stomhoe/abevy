@@ -14,16 +14,12 @@ impl Default for FightOrFlightReaction {
 }
 
 #[derive(Component, Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
 pub struct FightOrFlightConfig {
-    #[serde(default)]
     pub reaction: FightOrFlightReaction,
-    #[serde(default)]
     pub min_melee_strength_ratio_to_counterattack: f32,
-    #[serde(default)]
     pub curr_hp_ratio_over_my_max_hp_to_start_fleeing: Option<f32>,
-    #[serde(default)]
     pub entire_nearby_squad_counterattacks: bool,
-    #[serde(default)]
     pub retaliation_chase_stop_distance_tiles: f32,
 }
 
@@ -34,7 +30,7 @@ impl Default for FightOrFlightConfig {
             min_melee_strength_ratio_to_counterattack: 0.6,
             curr_hp_ratio_over_my_max_hp_to_start_fleeing: None,
             entire_nearby_squad_counterattacks: false,
-            retaliation_chase_stop_distance_tiles: 90.0,
+            retaliation_chase_stop_distance_tiles: 300.0,
         }
     }
 }

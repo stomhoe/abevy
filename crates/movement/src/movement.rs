@@ -53,7 +53,9 @@ pub fn plugin(app: &mut App) {
             (
                 resolve_overlapping_beings,
                 process_input_direction_modifiers,
-                process_speed_modifiers,
+                process_speed_potential_modifiers,
+                process_speed_magnitude
+                    .after(process_speed_potential_modifiers),
             ).run_if(on_timer(Duration::from_secs_f32(0.2)))
             .in_set(HostSystems)
             .in_set(MovementSystems),

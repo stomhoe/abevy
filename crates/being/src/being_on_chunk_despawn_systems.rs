@@ -14,6 +14,7 @@ pub fn faithful_sim_being(mut cmd: Commands,
     mut frozen_bg_simulated_being_map: ResMut<FrozenBgSimulatedBeingsMap>,
     macro_chunk_pos_map: Res<LoadedMacroChunks>,
 ) {
+    return;
     for unloaded_being in reader.read() {
         let Ok((&dim, &chunk_pos, _held_sprites)) = query.get(unloaded_being.0) else {
             continue;
@@ -31,7 +32,7 @@ pub fn faithful_sim_being(mut cmd: Commands,
 
         let mut entity = cmd.entity(unloaded_being.0);
         //entity.try_insert(BgSimulatedIn{ macro_chunk_ent });
-        entity.try_remove::<RemoveOnEnterSemiRealSimMode>();
+        //entity.try_remove::<RemoveOnEnterSemiRealSimMode>();
     }
 
 }

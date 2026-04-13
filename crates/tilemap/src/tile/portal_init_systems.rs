@@ -47,9 +47,9 @@ pub fn map_portal_tiles(
             terrprobe_ent: Entity::PLACEHOLDER,
             one_way: portal_seri.one_way,
             sampler: {
-                let (sampler, negative_indices) = GlobalTilePosWeightedSampler::new(&sampled_offsets);
-                if !negative_indices.is_empty() {
-                    tilemap_shared::log_negative_weighted_sampler_indices!("portal_init", "portal_offsets", &sampled_offsets, negative_indices);
+                let (sampler, negative_items) = GlobalTilePosWeightedSampler::new(&sampled_offsets);
+                for negative_item in negative_items {
+                    error!(target: "portal_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", "portal_offsets", negative_item);
                 }
                 sampler
             },

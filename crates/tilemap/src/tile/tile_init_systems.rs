@@ -171,9 +171,9 @@ pub fn init_tiles(
             for (weight, (x, y)) in &seri.offsets_for_portal_arrivals {
                 sampled_offsets.push((GlobalTilePos::new(*x as i32, *y as i32), *weight));
             }
-            let (portal_sampler, negative_indices) = GlobalTilePosWeightedSampler::new(&sampled_offsets);
-            if !negative_indices.is_empty() {
-                tilemap_shared::log_negative_weighted_sampler_indices!("tile_init", &str_id, &sampled_offsets, negative_indices);
+            let (portal_sampler, negative_items) = GlobalTilePosWeightedSampler::new(&sampled_offsets);
+            for negative_item in negative_items {
+                error!(target: "tile_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", &str_id, negative_item);
             }
             cmd.entity(tile_enti).insert(portal_sampler);
         }
@@ -204,9 +204,9 @@ pub fn init_tiles(
             }
         }
         if !weighted_paths.is_empty() {
-            let (step_sfx, negative_indices) = TileStepSfx::new(&weighted_paths);
-            if !negative_indices.is_empty() {
-                tilemap_shared::log_negative_weighted_sampler_indices!("tile_init", &str_id, &weighted_paths, negative_indices);
+            let (step_sfx, negative_items) = TileStepSfx::new(&weighted_paths);
+            for negative_item in negative_items {
+                error!(target: "tile_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", &str_id, negative_item);
             }
             cmd.entity(tile_enti).insert((
                 step_sfx,

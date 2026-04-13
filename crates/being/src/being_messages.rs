@@ -1,6 +1,7 @@
 pub use ac_input::player_action_requests::{LocalMeleeAttackRequest};
 #[allow(unused_imports)] use bevy::prelude::*;
 use ::being_shared::{GoTo, NavOrderSource};
+use ::being_shared::movement_shared_components::*;
 
 
 #[derive(Message, Debug, Clone, )]
@@ -12,8 +13,8 @@ pub struct NavOrder {
     pub priority: u8,
     pub source: NavOrderSource,
     pub go_to: Option<GoTo>,
-    pub speed_throttle_mult: f32,
-    pub max_speed: f32,
+    pub speed_throttle_mult: InputSpeedThrottleMult,
+    pub max_speed: InputMaxSpeed,
 }
 impl NavOrder {
     pub fn new(
@@ -27,8 +28,8 @@ impl NavOrder {
             priority,
             source,
             go_to,
-            speed_throttle_mult: 1.0,
-            max_speed: f32::MAX,
+            speed_throttle_mult: InputSpeedThrottleMult::default(),
+            max_speed: InputMaxSpeed::default(),
         }
     }
 
@@ -44,8 +45,8 @@ impl NavOrder {
             priority,
             source,
             go_to,
-            speed_throttle_mult,
-            max_speed: f32::MAX,
+            speed_throttle_mult: InputSpeedThrottleMult(speed_throttle_mult),
+            max_speed: InputMaxSpeed::default(),
         }
     }
 
@@ -61,8 +62,8 @@ impl NavOrder {
             priority,
             source,
             go_to,
-            speed_throttle_mult: 1.0,
-            max_speed,
+            speed_throttle_mult: InputSpeedThrottleMult::default(),
+            max_speed: InputMaxSpeed(max_speed),
         }
     }
 }

@@ -15,6 +15,8 @@ use ::param_sets::*;
 use std::time::Duration;
 use ::tilemap_shared::*;
 
+use super::being_nav_debug::*;
+
 fn wander_lod_interval_for_level(level: u8) -> Duration {
     match level {
         0 => Duration::ZERO,
@@ -23,6 +25,8 @@ fn wander_lod_interval_for_level(level: u8) -> Duration {
         _ => Duration::from_secs_f32(0.50),
     }
 }
+
+const NAV_SYSTEM: &str = "being_nav_wander_systems";
 
 fn advance_wander_lod_tick(
     being_ent: Entity,
@@ -367,6 +371,7 @@ pub fn wander_behavior(
     time: Res<Time>,
     queries: WanderBehaviorQueryParams,
     locals: WanderBehaviorLocals,
+    mut nav_log: BeingNavDebugLog,
 ) {
     let WanderBehaviorQueryParams {
         mut blocking_tiles,
@@ -679,6 +684,18 @@ pub fn wander_behavior(
             Some(GoTo::new(farthest_target, 0.0)),
             throttle,
         ));
+        nav_log.push(
+            pred_ent,
+            NAV_SYSTEM,
+            BeingNavDebugKind::Decision,
+            "Wander selected movement target",
+            vec![
+                BeingNavDebugField::new("dim", format!("{:?}", dim_ref.0)),
+                BeingNavDebugField::new("gpos", gpos),
+                BeingNavDebugField::new("target", farthest_target),
+                BeingNavDebugField::new("throttle", throttle),
+            ],
+        );
     }
     lod_secs_left_by_ent.retain(|being_ent, _| seen_wanderers.contains(being_ent));
     lod_accum_secs_by_ent.retain(|being_ent, _| seen_wanderers.contains(being_ent));
@@ -693,4 +710,5 @@ pub fn wander_behavior(
     }
     writer.write_batch(messages.drain(..));
     facing_writer.write_batch(facing_messages.drain(..));
+    nav_log.flush();
 }

@@ -1191,6 +1191,7 @@ pub fn goto_behavior(
             continue;
         };
 
+        let mut should_force_fast_repath = false;
         let move_input = if let Some(plan) = plans.by_ent.get_mut(&chaser_ent) {
             match plan.next_step(*chaser_pos) {
                 Some(next) => {
@@ -1224,13 +1225,20 @@ pub fn goto_behavior(
                         }
                     }
                 }
-                None if plan.reserved_shared_goal.is_some() => Vec2::ZERO,
-                None if plan.holds_at_partial_endpoint => Vec2::ZERO,
+                None if plan.reserved_shared_goal.is_some() && !plan.holds_at_partial_endpoint => Vec2::ZERO,
+                None if plan.holds_at_partial_endpoint => {
+                    should_force_fast_repath = true;
+                    direct_chase_dir
+                }
                 None => direct_chase_dir,
             }
         } else {
             direct_chase_dir
         };
+        if should_force_fast_repath {
+            request_fast_repath(&mut plans, chaser_ent, target_pos);
+            trace!(target: BEING_SYSTEM, "GoTo forcing fast repath at partial endpoint for {:?}: target {:?}, from {:?}", chaser_ent, target_pos, chaser_pos);
+        }
 
         let move_axis = FinalNormMoveDir(move_input).normalize_to_axis_dir();
         if shared_flow_field.is_some() {

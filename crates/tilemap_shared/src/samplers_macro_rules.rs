@@ -2,37 +2,6 @@
 use bevy::prelude::*;
 
 #[macro_export]
-macro_rules! log_negative_weighted_sampler_items {
-    ($target:expr, $sampler_label:expr, $negative_items:expr) => {{
-        for item in $negative_items {
-            error!(
-                target: $target,
-                "Weighted sampler {} encountered a negative weight for value {:?}; clamped to 0.0",
-                $sampler_label,
-                item
-            );
-        }
-    }};
-}
-
-#[macro_export]
-macro_rules! log_negative_weighted_sampler_indices {
-    ($target:expr, $sampler_label:expr, $weights:expr, $negative_indices:expr) => {{
-        for index in $negative_indices {
-            let Some((item, _)) = $weights.get(index) else {
-                continue;
-            };
-            error!(
-                target: $target,
-                "Weighted sampler {} encountered a negative weight for value {:?}; clamped to 0.0",
-                $sampler_label,
-                item
-            );
-        }
-    }};
-}
-
-#[macro_export]
 macro_rules! impl_weighted_sampler_serialization {
     ($ty:ident, $inner:ty) => {
         impl Serialize for $ty {
@@ -43,11 +12,8 @@ macro_rules! impl_weighted_sampler_serialization {
         impl<'de> Deserialize<'de> for $ty {
             fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
                 let weights: Vec<($inner, f32)> = Deserialize::deserialize(deserializer)?;
-                let (sampler, negative_indices) = $ty::build_from_weights(&weights);
-                for index in negative_indices {
-                    let Some((item, _)) = weights.get(index) else {
-                        continue;
-                    };
+                let (sampler, negative_items) = $ty::build_from_weights(&weights);
+                for item in negative_items {
                     warn!(
                         "Negative weight encountered in deserialized weighted sampler for value {:?}; weight clamped to 0.0.",
                         item
@@ -63,12 +29,15 @@ macro_rules! impl_weighted_sampler_serialization {
 macro_rules! define_weightedsampler_impl {
     ($ty:ident, $inner:ty) => {
         impl $ty {
-            fn build_from_weights(weights: &Vec<($inner, f32)>) -> (Self, Vec<usize>) {
+            fn build_from_weights(weights: &Vec<($inner, f32)>) -> (Self, Vec<$inner>)
+            where
+                $inner: Clone,
+            {
                 let mut weights_vec = Vec::with_capacity(weights.len());
-                let mut negative_indices = Vec::new();
-                for (idx, (item, weight)) in weights.iter().cloned().enumerate() {
+                let mut negative_items = Vec::new();
+                for (item, weight) in weights.iter().cloned() {
                     if weight < 0.0 {
-                        negative_indices.push(idx);
+                        negative_items.push(item.clone());
                     }
                     weights_vec.push((item, weight.max(0.0)));
                 }
@@ -85,11 +54,14 @@ macro_rules! define_weightedsampler_impl {
                         cumulative_weights,
                         total_weight,
                     },
-                    negative_indices,
+                    negative_items,
                 )
             }
 
-            pub fn new(weights: &Vec<($inner, f32)>) -> (Self, Vec<usize>) {
+            pub fn new(weights: &Vec<($inner, f32)>) -> (Self, Vec<$inner>)
+            where
+                $inner: Clone,
+            {
                 Self::build_from_weights(weights)
             }
 
@@ -115,12 +87,7 @@ macro_rules! define_weightedsampler_impl {
                 $inner: PartialEq + Clone,
             {
                 if weight < 0.0 {
-                    let clamped = weight.max(0.0);
-                    let Some((_, existing_weight)) = self.weights.iter_mut().find(|(existing_item, _)| *existing_item == item) else {
-                        let result = self.insert(item.clone(), clamped);
-                        return result.map_err(|_| item);
-                    };
-                    *existing_weight += clamped;
+                    self.weights.retain(|(existing_item, _)| *existing_item != item);
                     self.rebuild();
                     return Err(item);
                 }

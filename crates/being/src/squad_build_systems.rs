@@ -8,6 +8,7 @@ use common::log_targets::BEING_SYSTEM;
 use common::common_components::{HashId, StrId};
 use game_common::Templ;
 use game_common::game_common_components::TemplEntiRef;
+use rand::seq::SliceRandom;
 use param_sets::BlockingTileParamSet;
 use ::tilemap_shared::*;
 
@@ -222,12 +223,13 @@ pub fn instance_pack_entities(
                 continue;
             };
             let needed_count = group.spawn_targets.len();
+            let search_count = needed_count.saturating_add(needed_count.saturating_div(2).max(1));
             let hard_max_radius_tiles = preferred_radius_tiles
                 .map(|radius| radius.saturating_add(needed_count.saturating_sub(1) as u16));
             blocking_tiles.find_allowed_gposes_in_area(
                 msg.dim_ref,
                 anchor_gpos,
-                needed_count,
+                search_count,
                 preferred_radius_tiles,
                 hard_max_radius_tiles,
                 true,
@@ -237,6 +239,7 @@ pub fn instance_pack_entities(
                 &group.blacklist,
                 &mut locals.spawn_positions,
             );
+            locals.spawn_positions.shuffle(&mut rng);
             let mut assigned_count = 0usize;
             for &gpos in locals.spawn_positions.iter() {
                 if !locals.claimed_positions.insert(gpos) {

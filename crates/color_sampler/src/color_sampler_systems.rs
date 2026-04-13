@@ -43,9 +43,9 @@ pub fn init_color_samplers(
         }
 
         let ent = cmd.spawn_empty().id();
-        let (wmap, negative_indices) = ColorSampler::new(&seri.weights);
-        if !negative_indices.is_empty() {
-            tilemap_shared::log_negative_weighted_sampler_indices!("color_sampler_init", &str_id, &seri.weights, negative_indices);
+        let (wmap, negative_items) = ColorSampler::new(&seri.weights);
+        for negative_item in negative_items {
+            error!(target: "color_sampler_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", &str_id, negative_item);
         }
         wmap_to_insert.push((ent, (str_id, wmap)));
     }
