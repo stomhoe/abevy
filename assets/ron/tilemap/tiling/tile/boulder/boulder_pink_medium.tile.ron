@@ -3,7 +3,7 @@
     name: "Pink medium boulder",
     tags: ["land", "boulder", "rock", "pink"],
     z: 1000,
-    y_sort: Some(15),
+    y_sort: 15.0,
     img_paths: [
         ("", "texture/world/boulder/medpink.png"),
     ],

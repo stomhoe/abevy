@@ -17,7 +17,7 @@ pub fn despawn_entities_on_death(
 ) {
     for (entity, is_tile) in query.iter() {
         if is_tile {
-            messages.push(SafeDespawn(entity));
+            messages.push(SafeDespawn { tile_ent: entity, remove_u16_index: true });
         }
     }
     writer.write_batch(messages.drain(..));

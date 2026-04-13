@@ -151,6 +151,7 @@ pub fn plugin(app: &mut App) {
     .add_message::<SavedTileHadChunkDespawn>()
     .add_message::<GlobalTilePosChanged>()
     .add_message::<RecheckTileAdjacency>()
+    .add_message::<AiNavGridDirtyDim>()
     .add_message::<SafeDespawn>()
 
 

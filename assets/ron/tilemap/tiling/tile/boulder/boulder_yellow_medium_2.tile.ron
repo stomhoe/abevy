@@ -3,7 +3,7 @@
     name: "Yellow medium boulder 2",
     tags: ["land", "boulder", "rock", "yellow"],
     z: 1000,
-    y_sort: Some(15),
+    y_sort: 15.0,
     img_paths: [
         ("", "texture/world/boulder/medyellow2.png"),
     ],

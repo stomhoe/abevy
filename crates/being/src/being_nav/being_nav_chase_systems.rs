@@ -175,6 +175,29 @@ fn request_fast_repath(
     }
 }
 
+fn fallback_grid_step_toward_target(
+    cache: &AiNavGridCache,
+    chaser_pos: GlobalTilePos,
+    target_pos: GlobalTilePos,
+) -> Option<Vec2> {
+    let (start, goal) = cache.local_path_points(chaser_pos, target_pos)?;
+    let mut req = PathfindArgs::new(start, goal)
+        .astar()
+        .partial();
+    let path = cache.grid.pathfind(&mut req)?;
+    for step in path.path().iter().copied() {
+        let step_gpos = GlobalTilePos(step.xy().as_ivec2() + cache.min);
+        if step_gpos == chaser_pos {
+            continue;
+        }
+        let desired = cardinal_step_toward(step_gpos.0 - chaser_pos.0);
+        if desired != IVec2::ZERO {
+            return Some(desired.as_vec2());
+        }
+    }
+    None
+}
+
 fn collect_chase_goal_tiles(
     cache: &AiNavGridCache,
     target_pos: GlobalTilePos,
@@ -1164,7 +1187,6 @@ pub fn goto_behavior(
                     .map(|flow_field| (cache, flow_field))
             });
         let shared_reserved_goal = plans.by_ent.get(&chaser_ent).and_then(|plan| plan.reserved_shared_goal);
-        let follow_shared_reserved_path = shared_flow_field.is_some() && shared_reserved_goal.is_some();
         if let Some((_cache, flow_field, )) = shared_flow_field {
             let shared_target_reached = shared_reserved_goal
                 .map(|reserved_goal| reserved_goal == *chaser_pos)
@@ -1192,48 +1214,29 @@ pub fn goto_behavior(
         };
 
         let mut should_force_fast_repath = false;
+        let grid_fallback_step = grids
+            .by_dim
+            .get(&chaser_dim_ent)
+            .and_then(|cache| fallback_grid_step_toward_target(cache, *chaser_pos, target_pos));
         let move_input = if let Some(plan) = plans.by_ent.get_mut(&chaser_ent) {
             match plan.next_step(*chaser_pos) {
                 Some(next) => {
                     let desired = cardinal_step_toward(next.0 - chaser_pos.0);
                     if desired == IVec2::ZERO {
                         direct_chase_dir
-                    } else if follow_shared_reserved_path {
-                        desired.as_vec2()
                     } else {
-                        let desired_next_pos = GlobalTilePos(chaser_pos.0 + desired);
-                        let desired_next_dist = desired_next_pos.taxicab_tile_distance(target_pos);
-                        let current_dist = chaser_pos.taxicab_tile_distance(target_pos);
-                        let direct_axis = FinalNormMoveDir(direct_chase_dir).normalize_to_axis_dir();
-                        if direct_axis != IVec2::ZERO {
-                            let direct_next_pos = GlobalTilePos(chaser_pos.0 + direct_axis);
-                            let direct_next_dist = direct_next_pos.taxicab_tile_distance(target_pos);
-                            if direct_next_dist < desired_next_dist {
-                                trace!(target: BEING_SYSTEM, "GoTo choosing direct step over plan for {:?}: target {:?}, planned {:?} dist {:.1}, direct {:?} dist {:.1}", chaser_ent, target_pos, desired, desired_next_dist, direct_axis, direct_next_dist);
-                                direct_chase_dir
-                            } else if desired_next_dist > current_dist {
-                                trace!(target: BEING_SYSTEM, "GoTo overriding stale plan step for {:?}: target {:?}, planned {:?} would increase dist {:.1}->{:.1}, using direct {:?}", chaser_ent, target_pos, desired, current_dist, desired_next_dist, direct_axis);
-                                direct_chase_dir
-                            } else {
-                                desired.as_vec2()
-                            }
-                        } else if desired_next_dist > current_dist {
-                            trace!(target: BEING_SYSTEM, "GoTo overriding stale plan step for {:?}: target {:?}, planned {:?} would increase dist {:.1}->{:.1}, using direct {:?}", chaser_ent, target_pos, desired, current_dist, desired_next_dist, direct_axis);
-                            direct_chase_dir
-                        } else {
-                            desired.as_vec2()
-                        }
+                        desired.as_vec2()
                     }
                 }
                 None if plan.reserved_shared_goal.is_some() && !plan.holds_at_partial_endpoint => Vec2::ZERO,
                 None if plan.holds_at_partial_endpoint => {
                     should_force_fast_repath = true;
-                    direct_chase_dir
+                    grid_fallback_step.unwrap_or(Vec2::ZERO)
                 }
-                None => direct_chase_dir,
+                None => grid_fallback_step.unwrap_or(direct_chase_dir),
             }
         } else {
-            direct_chase_dir
+            grid_fallback_step.unwrap_or(direct_chase_dir)
         };
         if should_force_fast_repath {
             request_fast_repath(&mut plans, chaser_ent, target_pos);

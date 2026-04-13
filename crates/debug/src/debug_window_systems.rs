@@ -11,7 +11,9 @@ use tilemap_shared::GlobalGenSettings;
 use tilemap::regioning::regioning_resources::StructureGenerationSettings;
 
 use crate::being_tile_click_picker::set_being_click_picker_active;
-use crate::debug_resources::{BeingTileClickInspectorState, DubugWindowsVisibility};
+use crate::debug_resources::{BeingClickRemoverState, BeingTileClickInspectorState, DubugWindowsVisibility, TileClickRemoverState};
+use crate::tile_click_remover::set_tile_click_remover_active;
+use crate::being_click_remover::set_being_click_remover_active;
 
 fn render_state_row<T: States + std::fmt::Debug>(ui: &mut egui::Ui, label: &str, state: &State<T>) {
     ui.horizontal(|ui| {
@@ -171,6 +173,8 @@ pub fn main_menu_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut being_click_picker_state: ResMut<BeingTileClickInspectorState>,
+    mut tile_click_remover_state: ResMut<TileClickRemoverState>,
+    mut being_click_remover_state: ResMut<BeingClickRemoverState>,
 ) {
     if !window_visible.main_menu {
         return;
@@ -226,6 +230,8 @@ pub fn main_menu_window(
                 window_visible.gpos_maps = false;
                 window_visible.tile_indices_map = false;
                 window_visible.world_tile_click_picker = false;
+                window_visible.tile_click_remover = false;
+                window_visible.being_click_remover = false;
                 window_visible.being_tile_click_picker = false;
                 window_visible.being_nav_log = false;
                 window_visible.hot_reload_window_open_on_start = false;
@@ -255,6 +261,41 @@ pub fn main_menu_window(
             }
             if ui.button(egui::RichText::new("🖱️ TileGpos Click Picker").size(16.0)).clicked() {
                 window_visible.world_tile_click_picker = !window_visible.world_tile_click_picker;
+            }
+            let tile_click_remover_label = if window_visible.tile_click_remover {
+                "🖱️❌ Stop TileClickRemover"
+            } else {
+                "🖱️❌ TileClickRemover"
+            };
+            let mut tile_click_remover_button = egui::Button::new(tile_click_remover_label);
+            if window_visible.tile_click_remover {
+                tile_click_remover_button = tile_click_remover_button.fill(egui::Color32::from_rgb(120, 80, 60));
+            }
+            ui.horizontal(|ui| {
+                if ui.add(tile_click_remover_button).clicked() {
+                    set_tile_click_remover_active(
+                        !window_visible.tile_click_remover,
+                        &mut tile_click_remover_state,
+                        &mut window_visible,
+                    );
+                }
+                ui.checkbox(&mut tile_click_remover_state.despawn_last_tile, "Despawn last tile");
+            });
+            let being_click_remover_label = if window_visible.being_click_remover {
+                "🖱️❌ Stop BeingClickRemover"
+            } else {
+                "🖱️❌ BeingClickRemover"
+            };
+            let mut being_click_remover_button = egui::Button::new(being_click_remover_label);
+            if window_visible.being_click_remover {
+                being_click_remover_button = being_click_remover_button.fill(egui::Color32::from_rgb(120, 60, 60));
+            }
+            if ui.add(being_click_remover_button).clicked() {
+                set_being_click_remover_active(
+                    !window_visible.being_click_remover,
+                    &mut being_click_remover_state,
+                    &mut window_visible,
+                );
             }
             let being_click_picker_label = if window_visible.being_tile_click_picker {
                 "🖱️ Stop Being Click Picker"

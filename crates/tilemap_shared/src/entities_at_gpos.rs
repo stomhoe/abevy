@@ -114,7 +114,7 @@ impl AiNavBlockedGposCounts {
         tile_gpos: GlobalTilePos,
         interaction_zones: Option<&InteractionZones>,
         is_low_speed: bool,
-    ) {
+    ) -> bool {
         let mut blocked_positions = Vec::new();
         if let Some(interaction_zones) = interaction_zones {
             if let Some(collision_mask) = interaction_zones.get_collision_mask() {
@@ -129,19 +129,22 @@ impl AiNavBlockedGposCounts {
             blocked_positions.push(tile_gpos);
         }
         if blocked_positions.is_empty() {
-            return;
+            return false;
         }
         blocked_positions.sort_unstable_by_key(|pos| (pos.0.x, pos.0.y));
         blocked_positions.dedup();
+        let mut removed_any = false;
         for blocked_gpos in blocked_positions {
             let Some(count) = self.0.get_mut(&(dim, blocked_gpos)) else {
                 continue;
             };
             *count = count.saturating_sub(1);
+            removed_any = true;
             if *count == 0 {
                 self.0.remove(&(dim, blocked_gpos));
             }
         }
+        removed_any
     }
 
     pub fn insert_being_positions(

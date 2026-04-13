@@ -33,6 +33,7 @@ pub struct SafeDespawnTileQueries<'w, 's> {
 #[allow(unused_parens, )]
 pub struct SafeDespawnTileLocals<'s> {
     pub rechecks: Local<'s, Vec<RecheckTileAdjacency>>,
+    pub nav_grid_dirty_msgs: Local<'s, Vec<AiNavGridDirtyDim>>,
 }
 
 pub fn on_spritetile_despawn(
@@ -42,6 +43,8 @@ pub fn on_spritetile_despawn(
     interaction_zones_query: Query<&InteractionZones, common::AnyDisabling>,
     walk_speed_query: Query<&WalkSpeedMultIfOnTop, common::AnyDisabling>,
     mut ai_nav_blocked_gpos_counts: ResMut<AiNavBlockedGposCounts>,
+    mut nav_grid_dirty_writer: MessageWriter<AiNavGridDirtyDim>,
+    mut nav_grid_dirty_msgs: Local<Vec<AiNavGridDirtyDim>>,
     mut spritetiles_at_gpos: ResMut<SpriteTilesAtGpos>,
 ) {
     let Ok((&dim_ref, &gpos, templ_ref)) = query.get(trig.entity) else {
@@ -58,7 +61,10 @@ pub fn on_spritetile_despawn(
         .ok()
         .and_then(|templ_ent| walk_speed_query.get(templ_ent).ok())
         .is_some_and(|walk_speed| walk_speed.is_extremely_low());
-    ai_nav_blocked_gpos_counts.remove_blocked_positions(dim_ref, gpos, interaction_zones, is_low_speed);
+    if ai_nav_blocked_gpos_counts.remove_blocked_positions(dim_ref, gpos, interaction_zones, is_low_speed) {
+        nav_grid_dirty_msgs.push(AiNavGridDirtyDim { dim: dim_ref });
+    }
+    nav_grid_dirty_writer.write_batch(nav_grid_dirty_msgs.drain(..));
     spritetiles_at_gpos.remove_tile(dim_ref, gpos, trig.entity, interaction_zones);
 }
 
@@ -102,6 +108,7 @@ pub fn safe_despawn_tile_at(
     mut cmd: Commands,
     mut reader: MessageReader<SafeDespawn>,
     mut recheck_writer: MessageWriter<RecheckTileAdjacency>,
+    mut nav_grid_dirty_writer: MessageWriter<AiNavGridDirtyDim>,
     mut card_at_gpos: ResMut<CardinalDirAtGpos>,
     mut queries: SafeDespawnTileQueries,
     mut locals: SafeDespawnTileLocals,
@@ -122,9 +129,9 @@ pub fn safe_despawn_tile_at(
         sprite_tile_query,
         ai_nav_blocked_gpos_counts,
     } = &mut queries;
-    let SafeDespawnTileLocals { rechecks } = &mut locals;
+    let SafeDespawnTileLocals { rechecks, nav_grid_dirty_msgs } = &mut locals;
 
-    for &SafeDespawn(tile_ent) in reader.read() {
+    for &SafeDespawn { tile_ent, remove_u16_index } in reader.read() {
         let (Ok(&dim), Ok(&gpos)) = (dim_query.get(tile_ent), gpos_query.get(tile_ent)) else {
             cmd.entity(tile_ent).try_despawn();
             continue;
@@ -145,14 +152,12 @@ pub fn safe_despawn_tile_at(
             .and_then(|templ_ent| walk_speed_query.get(templ_ent).ok())
             .is_some_and(|walk_speed| walk_speed.is_extremely_low());
         if sprite_tile_query.get(tile_ent).is_err() {
-            ai_nav_blocked_gpos_counts.remove_blocked_positions(dim, gpos, interaction_zones, is_low_speed);
+            if ai_nav_blocked_gpos_counts.remove_blocked_positions(dim, gpos, interaction_zones, is_low_speed) {
+                nav_grid_dirty_msgs.push(AiNavGridDirtyDim { dim });
+            }
         }
         card_at_gpos.0.remove(&(templ_ref.0, gpos));
         let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
-            cmd.entity(tile_ent).try_despawn();
-            continue;
-        };
-        let Ok(&tile_index) = tile_index_query.get(templ_ent) else {
             cmd.entity(tile_ent).try_despawn();
             continue;
         };
@@ -161,16 +166,26 @@ pub fn safe_despawn_tile_at(
             cmd.entity(tile_ent).try_despawn();
             continue;
         };
-        let Ok(macro_chunk_ref) = macro_chunk_ref_query.get(chunk_ent) else {
-            cmd.entity(tile_ent).try_despawn();
-            continue;
-        };
-        let Ok(mut macro_chunk_tile_indices) = macro_chunk_tile_indices_query.get_mut(macro_chunk_ref.0) else {
-            cmd.entity(tile_ent).try_despawn();
-            continue;
-        };
-        let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
-        let _ = macro_chunk_tile_indices.remove_tile_index(macro_chunk_pos.to_chunkpos().to_tilepos(), gpos, tile_index);
+        if remove_u16_index {
+            let Ok(&tile_index) = tile_index_query.get(templ_ent) else {
+                cmd.entity(tile_ent).try_despawn();
+                continue;
+            };
+            let Ok(macro_chunk_ref) = macro_chunk_ref_query.get(chunk_ent) else {
+                cmd.entity(tile_ent).try_despawn();
+                continue;
+            };
+            let Ok(mut macro_chunk_tile_indices) = macro_chunk_tile_indices_query.get_mut(macro_chunk_ref.0) else {
+                cmd.entity(tile_ent).try_despawn();
+                continue;
+            };
+            let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
+            let _ = macro_chunk_tile_indices.remove_tile_index(
+                macro_chunk_pos.to_chunkpos().to_tilepos(),
+                gpos,
+                tile_index,
+            );
+        }
 
         cmd.entity(tile_ent).try_despawn();
         rechecks.push(RecheckTileAdjacency { dim, gpos });
@@ -193,4 +208,5 @@ pub fn safe_despawn_tile_at(
         }
     }
     recheck_writer.write_batch(rechecks.drain(..));
+    nav_grid_dirty_writer.write_batch(nav_grid_dirty_msgs.drain(..));
 }

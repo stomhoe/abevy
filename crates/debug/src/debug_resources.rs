@@ -39,6 +39,8 @@ pub struct DubugWindowsVisibility{
     pub gpos_maps: bool,
     pub tile_indices_map: bool,
     pub world_tile_click_picker: bool,
+    pub tile_click_remover: bool,
+    pub being_click_remover: bool,
     pub hot_reload_window_open_on_start: bool,
     pub river_debug: bool,
 }
@@ -75,6 +77,8 @@ impl Default for DubugWindowsVisibility {
             gpos_maps: false,
             tile_indices_map: false,
             world_tile_click_picker: false,
+            tile_click_remover: false,
+            being_click_remover: false,
             hot_reload_window_open_on_start: false,
             river_debug: false,
         }
@@ -157,6 +161,46 @@ pub struct WorldTileClickInspectorState {
     pub entities_at_gpos: Vec<Entity>,
     pub click_generation: u64,
     pub last_opened_click_generation: u64,
+}
+
+#[derive(Resource, Debug)]
+pub struct TileClickRemoverState {
+    pub despawn_last_tile: bool,
+    pub inactivity_timer: Timer,
+}
+
+impl Default for TileClickRemoverState {
+    fn default() -> Self {
+        Self {
+            despawn_last_tile: false,
+            inactivity_timer: Timer::from_seconds(10.0, TimerMode::Once),
+        }
+    }
+}
+
+impl TileClickRemoverState {
+    pub fn reset_inactivity_timer(&mut self) {
+        self.inactivity_timer.reset();
+    }
+}
+
+#[derive(Resource, Debug)]
+pub struct BeingClickRemoverState {
+    pub inactivity_timer: Timer,
+}
+
+impl Default for BeingClickRemoverState {
+    fn default() -> Self {
+        Self {
+            inactivity_timer: Timer::from_seconds(10.0, TimerMode::Once),
+        }
+    }
+}
+
+impl BeingClickRemoverState {
+    pub fn reset_inactivity_timer(&mut self) {
+        self.inactivity_timer.reset();
+    }
 }
 
 #[derive(Resource, Debug)]

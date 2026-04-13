@@ -12,7 +12,8 @@ pub struct TileSeri {
     pub z: f32,
     pub img_paths: Vec<(String, String)>,
     pub tags: HashSet<String>,
-    pub y_sort: Option<f32>,
+    /// For spritetiles, non-finite values (`nan`, `inf`, `-inf`) disable Y sorting.
+    pub y_sort: f32,
     /// persisted only when state gets altered from starting state
     pub persisted: bool,
     pub shader: String,
@@ -61,7 +62,7 @@ impl Default for TileSeri {
             z: 0.0,
             img_paths: Vec::new(),
             tags: HashSet::default(),
-            y_sort: None,
+            y_sort: 0.0,
             persisted: false,
             shader: String::new(),
             terrbl_params: TerrblParamsSeri::default(),
@@ -95,14 +96,8 @@ impl Default for TileSeri {
 
 impl TileSeri {
     pub fn sprite_tile_y_sort_origin(&self) -> Option<f32> {
-        if !self.is_spritetile {
-            return None;
-        }
-        let Some(y_sort_origin) = self.y_sort else {
-            return None;
-        };
-        if y_sort_origin.is_finite() {
-            Some(self.offset.1 + y_sort_origin - 10.0)
+        if self.is_spritetile && self.y_sort.is_finite() {
+            Some(self.offset.1 + self.y_sort - 10.0)
         } else {
             None
         }

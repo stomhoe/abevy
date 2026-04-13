@@ -81,7 +81,7 @@ impl<'w, 's> TileDeleteOthersParamSet<'w, 's> {
                 if newtile_delete_others_excp.should_delete_tile_based_on_tag_sets(otile_z, otile_tags) {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to new tile entity {:?}", otile_ent, otile_gpos, dim, newtile_ent);
                     if !registered_positions.is_any_occupied_pos_registered(otile_templ_ent, dim, otile_gpos, otile_size.inner().as_ivec2()) && !registered_positions.get_exempted_tile_ents().contains(&otile_ent) {
-                        self.msgs.push(SafeDespawn(otile_ent));
+                        self.msgs.push(SafeDespawn { tile_ent: otile_ent, remove_u16_index: true });
                     }
                     return true;
                 }
@@ -91,7 +91,7 @@ impl<'w, 's> TileDeleteOthersParamSet<'w, 's> {
                 if otile_delete_others_excp.should_delete_tile_based_on_tag_sets(newtile_z, newtile_tags) {
                     trace!(target: "tilemap", "Despawning tile entity {:?} at gpos {:?} in dimension {:?} due to old tile entity {:?}", newtile_ent, gpos, dim, otile_ent);
                     if !registered_positions.is_any_occupied_pos_registered(newtile_templ_ent, dim, gpos, newtile_size) && !registered_positions.get_exempted_tile_ents().contains(&newtile_ent) {
-                        self.msgs.push(SafeDespawn(newtile_ent));
+                        self.msgs.push(SafeDespawn { tile_ent: newtile_ent, remove_u16_index: true });
                     }
                 }
             }

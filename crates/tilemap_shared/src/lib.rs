@@ -7,6 +7,7 @@ pub mod tilemap_shared_samplers;
 #[macro_use]
 mod samplers_macro_rules;
 pub mod tilemap_messages;
+pub mod tilemap_nav;
 pub mod tilemap_param_sets;
 pub mod tilemap_seris;
 pub mod terrgen_components;

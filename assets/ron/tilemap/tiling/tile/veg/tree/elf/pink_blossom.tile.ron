@@ -9,7 +9,7 @@
     randflipx: true,
     offset: (0.0, 90.0),
     z: 1000,
-    y_sort: Some(0),
+    y_sort: 0.0,
     colmask: [
         "1",
     ],

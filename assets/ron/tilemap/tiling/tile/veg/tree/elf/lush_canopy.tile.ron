@@ -3,7 +3,7 @@
     name: "Lush canopy",
     tags: ["tree", "veg"],
     z: 1000,
-    y_sort: Some(0),
+    y_sort: 0.0,
     img_paths: [
         ("", "texture/world/veg/tree/elf/lush_canopy.png"),
     ],

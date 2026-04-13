@@ -11,6 +11,7 @@ use ::being_shared::{BeingNavDebugLine, DebuggingBeingNav};
     use crate::{
         being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
         being_tile_click_picker::*,
+        being_click_remover::*,
         being_nav_log_window::*,
         debug_chunking_window::*, debug_fonts::*, debug_resources::*,
         debug_systems::*, debug_window_systems::*,
@@ -23,6 +24,7 @@ use ::being_shared::{BeingNavDebugLine, DebuggingBeingNav};
         terrain_visualizer_window::*,
         tile_indices_map_window::*,
         world_tile_click_picker_window::*,
+        tile_click_remover::*,
         tile_details_inspector::*,
         tilemap_details_inspector::*,
     };
@@ -43,7 +45,9 @@ pub fn plugin(app: &mut App) {
                 debug_toggle_hot_reload_window,
                 debug_toggle_main_menu,
                 capture_world_tile_click_selection,
+                capture_world_tile_click_removal,
                 capture_world_being_click_selection,
+                capture_world_being_click_removal,
                 capture_world_being_nav_selection,
             )
                 .run_if(debug_enabled),
@@ -112,6 +116,8 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DebugFontsInitialized>()
         .init_resource::<DebugUiConfig>()
         .init_resource::<WorldTileClickInspectorState>()
+        .init_resource::<TileClickRemoverState>()
+        .init_resource::<BeingClickRemoverState>()
         .init_resource::<BeingTileClickInspectorState>()
         .init_resource::<DebugBeingNavUiState>()
         .init_resource::<DebuggingBeingNav>()

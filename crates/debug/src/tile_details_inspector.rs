@@ -6,6 +6,7 @@ use game_common::game_common_components::TemplEntiRef;
 use bevy_ecs_tilemap::map::TilemapId;
 use tilemap::tile::tile_components::{TileStrId};
 use tilemap_shared::DeleteOtherTilesInSamePos;
+use tilemap_shared::SafeDespawn;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -136,6 +137,14 @@ pub fn tile_details_inspector(world: &mut World) {
             }
 
             ui.separator();
+            if ui.button("Despawn").clicked() {
+                world
+                    .resource_mut::<Messages<SafeDespawn>>()
+                    .write(SafeDespawn {
+                        tile_ent: selected_tile_entity,
+                        remove_u16_index: true,
+                    });
+            }
             if ui.button("Clear Selection").clicked() {
                 if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
                     selected_entities.selected_tile = None;

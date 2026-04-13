@@ -14,7 +14,7 @@ use crate::debug_resources::{
     DubugWindowsVisibility,
 };
 
-fn cursor_being_pick_context(
+pub(crate) fn cursor_being_pick_context(
     contexts: &mut EguiContexts,
     mouse: &ButtonInput<MouseButton>,
     windows: &Query<&Window, (With<PrimaryWindow>, )>,

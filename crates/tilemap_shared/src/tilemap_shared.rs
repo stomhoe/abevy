@@ -9,6 +9,7 @@ pub use crate::tile::*;
 pub use crate::tilemap_components::*;
 pub use crate::tilemap_shared_samplers::*;
 pub use crate::tilemap_messages::*;
+pub use crate::tilemap_nav::*;
 pub use crate::tilemap_param_sets::*;
 pub use crate::terrgen_components::*;
 pub use crate::chunking_shared_components::*;

@@ -20,4 +20,4 @@ impl RecheckTileAdjacency {
 
 #[derive(Message, Debug, Clone, Copy, Hash, PartialEq, Eq)]
 /// Despawn with removal from SpriteTilesAtGpos (if spritetile) and tile adjacency recheck
-pub struct SafeDespawn(pub Entity);
+pub struct SafeDespawn { pub tile_ent: Entity, pub remove_u16_index: bool }

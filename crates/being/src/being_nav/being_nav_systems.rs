@@ -30,6 +30,7 @@ pub struct NavGridsLocals<'s> {
     dim_centers: Local<'s, EntityHashMap<IVec2>>,
     dim_center_counts: Local<'s, EntityHashMap<i32>>,
     dirty_dims: Local<'s, EntityHashSet>,
+    dirty_nav_dims: Local<'s, EntityHashSet>,
     loaded_dim_bounds: Local<'s, EntityHashMap<(IVec2, IVec2)>>,
     occupancy_initialized_dims: Local<'s, EntityHashSet>,
     prev_being_state: Local<'s, EntityHashMap<(Entity, GlobalTilePos)>>,
@@ -665,6 +666,7 @@ pub fn sync_ai_nav_grids(
     >,
     beings_query: Query<(Entity, &::tilemap_shared::DimensionRef, Option<&GoTo>, Option<&LodLevel>), With<Being>>,
     mut removed_beings: RemovedComponents<Being>,
+    mut nav_grid_dirty_msgs: MessageReader<AiNavGridDirtyDim>,
     mut grids: ResMut<AiNavGrids>,
     mut rebuild_tasks: ResMut<AiNavGridRebuildTasks>,
     dimension_hash_query: Query<&HashId, With<Dimension>>,
@@ -742,6 +744,13 @@ pub fn sync_ai_nav_grids(
         .retain(|dim, _| scratch.needed_dims.contains(dim));
     scratch.dirty_dims.clear();
     scratch.dirty_dims.reserve(scratch.needed_dims.len());
+    scratch.dirty_nav_dims.clear();
+    for msg in nav_grid_dirty_msgs.read() {
+        let Some(dim_ent) = dim_map.0.get_opt(msg.dim.0).copied() else {
+            continue;
+        };
+        scratch.dirty_nav_dims.insert(dim_ent);
+    }
     scratch.seen_beings.clear();
     scratch.beings_by_dim.clear();
     scratch.beings_by_dim.reserve(scratch.needed_dims.len());
@@ -869,7 +878,7 @@ pub fn sync_ai_nav_grids(
             .unwrap_or(true);
         let needs_new_grid = !grids.by_dim.contains_key(&dim);
         let has_pending_rebuild = rebuild_tasks.pending_dims.contains(&dim);
-        let rebuild_grid_sync = needs_new_grid || center_changed;
+        let rebuild_grid_sync = needs_new_grid || center_changed || scratch.dirty_nav_dims.contains(&dim);
         let rebuild_grid_async = !rebuild_grid_sync && should_rebuild && !has_pending_rebuild;
         let mut rebuilt_grid = false;
         if rebuild_grid_sync {
