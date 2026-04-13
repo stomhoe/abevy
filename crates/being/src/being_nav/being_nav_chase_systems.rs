@@ -22,7 +22,6 @@ use super::being_nav_structs::{AiNavGridCache, ChaserNavPlan, SharedChaseFlowFie
 use super::being_nav_helpers::{
     cardinal_step_toward,
     rebuild_connected_chase_chunk_path,
-    rebuild_dynamic_blocking,
     rebuild_retained_chase_chunk_positions,
     extend_target_chunk_trail,
     retained_target_trail_stale_timeout,
@@ -84,24 +83,17 @@ fn consider_chase_goal_candidate(
     best_path_cost: &mut u32,
     best_goal_chaser_dist: &mut u32,
     best_goal_line_deviation: &mut i64,
-    dynamic_blocking: &mut HashMap<UVec3, Entity>,
+    _dynamic_blocking: &mut HashMap<UVec3, Entity>,
     cache: &AiNavGridCache,
-    chaser_ent: Entity,
-    target_ent: Entity,
+    _chaser_ent: Entity,
+    _target_ent: Entity,
     target_pos: GlobalTilePos,
     chaser_gpos: GlobalTilePos,
     start: UVec3,
     goal: UVec3,
-    goal_occupant: Option<Entity>,
+    _goal_occupant: Option<Entity>,
 ) {
-    rebuild_dynamic_blocking(dynamic_blocking, cache, chaser_ent, target_ent, start, goal);
-    if let Some(goal_occupant) = goal_occupant.filter(|&ent| ent != chaser_ent && ent != target_ent) {
-        dynamic_blocking.insert(goal, goal_occupant);
-    }
-    let mut req = PathfindArgs::new(start, goal)
-        .astar()
-        .partial()
-        .blocking(dynamic_blocking);
+    let mut req = PathfindArgs::new(start, goal).astar();
     let Some(path) = cache.grid.pathfind(&mut req) else {
         return;
     };
@@ -181,9 +173,7 @@ fn fallback_grid_step_toward_target(
     target_pos: GlobalTilePos,
 ) -> Option<Vec2> {
     let (start, goal) = cache.local_path_points(chaser_pos, target_pos)?;
-    let mut req = PathfindArgs::new(start, goal)
-        .astar()
-        .partial();
+    let mut req = PathfindArgs::new(start, goal).astar();
     let path = cache.grid.pathfind(&mut req)?;
     for step in path.path().iter().copied() {
         let step_gpos = GlobalTilePos(step.xy().as_ivec2() + cache.min);
@@ -458,7 +448,7 @@ fn rebuild_shared_chase_plan_for_job(
     cache: &AiNavGridCache,
     chase_fields: &mut SharedChaseFlowFields,
     plans: &mut ChaserNavPlans,
-    dynamic_blocking: &mut HashMap<UVec3, Entity>,
+    _dynamic_blocking: &mut HashMap<UVec3, Entity>,
     reserved_goals: &mut HashMap<GlobalTilePos, Entity>,
 ) {
     let Some(flow_field) = chase_fields.by_target.get(&job.target_ent) else {
@@ -498,11 +488,7 @@ fn rebuild_shared_chase_plan_for_job(
         return;
     };
 
-    rebuild_dynamic_blocking(dynamic_blocking, cache, job.chaser_ent, Entity::PLACEHOLDER, start, goal);
-    let mut req = PathfindArgs::new(start, goal)
-        .astar()
-        .partial()
-        .blocking(dynamic_blocking);
+    let mut req = PathfindArgs::new(start, goal).astar();
     let Some(path) = cache.grid.pathfind(&mut req) else {
         if reserved_goals.get(&reserved_goal) == Some(&job.chaser_ent) {
             reserved_goals.remove(&reserved_goal);
@@ -608,7 +594,7 @@ pub fn rebuild_goto_nav_plans(
         (With<Being>, LocalAiControlled),
     >,
     grids: Res<AiNavGrids>,
-    targets_query: Query<&DimensionRef, ()>,
+    targets_query: Query<(&DimensionRef, Option<&SpeedMagnitude>), ()>,
     interaction_zones_query: Query<&InteractionZones, >,
     mut chase_fields: ResMut<SharedChaseFlowFields>,
     mut plans: ResMut<ChaserNavPlans>,
@@ -643,8 +629,9 @@ pub fn rebuild_goto_nav_plans(
             Some(NavOrderSource::Chasing | NavOrderSource::Fleeing)
         );
         let target_pos = goto.pos;
-        let goto_interval = ChaserNavPlan::rebuild_interval(
-            chaser_speed.map_or(1.0, |speed| speed.0),
+        let chaser_speed = chaser_speed.map_or(1.0, |speed| speed.0);
+        let mut goto_interval = ChaserNavPlan::rebuild_interval(
+            chaser_speed,
             0.0,
             chaser_gpos.taxicab_tile_distance(target_pos),
         );
@@ -693,7 +680,7 @@ pub fn rebuild_goto_nav_plans(
                 continue;
             };
             let target_pos = *target_gpos;
-            let Ok(target_dim) = targets_query.get(shared_target_ent) else {
+            let Ok((target_dim, target_speed)) = targets_query.get(shared_target_ent) else {
                 plan.clear_path_and_retry(goto_interval, target_pos);
                 continue;
             };
@@ -705,6 +692,11 @@ pub fn rebuild_goto_nav_plans(
                 plan.clear_path_and_retry(goto_interval, target_pos);
                 continue;
             }
+            goto_interval = ChaserNavPlan::rebuild_interval(
+                chaser_speed,
+                target_speed.map_or(0.0, |speed| speed.0),
+                chaser_gpos.taxicab_tile_distance(target_pos),
+            );
 
             scratch.active_chase_targets.insert(shared_target_ent);
             let target_shifted = plan
@@ -1070,11 +1062,7 @@ pub fn rebuild_goto_nav_plans(
         }
 
         if best_path_tiles.is_empty() {
-            rebuild_dynamic_blocking(&mut scratch.dynamic_blocking, cache, chaser_ent, Entity::PLACEHOLDER, start, goal);
-            let mut req = PathfindArgs::new(start, goal)
-                .astar()
-                .partial()
-                .blocking(&scratch.dynamic_blocking);
+            let mut req = PathfindArgs::new(start, goal).astar();
             let Some(path) = cache.grid.pathfind(&mut req) else {
                 plan.clear_path_and_retry(goto_interval.max(Duration::from_secs_f32(PARTIAL_TARGET_RETRY_SECS)), target_pos);
                 trace!(target: BEING_SYSTEM, "Deferred GoTo nav retry for {:?}: target {:?}, dist {:.2}, interval {:.2}s", chaser_ent, target_pos, chaser_gpos.taxicab_tile_distance(target_pos), goto_interval.as_secs_f32());

@@ -280,7 +280,7 @@ impl crate::being_nav::being_nav_resources::AiNavGrids {
         dim: Entity,
     ) -> bool {
         let Some(cache) = self.by_dim.get(&dim) else {
-            return true;
+            return false;
         };
         let Some((start, goal)) = cache.local_path_points(from_pos, to_pos) else {
             return false;

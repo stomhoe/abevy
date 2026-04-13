@@ -651,7 +651,7 @@ fn build_ai_nav_grid_rebuild_results(
 pub fn sync_ai_nav_grids(
     time: Res<Time>,
     loaded_chunks: Res<LoadedChunks>,
-    chunk_range: Res<LoadChunksAround>,
+    _chunk_range: Res<LoadChunksAround>,
     dim_map: Res<DimensionEntityMap>,
     mut param_set: BlockingTileParamSet,
     chasers_query: Query<
@@ -706,9 +706,6 @@ pub fn sync_ai_nav_grids(
     scratch.dim_center_counts.reserve(chaser_count);
 
     for (being_ent, dim_ref, controlled_by, goto, lod_level) in chaser_iter {
-        let Some(goto) = goto else {
-            continue;
-        };
         let Some(dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
             continue;
         };
@@ -718,10 +715,9 @@ pub fn sync_ai_nav_grids(
             }
         }
         let lod_level = lod_level.map_or(0, |lod_level| lod_level.0);
-        let is_critical_nav = matches!(
-            goto.source,
-            Some(NavOrderSource::Chasing | NavOrderSource::Fleeing)
-        );
+        let is_critical_nav = goto
+            .map(|goto| matches!(goto.source, Some(NavOrderSource::Chasing | NavOrderSource::Fleeing)))
+            .unwrap_or(false);
         if lod_level >= 2 && !is_critical_nav {
             continue;
         }
@@ -808,8 +804,6 @@ pub fn sync_ai_nav_grids(
     });
     scratch.occupancy_initialized_dims.retain(|dim| scratch.needed_dims.contains(dim));
 
-    let max_side = (((chunk_range.discovery_range as i32 * 2) - 1).max(1) as u32)
-        * ChunkPos::CHUNK_SIZE.x.max(1);
     let should_rebuild = grids.rebuild_timer.tick(time.delta()).just_finished();
     let mut rebuilt_grids = 0usize;
     let mut refreshed_occupancy = 0usize;
@@ -847,7 +841,7 @@ pub fn sync_ai_nav_grids(
             bounds.0 = bounds.0.min(macro_min_tile);
             bounds.1 = bounds.1.max(macro_max_tile);
         }
-        let Some(&(mut min_tile, max_tile)) = scratch.loaded_dim_bounds.get(&dim) else {
+        let Some(&(min_tile, max_tile)) = scratch.loaded_dim_bounds.get(&dim) else {
             continue;
         };
 
@@ -858,27 +852,20 @@ pub fn sync_ai_nav_grids(
             .map(|(sum, count)| *sum / count.max(&1))
             .unwrap_or((min_tile + max_tile) / 2);
 
-        let mut width = (max_tile.x - min_tile.x + 1).max(3) as u32;
-        let mut height = (max_tile.y - min_tile.y + 1).max(3) as u32;
-        if width > max_side {
-            let half = (max_side as i32) / 2;
-            min_tile.x = center.x - half;
-            width = max_side;
-        }
-        if height > max_side {
-            let half = (max_side as i32) / 2;
-            min_tile.y = center.y - half;
-            height = max_side;
-        }
-
-        let center_changed = grids
-            .center_by_dim
+        let width = (max_tile.x - min_tile.x + 1).max(3) as u32;
+        let height = (max_tile.y - min_tile.y + 1).max(3) as u32;
+        let bounds_changed = grids
+            .by_dim
             .get(&dim)
-            .map(|prev| (*prev - center).abs().max_element() >= ChunkPos::CHUNK_SIZE.x as i32)
+            .map(|cache| {
+                cache.min != min_tile
+                    || cache.grid.width() != width
+                    || cache.grid.height() != height
+            })
             .unwrap_or(true);
         let needs_new_grid = !grids.by_dim.contains_key(&dim);
         let has_pending_rebuild = rebuild_tasks.pending_dims.contains(&dim);
-        let rebuild_grid_sync = needs_new_grid || center_changed || scratch.dirty_nav_dims.contains(&dim);
+        let rebuild_grid_sync = needs_new_grid || bounds_changed || scratch.dirty_nav_dims.contains(&dim);
         let rebuild_grid_async = !rebuild_grid_sync && should_rebuild && !has_pending_rebuild;
         let mut rebuilt_grid = false;
         if rebuild_grid_sync {
