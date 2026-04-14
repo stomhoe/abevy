@@ -44,7 +44,7 @@ pub fn on_spritetile_despawn(
     walk_speed_query: Query<&WalkSpeedMultIfOnTop, common::AnyDisabling>,
     mut ai_nav_tile_blocked_gpos_counts: ResMut<AiNavTileBlockedGposCounts>,
     mut nav_grid_dirty_writer: MessageWriter<AiNavGridDirtyDim>,
-    mut nav_grid_dirty_msgs: Local<Vec<AiNavGridDirtyDim>>,
+    mut nav_grid_dirty_msgs: Local<HashSet<AiNavGridDirtyDim>>,
     mut spritetiles_at_gpos: ResMut<SpriteTilesAtGpos>,
 ) {
     let Ok((&dim_ref, &gpos, templ_ref)) = query.get(trig.entity) else {
@@ -62,9 +62,9 @@ pub fn on_spritetile_despawn(
         .and_then(|templ_ent| walk_speed_query.get(templ_ent).ok())
         .is_some_and(|walk_speed| walk_speed.is_extremely_low());
     if ai_nav_tile_blocked_gpos_counts.remove_blocked_positions(dim_ref, gpos, interaction_zones, is_low_speed) {
-        nav_grid_dirty_msgs.push(AiNavGridDirtyDim { dim: dim_ref });
+        nav_grid_dirty_msgs.insert(AiNavGridDirtyDim { dim: dim_ref });
     }
-    nav_grid_dirty_writer.write_batch(nav_grid_dirty_msgs.drain(..));
+    nav_grid_dirty_writer.write_batch(nav_grid_dirty_msgs.drain());
     spritetiles_at_gpos.remove_tile(dim_ref, gpos, trig.entity, interaction_zones);
 }
 

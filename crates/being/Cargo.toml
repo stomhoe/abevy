@@ -45,3 +45,4 @@ bevy_asset_loader = { workspace = true }
 #tracing-subscriber = { workspace = true }
 paste = { workspace = true }
 #smallvec = { workspace = true }
+smallset = { workspace = true }
