@@ -2,11 +2,10 @@
 use crate::being_messages::NavOrder;
 use ::being_shared::*;
 use crate::body::BodySums;
-use camera::camera_components::CameraTarget;
 use bevy_northstar::{CardinalGrid, grid::GridSettingsBuilder, nav::Nav};
 use ::tilemap_shared::*;
 use bevy::{
-    ecs::entity::{EntityHashMap, EntityHashSet},
+    ecs::entity::EntityHashMap,
     ecs::system::SystemParam,
     platform::collections::{HashMap, HashSet},
     prelude::*,
@@ -19,33 +18,66 @@ use ::being_shared::movement_shared_components::{InputMaxSpeed, InputSpeedThrott
 use super::being_nav_resources::*;
 use super::being_nav_structs::AiNavGridCache;
 
-const AI_LOD_NEAR_TILES: i32 = 72;
-const AI_LOD_MID_TILES: i32 = 144;
-const AI_LOD_FAR_TILES: i32 = 288;
-const AI_LOD_HYSTERESIS_TILES: i32 = 12;
-#[derive(SystemParam)]
-pub struct NavGridsLocals<'s> {
-    /// Dimensions that are relevant for nav work this frame.
-    needed_dims: Local<'s, HashSet<DimensionRef>>,
-    /// Running sum of chaser positions per dimension, used to estimate grid centers.
-    dim_centers: Local<'s, HashMap<DimensionRef, IVec2>>,
-    /// Number of chasers contributing to each dimension center sum.
-    dim_center_counts: Local<'s, HashMap<DimensionRef, i32>>,
-    /// Dimensions whose occupancy changed because beings moved, spawned, or despawned.
-    dirty_dims: Local<'s, HashSet<DimensionRef>>,
-    /// Dimensions explicitly marked dirty by nav-grid invalidation messages.
-    dirty_nav_dims: Local<'s, HashSet<DimensionRef>>,
-    /// Loaded tile bounds per dimension, expanded from chunk and macrochunk coverage.
-    loaded_dim_bounds: Local<'s, HashMap<DimensionRef, (IVec2, IVec2)>>,
-    /// Dimensions whose occupancy cache has already been refreshed at least once.
-    occupancy_initialized_dims: Local<'s, HashSet<DimensionRef>>,
-    /// Last known dimension and position for each being, used to detect movement between frames.
-    prev_being_state: Local<'s, HashMap<Entity, (DimensionRef, GlobalTilePos)>>,
-    /// Beings observed during this frame, used to prune stale occupancy state.
-    seen_beings: Local<'s, EntityHashSet>,
-    /// Beings grouped by dimension so occupancy can be rebuilt per grid.
-    beings_by_dim: Local<'s, HashMap<DimensionRef, Vec<(Entity, GlobalTilePos)>>>,
+const NAV_GRID_CENTER_SHIFT_TILES: i32 = 12;
+
+#[derive(Default)]
+struct NavGridCenterAccum {
+    sum_x: i64,
+    sum_y: i64,
+    weight: i64,
 }
+impl NavGridCenterAccum {
+    fn push(
+        &mut self,
+        gpos: GlobalTilePos,
+        weight: i64,
+    ) {
+        if weight <= 0 {
+            return;
+        }
+        self.sum_x += gpos.0.x as i64 * weight;
+        self.sum_y += gpos.0.y as i64 * weight;
+        self.weight += weight;
+    }
+
+    fn center(&self) -> Option<IVec2> {
+        if self.weight <= 0 {
+            return None;
+        }
+        Some(IVec2::new(
+            (self.sum_x / self.weight) as i32,
+            (self.sum_y / self.weight) as i32,
+        ))
+    }
+}
+
+fn build_ai_nav_grid_cache(
+    input: AiNavGridRebuildInput,
+) -> AiNavGridRebuildResult {
+    let mut grid = CardinalGrid::new(
+        &GridSettingsBuilder::new_2d(input.width.max(3), input.height.max(3)).build(),
+    );
+    for blocked_tile in input.blocked_tiles.iter().copied() {
+        grid.set_nav(
+            UVec3::new(blocked_tile.x, blocked_tile.y, 0),
+            Nav::Impassable,
+        );
+    }
+    grid.build();
+
+    AiNavGridRebuildResult {
+        dim: input.dim,
+        generation: input.generation,
+        center: input.center,
+        cache: AiNavGridCache {
+            min: input.min_tile,
+            grid,
+            occupied: HashMap::default(),
+        },
+    }
+}
+
+
 
 #[allow(unused_parens, )]
 pub fn ensure_loaded_beings_have_nav_state(
@@ -53,120 +85,6 @@ pub fn ensure_loaded_beings_have_nav_state(
     beings: Query<(Entity, ), (With<Being>, Without<WanderState>, Without<Chasing>, Without<Fleeing>, )>,
 ) {
     for (being_ent, ) in beings { cmd.entity(being_ent).try_insert(WanderState::default()); }
-}
-
-fn lod_level_for_tile_distance(tile_distance: i32) -> u8 {
-    if tile_distance <= AI_LOD_NEAR_TILES {
-        0
-    } else if tile_distance <= AI_LOD_MID_TILES {
-        1
-    } else if tile_distance <= AI_LOD_FAR_TILES {
-        2
-    } else {
-        3
-    }
-}
-
-fn lod_level_with_hysteresis(previous_level: u8, tile_distance: i32) -> u8 {
-    let d = tile_distance.max(0);
-    let near_in = (AI_LOD_NEAR_TILES - AI_LOD_HYSTERESIS_TILES).max(1);
-    let near_out = AI_LOD_NEAR_TILES + AI_LOD_HYSTERESIS_TILES;
-    let mid_in = (AI_LOD_MID_TILES - AI_LOD_HYSTERESIS_TILES).max(1);
-    let mid_out = AI_LOD_MID_TILES + AI_LOD_HYSTERESIS_TILES;
-    let far_in = (AI_LOD_FAR_TILES - AI_LOD_HYSTERESIS_TILES).max(1);
-    let far_out = AI_LOD_FAR_TILES + AI_LOD_HYSTERESIS_TILES;
-    match previous_level {
-        0 => {
-            if d > near_out {
-                lod_level_for_tile_distance(d)
-            } else {
-                0
-            }
-        }
-        1 => {
-            if d <= near_in {
-                0
-            } else if d > mid_out {
-                lod_level_for_tile_distance(d)
-            } else {
-                1
-            }
-        }
-        2 => {
-            if d <= mid_in {
-                lod_level_for_tile_distance(d)
-            } else if d > far_out {
-                3
-            } else {
-                2
-            }
-        }
-        _ => {
-            if d <= far_in {
-                lod_level_for_tile_distance(d)
-            } else {
-                3
-            }
-        }
-    }
-}
-
-#[allow(unused_parens, )]
-pub fn update_being_lod_levels_from_camera(
-    mut cmd: Commands,
-    camera_query: Query<(&DimensionRef, &GlobalTransform), (With<CameraTarget>, )>,
-    mut beings_query: Query<
-        (
-            Entity,
-            &DimensionRef,
-            &GlobalTilePos,
-            Option<&mut LodLevel>,
-        ),
-        (With<Being>, LocalAiControlled),
-    >,
-    dim_map: Res<DimensionEntityMap>,
-    mut cameras_by_dim: Local<EntityHashMap<Vec<GlobalTilePos>>>,
-) {
-    cameras_by_dim.clear();
-    let camera_iter = camera_query.iter();
-    let (lower, upper) = camera_iter.size_hint();
-    cameras_by_dim.reserve(upper.unwrap_or(lower));
-    for (&dim_ref, transform) in camera_iter {
-        let Some(dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
-            continue;
-        };
-        cameras_by_dim
-            .entry(dim_ent)
-            .or_default()
-            .push(GlobalTilePos::from(transform.translation().xy()));
-    }
-
-    for (being_ent, &dim_ref, &being_gpos, lod_level) in beings_query.iter_mut() {
-        let Some(dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
-            continue;
-        };
-        let nearest_camera_tile_dist = cameras_by_dim
-            .get(&dim_ent)
-            .and_then(|camera_gpos| {
-                camera_gpos
-                    .iter()
-                    .map(|&camera_gpos| {
-                        let delta = camera_gpos.0 - being_gpos.0;
-                        delta.abs().max_element()
-                    })
-                    .min()
-            })
-            .unwrap_or(i32::MAX / 4);
-        let base_level = lod_level_for_tile_distance(nearest_camera_tile_dist);
-        if let Some(mut lod_level) = lod_level {
-            let next_level = lod_level_with_hysteresis(lod_level.0, nearest_camera_tile_dist);
-            if lod_level.0 != next_level {
-                lod_level.0 = next_level;
-            }
-        } else {
-            cmd.entity(being_ent).try_insert(LodLevel(base_level));
-        }
-    }
 }
 
 #[allow(unused_parens, )]
@@ -537,7 +455,7 @@ pub fn apply_nav_orders(
     time: Res<Time>,
     mut reader: MessageReader<NavOrder>,
     mut selected_by_ent: Local<EntityHashMap<NavOrder>>,
-    mut go_to_query: Query<Option<&mut GoTo>, >,
+    mut go_to_query: Query<&mut GoTo>,
     mut input_speed_query: Query<(&mut InputSpeedThrottleMult, &mut InputMaxSpeed, ), (), >,
 ) {
     selected_by_ent.clear();
@@ -557,7 +475,7 @@ pub fn apply_nav_orders(
     let tick = time.elapsed().as_millis() as u32;
     for (being_ent, order) in selected_by_ent.drain() {
         if let Some(go_to) = order.go_to {
-            if let Ok(Some(mut curr_go_to)) = go_to_query.get_mut(being_ent) {
+            if let Ok(mut curr_go_to) = go_to_query.get_mut(being_ent) {
                 *curr_go_to = GoTo::with_source(
                     go_to.pos,
                     go_to.stop_distance,
@@ -603,364 +521,228 @@ pub fn clear_nav_outputs_for_beings_without_nav_state(
         input_max_speed.0 = f32::MAX;
     }
 }
-
-fn collect_blocked_tiles_for_dim(
-    tile_blocked_gpos_counts: &AiNavTileBlockedGposCounts,
-    dim_ref: ::tilemap_shared::DimensionRef,
-    min_tile: IVec2,
-    width: u32,
-    height: u32,
-) -> Vec<UVec2> {
-    tile_blocked_gpos_counts.blocked_tiles_for_dim(dim_ref, min_tile, width, height)
+#[derive(SystemParam)]
+pub struct NavGridsLocals<'s> {
+    active_dims: Local<'s, HashSet<DimensionRef>>,
+    dirty_dims: Local<'s, HashSet<DimensionRef>>,
+    loaded_chunk_bounds_by_dim: Local<'s, HashMap<DimensionRef, (IVec2, IVec2)>>,
+    center_accum_by_dim: Local<'s, HashMap<DimensionRef, NavGridCenterAccum>>,
+    rebuild_inputs: Local<'s, Vec<AiNavGridRebuildInput>>,
+    stale_dims: Local<'s, Vec<DimensionRef>>,
 }
-
-fn build_ai_nav_grid_rebuild_results(
-    rebuild_inputs: Vec<AiNavGridRebuildInput>,
-) -> Vec<AiNavGridRebuildResult> {
-    let mut results = Vec::with_capacity(rebuild_inputs.len());
-    for input in rebuild_inputs {
-        let mut grid = CardinalGrid::new(
-            &GridSettingsBuilder::new_2d(input.width, input.height)
-                .chunk_size(8)
-                .build(),
-        );
-        for blocked in input.blocked_tiles {
-            grid.set_nav(UVec3::new(blocked.x, blocked.y, 0), Nav::Impassable);
-        }
-        grid.build();
-        results.push(AiNavGridRebuildResult {
-            dim: input.dim,
-            generation: input.generation,
-            center: input.center,
-            cache: AiNavGridCache {
-                min: input.min_tile,
-                grid,
-                occupied: HashMap::default(),
-            },
-        });
-    }
-    results
-}
-
 #[allow(unused_parens, )]
 pub fn sync_ai_nav_grids(
     time: Res<Time>,
     loaded_chunks: Res<LoadedChunks>,
     dim_map: Res<DimensionEntityMap>,
     param_set: BlockingTileParamSet,
+    beings_at_gpos: Res<BeingsAtGpos>,
     tile_blocked_gpos_counts: Res<AiNavTileBlockedGposCounts>,
     chasers_query: Query<
         (
             Entity,
-            &::tilemap_shared::DimensionRef,
-            Option<&ComputedBy>,
+            &DimensionRef,
             Option<&GoTo>,
             Option<&LodLevel>,
         ),
-        With<Being>,
+        (With<Being>, LocalAiControlled, ),
     >,
-    beings_query: Query<(Entity, &::tilemap_shared::DimensionRef, Option<&GoTo>, Option<&LodLevel>), With<Being>>,
-    mut removed_beings: RemovedComponents<Being>,
     mut nav_grid_dirty_msgs: MessageReader<AiNavGridDirtyDim>,
     mut grids: ResMut<AiNavGrids>,
     mut rebuild_tasks: ResMut<AiNavGridRebuildTasks>,
     mut scratch: NavGridsLocals,
 ) {
-    let mut completed_rebuild_results = Vec::with_capacity(rebuild_tasks.tasks.len());
-    rebuild_tasks.tasks.retain_mut(|task| {
-        let Some(results) = future::block_on(future::poll_once(task)) else {
-            return true;
-        };
-        completed_rebuild_results.extend(results);
-        false
-    });
-    for result in completed_rebuild_results.drain(..) {
-        let is_latest = rebuild_tasks
-            .pending_generation_by_dim
-            .get(&result.dim)
-            .copied()
-            .is_some_and(|generation| generation == result.generation);
-        if !is_latest {
-            continue;
-        }
-        rebuild_tasks.pending_dims.remove(&result.dim);
-        rebuild_tasks.pending_generation_by_dim.remove(&result.dim);
-        grids.center_by_dim.insert(result.dim, result.center);
-        grids.by_dim.insert(result.dim, result.cache);
-        scratch.occupancy_initialized_dims.remove(&result.dim);
-    }
-
-    let chaser_iter = chasers_query.iter();
-    let chaser_count = chaser_iter.size_hint().1.unwrap_or(chaser_iter.size_hint().0);
-    scratch.needed_dims.clear();
-    scratch.needed_dims.reserve(chaser_count);
-    scratch.dim_centers.clear();
-    scratch.dim_centers.reserve(chaser_count);
-    scratch.dim_center_counts.clear();
-    scratch.dim_center_counts.reserve(chaser_count);
-
-    for (being_ent, dim_ref, controlled_by, goto, lod_level) in chaser_iter {
-        let Some(_dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
+    let mut finished_task_ix = 0usize;
+    while finished_task_ix < rebuild_tasks.tasks.len() {
+        let Some(results) = future::block_on(future::poll_once(&mut rebuild_tasks.tasks[finished_task_ix])) else {
+            finished_task_ix += 1;
             continue;
         };
-        if let Some(controlled_by) = controlled_by {
-            if controlled_by.human_dc_input {
+        for result in results {
+            let Some(&pending_generation) = rebuild_tasks.pending_generation_by_dim.get(&result.dim) else {
+                continue;
+            };
+            if pending_generation != result.generation {
                 continue;
             }
+
+            let dim = result.dim;
+            let generation = result.generation;
+            let width = result.cache.grid.width();
+            let height = result.cache.grid.height();
+            grids.by_dim.insert(dim, result.cache);
+            grids.center_by_dim.insert(dim, result.center);
+            rebuild_tasks.pending_generation_by_dim.remove(&dim);
+            rebuild_tasks.pending_dims.remove(&dim);
+            trace!(target: BEING_SYSTEM, "Applied async AI nav grid rebuild: dim={:?} generation={} size={}x{}", dim, generation, width, height);
         }
-        let lod_level = lod_level.map_or(0, |lod_level| lod_level.0);
-        let is_critical_nav = goto
-            .map(|goto| matches!(goto.source, Some(NavOrderSource::Chasing | NavOrderSource::Fleeing)))
-            .unwrap_or(false);
-        if lod_level >= 2 && !is_critical_nav {
-            continue;
-        }
-        scratch.needed_dims.insert(*dim_ref);
-        let Ok(&gpos) = param_set.gpos_query.get(being_ent) else {
-            continue;
-        };
-        let center = scratch.dim_centers.entry(*dim_ref).or_insert(IVec2::ZERO);
-        *center += gpos.0;
-        *scratch.dim_center_counts.entry(*dim_ref).or_insert(0) += 1;
+        drop(rebuild_tasks.tasks.swap_remove(finished_task_ix));
     }
 
-    grids.by_dim.retain(|dim, _| scratch.needed_dims.contains(dim));
-    grids.center_by_dim.retain(|dim, _| scratch.needed_dims.contains(dim));
-    rebuild_tasks.pending_dims.retain(|dim| scratch.needed_dims.contains(dim));
-    rebuild_tasks
-        .pending_generation_by_dim
-        .retain(|dim, _| scratch.needed_dims.contains(dim));
-    scratch.dirty_dims.clear();
-    scratch.dirty_dims.reserve(scratch.needed_dims.len());
-    scratch.dirty_nav_dims.clear();
-    for msg in nav_grid_dirty_msgs.read() {
-        let Some(_dim_ent) = dim_map.0.get_opt(msg.dim.0).copied() else {
+    scratch.active_dims.clear();
+    scratch.center_accum_by_dim.clear();
+    for (being_ent, &being_dim, go_to, lod_level, ) in chasers_query.iter() {
+        let Some(_dim_ent) = dim_map.0.get_opt(being_dim.0).copied() else {
             continue;
         };
-        scratch.dirty_nav_dims.insert(msg.dim);
-    }
-    scratch.seen_beings.clear();
-    scratch.beings_by_dim.clear();
-    scratch.beings_by_dim.reserve(scratch.needed_dims.len());
-    for removed_being_ent in removed_beings.read() {
-        let Some((removed_dim, _)) = scratch.prev_being_state.remove(&removed_being_ent) else {
+        let Ok(being_gpos) = param_set.gpos_query.get(being_ent) else {
             continue;
         };
-        if scratch.needed_dims.contains(&removed_dim) {
-            scratch.dirty_dims.insert(removed_dim);
-        }
-    }
-    for (being_ent, dim_ref, go_to, lod_level) in beings_query.iter() {
-        let Some(_dim_ent) = dim_map.0.get_opt(dim_ref.0).copied() else {
-            continue;
-        };
-        if !scratch.needed_dims.contains(dim_ref) {
-            continue;
-        }
+        scratch.active_dims.insert(being_dim);
+
         let lod_level = lod_level.map_or(0, |lod_level| lod_level.0);
-        let is_critical_nav = go_to
-            .map(|go_to| matches!(go_to.source, Some(NavOrderSource::Chasing | NavOrderSource::Fleeing)))
-            .unwrap_or(false);
-        if lod_level >= 2 && !is_critical_nav {
-            continue;
+        let mut weight = 1i64;
+        if go_to.is_some() {
+            weight += 1;
         }
-        let Ok(&gpos) = param_set.gpos_query.get(being_ent) else {
-            continue;
-        };
-        scratch.seen_beings.insert(being_ent);
+        if lod_level <= 1 {
+            weight += 1;
+        }
         scratch
-            .beings_by_dim
-            .entry(*dim_ref)
+            .center_accum_by_dim
+            .entry(being_dim)
             .or_default()
-            .push((being_ent, gpos));
-        let previous = scratch.prev_being_state.insert(being_ent, (*dim_ref, gpos));
-        let Some((previous_dim, previous_gpos)) = previous else {
-            scratch.dirty_dims.insert(*dim_ref);
-            continue;
-        };
-        if previous_dim != *dim_ref {
-            scratch.dirty_dims.insert(previous_dim);
-            scratch.dirty_dims.insert(*dim_ref);
-            continue;
-        }
-        if previous_gpos != gpos {
-            scratch.dirty_dims.insert(*dim_ref);
-        }
-    }
-    scratch.prev_being_state.retain(|being_ent, (prev_dim, _)| {
-        let keep = scratch.seen_beings.contains(being_ent) && scratch.needed_dims.contains(prev_dim);
-        if !keep && scratch.needed_dims.contains(prev_dim) {
-            scratch.dirty_dims.insert(*prev_dim);
-        }
-        keep
-    });
-    scratch.occupancy_initialized_dims.retain(|dim| scratch.needed_dims.contains(dim));
-
-    let should_rebuild = grids.rebuild_timer.tick(time.delta()).just_finished();
-    let mut rebuilt_grids = 0usize;
-    let mut refreshed_occupancy = 0usize;
-    let mut async_rebuild_inputs = Vec::with_capacity(scratch.needed_dims.len());
-
-    scratch.loaded_dim_bounds.clear();
-    scratch.loaded_dim_bounds.reserve(scratch.needed_dims.len());
-    for (&(dim_ref, chunk_pos), _) in loaded_chunks.0.iter() {
-        if !scratch.needed_dims.contains(&dim_ref) {
-            continue;
-        }
-        let cmin = chunk_pos.to_tilepos().0;
-        let cmax = cmin + ChunkPos::CHUNK_SIZE.as_ivec2() - IVec2::ONE;
-        let bounds = scratch
-            .loaded_dim_bounds
-            .entry(dim_ref)
-            .or_insert((cmin, cmax));
-        bounds.0 = bounds.0.min(cmin);
-        bounds.1 = bounds.1.max(cmax);
+            .push(*being_gpos, weight);
     }
 
-    for dim in scratch.needed_dims.iter().copied() {
-        if let Some((macro_min_tile, macro_max_tile)) = param_set
-            .loaded_macrochunk_occupied_bounds_for_dim(dim)
-        {
-            let bounds = scratch
-                .loaded_dim_bounds
-                .entry(dim)
-                .or_insert((macro_min_tile, macro_max_tile));
-            bounds.0 = bounds.0.min(macro_min_tile);
-            bounds.1 = bounds.1.max(macro_max_tile);
+    scratch.stale_dims.clear();
+    scratch.stale_dims.reserve(grids.by_dim.len());
+    for &dim in grids.by_dim.keys() {
+        if !scratch.active_dims.contains(&dim) {
+            scratch.stale_dims.push(dim);
         }
-        let Some(&(min_tile, max_tile)) = scratch.loaded_dim_bounds.get(&dim) else {
+    }
+    for stale_dim in scratch.stale_dims.drain(..) {
+        grids.by_dim.remove(&stale_dim);
+        grids.center_by_dim.remove(&stale_dim);
+        rebuild_tasks.pending_dims.remove(&stale_dim);
+        rebuild_tasks.pending_generation_by_dim.remove(&stale_dim);
+    }
+
+    scratch.dirty_dims.clear();
+    for nav_grid_dirty_msg in nav_grid_dirty_msgs.read() {
+        scratch.dirty_dims.insert(nav_grid_dirty_msg.dim);
+    }
+
+    let rebuild_timer_finished = grids.rebuild_timer.tick(time.delta()).just_finished();
+
+    scratch.loaded_chunk_bounds_by_dim.clear();
+    scratch.loaded_chunk_bounds_by_dim.reserve(scratch.active_dims.len());
+    for (&(loaded_dim, chunk_pos), _) in loaded_chunks.0.iter() {
+        if !scratch.active_dims.contains(&loaded_dim) {
+            continue;
+        }
+        let entry = scratch
+            .loaded_chunk_bounds_by_dim
+            .entry(loaded_dim)
+            .or_insert((chunk_pos.0, chunk_pos.0));
+        entry.0 = entry.0.min(chunk_pos.0);
+        entry.1 = entry.1.max(chunk_pos.0);
+    }
+
+    for &dim in scratch.active_dims.iter() {
+        if scratch.loaded_chunk_bounds_by_dim.contains_key(&dim) {
+            continue;
+        }
+        grids.by_dim.remove(&dim);
+        grids.center_by_dim.remove(&dim);
+        rebuild_tasks.pending_dims.remove(&dim);
+        rebuild_tasks.pending_generation_by_dim.remove(&dim);
+    }
+
+    scratch.rebuild_inputs.clear();
+    scratch.rebuild_inputs.reserve(scratch.active_dims.len());
+    for &dim in scratch.active_dims.iter() {
+        let Some(&(min_chunk, max_chunk)) = scratch.loaded_chunk_bounds_by_dim.get(&dim) else {
             continue;
         };
-
-        let center = scratch
-            .dim_centers
+        let chunk_span = max_chunk - min_chunk + IVec2::ONE;
+        if chunk_span.x <= 0 || chunk_span.y <= 0 {
+            continue;
+        }
+        let min_tile = min_chunk * ChunkPos::CHUNK_SIZE.as_ivec2();
+        let width = chunk_span.x as u32 * ChunkPos::CHUNK_SIZE.x;
+        let height = chunk_span.y as u32 * ChunkPos::CHUNK_SIZE.y;
+        let desired_center = scratch
+            .center_accum_by_dim
             .get(&dim)
-            .zip(scratch.dim_center_counts.get(&dim))
-            .map(|(sum, count)| *sum / count.max(&1))
-            .unwrap_or((min_tile + max_tile) / 2);
-
-        let width = (max_tile.x - min_tile.x + 1).max(3) as u32;
-        let height = (max_tile.y - min_tile.y + 1).max(3) as u32;
-        let bounds_changed = grids
-            .by_dim
+            .and_then(NavGridCenterAccum::center)
+            .or_else(|| grids.center_by_dim.get(&dim).copied())
+            .unwrap_or(min_tile + IVec2::new(width as i32 / 2, height as i32 / 2));
+        let grid_shape_changed = if let Some(cache) = grids.by_dim.get(&dim) {
+            cache.min != min_tile || cache.grid.width() != width || cache.grid.height() != height
+        } else {
+            true
+        };
+        let center_shift = grids
+            .center_by_dim
             .get(&dim)
-            .map(|cache| {
-                cache.min != min_tile
-                    || cache.grid.width() != width
-                    || cache.grid.height() != height
-            })
-            .unwrap_or(true);
-        let needs_new_grid = !grids.by_dim.contains_key(&dim);
-        let has_pending_rebuild = rebuild_tasks.pending_dims.contains(&dim);
-        let rebuild_grid_sync = needs_new_grid || bounds_changed || scratch.dirty_nav_dims.contains(&dim);
-        let rebuild_grid_async = !rebuild_grid_sync && should_rebuild && !has_pending_rebuild;
-        let mut rebuilt_grid = false;
-        let blocked_tiles = collect_blocked_tiles_for_dim(
-            &tile_blocked_gpos_counts,
+            .map(|center| (*center - desired_center).abs().max_element())
+            .unwrap_or(i32::MAX);
+        let dirty = scratch.dirty_dims.contains(&dim);
+        let should_rebuild = grid_shape_changed
+            || dirty
+            || (rebuild_timer_finished && center_shift >= NAV_GRID_CENTER_SHIFT_TILES);
+        if !should_rebuild {
+            continue;
+        }
+
+        let has_pending = rebuild_tasks.pending_dims.contains(&dim);
+        if has_pending && !dirty && !grid_shape_changed {
+            continue;
+        }
+
+        let blocked_tiles =
+            tile_blocked_gpos_counts.blocked_tiles_for_dim(dim, min_tile, width, height);
+        let generation = rebuild_tasks.next_generation;
+        rebuild_tasks.next_generation = rebuild_tasks.next_generation.wrapping_add(1);
+        rebuild_tasks.pending_dims.insert(dim);
+        rebuild_tasks.pending_generation_by_dim.insert(dim, generation);
+        scratch.rebuild_inputs.push(AiNavGridRebuildInput {
             dim,
+            generation,
             min_tile,
             width,
             height,
-        );
-        if rebuild_grid_sync {
-            let results = build_ai_nav_grid_rebuild_results(vec![AiNavGridRebuildInput {
-                dim,
-                generation: rebuild_tasks.next_generation.max(1),
-                min_tile,
-                width,
-                height,
-                center,
-                blocked_tiles: blocked_tiles.clone(),
-            }]);
-            let Some(result) = results.into_iter().next() else {
-                continue;
-            };
-            grids.by_dim.insert(dim, result.cache);
-            grids.center_by_dim.insert(dim, center);
-            rebuild_tasks.pending_dims.remove(&dim);
-            rebuild_tasks.pending_generation_by_dim.remove(&dim);
-            rebuilt_grids += 1;
-            rebuilt_grid = true;
-        }
-        if rebuild_grid_async {
-            let generation = rebuild_tasks.next_generation.max(1);
-            rebuild_tasks.next_generation = generation.wrapping_add(1);
-            if rebuild_tasks.next_generation == 0 {
-                rebuild_tasks.next_generation = 1;
-            }
-            rebuild_tasks.pending_dims.insert(dim);
-            rebuild_tasks
-                .pending_generation_by_dim
-                .insert(dim, generation);
-            async_rebuild_inputs.push(AiNavGridRebuildInput {
-                dim,
-                generation,
-                min_tile,
-                width,
-                height,
-                center,
-                blocked_tiles,
-            });
-        }
-        let should_refresh_occupancy = rebuilt_grid
-            || scratch.dirty_dims.contains(&dim)
-            || !scratch.occupancy_initialized_dims.contains(&dim);
-        if !should_refresh_occupancy {
+            center: desired_center,
+            blocked_tiles,
+        });
+        trace!(target: BEING_SYSTEM, "Queued async AI nav grid rebuild: dim={:?} generation={} size={}x{} center={:?}", dim, generation, width, height, desired_center);
+    }
+
+    if !scratch.rebuild_inputs.is_empty() {
+        let rebuild_inputs: Vec<AiNavGridRebuildInput> = scratch.rebuild_inputs.drain(..).collect();
+        let task = AsyncComputeTaskPool::get().spawn(async move {
+            rebuild_inputs
+                .into_iter()
+                .map(build_ai_nav_grid_cache)
+                .collect::<Vec<AiNavGridRebuildResult>>()
+        });
+        rebuild_tasks.tasks.push(task);
+    }
+
+    for (&dim, cache) in grids.by_dim.iter_mut() {
+        if !scratch.active_dims.contains(&dim) {
             continue;
         }
+        cache.occupied.clear();
+    }
+
+    for &dim in scratch.active_dims.iter() {
+        let Some(occupied_positions) = beings_at_gpos.occupied_positions_in_dim(dim) else {
+            continue;
+        };
         let Some(cache) = grids.by_dim.get_mut(&dim) else {
             continue;
         };
-        cache.occupied.clear();
-        let Some(dim_beings) = scratch.beings_by_dim.get(&dim) else {
-            scratch.occupancy_initialized_dims.insert(dim);
-            refreshed_occupancy += 1;
-            continue;
-        };
-        cache.occupied.reserve(dim_beings.len());
-        for &(being_ent, gpos) in dim_beings.iter() {
-            let max_grid = cache.min
-                + IVec2::new(
-                    cache.grid.width() as i32 - 1,
-                    cache.grid.height() as i32 - 1,
-                );
-            if gpos.0.x < cache.min.x
-                || gpos.0.y < cache.min.y
-                || gpos.0.x > max_grid.x
-                || gpos.0.y > max_grid.y
-            {
+        for &gpos in occupied_positions.iter() {
+            let Some(&being_ent) = beings_at_gpos.get_beings_at_pos(dim, gpos).first() else {
                 continue;
-            }
-            let local = (gpos.0 - cache.min).as_uvec2();
-            cache
-                .occupied
-                .insert(UVec3::new(local.x, local.y, 0), being_ent);
+            };
+            let Some(local) = cache.local_from_gpos(gpos) else {
+                continue;
+            };
+            cache.occupied.entry(local).or_insert(being_ent);
         }
-        scratch.occupancy_initialized_dims.insert(dim);
-        refreshed_occupancy += 1;
-    }
-
-    if rebuilt_grids > 0 || refreshed_occupancy > 0 {
-        trace!(
-            target: BEING_SYSTEM,
-            "sync_ai_nav_grids: dims={} rebuilt_grids={} refreshed_occupancy={} dirty_dims={}",
-            scratch.needed_dims.len(),
-            rebuilt_grids,
-            refreshed_occupancy,
-            scratch.dirty_dims.len()
-        );
-    }
-
-    if !async_rebuild_inputs.is_empty() {
-        let queued_count = async_rebuild_inputs.len();
-        let task_pool = AsyncComputeTaskPool::get();
-        rebuild_tasks.tasks.push(task_pool.spawn(async move {
-            build_ai_nav_grid_rebuild_results(async_rebuild_inputs)
-        }));
-        trace!(
-            target: BEING_SYSTEM,
-            "Queued async ai nav grid rebuilds for {} dims",
-            queued_count
-        );
     }
 }

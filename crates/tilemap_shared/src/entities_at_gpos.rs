@@ -173,6 +173,7 @@ impl AiNavTileBlockedGposCounts {
 #[derive(Resource, Debug, Default)]
 pub struct BeingsAtGpos {
     pub by_pos: HashMap<(DimensionRef, GlobalTilePos), EntiSmallVec>,
+    pub by_dim: HashMap<DimensionRef, HashSet<GlobalTilePos>>,
     by_ent: EntityHashMap<(DimensionRef, BeingOccupiedPositions)>,
 }
 impl BeingsAtGpos {
@@ -181,6 +182,9 @@ impl BeingsAtGpos {
             .get(&(dim, gpos))
             .map(|entities| entities.as_slice())
             .unwrap_or(&[])
+    }
+    pub fn occupied_positions_in_dim(&self, dim: DimensionRef) -> Option<&HashSet<GlobalTilePos>> {
+        self.by_dim.get(&dim)
     }
     pub fn update_being_occupy(
         &mut self,
@@ -215,6 +219,14 @@ impl BeingsAtGpos {
             entities.swap_remove(idx);
             if entities.is_empty() {
                 self.by_pos.remove(&key);
+                let mut should_remove_dim_entry = false;
+                if let Some(occupied_positions) = self.by_dim.get_mut(&dim_ref) {
+                    occupied_positions.remove(&gpos);
+                    should_remove_dim_entry = occupied_positions.is_empty();
+                }
+                if should_remove_dim_entry {
+                    self.by_dim.remove(&dim_ref);
+                }
             }
         }
         Some((dim_ref, removed_positions))
@@ -225,6 +237,7 @@ impl BeingsAtGpos {
     fn occupy_colmask(&mut self, being_ent: Entity, dim_ref: DimensionRef, positions: &[GlobalTilePos]) {
         for gpos in positions.iter().copied() {
             self.by_pos.entry((dim_ref, gpos)).or_default().push(being_ent);
+            self.by_dim.entry(dim_ref).or_default().insert(gpos);
         }
         self.by_ent.insert(being_ent, (dim_ref, SmallVec::from_slice(positions)));
     }
