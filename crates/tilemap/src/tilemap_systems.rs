@@ -191,45 +191,49 @@ pub fn process_tiles_pre(
         }
 
         //cmd.entity(tile_ent).try_insert_if_new(Signature::from((ez_hash_id, _dim_hash, bundle.gpos)));
+        let dimension_ent = resources.dimension_map.0.get_cloned(bundle.dim_ref.0).ok();
 
-
-        let Some(chunk_ent) = resources.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied()
-        else{
-            cmd.entity(tile_ent).try_despawn();
-            resources.collected_tiles.0.swap_remove(i);
-            continue;
-        };
-        let Ok(&tile_index) = tile_components.tile_index_query.get(templ_ent) else {
-            error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} missing TileIndex", bundle.templ_ref.0);
-            cmd.entity(tile_ent).try_despawn();
-            resources.collected_tiles.0.swap_remove(i);
-            continue;
-        };
+        let chunk_ent = resources.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied();
         let macro_chunk_pos = bundle.gpos.to_chunkpos().to_macrochunk_pos();
-        let Some(&macro_chunk_ent) = resources.loaded_macro_chunks.0.get(&(bundle.dim_ref, macro_chunk_pos)) else {
-            error_once!(target: TILEMAP_SYSTEM, "Missing loaded macrochunk {:?} for tile entity {} at {:?}", macro_chunk_pos, tile_ent, bundle.gpos);
-            continue;
-        };
-        let Ok(mut macro_chunk_tile_indices) = tile_components.macro_chunk_tile_indices_query.get_mut(macro_chunk_ent) else {
-            error_once!(target: TILEMAP_SYSTEM, "Macrochunk entity {} missing MacroChunkTileIndices", macro_chunk_ent);
-            continue;
-        };
-        if !macro_chunk_tile_indices.push_tile_index(macro_chunk_pos.to_chunkpos().to_tilepos(), bundle.gpos, tile_index) {
-            error_once!(target: TILEMAP_SYSTEM, "Tile entity {} at {:?} did not fit in macrochunk {:?}", tile_ent, bundle.gpos, macro_chunk_ent);
+        let macro_chunk_ent = resources.loaded_macro_chunks.0.get(&(bundle.dim_ref, macro_chunk_pos)).copied();
+        let is_chunk_loaded = chunk_ent.is_some() && macro_chunk_ent.is_some();
+
+        if is_chunk_loaded {
+            let Some(macro_chunk_ent) = macro_chunk_ent else {
+                unreachable!();
+            };
+            let Ok(&tile_index) = tile_components.tile_index_query.get(templ_ent) else {
+                error_once!(target: TILEMAP_SYSTEM, "Original tile entity {} missing TileIndex", bundle.templ_ref.0);
+                cmd.entity(tile_ent).try_despawn();
+                resources.collected_tiles.0.swap_remove(i);
+                continue;
+            };
+            let Ok(mut macro_chunk_tile_indices) = tile_components.macro_chunk_tile_indices_query.get_mut(macro_chunk_ent) else {
+                error_once!(target: TILEMAP_SYSTEM, "Macrochunk entity {} missing MacroChunkTileIndices", macro_chunk_ent);
+                continue;
+            };
+            if !macro_chunk_tile_indices.push_tile_index(macro_chunk_pos.to_chunkpos().to_tilepos(), bundle.gpos, tile_index) {
+                error_once!(target: TILEMAP_SYSTEM, "Tile entity {} at {:?} did not fit in macrochunk {:?}", tile_ent, bundle.gpos, macro_chunk_ent);
+            }
         }
 
-        match (to_persist, is_host, is_spritetile) {
-            (true, false, _) => {
+        match (to_persist, is_host, is_spritetile, chunk_ent, dimension_ent) {
+            (_, _, _, _, None) => {
                 cmd.entity(tile_ent).try_despawn();
                 resources.collected_tiles.0.swap_remove(i);
                 continue;
             }
-            (true, true, true) => {
-                let Ok(dimension_ent) = resources.dimension_map.0.get_cloned(bundle.dim_ref.0) else {
-                    cmd.entity(tile_ent).try_despawn();
-                    resources.collected_tiles.0.swap_remove(i);
-                    continue;
-                };
+            (false, _, _, None, _) => {
+                cmd.entity(tile_ent).try_despawn();
+                resources.collected_tiles.0.swap_remove(i);
+                continue;
+            }
+            (true, false, _, _, _) => {
+                cmd.entity(tile_ent).try_despawn();
+                resources.collected_tiles.0.swap_remove(i);
+                continue;
+            }
+            (true, true, true, None, Some(dimension_ent)) => {
                 child_ofs_to_insert.push((tile_ent, ChildOf(dimension_ent)));
                 to_insert_replicated.push((tile_ent, Replicated));
                 params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
@@ -237,24 +241,37 @@ pub fn process_tiles_pre(
                 i += 1;
                 continue;
             }
-            (true, true, false) => {
-                let Ok(dimension_ent) = resources.dimension_map.0.get_cloned(bundle.dim_ref.0) else {
-                    cmd.entity(tile_ent).try_despawn();
-                    resources.collected_tiles.0.swap_remove(i);
-                    continue;
-                };
+            (true, true, true, Some(_chunk_ent), Some(dimension_ent)) => {
+                child_ofs_to_insert.push((tile_ent, ChildOf(dimension_ent)));
+                to_insert_replicated.push((tile_ent, Replicated));
+                params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
+                spritetiles_to_remove_tmapbundle.push(tile_ent);
+                i += 1;
+                continue;
+            }
+            (true, true, false, Some(_chunk_ent), Some(dimension_ent)) => {
                 child_ofs_to_insert.push((tile_ent, ChildOf(dimension_ent)));
                 to_insert_replicated.push((tile_ent, Replicated));
             }
-            (false, _, true) => {
+            //chunk descargado, es un persisted tmaptile
+            (true, _, false, None, Some(_dimension_ent)) => {
+                error!(target: TILEMAP_SYSTEM, "PERSISTED tmap tile entity {:?} at gpos {:?} in dim {:?} cannot be processed because its chunk is not loaded", tile_ent, bundle.gpos, bundle.dim_ref);
+                resources.collected_tiles.0.swap_remove(i);
+                continue;
+            }
+            (false, _, true, Some(chunk_ent), Some(_dimension_ent)) => {
                 spritetiles_to_remove_tmapbundle.push(tile_ent);
                 params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
                 child_ofs_to_insert.push((tile_ent, ChildOf(chunk_ent)));
                 i += 1;
                 continue;
             }
-            (false, _, false) => {}
+            (false, _, false, Some(_chunk_ent), Some(_dimension_ent)) => {}
         }
+
+        let Some(chunk_ent) = chunk_ent else {
+            unreachable!();
+        };
 
         bundle.tile_bundle.color = color.unwrap_or_default();
 
