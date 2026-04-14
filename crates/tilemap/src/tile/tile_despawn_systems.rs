@@ -26,7 +26,7 @@ pub struct SafeDespawnTileQueries<'w, 's> {
     pub walk_speed_query: Query<'w, 's, &'static WalkSpeedMultIfOnTop, common::AnyDisabling>,
     pub interaction_zones_query: Query<'w, 's, &'static InteractionZones, common::AnyDisabling>,
     pub sprite_tile_query: Query<'w, 's, (), With<SpriteTile>>,
-    pub ai_nav_blocked_gpos_counts: ResMut<'w, AiNavBlockedGposCounts>,
+    pub ai_nav_tile_blocked_gpos_counts: ResMut<'w, AiNavTileBlockedGposCounts>,
 }
 
 #[derive(SystemParam)]
@@ -42,7 +42,7 @@ pub fn on_spritetile_despawn(
     tile_map: Res<TileEntityMap>,
     interaction_zones_query: Query<&InteractionZones, common::AnyDisabling>,
     walk_speed_query: Query<&WalkSpeedMultIfOnTop, common::AnyDisabling>,
-    mut ai_nav_blocked_gpos_counts: ResMut<AiNavBlockedGposCounts>,
+    mut ai_nav_tile_blocked_gpos_counts: ResMut<AiNavTileBlockedGposCounts>,
     mut nav_grid_dirty_writer: MessageWriter<AiNavGridDirtyDim>,
     mut nav_grid_dirty_msgs: Local<Vec<AiNavGridDirtyDim>>,
     mut spritetiles_at_gpos: ResMut<SpriteTilesAtGpos>,
@@ -61,7 +61,7 @@ pub fn on_spritetile_despawn(
         .ok()
         .and_then(|templ_ent| walk_speed_query.get(templ_ent).ok())
         .is_some_and(|walk_speed| walk_speed.is_extremely_low());
-    if ai_nav_blocked_gpos_counts.remove_blocked_positions(dim_ref, gpos, interaction_zones, is_low_speed) {
+    if ai_nav_tile_blocked_gpos_counts.remove_blocked_positions(dim_ref, gpos, interaction_zones, is_low_speed) {
         nav_grid_dirty_msgs.push(AiNavGridDirtyDim { dim: dim_ref });
     }
     nav_grid_dirty_writer.write_batch(nav_grid_dirty_msgs.drain(..));
@@ -127,7 +127,7 @@ pub fn safe_despawn_tile_at(
         walk_speed_query,
         interaction_zones_query,
         sprite_tile_query,
-        ai_nav_blocked_gpos_counts,
+        ai_nav_tile_blocked_gpos_counts,
     } = &mut queries;
     let SafeDespawnTileLocals { rechecks, nav_grid_dirty_msgs } = &mut locals;
 
@@ -152,7 +152,7 @@ pub fn safe_despawn_tile_at(
             .and_then(|templ_ent| walk_speed_query.get(templ_ent).ok())
             .is_some_and(|walk_speed| walk_speed.is_extremely_low());
         if sprite_tile_query.get(tile_ent).is_err() {
-            if ai_nav_blocked_gpos_counts.remove_blocked_positions(dim, gpos, interaction_zones, is_low_speed) {
+            if ai_nav_tile_blocked_gpos_counts.remove_blocked_positions(dim, gpos, interaction_zones, is_low_speed) {
                 nav_grid_dirty_msgs.push(AiNavGridDirtyDim { dim });
             }
         }

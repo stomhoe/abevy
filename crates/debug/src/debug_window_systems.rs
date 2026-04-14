@@ -229,6 +229,7 @@ pub fn main_menu_window(
                 window_visible.sprite_details = false;
                 window_visible.gpos_maps = false;
                 window_visible.tile_indices_map = false;
+                window_visible.nav_maps = false;
                 window_visible.world_tile_click_picker = false;
                 window_visible.tile_click_remover = false;
                 window_visible.being_click_remover = false;
@@ -258,6 +259,9 @@ pub fn main_menu_window(
             }
             if ui.button(egui::RichText::new("Tile Index Map").size(16.0)).clicked() {
                 window_visible.tile_indices_map = !window_visible.tile_indices_map;
+            }
+            if ui.button(egui::RichText::new("🧭 Nav Maps").size(16.0)).clicked() {
+                window_visible.nav_maps = !window_visible.nav_maps;
             }
             if ui.button(egui::RichText::new("🖱️ TileGpos Click Picker").size(16.0)).clicked() {
                 window_visible.world_tile_click_picker = !window_visible.world_tile_click_picker;

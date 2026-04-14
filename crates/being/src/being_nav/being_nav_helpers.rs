@@ -1,7 +1,6 @@
-use bevy::platform::collections::{HashMap, HashSet};
+use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use ::tilemap_shared::{ChunkPos, GlobalTilePos};
-use super::being_nav_structs::AiNavGridCache;
 use super::being_nav_components::RetainedTargetChunkTrailEntry;
 use std::time::Duration;
 
@@ -222,26 +221,6 @@ pub fn cardinal_step_toward(delta: IVec2) -> IVec2 {
     } else {
         IVec2::new(0, delta.y.signum())
     }
-}
-
-pub fn rebuild_dynamic_blocking(
-    dynamic_blocking: &mut HashMap<UVec3, Entity>,
-    cache: &AiNavGridCache,
-    chaser_ent: Entity,
-    target_ent: Entity,
-    start: UVec3,
-    goal: UVec3,
-) {
-    dynamic_blocking.clear();
-    dynamic_blocking.reserve(cache.occupied.len());
-    for (&pos, &ent) in cache.occupied.iter() {
-        if ent == chaser_ent || ent == target_ent {
-            continue;
-        }
-        dynamic_blocking.insert(pos, ent);
-    }
-    dynamic_blocking.remove(&goal);
-    dynamic_blocking.remove(&start);
 }
 
 pub fn sync_chase_retained_chunks(

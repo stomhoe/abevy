@@ -10,6 +10,7 @@ use crate::tile::tile_systems::*;
 use crate::tile::portal_init_systems::*;
 use crate::tile::tile_init_systems::*;
 use crate::tile::tile_sampler_init_systems::*;
+
 use tile_despawn_systems::*;
 use tile_flip_rotate_systems::*;
 use tile_adj_retex_systems::*;
@@ -75,7 +76,6 @@ pub fn plugin(app: &mut App) {
         emit_global_tile_pos_change,
         validate_portal_recipes,
         safe_despawn_tile_at
-            .after(emit_global_tile_pos_change)
             .run_if(on_message::<SafeDespawn>),
         reckeck_adjacency_for
             .after(emit_global_tile_pos_change)

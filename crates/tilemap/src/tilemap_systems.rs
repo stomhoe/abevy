@@ -47,12 +47,12 @@ pub struct SystemResources<'w> {
     pub images: ResMut<'w, Assets<Image>>,
     pub regpos_map: ResMut<'w, ImportantRegisteredPositions>,
     pub loaded_chunks: Res<'w, LoadedChunks>,
+    pub loaded_macro_chunks: Res<'w, LoadedMacroChunks>,
     pub state: Res<'w, State<ClientState>>,
     pub tmap_map: ResMut<'w, TmapMap>,
     pub dimension_map: Res<'w, DimensionEntityMap>,
     pub tile_shader_map: Res<'w, TileShaderEntityMap>,
     pub tile_map: Res<'w, TileEntityMap>,
-    pub ai_nav_blocked_gpos_counts: ResMut<'w, AiNavBlockedGposCounts>,
 }
 
 #[derive(SystemParam)]
@@ -71,8 +71,6 @@ pub struct ComponentsQueries<'w, 's> {
     pub tile_index_query: Query<'w, 's, &'static U16TileIndex, common::AnyDisabling>,
     pub tile_texture_index_query: Query<'w, 's, &'static TileTextureIndex>,
     pub interaction_zones_query: Query<'w, 's, &'static InteractionZones, common::AnyDisabling>,
-    pub walk_speed_query: Query<'w, 's, &'static WalkSpeedMultIfOnTop, common::AnyDisabling>,
-    pub macro_chunk_ref_query: Query<'w, 's, &'static MacroChunkRef>,
     pub macro_chunk_tile_indices_query: Query<'w, 's, &'static mut MacroChunkU16IndexMatrix>,
     pub delete_others_paramset: TileDeleteOthersParamSet<'w, 's>,
 }
@@ -152,10 +150,6 @@ pub fn process_tiles_pre(
         let min_dists = tile_components.min_dists_query.get(templ_ent).ok();
         let keep_distance_from = tile_components.keep_distance_query.get(templ_ent).ok();
         let interaction_zones = tile_components.interaction_zones_query.get(templ_ent).ok();
-        let is_low_speed = tile_components
-            .walk_speed_query
-            .get(templ_ent)
-            .is_ok_and(|walk_speed| walk_speed.is_extremely_low());
         let _dim_hash = bundle.dim_ref.0;
         if resources.dimension_map.0.get_cloned(_dim_hash).is_err() {
             error_once!(target: TILEMAP_SYSTEM, "Dimension hash {} is missing from DimensionEntityMap", _dim_hash);
@@ -198,33 +192,6 @@ pub fn process_tiles_pre(
 
         //cmd.entity(tile_ent).try_insert_if_new(Signature::from((ez_hash_id, _dim_hash, bundle.gpos)));
 
-        if to_persist {
-            if is_host {
-                let Ok(dimension_ent) = resources.dimension_map.0.get_cloned(bundle.dim_ref.0) else {
-                    cmd.entity(tile_ent).try_despawn();
-                    resources.collected_tiles.0.swap_remove(i);
-                    continue;
-                };
-                child_ofs_to_insert.push((tile_ent, ChildOf(dimension_ent)));
-                to_insert_replicated.push((tile_ent, Replicated));
-                if is_spritetile{
-                    params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
-                    resources.ai_nav_blocked_gpos_counts.insert_blocked_positions(
-                        bundle.dim_ref,
-                        bundle.gpos,
-                        interaction_zones,
-                        is_low_speed,
-                    );
-                    spritetiles_to_remove_tmapbundle.push(tile_ent);
-                    i += 1;
-                    continue;
-                }
-            } else {
-                cmd.entity(tile_ent).try_despawn();
-                resources.collected_tiles.0.swap_remove(i);
-                continue;
-            }
-        }
 
         let Some(chunk_ent) = resources.loaded_chunks.0.get(&(bundle.dim_ref, ChunkPos::from(bundle.gpos))).copied()
         else{
@@ -238,26 +205,55 @@ pub fn process_tiles_pre(
             resources.collected_tiles.0.swap_remove(i);
             continue;
         };
-        let Ok(macro_chunk_ref) = tile_components.macro_chunk_ref_query.get(chunk_ent) else {
-            error_once!(target: TILEMAP_SYSTEM, "Chunk entity {} missing MacroChunkRef", chunk_ent);
+        let macro_chunk_pos = bundle.gpos.to_chunkpos().to_macrochunk_pos();
+        let Some(&macro_chunk_ent) = resources.loaded_macro_chunks.0.get(&(bundle.dim_ref, macro_chunk_pos)) else {
+            error_once!(target: TILEMAP_SYSTEM, "Missing loaded macrochunk {:?} for tile entity {} at {:?}", macro_chunk_pos, tile_ent, bundle.gpos);
             continue;
         };
-        let Ok(mut macro_chunk_tile_indices) = tile_components.macro_chunk_tile_indices_query.get_mut(macro_chunk_ref.0) else {
-            error_once!(target: TILEMAP_SYSTEM, "Macrochunk entity {} missing MacroChunkTileIndices", macro_chunk_ref.0);
+        let Ok(mut macro_chunk_tile_indices) = tile_components.macro_chunk_tile_indices_query.get_mut(macro_chunk_ent) else {
+            error_once!(target: TILEMAP_SYSTEM, "Macrochunk entity {} missing MacroChunkTileIndices", macro_chunk_ent);
             continue;
         };
-        let macro_chunk_pos = ChunkPos::from(bundle.gpos).to_macrochunk_pos();
         if !macro_chunk_tile_indices.push_tile_index(macro_chunk_pos.to_chunkpos().to_tilepos(), bundle.gpos, tile_index) {
-            error_once!(target: TILEMAP_SYSTEM, "Tile entity {} at {:?} did not fit in macrochunk {:?}", tile_ent, bundle.gpos, macro_chunk_ref.0);
+            error_once!(target: TILEMAP_SYSTEM, "Tile entity {} at {:?} did not fit in macrochunk {:?}", tile_ent, bundle.gpos, macro_chunk_ent);
         }
 
-        if is_spritetile {
-            spritetiles_to_remove_tmapbundle.push(tile_ent);
-            let interaction_zones = tile_components.interaction_zones_query.get(templ_ent).ok();
-            params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
-            child_ofs_to_insert.push((tile_ent, ChildOf(chunk_ent)));
-            i += 1;
-            continue;
+        match (to_persist, is_host, is_spritetile) {
+            (true, false, _) => {
+                cmd.entity(tile_ent).try_despawn();
+                resources.collected_tiles.0.swap_remove(i);
+                continue;
+            }
+            (true, true, true) => {
+                let Ok(dimension_ent) = resources.dimension_map.0.get_cloned(bundle.dim_ref.0) else {
+                    cmd.entity(tile_ent).try_despawn();
+                    resources.collected_tiles.0.swap_remove(i);
+                    continue;
+                };
+                child_ofs_to_insert.push((tile_ent, ChildOf(dimension_ent)));
+                to_insert_replicated.push((tile_ent, Replicated));
+                params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
+                spritetiles_to_remove_tmapbundle.push(tile_ent);
+                i += 1;
+                continue;
+            }
+            (true, true, false) => {
+                let Ok(dimension_ent) = resources.dimension_map.0.get_cloned(bundle.dim_ref.0) else {
+                    cmd.entity(tile_ent).try_despawn();
+                    resources.collected_tiles.0.swap_remove(i);
+                    continue;
+                };
+                child_ofs_to_insert.push((tile_ent, ChildOf(dimension_ent)));
+                to_insert_replicated.push((tile_ent, Replicated));
+            }
+            (false, _, true) => {
+                spritetiles_to_remove_tmapbundle.push(tile_ent);
+                params.tile_gathering_paramset.insert_spritetile(tile_ent, bundle.dim_ref, bundle.gpos, interaction_zones);
+                child_ofs_to_insert.push((tile_ent, ChildOf(chunk_ent)));
+                i += 1;
+                continue;
+            }
+            (false, _, false) => {}
         }
 
         bundle.tile_bundle.color = color.unwrap_or_default();
@@ -292,12 +288,6 @@ pub fn process_tiles_pre(
             y_sort,
             &mut child_ofs_to_insert,
             to_persist,
-        );
-        resources.ai_nav_blocked_gpos_counts.insert_blocked_positions(
-            bundle.dim_ref,
-            bundle.gpos,
-            interaction_zones,
-            is_low_speed,
         );
         locals.tile_runtime_info.insert(tile_ent, (bundle.templ_ref, bundle.tile_bundle.texture_index));
         i += 1;

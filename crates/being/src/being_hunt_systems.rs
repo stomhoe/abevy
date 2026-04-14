@@ -330,7 +330,7 @@ pub fn update_predator_hunting_targets(
                 continue;
             };
             let current_prey = hunting.prey;
-            let Some(pred_dim_ent) = resolve_dim_ent(pred_dim) else {
+            let Some(_pred_dim_ent) = resolve_dim_ent(pred_dim) else {
                 cmd.entity(pred_ent).try_remove::<(Hunting, Chasing)>();
                 nav_log.push(
                     pred_ent,
@@ -357,7 +357,7 @@ pub fn update_predator_hunting_targets(
                 continue;
             };
             if *current_prey_dim != *pred_dim
-                || !grids.can_pathfind_between(*pred_pos, *current_prey_pos, pred_dim_ent)
+                || !grids.can_pathfind_between(*pred_pos, *current_prey_pos, *pred_dim)
                 || euclidean_dist(*pred_pos, *current_prey_pos) >= hunting.retaliation_stop_distance_tiles.max(0.0)
             {
                 cmd.entity(pred_ent).try_remove::<(Hunting, Chasing)>();
@@ -480,7 +480,7 @@ pub fn update_predator_hunting_targets(
                 cmd.entity(pred_ent).try_remove::<Hunting>();
                 continue;
             };
-            if grids.can_pathfind_between(*pred_pos, current_prey.pos, pred_dim_ent) {
+            if grids.can_pathfind_between(*pred_pos, current_prey.pos, *pred_dim) {
                 let current_dist = euclidean_dist(current_prey.pos, *pred_pos);
                 if current_dist <= closest_dist + HUNT_RETARGET_HYSTERESIS_TILES {
                     chosen_target = current_prey.ent;
@@ -581,13 +581,13 @@ pub fn update_predator_hunting_targets(
             let Some(current_prey) = current_prey else {
                 continue;
             };
-            let Some(member_dim_ent) = resolve_dim_ent(&member_dim) else {
+            let Some(_member_dim_ent) = resolve_dim_ent(&member_dim) else {
                 continue;
             };
             let Some(current_candidate) = find_hunt_candidate(squad_candidates, current_prey) else {
                 continue;
             };
-            if !grids.can_pathfind_between(member_pos, current_candidate.pos, member_dim_ent) {
+            if !grids.can_pathfind_between(member_pos, current_candidate.pos, member_dim) {
                 continue;
             }
             *committed_counts.entry(current_prey).or_insert(0) += 1;
@@ -667,7 +667,7 @@ pub fn update_predator_hunting_targets(
                         let Some(member_dim_ent) = resolve_dim_ent(member_dim) else {
                             continue;
                         };
-                        if !grids.can_pathfind_between(*pred_pos, *member_pos, pred_dim_ent) {
+                        if !grids.can_pathfind_between(*pred_pos, *member_pos, *pred_dim) {
                             continue;
                         }
                         if pred_dim_ent != member_dim_ent {
@@ -700,7 +700,7 @@ pub fn update_predator_hunting_targets(
                 cmd.entity(member_ent).try_remove::<Hunting>();
                 continue;
             };
-            let Some(member_dim_ent) = resolve_dim_ent(member_dim) else {
+            let Some(_member_dim_ent) = resolve_dim_ent(member_dim) else {
                 cmd.entity(member_ent).try_remove::<Hunting>();
                 continue;
             };
@@ -712,7 +712,7 @@ pub fn update_predator_hunting_targets(
                     target_ix += 1;
                     continue;
                 };
-                if !grids.can_pathfind_between(*member_pos, *target_pos, member_dim_ent) {
+                if !grids.can_pathfind_between(*member_pos, *target_pos, *member_dim) {
                     target_ix += 1;
                     continue;
                 }

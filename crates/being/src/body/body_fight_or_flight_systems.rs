@@ -329,7 +329,7 @@ fn should_preserve_current_hunt_for_pack_counterattack(
         return false;
     }
 
-    if !grids.can_pathfind_between(*being_pos, *current_prey_pos, being_dim_ent) {
+    if !grids.can_pathfind_between(*being_pos, *current_prey_pos, *being_dim) {
         return false;
     }
 

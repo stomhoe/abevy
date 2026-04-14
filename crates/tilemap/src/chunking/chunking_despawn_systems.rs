@@ -148,6 +148,7 @@ pub fn on_chunk_despawn(
     trig: On<Despawn, (Chunk, )>,
     chunk_query: Query<(&DimensionRef, &ChunkPos), ()>,
     mut loaded_chunks: ResMut<LoadedChunks>,
+    mut loaded_chunk_tile_bounds: ResMut<LoadedChunkTileBoundsByDim>,
     beings_within_chunk: Res<BeingsInCpos>,
     mut ub_writer: MessageWriter<FaithfulSimBeing>,
     mut ub_messages: Local<Vec<FaithfulSimBeing>>,
@@ -162,6 +163,12 @@ pub fn on_chunk_despawn(
         return;
     }
     loaded_chunks.0.remove(&(chunk_dimension, chunk_pos));
+    if let Some(bounds) = loaded_chunk_tile_bounds.0.get_mut(&chunk_dimension) {
+        bounds.remove_chunk(chunk_pos);
+        if bounds.bounds().is_none() {
+            loaded_chunk_tile_bounds.0.remove(&chunk_dimension);
+        }
+    }
     let Some(beings) = beings_within_chunk.beings_in_chunk(chunk_dimension, chunk_pos) else {
         return;
     };

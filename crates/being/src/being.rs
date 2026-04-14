@@ -51,7 +51,6 @@ pub fn plugin(app: &mut App) {
     .init_resource::<BeingsAtGpos>()
     .init_resource::<AiNavGrids>()
     .init_resource::<AiNavGridRebuildTasks>()
-    .init_resource::<SharedChaseFlowFieldRebuildTasks>()
     .init_resource::<SharedChaseFlowFields>()
     .init_resource::<ChaserNavPlans>()
     .init_resource::<FrozenBgSimulatedBeingsMap>()

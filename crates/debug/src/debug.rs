@@ -17,6 +17,7 @@ use ::being_shared::{BeingNavDebugLine, DebuggingBeingNav};
         debug_systems::*, debug_window_systems::*,
         gpos_maps_window::*,
         faction_details_inspector::*,
+        nav_maps_window::*,
         macrochunks_grid_window::*,
         player_details_inspector::*, players_list_window::*, portals_list_window::*, region_details_inspector::*,
         regions_list_window::*, registered_positions_window::*, sprite_cfgs_details_inspector::*,
@@ -88,6 +89,7 @@ pub fn plugin(app: &mut App) {
                 registered_positions_window,
                 gpos_maps_window_system,
                 tile_indices_map_window,
+                nav_maps_window,
                 world_tile_click_picker_window,
                 nav_log_window,
                 terrgen_debug_window_system

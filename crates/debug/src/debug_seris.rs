@@ -46,6 +46,8 @@ pub struct DebugWindowsOpenOnStartSeri {
     pub terrgen_values: bool,
     #[serde(default)]
     pub settings_editor: bool,
+    #[serde(default)]
+    pub nav_maps: bool,
 }
 
 fn default_enable_debug_menus() -> bool { true }

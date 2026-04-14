@@ -31,7 +31,7 @@ use super::being_nav_helpers::{
 #[derive(Clone, Copy)]
 struct SharedChaseRebuildJob {
     chaser_ent: Entity,
-    chaser_dim: Entity,
+    chaser_dim: DimensionRef,
     chaser_gpos: GlobalTilePos,
     target_ent: Entity,
     target_pos: GlobalTilePos,
@@ -41,7 +41,6 @@ struct SharedChaseRebuildJob {
 
 #[derive(SystemParam)]
 pub struct RebuildGotoNavPlansScratch<'s> {
-    dynamic_blocking: Local<'s, HashMap<UVec3, Entity>>,
     active_chasers: Local<'s, EntityHashSet>,
     active_chase_targets: Local<'s, EntityHashSet>,
     rebuilt_shared_flow_targets: Local<'s, EntityHashSet>,
@@ -83,15 +82,12 @@ fn consider_chase_goal_candidate(
     best_path_cost: &mut u32,
     best_goal_chaser_dist: &mut u32,
     best_goal_line_deviation: &mut i64,
-    _dynamic_blocking: &mut HashMap<UVec3, Entity>,
     cache: &AiNavGridCache,
     _chaser_ent: Entity,
-    _target_ent: Entity,
     target_pos: GlobalTilePos,
     chaser_gpos: GlobalTilePos,
     start: UVec3,
     goal: UVec3,
-    _goal_occupant: Option<Entity>,
 ) {
     let mut req = PathfindArgs::new(start, goal).astar();
     let Some(path) = cache.grid.pathfind(&mut req) else {
@@ -165,27 +161,6 @@ fn request_fast_repath(
     if plan.rebuild_timer.duration() > fast_retry {
         plan.clear_path_and_retry(fast_retry, target_pos);
     }
-}
-
-fn fallback_grid_step_toward_target(
-    cache: &AiNavGridCache,
-    chaser_pos: GlobalTilePos,
-    target_pos: GlobalTilePos,
-) -> Option<Vec2> {
-    let (start, goal) = cache.local_path_points(chaser_pos, target_pos)?;
-    let mut req = PathfindArgs::new(start, goal).astar();
-    let path = cache.grid.pathfind(&mut req)?;
-    for step in path.path().iter().copied() {
-        let step_gpos = GlobalTilePos(step.xy().as_ivec2() + cache.min);
-        if step_gpos == chaser_pos {
-            continue;
-        }
-        let desired = cardinal_step_toward(step_gpos.0 - chaser_pos.0);
-        if desired != IVec2::ZERO {
-            return Some(desired.as_vec2());
-        }
-    }
-    None
 }
 
 fn collect_chase_goal_tiles(
@@ -342,7 +317,7 @@ fn rebuild_shared_chase_flow_field(
     chase_fields: &mut SharedChaseFlowFields,
     cache: &AiNavGridCache,
     target_ent: Entity,
-    target_dim: Entity,
+    target_dim: DimensionRef,
     target_pos: GlobalTilePos,
     target_bit_ref: Option<&BitRef>,
     target_race_ref: Option<&RaceRef>,
@@ -448,7 +423,6 @@ fn rebuild_shared_chase_plan_for_job(
     cache: &AiNavGridCache,
     chase_fields: &mut SharedChaseFlowFields,
     plans: &mut ChaserNavPlans,
-    _dynamic_blocking: &mut HashMap<UVec3, Entity>,
     reserved_goals: &mut HashMap<GlobalTilePos, Entity>,
 ) {
     let Some(flow_field) = chase_fields.by_target.get(&job.target_ent) else {
@@ -609,7 +583,7 @@ pub fn rebuild_goto_nav_plans(
     scratch.shared_goal_owners.clear();
 
     for (chaser_ent, &chaser_dim, goto, chaser_speed, chasing, wander_state, lod_level, ) in goto_beings.iter() {
-        let Some(chaser_dim_ent) = dim_map.0.get_opt(chaser_dim.0).copied() else {
+        let Some(_chaser_dim_ent) = dim_map.0.get_opt(chaser_dim.0).copied() else {
             continue;
         };
         let Ok(chaser_gpos) = blocking_tiles.gpos_query.get(chaser_ent) else {
@@ -660,7 +634,7 @@ pub fn rebuild_goto_nav_plans(
             continue;
         }
 
-        let Some(cache) = grids.by_dim.get(&chaser_dim_ent) else {
+        let Some(cache) = grids.by_dim.get(&chaser_dim) else {
             plan.clear_path_and_retry(goto_interval, target_pos);
             continue;
         };
@@ -684,11 +658,11 @@ pub fn rebuild_goto_nav_plans(
                 plan.clear_path_and_retry(goto_interval, target_pos);
                 continue;
             };
-            let Some(target_dim_ent) = dim_map.0.get_opt(target_dim.0).copied() else {
+            let Some(_target_dim_ent) = dim_map.0.get_opt(target_dim.0).copied() else {
                 plan.clear_path_and_retry(goto_interval, target_pos);
                 continue;
             };
-            if target_dim_ent != chaser_dim_ent {
+            if *target_dim != chaser_dim {
                 plan.clear_path_and_retry(goto_interval, target_pos);
                 continue;
             }
@@ -730,7 +704,7 @@ pub fn rebuild_goto_nav_plans(
                     .by_target
                     .get(&shared_target_ent)
                     .map(|field| {
-                        !field.matches_grid(cache, target_dim_ent, target_pos)
+                        !field.matches_grid(cache, *target_dim, target_pos)
                             || field.goal_tiles != *scratch.chase_goal_tiles
                             || field.slot_tiles != *scratch.chase_slot_tiles
                             || field.seed_goal_tiles != *scratch.chase_seed_goal_tiles
@@ -741,7 +715,7 @@ pub fn rebuild_goto_nav_plans(
                         &mut chase_fields,
                         cache,
                         shared_target_ent,
-                        target_dim_ent,
+                        *target_dim,
                         target_pos,
                         target_bit_ref,
                         target_race_ref,
@@ -788,7 +762,7 @@ pub fn rebuild_goto_nav_plans(
             }
             scratch.shared_rebuild_jobs.push(SharedChaseRebuildJob {
                 chaser_ent,
-                chaser_dim: chaser_dim_ent,
+                chaser_dim,
                 chaser_gpos: *chaser_gpos,
                 target_ent: shared_target_ent,
                 target_pos,
@@ -843,15 +817,12 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_cost,
                     &mut best_goal_chaser_dist,
                     &mut best_goal_line_deviation,
-                    &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
-                    Entity::PLACEHOLDER,
                     target_pos,
                     *chaser_gpos,
                     start,
                     local,
-                    None,
                 );
                 continue;
             };
@@ -863,15 +834,12 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_cost,
                     &mut best_goal_chaser_dist,
                     &mut best_goal_line_deviation,
-                    &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
-                    Entity::PLACEHOLDER,
                     target_pos,
                     *chaser_gpos,
                     start,
                     local,
-                    None,
                 );
                 continue;
             }
@@ -883,15 +851,12 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_cost,
                     &mut best_goal_chaser_dist,
                     &mut best_goal_line_deviation,
-                    &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
-                    Entity::PLACEHOLDER,
                     target_pos,
                     *chaser_gpos,
                     start,
                     local,
-                    Some(occupant_ent),
                 );
                 continue;
             };
@@ -904,15 +869,12 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_cost,
                     &mut best_goal_chaser_dist,
                     &mut best_goal_line_deviation,
-                    &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
-                    Entity::PLACEHOLDER,
                     target_pos,
                     *chaser_gpos,
                     start,
                     local,
-                    Some(occupant_ent),
                 );
                 continue;
             }
@@ -924,15 +886,12 @@ pub fn rebuild_goto_nav_plans(
                 &mut best_path_cost,
                 &mut best_goal_chaser_dist,
                 &mut best_goal_line_deviation,
-                &mut scratch.dynamic_blocking,
                 cache,
                 chaser_ent,
-                Entity::PLACEHOLDER,
                 target_pos,
                 *chaser_gpos,
                 start,
                 local,
-                Some(occupant_ent),
             );
         }
         let target_boxed_by_same_target_chasers = open_target_approach_count > 0
@@ -960,15 +919,12 @@ pub fn rebuild_goto_nav_plans(
                         &mut best_path_cost,
                         &mut best_goal_chaser_dist,
                         &mut best_goal_line_deviation,
-                        &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
-                        Entity::PLACEHOLDER,
                         target_pos,
                         *chaser_gpos,
                         start,
                         local,
-                        None,
                     );
                     continue;
                 };
@@ -980,15 +936,12 @@ pub fn rebuild_goto_nav_plans(
                         &mut best_path_cost,
                         &mut best_goal_chaser_dist,
                         &mut best_goal_line_deviation,
-                        &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
-                        Entity::PLACEHOLDER,
                         target_pos,
                         *chaser_gpos,
                         start,
                         local,
-                        None,
                     );
                     continue;
                 }
@@ -1000,15 +953,12 @@ pub fn rebuild_goto_nav_plans(
                         &mut best_path_cost,
                         &mut best_goal_chaser_dist,
                         &mut best_goal_line_deviation,
-                        &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
-                        Entity::PLACEHOLDER,
                         target_pos,
                         *chaser_gpos,
                         start,
                         local,
-                        Some(occupant_ent),
                     );
                     continue;
                 };
@@ -1020,15 +970,12 @@ pub fn rebuild_goto_nav_plans(
                         &mut best_path_cost,
                         &mut best_goal_chaser_dist,
                         &mut best_goal_line_deviation,
-                        &mut scratch.dynamic_blocking,
                         cache,
                         chaser_ent,
-                        Entity::PLACEHOLDER,
                         target_pos,
                         *chaser_gpos,
                         start,
                         local,
-                        Some(occupant_ent),
                     );
                     continue;
                 }
@@ -1039,15 +986,12 @@ pub fn rebuild_goto_nav_plans(
                     &mut best_path_cost,
                     &mut best_goal_chaser_dist,
                     &mut best_goal_line_deviation,
-                    &mut scratch.dynamic_blocking,
                     cache,
                     chaser_ent,
-                    Entity::PLACEHOLDER,
                     target_pos,
                     *chaser_gpos,
                     start,
                     local,
-                    Some(occupant_ent),
                 );
             }
             if best_path_tiles.is_empty() {
@@ -1102,7 +1046,6 @@ pub fn rebuild_goto_nav_plans(
             cache,
             &mut chase_fields,
             &mut plans,
-            &mut scratch.dynamic_blocking,
             &mut scratch.shared_goal_owners,
         );
     }
@@ -1116,7 +1059,6 @@ pub fn rebuild_goto_nav_plans(
 #[allow(unused_parens, )]
 pub fn goto_behavior(
     mut blocking_tiles: BlockingTileParamSet,
-    dim_map: Res<DimensionEntityMap>,
     mut goto_beings: Query<
         (
             Entity,
@@ -1134,9 +1076,6 @@ pub fn goto_behavior(
         mut last_shared_dirs: Local<HashMap<Entity, IVec2>>,
 ) {
     for (chaser_ent, &chaser_dim, goto, chasing, wander_state, ) in goto_beings.iter_mut() {
-        let Some(chaser_dim_ent) = dim_map.0.get_opt(chaser_dim.0).copied() else {
-            continue;
-        };
         let Ok(mut input_move_dir) = input_dirs.get_mut(chaser_ent) else {
             continue;
         };
@@ -1167,11 +1106,11 @@ pub fn goto_behavior(
             .and_then(|target_ent| blocking_tiles.gpos_query.get(target_ent).ok().copied())
             .unwrap_or(goto.pos);
         let shared_flow_field = shared_target_ent.and_then(|shared_target_ent| {
-                let cache = grids.by_dim.get(&chaser_dim_ent)?;
+                let cache = grids.by_dim.get(&chaser_dim)?;
                 chase_fields
                     .by_target
                     .get(&shared_target_ent)
-                    .filter(|flow_field| flow_field.matches_grid(cache, chaser_dim_ent, target_pos))
+                    .filter(|flow_field| flow_field.matches_grid(cache, chaser_dim, target_pos))
                     .map(|flow_field| (cache, flow_field))
             });
         let shared_reserved_goal = plans.by_ent.get(&chaser_ent).and_then(|plan| plan.reserved_shared_goal);
@@ -1202,10 +1141,6 @@ pub fn goto_behavior(
         };
 
         let mut should_force_fast_repath = false;
-        let grid_fallback_step = grids
-            .by_dim
-            .get(&chaser_dim_ent)
-            .and_then(|cache| fallback_grid_step_toward_target(cache, *chaser_pos, target_pos));
         let move_input = if let Some(plan) = plans.by_ent.get_mut(&chaser_ent) {
             match plan.next_step(*chaser_pos) {
                 Some(next) => {
@@ -1219,12 +1154,12 @@ pub fn goto_behavior(
                 None if plan.reserved_shared_goal.is_some() && !plan.holds_at_partial_endpoint => Vec2::ZERO,
                 None if plan.holds_at_partial_endpoint => {
                     should_force_fast_repath = true;
-                    grid_fallback_step.unwrap_or(Vec2::ZERO)
+                    direct_chase_dir
                 }
-                None => grid_fallback_step.unwrap_or(direct_chase_dir),
+                None => direct_chase_dir,
             }
         } else {
-            grid_fallback_step.unwrap_or(direct_chase_dir)
+            direct_chase_dir
         };
         if should_force_fast_repath {
             request_fast_repath(&mut plans, chaser_ent, target_pos);

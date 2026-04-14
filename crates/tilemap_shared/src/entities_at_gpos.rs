@@ -68,8 +68,8 @@ impl SpriteTilesAtGpos {
 }
 
 #[derive(Resource, Debug, Default)]
-pub struct AiNavBlockedGposCounts(pub HashMap<(DimensionRef, GlobalTilePos), u16>);
-impl AiNavBlockedGposCounts {
+pub struct AiNavTileBlockedGposCounts(pub HashMap<(DimensionRef, GlobalTilePos), u16>);
+impl AiNavTileBlockedGposCounts {
     pub fn is_blocked(&self, dim: DimensionRef, gpos: GlobalTilePos) -> bool {
         self.0.get(&(dim, gpos)).copied().unwrap_or(0) > 0
     }
@@ -78,13 +78,11 @@ impl AiNavBlockedGposCounts {
         self.0.reserve(additional);
     }
 
-    pub fn insert_blocked_positions(
-        &mut self,
-        dim: DimensionRef,
+    fn blocked_positions_for_tile(
         tile_gpos: GlobalTilePos,
         interaction_zones: Option<&InteractionZones>,
         is_low_speed: bool,
-    ) {
+    ) -> Vec<GlobalTilePos> {
         let mut blocked_positions = Vec::new();
         if let Some(interaction_zones) = interaction_zones {
             if let Some(collision_mask) = interaction_zones.get_collision_mask() {
@@ -99,13 +97,28 @@ impl AiNavBlockedGposCounts {
             blocked_positions.push(tile_gpos);
         }
         if blocked_positions.is_empty() {
-            return;
+            return blocked_positions;
         }
         blocked_positions.sort_unstable_by_key(|pos| (pos.0.x, pos.0.y));
         blocked_positions.dedup();
+        blocked_positions
+    }
+
+    pub fn insert_blocked_positions(
+        &mut self,
+        dim: DimensionRef,
+        tile_gpos: GlobalTilePos,
+        interaction_zones: Option<&InteractionZones>,
+        is_low_speed: bool,
+    ) -> bool {
+        let blocked_positions = Self::blocked_positions_for_tile(tile_gpos, interaction_zones, is_low_speed);
+        if blocked_positions.is_empty() {
+            return false;
+        }
         for blocked_gpos in blocked_positions {
             *self.0.entry((dim, blocked_gpos)).or_insert(0) += 1;
         }
+        true
     }
 
     pub fn remove_blocked_positions(
@@ -115,24 +128,10 @@ impl AiNavBlockedGposCounts {
         interaction_zones: Option<&InteractionZones>,
         is_low_speed: bool,
     ) -> bool {
-        let mut blocked_positions = Vec::new();
-        if let Some(interaction_zones) = interaction_zones {
-            if let Some(collision_mask) = interaction_zones.get_collision_mask() {
-                collision_mask.gather_zone_positions(
-                    CardinalDirection::South,
-                    tile_gpos.to_pixelpos(),
-                    &mut blocked_positions,
-                );
-            }
-        }
-        if blocked_positions.is_empty() && is_low_speed {
-            blocked_positions.push(tile_gpos);
-        }
+        let blocked_positions = Self::blocked_positions_for_tile(tile_gpos, interaction_zones, is_low_speed);
         if blocked_positions.is_empty() {
             return false;
         }
-        blocked_positions.sort_unstable_by_key(|pos| (pos.0.x, pos.0.y));
-        blocked_positions.dedup();
         let mut removed_any = false;
         for blocked_gpos in blocked_positions {
             let Some(count) = self.0.get_mut(&(dim, blocked_gpos)) else {
@@ -147,30 +146,27 @@ impl AiNavBlockedGposCounts {
         removed_any
     }
 
-    pub fn insert_being_positions(
-        &mut self,
+    pub fn blocked_tiles_for_dim(
+        &self,
         dim: DimensionRef,
-        positions: &[GlobalTilePos],
-    ) {
-        for gpos in positions.iter().copied() {
-            *self.0.entry((dim, gpos)).or_insert(0) += 1;
-        }
-    }
-
-    pub fn remove_being_positions(
-        &mut self,
-        dim: DimensionRef,
-        positions: &[GlobalTilePos],
-    ) {
-        for gpos in positions.iter().copied() {
-            let Some(count) = self.0.get_mut(&(dim, gpos)) else {
+        min_tile: IVec2,
+        width: u32,
+        height: u32,
+    ) -> Vec<UVec2> {
+        let mut blocked_tiles = Vec::with_capacity(self.0.len());
+        let max_x = min_tile.x + width as i32 - 1;
+        let max_y = min_tile.y + height as i32 - 1;
+        for (&(blocked_dim, blocked_gpos), _) in self.0.iter() {
+            if blocked_dim != dim {
                 continue;
-            };
-            *count = count.saturating_sub(1);
-            if *count == 0 {
-                self.0.remove(&(dim, gpos));
             }
+            let local = blocked_gpos.0 - min_tile;
+            if local.x < 0 || local.y < 0 || blocked_gpos.0.x > max_x || blocked_gpos.0.y > max_y {
+                continue;
+            }
+            blocked_tiles.push(UVec2::new(local.x as u32, local.y as u32));
         }
+        blocked_tiles
     }
 }
 

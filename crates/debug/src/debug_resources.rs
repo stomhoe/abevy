@@ -38,6 +38,7 @@ pub struct DubugWindowsVisibility{
     pub sprite_details: bool,
     pub gpos_maps: bool,
     pub tile_indices_map: bool,
+    pub nav_maps: bool,
     pub world_tile_click_picker: bool,
     pub tile_click_remover: bool,
     pub being_click_remover: bool,
@@ -76,6 +77,7 @@ impl Default for DubugWindowsVisibility {
             sprite_details: false,
             gpos_maps: false,
             tile_indices_map: false,
+            nav_maps: false,
             world_tile_click_picker: false,
             tile_click_remover: false,
             being_click_remover: false,
@@ -350,6 +352,7 @@ impl DebugUiConfigSeri {
                 v.terrgen_editor = self.windows_open_on_start.terrgen_editor;
                 v.terrgen_values = self.windows_open_on_start.terrgen_values;
                 v.settings_editor = self.windows_open_on_start.settings_editor;
+                v.nav_maps = self.windows_open_on_start.nav_maps;
                 v
             },
         }

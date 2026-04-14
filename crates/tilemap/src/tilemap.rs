@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
 use common::{common_states::*};
 
+use game_common::HostSystems;
 use game_common::game_common::GameplaySystems;
 use ::tilemap_shared::*;
 use crate::{
@@ -13,6 +14,7 @@ use crate::{
     tile,
     tile::TilingSystems,
     tilemap_resources::*,
+    tilemap_nav_systems::*,
     tilemap_systems::*,
     tilemap_despawn_systems::*,
     tilemap_structs::*,
@@ -41,6 +43,7 @@ pub fn plugin(app: &mut App) {
             refresh_terrbl_tilemaps.after(process_tiles_pre),
         ).in_set(ChunkSystems)
     ))
+    .add_systems(Update, track_spawned_tiles_for_ai_nav.in_set(HostSystems))
     .add_observer(on_tilemap_despawn)
     .configure_sets(Update, (
         (TerrainGenSystems, ChunkSystems, RegioningSystems).in_set(GameplaySystems)
@@ -63,7 +66,7 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<DiagonalCardinalDirection>()
     .replicate::<InteractionZones>()
     .init_resource::<SpriteTilesAtGpos>()
-    .init_resource::<AiNavBlockedGposCounts>()
+    .init_resource::<AiNavTileBlockedGposCounts>()
     .replicate_once::<PoissonDisk>()
 
 

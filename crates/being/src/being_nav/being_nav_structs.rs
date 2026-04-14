@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_northstar::CardinalGrid;
 use bevy_northstar::prelude::*;
-use ::tilemap_shared::GlobalTilePos;
+use ::tilemap_shared::{DimensionRef, GlobalTilePos};
 use bevy::platform::collections::HashMap;
 use std::{cmp::Reverse, collections::{BinaryHeap, }, time::Duration};
 
@@ -9,7 +9,6 @@ pub struct AiNavGridCache {
     pub min: IVec2,
     pub grid: CardinalGrid,
     pub occupied: HashMap<UVec3, Entity>,
-    pub occupied_initialized: bool,
 }
 
 impl AiNavGridCache {
@@ -47,7 +46,7 @@ impl AiNavGridCache {
 }
 
 pub struct SharedChaseFlowField {
-    pub dim: Entity,
+    pub dim: DimensionRef,
     pub target_pos: GlobalTilePos,
     pub goal_tiles: Vec<GlobalTilePos>,
     pub slot_tiles: Vec<GlobalTilePos>,
@@ -62,7 +61,7 @@ impl SharedChaseFlowField {
     pub fn matches_grid(
         &self,
         cache: &AiNavGridCache,
-        dim: Entity,
+        dim: DimensionRef,
         target_pos: GlobalTilePos,
     ) -> bool {
         self.dim == dim
@@ -74,7 +73,7 @@ impl SharedChaseFlowField {
 
     pub fn build(
         cache: &AiNavGridCache,
-        dim: Entity,
+        dim: DimensionRef,
         target_pos: GlobalTilePos,
         goal_tiles: &[GlobalTilePos],
         slot_tiles: &[GlobalTilePos],
@@ -277,7 +276,7 @@ impl crate::being_nav::being_nav_resources::AiNavGrids {
         &self,
         from_pos: GlobalTilePos,
         to_pos: GlobalTilePos,
-        dim: Entity,
+        dim: DimensionRef,
     ) -> bool {
         let Some(cache) = self.by_dim.get(&dim) else {
             return false;

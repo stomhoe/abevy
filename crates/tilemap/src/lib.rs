@@ -5,6 +5,7 @@ pub use tilemap::*;
 pub mod tilemap;
 
 mod tilemap_systems;
+mod tilemap_nav_systems;
 mod tilemap_despawn_systems;
 mod tilemap_structs;
 mod tilemap_terrbl_systems;
