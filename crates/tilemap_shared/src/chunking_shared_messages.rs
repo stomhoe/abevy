@@ -4,19 +4,8 @@ use bevy::{prelude::*};
 use crate::{ChunkPos, DimensionRef};
 
 #[derive(Message, Debug, Clone, Copy)]
-pub struct ChunkLoaded {
-    pub dimension: DimensionRef,
-    pub chunk_pos: ChunkPos,
-}
-
-#[derive(Message, Debug, Clone, Copy)]
 pub struct UpdateActivatedChunkPos {
     pub being_ent: Entity,
-}
-
-#[derive(Message, Debug, Clone, Copy)]
-pub struct NewMacrochunkLoaded {
-    pub macro_chunk_ent: Entity,
 }
 
 #[derive(Message, Debug, Clone, Copy)]

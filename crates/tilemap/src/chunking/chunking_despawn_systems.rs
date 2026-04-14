@@ -1,6 +1,5 @@
 
 use bevy::prelude::*;
-use bevy::ecs::entity::EntityHashSet;
 use being_shared::FaithfulSimBeing;
 use ::tilemap_shared::*;
 use common::log_targets::{CHUNK_ACTIVATION, CHUNK_DESPAWN};
@@ -62,67 +61,61 @@ pub fn on_message_signal_despawn_all_chunks(
 
     writer.write_batch(evs);
 }
-pub fn periodically_check_despawn_unreferenced_chunks(
-    mut ewriter: MessageWriter<CheckIfChunkShouldDespawn>,
-    chunks_query: Query<Entity, With<Chunk>,>,
-    mut to_check: Local<Vec<CheckIfChunkShouldDespawn>>,
+
+#[allow(unused_parens)]
+pub fn check_unreferenced_chunks(
+    mut reader: MessageReader<CheckIfChunkShouldDespawn>,
+    activator_query: Query<(&DimensionRef, &ActivatingChunks), >,
+    loaded_chunks: Res<LoadedChunks>,
+    mut referenced_chunks: Local<EntityHashSet>,
+    mut chunks_to_check: Local<Vec<Entity>>,
+    mut writer: MessageWriter<MakeChunkDespawn>,
+    mut make_despawn_msgs: Local<Vec<MakeChunkDespawn>>,
 ) {
-    let iter = chunks_query.iter();
-    let (lower, upper) = iter.size_hint();
-    to_check.reserve(upper.unwrap_or(lower));
-    for chunk_ent in iter {
-        to_check.push(CheckIfChunkShouldDespawn(chunk_ent));
+    chunks_to_check.clear();
+    make_despawn_msgs.clear();
+    for &CheckIfChunkShouldDespawn(chunk_ent) in reader.read() {
+        chunks_to_check.push(chunk_ent);
     }
-    ewriter.write_batch(to_check.drain(..));
+    if chunks_to_check.is_empty() {
+        return;
+    }
+
+    referenced_chunks.clear();
+    referenced_chunks.reserve(activator_query.iter().map(|(_, a)| a.0.len()).sum());
+    for (&dimension_ref, activates_chunks) in activator_query.iter() {
+        referenced_chunks.extend(
+            activates_chunks
+                .0
+                .iter()
+                .filter_map(|&chunk_pos| loaded_chunks.0.get(&(dimension_ref, chunk_pos)).copied())
+        );
+    }
+
+    for chunk_ent in chunks_to_check.drain(..) {
+        if !referenced_chunks.contains(&chunk_ent) {
+            make_despawn_msgs.push(MakeChunkDespawn::default(chunk_ent));
+        }
+    }
+
+    writer.write_batch(make_despawn_msgs.drain(..));
 }
 
 #[allow(unused_parens)]
 pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE PUEDEN DESPAWNEAR LOS CHUNKS, PARA RESPETAR EL ORDEN DE SISTEMAS
     mut cmd: Commands,
-    activator_query: Query<(&DimensionRef, &ActivatingChunks, ), >,
     chunks_query: Query<(&DimensionRef, &ChunkPos, ), >,
-    loaded_chunks: Res<LoadedChunks>,
     beings_within_chunk: Res<BeingsInCpos>,
-    mut despawn_events: ResMut<Messages<CheckIfChunkShouldDespawn>>,
     mut force_despawn_reader: MessageReader<MakeChunkDespawn>,
-    mut referenced_chunks: Local<EntityHashSet>,
-    mut chunks_to_check: Local<Vec<Entity>>,
     mut chunks_to_despawn: Local<Vec<MakeChunkDespawn>>,
     mut bcd_writer: MessageWriter<ChunkWithBeingsWantsDespawn>,
     mut bcd_msgs: Local<Vec<ChunkWithBeingsWantsDespawn>>,
 ) {
     chunks_to_despawn.clear();
-    chunks_to_check.clear();
     chunks_to_despawn.extend(force_despawn_reader.read().cloned());
-    for CheckIfChunkShouldDespawn(chunk_ent) in despawn_events.drain() {
-        chunks_to_check.push(chunk_ent);
-    }
-    if chunks_to_despawn.is_empty() && chunks_to_check.is_empty() {
-        return;
-    }
-
-    if !chunks_to_check.is_empty() {
-        referenced_chunks.clear();
-        referenced_chunks.reserve(activator_query.iter().map(|(_, a)| a.0.len()).sum());
-        for (&dimension_ref, activates_chunks) in activator_query.iter() {
-            referenced_chunks.extend(
-                activates_chunks
-                    .0
-                    .iter()
-                    .filter_map(|&chunk_pos| loaded_chunks.0.get(&(dimension_ref, chunk_pos)).copied())
-            );
-        }
-
-        for chunk_ent in chunks_to_check.drain(..) {
-            if !referenced_chunks.contains(&chunk_ent) {
-                chunks_to_despawn.push(MakeChunkDespawn::default(chunk_ent));
-            }
-        }
-    }
     if chunks_to_despawn.is_empty() {
         return;
     }
-
     for MakeChunkDespawn { chunk_ent, reschedule_if_beings_present } in chunks_to_despawn.drain(..) {
         let Ok((&chunk_dimension, &chunk_pos, )) = chunks_query.get(chunk_ent) else {
             cmd.entity(chunk_ent).try_despawn();

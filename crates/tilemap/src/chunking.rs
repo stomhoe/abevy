@@ -39,15 +39,16 @@ pub fn plugin(app: &mut App) {
     ).in_set(ChunkSystems))
 
     .add_systems(Update, (
-        periodically_check_despawn_unreferenced_chunks
-            .run_if(on_timer(Duration::from_secs_f32(0.5)))
+        check_unreferenced_chunks
+            .run_if(on_message::<CheckIfChunkShouldDespawn>)
+            .after(add_activating_chunks_to_activate_chunks_around)
             .before(despawn_chunks),
         detect_activators_with_pos_changes,
         rem_outofrange_chunks_from_activators
             .after(update_activating_chunk_positions)
-            .before(despawn_chunks),
+            .before(check_unreferenced_chunks),
         despawn_chunks
-            .after(rem_outofrange_chunks_from_activators)
+            .after(check_unreferenced_chunks)
             .in_set(PreChunkDespawnSystems),
     ).in_set(ChunkSystems))
 
@@ -63,7 +64,7 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
         add_activating_chunks_to_activate_chunks_around,
-    ))
+    ).before(check_unreferenced_chunks))
     .init_resource::<LoadChunksAround>()
     .init_resource::<LoadedChunks>()
     .init_resource::<LoadedMacroChunks>()
@@ -74,13 +75,11 @@ pub fn plugin(app: &mut App) {
 
     .add_message::<CheckIfChunkShouldDespawn>()
     .add_message::<UpdateActivatedChunkPos>()
-    .add_message::<NewMacrochunkLoaded>()
     .add_message::<RecheckChunksVisibility>()
     .add_message::<MakeChunkDespawn>()
     .add_message::<ForceAllChunksDespawn>()
     .add_message::<ChunkWithBeingsWantsDespawn>()
     .add_message::<ChunkBeingsChanged>()
-    .add_message::<ChunkLoaded>()
 
 
     ;

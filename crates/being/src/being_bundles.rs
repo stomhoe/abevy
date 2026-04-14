@@ -85,13 +85,13 @@ pub struct ReinsertOnUnfreeze(
     pub GridLockedMovementVisual,
 );
 impl ReinsertOnUnfreeze {
-    pub fn new(msg: tilemap_shared::ChunkLoaded) -> Self {
+    pub fn new(dimension_ref: DimensionRef, chunk_pos: ChunkPos) -> Self {
         Self(
             Name::default(),
             Transform::default(),
             GlobalTransform::default(),
-            msg.dimension,
-            msg.chunk_pos,
+            dimension_ref,
+            chunk_pos,
             Visibility::default(),
             GridLockedMovement::default(),
             GridLockedMovementVisual::default(),

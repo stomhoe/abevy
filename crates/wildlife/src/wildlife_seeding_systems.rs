@@ -36,8 +36,7 @@ pub struct SeedLocals<'s> {
 #[allow(unused_parens, )]
 pub fn request_macrochunk_biome_sampling(
     mut cmd: Commands,
-    mut loaded_macrochunks: MessageReader<NewMacrochunkLoaded>,
-    mut macro_chunk_query: Query<(&DimensionRef, &MacrochunkPos, &mut MacrochunkPendingBiomeSamples, ), (With<MacroChunk>, )>,
+    mut macro_chunk_query: Query<(Entity, &DimensionRef, &MacrochunkPos, &mut MacrochunkPendingBiomeSamples, ), (With<MacroChunk>, Added<MacrochunkPos>)>,
     dimension_map: Res<DimensionEntityMap>,
     dimension_query: Query<&DimensionRootOplist>,
     oplist_map: Res<OperationListEntityMap>,
@@ -47,11 +46,7 @@ pub fn request_macrochunk_biome_sampling(
     mut sample_positions: Local<Vec<GlobalTilePos>>,
 ) {
     pending_ops.clear();
-    for msg in loaded_macrochunks.read() {
-        let macro_chunk_ent = msg.macro_chunk_ent;
-        let Ok((&dim_ref, &macro_chunk_pos, mut biome_state)) = macro_chunk_query.get_mut(macro_chunk_ent) else {
-            continue;
-        };
+    for (macro_chunk_ent, &dim_ref, &macro_chunk_pos, mut biome_state) in macro_chunk_query.iter_mut() {
         if biome_state.0 != 0 {
             continue;
         }

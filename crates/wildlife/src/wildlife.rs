@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use game_common::HostSystems;
-use tilemap_shared::NewMacrochunkLoaded;
 
 use crate::{
     wildlife_cleanup_systems::*,
@@ -14,7 +13,7 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                request_macrochunk_biome_sampling.run_if(on_message::<NewMacrochunkLoaded>),
+                request_macrochunk_biome_sampling,
                 seed_natural_wildlife_for_biomesampled_macrochunks,
             )
                 .chain()

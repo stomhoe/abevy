@@ -18,8 +18,7 @@ cuando te muevas con plate armor hacer que haga ruido real de plate armor movien
 https://www.youtube.com/watch?v=rC5QSqAh8gg
 
 
-desert island
-
+hacer camels
 
 
 pendiente general:
@@ -68,6 +67,3 @@ problema no se puede latejoinear sin complicar
 
 
 mejorar sistemas de asignacion automatica de loadchunksaround
-
-ver si se puede extraer algunos de los chequeos en el primer sistema de tilemap-systems a
-sistemas pequeños apartes, aunque sean síncronos chained

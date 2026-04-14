@@ -259,12 +259,12 @@ pub fn activate_beings_in_first_time_loaded_chunks(
 #[allow(unused_parens, )]
 pub fn unfreeze_beings_on_chunk_load(
     mut cmd: Commands,
-    mut reader: MessageReader<ChunkLoaded>,
+    query: Query<(&DimensionRef, &ChunkPos), (With<Chunk>, Added<ChunkPos>)>,
     mut frozen_bg_simulated_being_map: ResMut<FrozenBgSimulatedBeingsMap>,
 ) {
     let mut vec_ins_batch = Vec::new();
-    for &msg in reader.read() {
-        let Some(being_ents) = frozen_bg_simulated_being_map.0.remove(&(msg.dimension, msg.chunk_pos)) else {
+    for (&dim_ref, &chunk_pos) in query.iter() {
+        let Some(being_ents) = frozen_bg_simulated_being_map.0.remove(&(dim_ref, chunk_pos)) else {
             continue;
         };
 
@@ -272,13 +272,13 @@ pub fn unfreeze_beings_on_chunk_load(
             target: BEING_SYSTEM,
             "Restoring {} frozen beings for loaded chunk {:?} in {:?}",
             being_ents.len(),
-            msg.chunk_pos,
-            msg.dimension,
+            chunk_pos,
+            dim_ref,
         );
 
         for being_ent in being_ents {
             cmd.entity(being_ent).try_remove::<(BgSimulatedIn, Unloaded)>();
-            vec_ins_batch.push((being_ent, ReinsertOnUnfreeze::new(msg)));
+            vec_ins_batch.push((being_ent, ReinsertOnUnfreeze::new(dim_ref, chunk_pos)));
         }
     }
     cmd.try_insert_batch_if_new(vec_ins_batch);

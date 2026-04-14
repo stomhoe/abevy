@@ -76,8 +76,8 @@ pub fn plugin(app: &mut App) {
             rebuild_portal_crossing_index,
             cull_loaded_beings_far_from_humans.run_if(on_timer(Duration::from_secs(10))),
             faithful_sim_being.run_if(on_message::<FaithfulSimBeing>),
-            unfreeze_beings_on_chunk_load.run_if(on_message::<ChunkLoaded>),
-            insert_macrochunk_nav_islands.run_if(on_message::<NewMacrochunkLoaded>),
+            unfreeze_beings_on_chunk_load,
+            insert_macrochunk_nav_islands,
             on_chunk_with_beings_attempt_unload
                 .in_set(tilemap_shared::PreChunkDespawnSystems)
                 .run_if(on_message::<ChunkWithBeingsWantsDespawn>),
