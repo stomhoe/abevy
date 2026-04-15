@@ -64,7 +64,6 @@ pub fn plugin(app: &mut App) {
     .init_resource::<LoadedRegions>()
     .init_resource::<PrioritizedPerRegion>()
     .insert_resource(SgcCommandRegistry::with_builtins())
-    .init_resource::<RiverPlans>()
     .init_resource::<RiverDebugData>()
 
     .replicate::<WhitelistedFilterOf>()

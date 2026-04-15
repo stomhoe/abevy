@@ -316,7 +316,6 @@ pub fn debug_chunking_window(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
     mut chunking_ui: ResMut<DebugChunkingUiState>,
-    mut chunk_range_settings: ResMut<LoadChunksAround>,
     chunk_query: Query<(
         Entity,
         &Chunk,
@@ -329,7 +328,8 @@ pub fn debug_chunking_window(
         Option<&ActivatingChunks>,
     ), With<Chunk>>,
 
-    camera_dimension: Query<(&DimensionRef, &GlobalTransform, Option<&LoadChunksAround>), With<CameraTarget>>,
+    camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    mut camera_chunk_settings: Query<&mut LoadChunksAround, With<CameraTarget>>,
     dimension_map: Res<DimensionEntityMap>,
     loaded_chunks: Res<LoadedChunks>,
     tile_shader_map: Res<TileShaderEntityMap>,
@@ -355,15 +355,17 @@ pub fn debug_chunking_window(
     let mut open = window_visible.chunks_list;
 
     // Get camera target dimension and position
-    let (camera_dim_ref, camera_chunk_pos, camera_tile_pos, camera_chunk_settings) = camera_dimension
+    let (camera_dim_ref, camera_chunk_pos, camera_tile_pos) = camera_dimension
         .iter()
         .next()
-        .map(|(dim_ref, transform, chunk_settings)| {
+        .map(|(dim_ref, transform)| {
             let chunk_pos = ChunkPos::from(transform.translation());
             let tile_pos = GlobalTilePos::from(transform.translation().xy());
-            (Some(dim_ref), Some(chunk_pos), Some(tile_pos), chunk_settings.copied())
+            (Some(dim_ref), Some(chunk_pos), Some(tile_pos))
         })
-        .unwrap_or((None, None, None, None));
+        .unwrap_or((None, None, None));
+    let mut camera_chunk_settings = camera_chunk_settings.single_mut().ok();
+    let camera_chunk_settings_snapshot = camera_chunk_settings.as_deref().copied();
     let camera_dim_name = camera_dim_ref.as_ref().map(|camera_ref| dimension_name_for_ref(camera_ref, &dimension_map, &id_query));
 
     // Group chunks by dimension and position
@@ -435,24 +437,29 @@ pub fn debug_chunking_window(
 
             // Chunk Range Settings
             ui.heading("Range Settings");
+            if let Some(chunk_settings) = camera_chunk_settings.as_deref_mut() {
                 ui.horizontal(|ui| {
                     ui.label("Visibility Distance:");
-                    ui.add(egui::DragValue::new(&mut chunk_range_settings.chunk_visib_max_dist).speed(10.0));
+                    ui.add(egui::DragValue::new(&mut chunk_settings.chunk_visib_max_dist).speed(10.0));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Active Distance:");
-                    ui.add(egui::DragValue::new(&mut chunk_range_settings.chunk_active_max_dist).speed(10.0));
+                    ui.add(egui::DragValue::new(&mut chunk_settings.chunk_active_max_dist).speed(10.0));
                 });
                 ui.horizontal(|ui| {
                     ui.label("Discovery Range:");
-                    ui.add(egui::DragValue::new(&mut chunk_range_settings.discovery_range).speed(1.0));
+                    ui.add(egui::DragValue::new(&mut chunk_settings.discovery_range).speed(1.0));
                 });
-                chunk_range_settings.chunk_visib_max_dist = chunk_range_settings.chunk_visib_max_dist.max(0.0);
-                chunk_range_settings.chunk_active_max_dist = chunk_range_settings.chunk_active_max_dist.max(0.0);
-                chunk_range_settings.discovery_range = chunk_range_settings.discovery_range.max(1);
-                if let Some(chunk_settings) = camera_chunk_settings {
-                    ui.separator();
-                    ui.label("Camera target chunk component:");
+                chunk_settings.chunk_visib_max_dist = chunk_settings.chunk_visib_max_dist.max(0.0);
+                chunk_settings.chunk_active_max_dist = chunk_settings.chunk_active_max_dist.max(0.0);
+                chunk_settings.discovery_range = chunk_settings.discovery_range.max(1);
+            } else {
+                ui.separator();
+                ui.label("Camera target has no ActivateChunksAround");
+            }
+            if let Some(chunk_settings) = camera_chunk_settings_snapshot {
+                ui.separator();
+                ui.label("Camera target chunk component:");
                 ui.horizontal(|ui| {
                     ui.label("Visibility Distance:");
                     ui.label(format!("{:.1}", chunk_settings.chunk_visib_max_dist));
@@ -465,9 +472,6 @@ pub fn debug_chunking_window(
                     ui.label("Discovery Range:");
                     ui.label(format!("{}", chunk_settings.discovery_range));
                 });
-            } else {
-                ui.separator();
-                ui.label("Camera target has no ActivateChunksAround");
             }
             ui.separator();
 
@@ -709,7 +713,7 @@ pub fn debug_chunking_window(
                 .show(ui, |ui| {
                 // Get camera position and current chunk
                 let camera_chunk_pos = camera_dimension.iter().next()
-                    .map(|(_, transform, _)| ChunkPos::from(transform.translation()));
+                    .map(|(_, transform)| ChunkPos::from(transform.translation()));
 
                 // Group chunks by dimension
                 let mut chunks_by_dim: BTreeMap<String, Vec<(Entity, ChunkPos)>> = BTreeMap::new();

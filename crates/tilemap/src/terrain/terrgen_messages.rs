@@ -58,35 +58,35 @@ impl PendingOp {
     }
 
     pub fn filtered_op(&self) -> HashId {
-        match self.purpose {
+        match &self.purpose {
             PendingOpPurpose::ValueProbe(probe) => probe.filtered_op,
             _ => HashId::default(),
         }
     }
 
     pub fn requester(&self) -> Entity {
-        match self.purpose {
+        match &self.purpose {
             PendingOpPurpose::ValueProbe(probe) => probe.requester,
             _ => Entity::PLACEHOLDER,
         }
     }
 
     pub fn max_emitted_results(&self) -> u32 {
-        match self.purpose {
+        match &self.purpose {
             PendingOpPurpose::ValueProbe(probe) => probe.max_emitted_results,
             _ => 0,
         }
     }
 
     pub fn mark_last_success_in_batch(&self) -> bool {
-        match self.purpose {
+        match &self.purpose {
             PendingOpPurpose::ValueProbe(probe) => probe.mark_last_success_in_batch,
             _ => false,
         }
     }
 
     pub fn matrix_spec(&self) -> Option<PendingOpMatrixSpec> {
-        match self.purpose {
+        match &self.purpose {
             PendingOpPurpose::ValueProbe(probe) => probe.matrix_spec,
             _ => None,
         }

@@ -53,7 +53,7 @@ posibilidad de anclar wanderers a posiciones así n
 
 hacer q algunos sean hostil a todo lo q vean
 
-generar sprites de animales para desierto
+hacer sprites de animales para desierto
 
 mejorar hunger y waste mechanic
 
@@ -67,3 +67,6 @@ problema no se puede latejoinear sin complicar
 
 
 mejorar sistemas de asignacion automatica de loadchunksaround
+
+
+pedir a llm que genere script python para generar texturas de terreno mediante noises. vos le decis q tipo de textura queres y el genera la textura mediante algoritmia

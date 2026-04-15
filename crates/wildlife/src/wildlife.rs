@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_common::HostSystems;
+use game_common::{GameplaySystems, HostSystems};
 
 use crate::{
     wildlife_cleanup_systems::*,
@@ -14,9 +14,9 @@ pub fn plugin(app: &mut App) {
             Update,
             (
                 request_macrochunk_biome_sampling,
-                seed_natural_wildlife_for_biomesampled_macrochunks,
+                init_natural_wildlife_for_biomesampled_macrochunks,
             )
-                .chain()
+                .in_set(GameplaySystems)
                 .in_set(HostSystems),
         )
     ;

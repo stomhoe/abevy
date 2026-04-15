@@ -14,24 +14,6 @@ use tilemap::terrain::terrgen_messages::*;
 
 use crate::wildlife_spawning_helpers::*;
 
-#[derive(SystemParam)]
-pub struct SeedQueries<'w, 's> {
-    macro_chunk_query: Query<'w, 's, (&'static DimensionRef, &'static MacrochunkPos, &'static BiomeDistribution)>,
-    biome_pack_samplers: Query<'w, 's, &'static CreatureSampler>,
-    pack_min_sep_query: Query<'w, 's, &'static PackMinSepToPacksOrRaces>,
-    pack_query: Query<'w, 's, (), (With<Pack>, With<Templ>)>,
-    race_query: Query<'w, 's, (), (With<Race>, With<Templ>)>,
-    bit_query: Query<'w, 's, (), (With<BeingInstTemplate>, With<Templ>)>,
-    biome_map: Res<'w, BiomeEntityMap>,
-    pack_map: Res<'w, PackEntityMap>,
-    race_map: Res<'w, RaceEntityMap>,
-    bit_map: Res<'w, BeingInstTemplateEntityMap>,
-}
-
-#[derive(SystemParam)]
-pub struct SeedLocals<'s> {
-    occupied_pack_anchor_chunkpos: Local<'s, Vec<PackAnchorCpos>>,
-}
 
 #[allow(unused_parens, )]
 pub fn request_macrochunk_biome_sampling(
@@ -91,12 +73,30 @@ pub fn request_macrochunk_biome_sampling(
     pending_ops_writer.write_batch(pending_ops.drain(..));
 }
 
+#[derive(SystemParam)]
+pub struct SeedQueries<'w, 's> {
+    macro_chunk_query: Query<'w, 's, (&'static DimensionRef, &'static MacrochunkPos, &'static BiomeDistribution)>,
+    biome_pack_samplers: Query<'w, 's, &'static CreatureSampler>,
+    pack_min_sep_query: Query<'w, 's, &'static PackMinSepToPacksOrRaces>,
+    pack_query: Query<'w, 's, (), (With<Pack>, With<Templ>)>,
+    race_query: Query<'w, 's, (), (With<Race>, With<Templ>)>,
+    bit_query: Query<'w, 's, (), (With<BeingInstTemplate>, With<Templ>)>,
+    biome_map: Res<'w, BiomeEntityMap>,
+    pack_map: Res<'w, PackEntityMap>,
+    race_map: Res<'w, RaceEntityMap>,
+    bit_map: Res<'w, BeingInstTemplateEntityMap>,
+}
+
+#[derive(SystemParam)]
+pub struct init_naturalLocals<'s> {
+    occupied_pack_anchor_chunkpos: Local<'s, Vec<PackAnchorCpos>>,
+}
 #[allow(unused_parens, )]
-pub fn seed_natural_wildlife_for_biomesampled_macrochunks(
+pub fn init_natural_wildlife_for_biomesampled_macrochunks(
     mut macrochunk_finished_biomesampling: RemovedComponents<MacrochunkPendingBiomeSamples>,
     mut instance_pack_writer: MessageWriter<InstantiateTemplPackEntity>,
     queries: SeedQueries,
-    mut locs: SeedLocals,
+    mut locs: init_naturalLocals,
     mut pending_instance_pack_messages: Local<Vec<InstantiateTemplPackEntity>>,
 ) {
     let mut rng = rand::rng();

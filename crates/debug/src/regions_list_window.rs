@@ -32,6 +32,7 @@ struct RiverSamplePreviewKey {
     dimension_ref: DimensionRef,
     region_pos: RegionPos,
     revision: u64,
+    neighborhood_radius: i32,
     show_river_overlay: bool,
     show_sources: bool,
     show_mouths: bool,
@@ -71,15 +72,21 @@ struct RiverSamplePreviewBuild {
 }
 
 fn build_river_sample_preview(
+    dimension_ref: DimensionRef,
     region_pos: RegionPos,
-    river_info: &RiverRegionDebugInfo,
+    river_debug: &RiverDebugData,
+    neighborhood_radius: i32,
     show_river_overlay: bool,
     show_sources: bool,
     show_mouths: bool,
     show_failed_centers: bool,
     show_none_points: bool,
 ) -> RiverSamplePreviewBuild {
-    let (base_min_chunk, base_max_chunk_excl) = region_pos.chunk_bounds();
+    let clamped_radius = neighborhood_radius.max(0);
+    let min_region = RegionPos(region_pos.0 - IVec2::splat(clamped_radius));
+    let max_region = RegionPos(region_pos.0 + IVec2::splat(clamped_radius));
+    let (base_min_chunk, _) = min_region.chunk_bounds();
+    let (_, base_max_chunk_excl) = max_region.chunk_bounds();
     let base_min_tile = base_min_chunk.to_tilepos();
     let base_max_tile_excl = base_max_chunk_excl.to_tilepos();
 
@@ -87,21 +94,36 @@ fn build_river_sample_preview(
     let mut max_tile_excl = base_max_tile_excl;
     let mut min_sample_val = f32::INFINITY;
     let mut max_sample_val = f32::NEG_INFINITY;
-    let mut sample_values: Vec<f32> = Vec::with_capacity(river_info.sampled_points.len());
-    for (tile, sampled_val) in &river_info.sampled_points {
-        min_tile.0.x = min_tile.0.x.min(tile.0.x);
-        min_tile.0.y = min_tile.0.y.min(tile.0.y);
-        max_tile_excl.0.x = max_tile_excl.0.x.max(tile.0.x + 1);
-        max_tile_excl.0.y = max_tile_excl.0.y.max(tile.0.y + 1);
-        min_sample_val = min_sample_val.min(*sampled_val);
-        max_sample_val = max_sample_val.max(*sampled_val);
-        sample_values.push(*sampled_val);
-    }
-    for tile in &river_info.sampled_none_points {
-        min_tile.0.x = min_tile.0.x.min(tile.0.x);
-        min_tile.0.y = min_tile.0.y.min(tile.0.y);
-        max_tile_excl.0.x = max_tile_excl.0.x.max(tile.0.x + 1);
-        max_tile_excl.0.y = max_tile_excl.0.y.max(tile.0.y + 1);
+    let mut sample_values: Vec<f32> = Vec::new();
+    let mut visible_regions = Vec::with_capacity(((clamped_radius * 2 + 1).pow(2)) as usize);
+    for offset_y in -clamped_radius..=clamped_radius {
+        for offset_x in -clamped_radius..=clamped_radius {
+            let offset = IVec2::new(offset_x, offset_y);
+            let visible_region = RegionPos(region_pos.0 + offset);
+            let info = river_debug
+                .data
+                .get(&(dimension_ref, visible_region));
+            visible_regions.push((visible_region, offset, info));
+            let Some(info) = info else {
+                continue;
+            };
+            sample_values.reserve(info.sampled_points.len());
+            for (tile, sampled_val) in &info.sampled_points {
+                min_tile.0.x = min_tile.0.x.min(tile.0.x);
+                min_tile.0.y = min_tile.0.y.min(tile.0.y);
+                max_tile_excl.0.x = max_tile_excl.0.x.max(tile.0.x + 1);
+                max_tile_excl.0.y = max_tile_excl.0.y.max(tile.0.y + 1);
+                min_sample_val = min_sample_val.min(*sampled_val);
+                max_sample_val = max_sample_val.max(*sampled_val);
+                sample_values.push(*sampled_val);
+            }
+            for tile in &info.sampled_none_points {
+                min_tile.0.x = min_tile.0.x.min(tile.0.x);
+                min_tile.0.y = min_tile.0.y.min(tile.0.y);
+                max_tile_excl.0.x = max_tile_excl.0.x.max(tile.0.x + 1);
+                max_tile_excl.0.y = max_tile_excl.0.y.max(tile.0.y + 1);
+            }
+        }
     }
     if !min_sample_val.is_finite() || !max_sample_val.is_finite() {
         min_sample_val = 0.0;
@@ -109,7 +131,15 @@ fn build_river_sample_preview(
     }
     let (display_min_val, display_max_val) = robust_display_range(&mut sample_values, min_sample_val, max_sample_val);
 
-    let (sample_step_x, sample_step_y) = estimate_sample_step_tiles(&river_info.sampled_points);
+    let mut all_sampled_points: bevy::platform::collections::HashMap<GlobalTilePos, f32> =
+        bevy::platform::collections::HashMap::default();
+    for (_, _, info_opt) in &visible_regions {
+        let Some(info) = *info_opt else {
+            continue;
+        };
+        all_sampled_points.extend(info.sampled_points.iter().map(|(pos, val)| (*pos, *val)));
+    }
+    let (sample_step_x, sample_step_y) = estimate_sample_step_tiles(&all_sampled_points);
     let image_width = ((max_tile_excl.0.x - min_tile.0.x + sample_step_x - 1) / sample_step_x).max(1) as usize;
     let image_height = ((max_tile_excl.0.y - min_tile.0.y + sample_step_y - 1) / sample_step_y).max(1) as usize;
     let mut image = egui::ColorImage::new(
@@ -124,29 +154,11 @@ fn build_river_sample_preview(
         }
     };
 
-    for (tile, sampled_val) in &river_info.sampled_points {
-        let cell_x = ((tile.0.x - min_tile.0.x) / step_x).max(0) as usize;
-        let cell_y = image_height
-            .saturating_sub(1)
-            .saturating_sub(((tile.0.y - min_tile.0.y) / step_y).max(0) as usize);
-        set_cell(
-            &mut image,
-            cell_x,
-            cell_y,
-            sample_value_color(*sampled_val, min_sample_val, max_sample_val),
-        );
-    }
-    if show_none_points {
-        for tile in &river_info.sampled_none_points {
-            let cell_x = ((tile.0.x - min_tile.0.x) / step_x).max(0) as usize;
-            let cell_y = image_height
-                .saturating_sub(1)
-                .saturating_sub(((tile.0.y - min_tile.0.y) / step_y).max(0) as usize);
-            set_cell(&mut image, cell_x, cell_y, egui::Color32::from_rgb(255, 105, 180));
-        }
-    }
-    if show_river_overlay {
-        for tile in &river_info.river_tiles {
+    for (_, _, info_opt) in &visible_regions {
+        let Some(info) = *info_opt else {
+            continue;
+        };
+        for (tile, sampled_val) in &info.sampled_points {
             let cell_x = ((tile.0.x - min_tile.0.x) / step_x).max(0) as usize;
             let cell_y = image_height
                 .saturating_sub(1)
@@ -155,36 +167,75 @@ fn build_river_sample_preview(
                 &mut image,
                 cell_x,
                 cell_y,
-                egui::Color32::from_rgba_unmultiplied(30, 120, 255, 220),
+                sample_value_color(*sampled_val, min_sample_val, max_sample_val),
             );
+        }
+        if show_none_points {
+            for tile in &info.sampled_none_points {
+                let cell_x = ((tile.0.x - min_tile.0.x) / step_x).max(0) as usize;
+                let cell_y = image_height
+                    .saturating_sub(1)
+                    .saturating_sub(((tile.0.y - min_tile.0.y) / step_y).max(0) as usize);
+                set_cell(&mut image, cell_x, cell_y, egui::Color32::from_rgb(255, 105, 180));
+            }
+        }
+    }
+    if show_river_overlay {
+        for (_, offset, info_opt) in &visible_regions {
+            let Some(info) = *info_opt else {
+                continue;
+            };
+            let region_color = region_debug_color(*offset, clamped_radius);
+            for tile in &info.river_tiles {
+                let cell_x = ((tile.0.x - min_tile.0.x) / step_x).max(0) as usize;
+                let cell_y = image_height
+                    .saturating_sub(1)
+                    .saturating_sub(((tile.0.y - min_tile.0.y) / step_y).max(0) as usize);
+                set_cell(&mut image, cell_x, cell_y, region_color);
+            }
         }
     }
     if show_failed_centers {
-        for chunk in &river_info.failed_chunks {
-            let center = chunk.to_tilepos() + IVec2::new((ChunkPos::CHUNK_SIZE.x / 2) as i32, (ChunkPos::CHUNK_SIZE.y / 2) as i32);
-            let cell_x = ((center.0.x - min_tile.0.x) / step_x).max(0) as usize;
-            let cell_y = image_height
-                .saturating_sub(1)
-                .saturating_sub(((center.0.y - min_tile.0.y) / step_y).max(0) as usize);
-            set_cell(&mut image, cell_x, cell_y, egui::Color32::RED);
+        for (_, _, info_opt) in &visible_regions {
+            let Some(info) = *info_opt else {
+                continue;
+            };
+            for chunk in &info.failed_chunks {
+                let center = chunk.to_tilepos() + IVec2::new((ChunkPos::CHUNK_SIZE.x / 2) as i32, (ChunkPos::CHUNK_SIZE.y / 2) as i32);
+                let cell_x = ((center.0.x - min_tile.0.x) / step_x).max(0) as usize;
+                let cell_y = image_height
+                    .saturating_sub(1)
+                    .saturating_sub(((center.0.y - min_tile.0.y) / step_y).max(0) as usize);
+                set_cell(&mut image, cell_x, cell_y, egui::Color32::RED);
+            }
         }
     }
     if show_sources {
-        for src in &river_info.river_source_points {
-            let cell_x = ((src.0.x - min_tile.0.x) / step_x).max(0) as usize;
-            let cell_y = image_height
-                .saturating_sub(1)
-                .saturating_sub(((src.0.y - min_tile.0.y) / step_y).max(0) as usize);
-            set_cell(&mut image, cell_x, cell_y, egui::Color32::from_rgb(64, 255, 96));
+        for (_, _, info_opt) in &visible_regions {
+            let Some(info) = *info_opt else {
+                continue;
+            };
+            for src in &info.river_source_points {
+                let cell_x = ((src.0.x - min_tile.0.x) / step_x).max(0) as usize;
+                let cell_y = image_height
+                    .saturating_sub(1)
+                    .saturating_sub(((src.0.y - min_tile.0.y) / step_y).max(0) as usize);
+                set_cell(&mut image, cell_x, cell_y, egui::Color32::from_rgb(64, 255, 96));
+            }
         }
     }
     if show_mouths {
-        for mouth in &river_info.river_mouth_points {
-            let cell_x = ((mouth.0.x - min_tile.0.x) / step_x).max(0) as usize;
-            let cell_y = image_height
-                .saturating_sub(1)
-                .saturating_sub(((mouth.0.y - min_tile.0.y) / step_y).max(0) as usize);
-            set_cell(&mut image, cell_x, cell_y, egui::Color32::from_rgb(255, 230, 64));
+        for (_, _, info_opt) in &visible_regions {
+            let Some(info) = *info_opt else {
+                continue;
+            };
+            for mouth in &info.river_mouth_points {
+                let cell_x = ((mouth.0.x - min_tile.0.x) / step_x).max(0) as usize;
+                let cell_y = image_height
+                    .saturating_sub(1)
+                    .saturating_sub(((mouth.0.y - min_tile.0.y) / step_y).max(0) as usize);
+                set_cell(&mut image, cell_x, cell_y, egui::Color32::from_rgb(255, 230, 64));
+            }
         }
     }
 
@@ -198,6 +249,11 @@ fn build_river_sample_preview(
         raw_min: min_sample_val,
         raw_max: max_sample_val,
     }
+}
+
+fn region_debug_color(offset: IVec2, neighborhood_radius: i32) -> egui::Color32 {
+    let _ = (offset, neighborhood_radius);
+    egui::Color32::from_rgb(45, 160, 255)
 }
 
 #[allow(unused_parens, )]
@@ -518,6 +574,7 @@ pub fn regions_list_window(
                 ui.label(format!("Region: {} ({:?})", title_name, region_pos));
                 ui.label(format!("Entity: {:?}", region_ent));
                 ui.label(format!("Dimension: {:?}", dim_ref));
+                ui.label("River sample map shows up to a 3x3 region neighborhood, centered on this region.");
                 ui.separator();
 
                 let Some(river_debug) = river_debug.as_ref() else {
@@ -583,10 +640,12 @@ pub fn regions_list_window(
                         } else {
                             None
                         };
+                        let neighborhood_radius = 1;
                         let key = RiverSamplePreviewKey {
                             dimension_ref: *dim_ref,
                             region_pos: *region_pos,
                             revision: river_debug.revision,
+                            neighborhood_radius,
                             show_river_overlay: selected_entities.river_samples_show_river_overlay,
                             show_sources: selected_entities.river_samples_show_sources,
                             show_mouths: selected_entities.river_samples_show_mouths,
@@ -595,8 +654,10 @@ pub fn regions_list_window(
                         };
                         if river_sample_preview.key != Some(key) {
                             let preview = build_river_sample_preview(
+                                *dim_ref,
                                 *region_pos,
-                                river_info,
+                                river_debug,
+                                neighborhood_radius,
                                 selected_entities.river_samples_show_river_overlay,
                                 selected_entities.river_samples_show_sources,
                                 selected_entities.river_samples_show_mouths,
@@ -656,35 +717,58 @@ pub fn regions_list_window(
                             let cell_rect = egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(cell_w, cell_h));
                             painter.rect_stroke(cell_rect.shrink(0.5), 0.0, egui::Stroke::new(stroke, color), egui::StrokeKind::Inside);
                         };
+                        let draw_dot = |tile: IVec2, color: egui::Color32, radius: f32, painter: &egui::Painter| {
+                            let cell_x = ((tile.x - river_sample_preview.min_tile.x).max(0) / river_sample_preview.sample_step.x.max(1)) as usize;
+                            let cell_y = river_sample_preview
+                                .image_size[1]
+                                .saturating_sub(1)
+                                .saturating_sub(((tile.y - river_sample_preview.min_tile.y).max(0) / river_sample_preview.sample_step.y.max(1)) as usize);
+                            let center_x = rect.left() + (cell_x as f32 + 0.5) * cell_w;
+                            let center_y = rect.top() + (cell_y as f32 + 0.5) * cell_h;
+                            painter.circle_filled(egui::pos2(center_x, center_y), radius, color);
+                        };
                         if selected_entities.river_samples_show_region_bounds {
-                            let (base_min_chunk, base_max_chunk_excl) = region_pos.chunk_bounds();
-                            let base_min_tile = base_min_chunk.to_tilepos();
-                            let base_max_tile_excl = base_max_chunk_excl.to_tilepos();
-                            let min_local_x = ((base_min_tile.0.x - river_sample_preview.min_tile.x).max(0) / river_sample_preview.sample_step.x.max(1)) as usize;
-                            let min_local_y = ((base_min_tile.0.y - river_sample_preview.min_tile.y).max(0) / river_sample_preview.sample_step.y.max(1)) as usize;
-                            let max_local_x = ((base_max_tile_excl.0.x - river_sample_preview.min_tile.x).max(0) / river_sample_preview.sample_step.x.max(1)) as usize;
-                            let max_local_y = ((base_max_tile_excl.0.y - river_sample_preview.min_tile.y).max(0) / river_sample_preview.sample_step.y.max(1)) as usize;
-                            let region_rect = egui::Rect::from_min_max(
-                                egui::pos2(
-                                    rect.left() + min_local_x as f32 * cell_w,
-                                    rect.top() + min_local_y as f32 * cell_h,
-                                ),
-                                egui::pos2(
-                                    rect.left() + max_local_x as f32 * cell_w,
-                                    rect.top() + max_local_y as f32 * cell_h,
-                                ),
-                            );
-                            painter.rect_stroke(
-                                region_rect,
-                                0.0,
-                                egui::Stroke::new(1.0, egui::Color32::from_gray(180)),
-                                egui::StrokeKind::Inside,
-                            );
+                            for offset_y in -neighborhood_radius..=neighborhood_radius {
+                                for offset_x in -neighborhood_radius..=neighborhood_radius {
+                                    let offset = IVec2::new(offset_x, offset_y);
+                                    let draw_region_pos = RegionPos(region_pos.0 + offset);
+                                    let (base_min_chunk, base_max_chunk_excl) = draw_region_pos.chunk_bounds();
+                                    let base_min_tile = base_min_chunk.to_tilepos();
+                                    let base_max_tile_excl = base_max_chunk_excl.to_tilepos();
+                                    let min_local_x = ((base_min_tile.0.x - river_sample_preview.min_tile.x).max(0) / river_sample_preview.sample_step.x.max(1)) as usize;
+                                    let min_local_y = ((base_min_tile.0.y - river_sample_preview.min_tile.y).max(0) / river_sample_preview.sample_step.y.max(1)) as usize;
+                                    let max_local_x = ((base_max_tile_excl.0.x - river_sample_preview.min_tile.x).max(0) / river_sample_preview.sample_step.x.max(1)) as usize;
+                                    let max_local_y = ((base_max_tile_excl.0.y - river_sample_preview.min_tile.y).max(0) / river_sample_preview.sample_step.y.max(1)) as usize;
+                                    let region_rect = egui::Rect::from_min_max(
+                                        egui::pos2(
+                                            rect.left() + min_local_x as f32 * cell_w,
+                                            rect.top() + min_local_y as f32 * cell_h,
+                                        ),
+                                        egui::pos2(
+                                            rect.left() + max_local_x as f32 * cell_w,
+                                            rect.top() + max_local_y as f32 * cell_h,
+                                        ),
+                                    );
+                                    let (stroke_color, stroke_w) = if offset == IVec2::ZERO {
+                                        (egui::Color32::from_gray(210), 1.8)
+                                    } else {
+                                        (egui::Color32::from_gray(120), 1.0)
+                                    };
+                                    painter.rect_stroke(
+                                        region_rect,
+                                        0.0,
+                                        egui::Stroke::new(stroke_w, stroke_color),
+                                        egui::StrokeKind::Inside,
+                                    );
+                                }
+                            }
                         }
                         if selected_entities.river_samples_show_camera_tile
                             && let Some(camera_tile_pos) = camera_tile_in_region
                         {
-                            draw_cell(camera_tile_pos.0, egui::Color32::YELLOW, 1.5, &painter);
+                            let dot_radius = (cell_w.min(cell_h) * 0.38).clamp(2.0, 7.5);
+                            draw_dot(camera_tile_pos.0, egui::Color32::RED, dot_radius, &painter);
+                            draw_cell(camera_tile_pos.0, egui::Color32::from_rgb(255, 210, 210), 1.0, &painter);
                         }
                         render_river_sample_values_map(
                             ui,

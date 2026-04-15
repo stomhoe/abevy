@@ -1,24 +1,11 @@
 use bevy::platform::collections::HashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 
-use common::common_components::HashId;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use ::tilemap_shared::*;
 
-use crate::regioning::{    dungeoning::dungeoning_ids::{ARCHI, CHAMBERS_CORRIDORS, DRUNKWALK, MAZE, SPIRAL},
-    regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk}, regioning_sgc_components::StructuredGenConfig
-};
-
-
-pub const ADMITTED_STRUCTURE_IDS_FOR_CLAIMING: &[HashId] = &[
-    DRUNKWALK,
-    CHAMBERS_CORRIDORS,
-    MAZE,
-    SPIRAL,
-    ARCHI,
-];
-// pub const ADMITTED_STRUCTURE_IDS_FOR_CLAIMING: &[HashId] = &[
+use crate::regioning::{dungeoning::dungeoning_ids::admitted_structure_ids_for_claiming, regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk}, regioning_sgc_components::StructuredGenConfig};
 
 #[allow(unused_parens, )]
 pub fn claim_chunks_for_various_dungeon_types(
@@ -49,8 +36,9 @@ pub fn claim_chunks_for_various_dungeon_types(
             mark_skipped(offer.region_ent, offer.i);
             continue; };
 
-        if !ADMITTED_STRUCTURE_IDS_FOR_CLAIMING.contains(&structured_gen_cfg.structure_hash_id()) {
+        if !admitted_structure_ids_for_claiming().contains(&structured_gen_cfg.structure_hash_id()) {
             trace!(target: "dungeoning", "StructuredGenConfig entity {:?} is not in admitted structures, skipping", offer.structured_gen_cfg_ent);
+            mark_skipped(offer.region_ent, offer.i);
             continue;
         }
         let center_chunk = offer.start_pos;

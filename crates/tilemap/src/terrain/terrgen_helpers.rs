@@ -369,7 +369,7 @@ fn collect_branch_outputs(
     if !source_ev.filtered_op_is_placeholder() {
         return;
     }
-    match source_ev.purpose {
+    match &source_ev.purpose {
         PendingOpPurpose::ChunkTerrainGen { .. } => {
             if tiles.is_empty() {
                 return;
@@ -382,7 +382,7 @@ fn collect_branch_outputs(
                         dimension_ref: source_ev.dimension_ref(),
                         gpos,
                     },
-                    purpose: source_ev.purpose,
+                    purpose: source_ev.purpose.clone(),
                 },
                 oplist_size,
                 dimension_hash,
@@ -393,7 +393,7 @@ fn collect_branch_outputs(
                 return;
             }
             result.biome_tag_samples.push(TerrGenBiomeTagSample {
-                macro_chunk_ent,
+                macro_chunk_ent: *macro_chunk_ent,
                 sample_chunk_pos: ChunkPos::from(gpos),
                 biome_tags: biome_tags.to_vec(),
             });
@@ -512,15 +512,15 @@ fn spawn_bifurcation_frames(
 }
 
 fn mark_pending_op_complete(source_ev: &PendingOp, result: &mut TerrGenOpTaskResult) {
-    match source_ev.purpose {
+    match &source_ev.purpose {
         PendingOpPurpose::ChunkTerrainGen { chunk_ent } => {
-            if chunk_ent == Entity::PLACEHOLDER {
+            if *chunk_ent == Entity::PLACEHOLDER {
                 return;
             }
-            result.completed_chunk_gpos.push((chunk_ent, source_ev.gpos()));
+            result.completed_chunk_gpos.push((*chunk_ent, source_ev.gpos()));
         }
         PendingOpPurpose::MacroChunkBiomeSampling { macro_chunk_ent } => {
-            result.completed_macro_chunk_biome_samples.push(macro_chunk_ent);
+            result.completed_macro_chunk_biome_samples.push(*macro_chunk_ent);
         }
         PendingOpPurpose::ValueProbe(_) => {}
     }

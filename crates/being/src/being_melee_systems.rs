@@ -12,6 +12,10 @@ use crate::{being_interaction_zone_helper::resolve_being_interaction_zone, being
 
 const TEMP_AI_MELEE_ATTACK_COOLDOWN: Duration = Duration::from_secs(1);
 
+fn should_log_info(attacker_ent: Entity, local_human_controlled_query: &Query<(), LocalHumanControlled, >) -> bool {
+    local_human_controlled_query.get(attacker_ent).is_ok()
+}
+
 #[allow(unused_parens, )]
 pub fn make_hunted_be_melee_targets(
     mut hunted_beings: Query<
@@ -52,7 +56,7 @@ pub fn emit_ai_melee_attack_requests(
     >,
     direction_query: Query<&CardinalDirection, (),>,
     target_pos_query: Query<
-        (&DimensionRef, &GlobalTilePos, ),
+        (&DimensionRef, &GlobalTransform, ),
         (With<Being>, ),
     >,
     bit_map: Res<BeingInstTemplateEntityMap>,
@@ -100,7 +104,7 @@ pub fn emit_ai_melee_attack_requests(
             if target_ent == attacker_ent {
                 continue;
             }
-            let Ok((target_dim, target_gpos, )) = target_pos_query.get(target_ent) else {
+            let Ok((target_dim, target_transform, )) = target_pos_query.get(target_ent) else {
                 continue;
             };
             if target_dim != attacker_dim {
@@ -119,13 +123,15 @@ pub fn emit_ai_melee_attack_requests(
                 &race_map,
                 &zone_sources,
             );
-            let target_pos_px = target_gpos.to_pixelpos();
-            if !target_collision_zone.intersects_zone(
+            let target_pos_px = target_transform.translation().xy();
+            if !target_collision_zone.intersects_zone_with_tolerance(
                 *target_direction,
                 target_pos_px,
                 &melee_zone,
                 *attacker_direction,
                 attacker_pos,
+                0.15,
+                true,
             ) {
                 continue;
             }
@@ -140,12 +146,6 @@ pub fn emit_ai_melee_attack_requests(
         local_requests.push(LocalMeleeAttackRequest { being_ent: attacker_ent });
         cooldown.set_duration(TEMP_AI_MELEE_ATTACK_COOLDOWN);
         cooldown.reset();
-        debug!(
-            target: BEING_MELEE_SYSTEMS,
-            "AI melee request queued for {:?} at dim {:?}",
-            attacker_ent,
-            attacker_dim
-        );
     }
 
     local_cooldowns.retain(|attacker_ent, _| ai_beings_query.get(*attacker_ent).is_ok());
@@ -155,11 +155,7 @@ pub fn emit_ai_melee_attack_requests(
 #[allow(unused_parens, )]
 pub fn apply_melee_attack(
     mut melee_attacks: MessageReader<LocalMeleeAttackRequest>,
-    beings_query: Query<
-        (
-            &DimensionRef,
-            &GlobalTransform,
-        ),
+    beings_query: Query<(&DimensionRef, &GlobalTransform, Has<HumanControlled>, Has<ComputedLocally>),
         (With<Being>, ),
     >,
     bit_map: Res<BeingInstTemplateEntityMap>,
@@ -176,7 +172,7 @@ pub fn apply_melee_attack(
     const MELEE_DAMAGE: f32 = 10.0;
     for melee in melee_attacks.read() {
         let attacker_ent = melee.being_ent;
-        let Ok((&attacker_dim, attacker_transform, )) =
+        let Ok((&attacker_dim, &attacker_transform, attacker_human_controlled, attacker_computed_locally)) =
             beings_query.get(attacker_ent)
         else {
             info!(target: BEING_MELEE_SYSTEMS, "Melee ignored: attacker {:?} not found", attacker_ent);
@@ -206,13 +202,15 @@ pub fn apply_melee_attack(
         let mut hit_beings = 0usize;
         let mut hit_tiles = 0usize;
 
-        info!(
-            target: BEING_MELEE_SYSTEMS,
-            "Melee started by {:?} at dim {:?}, facing {:?}",
-            attacker_ent,
-            attacker_dim,
-            attacker_direction
-        );
+        if attacker_human_controlled && attacker_computed_locally {
+            info!(
+                target: BEING_MELEE_SYSTEMS,
+                "Melee started by {:?} at dim {:?}, facing {:?}",
+                attacker_ent,
+                attacker_dim,
+                attacker_direction
+            );
+        }
 
         candidate_tile_gposes.clear();
         melee_zone.gather_zone_positions(
@@ -237,7 +235,7 @@ pub fn apply_melee_attack(
                 if target_ent == attacker_ent || !hit_entities.insert(target_ent) {
                     continue;
                 }
-                let Ok((_, target_transform, )) =
+                let Ok((_, target_transform, ..)) =
                     beings_query.get(target_ent)
                 else {
                     continue;
@@ -257,12 +255,14 @@ pub fn apply_melee_attack(
                     &race_map,
                     &zone_sources,
                 );
-                let hit = collision_zone.intersects_zone(
+                let hit = collision_zone.intersects_zone_with_tolerance(
                     target_direction,
                     target_pos_px,
                     &melee_zone,
                     attacker_direction,
                     attacker_pos,
+                    0.15,
+                    true,
                 );
                 if !hit {
                     continue;
@@ -275,7 +275,9 @@ pub fn apply_melee_attack(
                 });
                 hit_beings += 1;
                 hit_done = true;
-                info!(target: BEING_MELEE_SYSTEMS, "Melee hit being {:?}", target_ent);
+                if attacker_human_controlled && attacker_computed_locally {
+                    info!(target: BEING_MELEE_SYSTEMS, "Melee hit being {:?}", target_ent);
+                }
                 break;
             }
             if hit_done {
@@ -331,25 +333,29 @@ pub fn apply_melee_attack(
                 });
                 hit_tiles += 1;
                 hit_done = true;
-                info!(
-                    target: BEING_MELEE_SYSTEMS,
-                    "Melee hit tile instance {:?} (templ {:?})",
-                    target_ent,
-                    tile_templ
-                );
+                if attacker_human_controlled && attacker_computed_locally {
+                    info!(
+                        target: BEING_MELEE_SYSTEMS,
+                        "Melee hit tile instance {:?} (templ {:?})",
+                        target_ent,
+                        tile_templ
+                    );
+                }
                 break;
             }
         }
 
-        if hit_beings == 0 && hit_tiles == 0 {
-            info!(target: BEING_MELEE_SYSTEMS, "Melee ended: no valid receiver hit");
-        } else {
-            info!(
-                target: BEING_MELEE_SYSTEMS,
-                "Melee ended: {} being hit(s), {} tile hit(s)",
-                hit_beings,
-                hit_tiles
-            );
+        if attacker_human_controlled && attacker_computed_locally {
+            if hit_beings == 0 && hit_tiles == 0 {
+                info!(target: BEING_MELEE_SYSTEMS, "Melee ended: no valid receiver hit");
+            } else {
+                info!(
+                    target: BEING_MELEE_SYSTEMS,
+                    "Melee ended: {} being hit(s), {} tile hit(s)",
+                    hit_beings,
+                    hit_tiles
+                );
+            }
         }
     }
     incoming_damage_writer.write_batch(incoming_damage_messages.drain(..));

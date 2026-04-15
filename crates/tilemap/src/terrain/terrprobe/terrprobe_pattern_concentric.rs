@@ -53,15 +53,16 @@ pub fn process_concentric_pattern(
         let sample_count = ((circumference / sample_spacing).ceil() as u16).max(1);
         for sample_i in 0..sample_count {
             let angle = 2.0 * PI * sample_i as f32 / sample_count as f32;
+            let gpos = pos_search.search_start_pos
+                + GlobalTilePos::from(IVec2::new(
+                    (radius * angle.cos()) as i32,
+                    (radius * angle.sin()) as i32,
+                ));
             new_pending_ops.push(PendingOp {
                 oplist: root_oplist,
                 input: PendingOpInput {
                     dimension_ref: pos_search.dimension_ref,
-                    gpos: pos_search.search_start_pos
-                        + GlobalTilePos::from(IVec2::new(
-                            (radius * angle.cos()) as i32,
-                            (radius * angle.sin()) as i32,
-                        )),
+                    gpos,
                 },
                 purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {
                     filtered_op,

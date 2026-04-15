@@ -8473,6 +8473,7 @@ dependencies = [
  "debug_unwraps",
  "fnl",
  "game_common",
+ "inventory",
  "item_shared",
  "noiz",
  "paste",

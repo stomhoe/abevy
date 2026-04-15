@@ -1,5 +1,5 @@
 
-IMPORTANT: when implementing a SystemParam structonly cargo check crates you altered.
+only cargo check crates you altered.
 never create .md files unless instructed. avoid creating code with redundancies, avoid defining an excessive amount of new bevy Components or Resources (verbosity). if you do so, put them into their respective _components or _resources or _seris files. follow preexistent code style, avoid definying queries which conflict with each other. 
 if a queried component has no fields, use Has<ComponentName> instead of Option<&ComponentName>, the former returns a bool directly. Try to make code easy to understand. 
 Prefer let Ok/Some(...) else {continue;} over if let Ok/Some(...){}. Use
@@ -68,3 +68,5 @@ IMPORTANT: when implementing a #[derive(SystemParam)] struct, take a look at pre
 NEVER ADD .chain() or .before() yourself when registering systems unless it is to specifically fix a bug.
 
 AFTER YOUR CHANGES, MAKE SURE THAT THERE AREN'T DUPLICATED QUERIES QUERYING FOR THE SAME COMPONENT
+
+

@@ -94,7 +94,7 @@ fn build_filter() -> String {
         (log_targets::BEING_TEMPLATE_INIT, INFO),
         (log_targets::BEING_BUILD, DEBUG),
         (log_targets::BEING_SYSTEM, DEBUG),
-        (log_targets::BEING_MELEE_SYSTEMS, WARN),
+        (log_targets::BEING_MELEE_SYSTEMS, DEBUG),
         (log_targets::BEING_MELEE_DEBUG, TRACE),
         (log_targets::FACTION_SYSTEM, WARN),
         (log_targets::ENTITY_MAP_SYSTEM, DEBUG),

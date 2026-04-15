@@ -4,15 +4,7 @@ use bevy::{
 };
 use tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos, RegionPos};
 
-#[derive(Component, Debug, Clone, Copy)]
-pub struct RiverProbeRequest {
-    pub region_ent: Entity,
-    pub dimension_ref: DimensionRef,
-    pub sgc_ent: Entity,
-    pub offer_i: u64,
-    pub region_pos: RegionPos,
-    pub start_chunk: ChunkPos,
-}
+
 
 #[derive(Debug, Clone, Default)]
 pub struct RiverRegionDebugInfo {
@@ -81,58 +73,3 @@ impl RiverDebugData {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct RiverRegisteredOffer {
-    pub region_ent: Entity,
-    pub sgc_ent: Entity,
-    pub offer_i: u64,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct RiverRegionPlan {
-    pub claimed_chunks: HashSet<ChunkPos>,
-    pub river_tiles: HashSet<GlobalTilePos>,
-    pub river_source_points: HashSet<GlobalTilePos>,
-    pub river_mouth_points: HashSet<GlobalTilePos>,
-}
-
-#[derive(Resource, Debug, Default)]
-pub struct RiverPlans {
-    pub registered_offers: HashMap<(DimensionRef, RegionPos), RiverRegisteredOffer>,
-    pub plans_by_region: HashMap<(DimensionRef, RegionPos), RiverRegionPlan>,
-}
-
-impl RiverPlans {
-    pub fn plan(
-        &self,
-        dimension_ref: DimensionRef,
-        region_pos: RegionPos,
-    ) -> Option<&RiverRegionPlan> {
-        self.plans_by_region.get(&(dimension_ref, region_pos))
-    }
-
-    pub fn register_offer(
-        &mut self,
-        dimension_ref: DimensionRef,
-        region_pos: RegionPos,
-        offer: RiverRegisteredOffer,
-    ) -> Option<RiverRegisteredOffer> {
-        self.registered_offers
-            .insert((dimension_ref, region_pos), offer)
-    }
-
-    pub fn registered_offer(
-        &self,
-        dimension_ref: DimensionRef,
-        region_pos: RegionPos,
-    ) -> Option<RiverRegisteredOffer> {
-        self.registered_offers
-            .get(&(dimension_ref, region_pos))
-            .copied()
-    }
-
-    pub fn remove_region(&mut self, dimension_ref: DimensionRef, region_pos: RegionPos) {
-        self.registered_offers.remove(&(dimension_ref, region_pos));
-        self.plans_by_region.remove(&(dimension_ref, region_pos));
-    }
-}

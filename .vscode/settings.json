@@ -10,6 +10,6 @@
   "workbench.tree.renderIndentGuides": "none",
   "editor.stickyScroll.enabled": false,
   "window.menuBarVisibility": "compact",
-  "workbench.activityBar.location": "hidden"
+  "workbench.activityBar.location": "default"
 
 }

@@ -5,5 +5,5 @@ let continentness = *(continentness, elf_diff)
 let continent_threshold = 0.47
 out = idxmax(continent_threshold, continentness)
 
-bif "" -> [ocean]
+bif ocean -> []
 bif elf2 -> []

@@ -135,10 +135,32 @@ impl InteractionZones {
         other_direction: CardinalDirection,
         other_anchor_transf: Vec2,
     ) -> bool {
+        self.interaction_zones_intersect_with_tolerance(
+            zone_id,
+            other_zone,
+            anchor_direction,
+            anchor_transf,
+            other_direction,
+            other_anchor_transf,
+            0.0,
+            false,
+        )
+    }
+    pub fn interaction_zones_intersect_with_tolerance(
+        &self,
+        zone_id: HashId,
+        other_zone: &InteractionZone,
+        anchor_direction: CardinalDirection,
+        anchor_transf: Vec2,
+        other_direction: CardinalDirection,
+        other_anchor_transf: Vec2,
+        tolerance: f32,
+        front_only: bool,
+    ) -> bool {
         let Some(zone) = self.0.get(zone_id).ok() else {
             return false;
         };
-        zone.intersects_zone(anchor_direction, anchor_transf, other_zone, other_direction, other_anchor_transf)
+        zone.intersects_zone_with_tolerance(anchor_direction, anchor_transf, other_zone, other_direction, other_anchor_transf, tolerance, front_only)
     }
     pub fn get_collision_mask(&self) -> Option<&InteractionZone> {
         self.0.get(Self::COLLISION).ok()
@@ -245,7 +267,7 @@ impl InteractionZone {
         consumer_transf: Vec2,
     ) -> bool {
         let _ = flip;
-        self.contains_gpos(direction, anchor_transf.into(), consumer_transf.into())
+        self.contains_transf(direction, anchor_transf, consumer_transf, 0.0, false)
     }
 
     pub fn intersects_zone(
@@ -256,11 +278,32 @@ impl InteractionZone {
         other_direction: CardinalDirection,
         other_anchor_transf: Vec2,
     ) -> bool {
+        self.intersects_zone_with_tolerance(
+            anchor_direction,
+            anchor_transf,
+            other_zone,
+            other_direction,
+            other_anchor_transf,
+            0.0,
+            false,
+        )
+    }
+
+    pub fn intersects_zone_with_tolerance(
+        &self,
+        anchor_direction: CardinalDirection,
+        anchor_transf: Vec2,
+        other_zone: &InteractionZone,
+        other_direction: CardinalDirection,
+        other_anchor_transf: Vec2,
+        tolerance: f32,
+        front_only: bool,
+    ) -> bool {
+        let tolerance = tolerance.max(0.0);
         let mut zone_positions = Vec::with_capacity(self.offset_positions.len() + self.radius_paired_w_offsets.len());
         self.gather_zone_positions(anchor_direction, anchor_transf, &mut zone_positions);
-        let other_anchor_gpos: GlobalTilePos = other_anchor_transf.into();
         for zone_pos in zone_positions {
-            if other_zone.contains_gpos(other_direction, other_anchor_gpos, zone_pos) {
+            if other_zone.contains_transf(other_direction, other_anchor_transf, zone_pos.to_pixelpos(), if front_only { 0.0 } else { tolerance }, front_only) {
                 return true;
             }
         }
@@ -296,24 +339,39 @@ impl InteractionZone {
         out.as_slice()
     }
 
-    fn contains_gpos(
+    fn contains_transf(
         &self,
         direction: CardinalDirection,
-        anchor_gpos: GlobalTilePos,
-        checked_pos: GlobalTilePos,
+        anchor_transf: Vec2,
+        checked_transf: Vec2,
+        tolerance: f32,
+        front_only: bool,
     ) -> bool {
+        let tolerance = tolerance.max(0.0);
+        let tile_tolerance = GlobalTilePos::TILE_SIZE_PXS.x.max(1) as f32 * tolerance;
+        let forward = direction.to_dir_vec().as_vec2();
+        let side = Vec2::new(-forward.y, forward.x);
         for &offset_pos in &self.offset_positions {
-            let transformed_pos = anchor_gpos + rotate_gpos_offset(offset_pos, direction);
-            if transformed_pos == checked_pos {
+            let transformed_pos = anchor_transf + rotate_vec2_offset(offset_pos.to_pixelpos(), direction);
+            let delta = checked_transf - transformed_pos;
+            if delta.length() <= tile_tolerance {
                 return true;
+            }
+            if front_only && tolerance > 0.0 {
+                let forward_distance = delta.dot(forward);
+                let side_distance = delta.dot(side).abs();
+                if forward_distance >= 0.0
+                    && forward_distance <= tile_tolerance
+                    && side_distance <= f32::EPSILON
+                {
+                    return true;
+                }
             }
         }
 
-        let anchor_transf = anchor_gpos.to_pixelpos();
-        let checked_transf = checked_pos.to_pixelpos();
         for &(radius, offset) in &self.radius_paired_w_offsets {
             let pos = anchor_transf + rotate_vec2_offset(offset, direction);
-            if pos.distance(checked_transf) <= radius {
+            if pos.distance(checked_transf) <= radius + (radius * tolerance) {
                 return true;
             }
         }

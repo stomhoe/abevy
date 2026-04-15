@@ -68,6 +68,9 @@ impl GlobalTilePos {
         let delta = (other.0 - self.0).abs();
         (delta.x + delta.y) as f32
     }
+    pub fn euclidean_tile_distance(&self, other: GlobalTilePos) -> f32 {
+        (other.0 - self.0).as_vec2().length()
+    }
     pub fn direct_chase_dir(
         &self,
         target_pos: GlobalTilePos,

@@ -24,7 +24,7 @@ let desert_diff = remap(desert_diff, islanddiff_input_min, islanddiff_input_max,
 
 out = idxmaxislands(0.4, normal_tect, elf_tect, arctic_tect, desert_tect)
 
-bif "" -> [ocean]
+bif ocean -> []
 bif normal1 -> []
 bif elf1 -> []
 bif arctic1 -> []

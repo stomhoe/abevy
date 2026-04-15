@@ -15,6 +15,12 @@ use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 use super::super::dungeoning_ids::MAZE;
 use super::super::dungeoning_utils::{carve_external_wall_doorways, extend_occupied_gpos, ExternalDoorwayConfig, seal_structure_border_band};
 
+inventory::submit! {
+    crate::regioning::dungeoning::dungeoning_ids::StructureGeneratorDescriptor {
+        structure_hash_id: MAZE,
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum ShapeType {
     Circle,

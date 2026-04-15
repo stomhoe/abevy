@@ -14,7 +14,7 @@ use std::mem::take;
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use tilemap_shared::*;
 
-use crate::regioning::natural::{RiverDebugData, RiverPlans};
+use crate::regioning::natural::{RiverDebugData, };
 use crate::regioning::regioning_sgc_seris::load_structure_generation_settings_seri_defs;
 use crate::terrain::terrgen_resources::TerrGenDisabledGposByChunk;
 use crate::{
@@ -248,7 +248,6 @@ pub fn advance_i_on_claimlist_timeout(
         (),
     >,
     time: Res<Time>,
-    river_plans: Res<RiverPlans>,
     mut recheck_writer: MessageWriter<RecheckRegion>,
 ) {
     let mut recheck = Vec::new();
@@ -256,13 +255,6 @@ pub fn advance_i_on_claimlist_timeout(
     query.iter_mut().for_each(
         |(region_ent, mut claimlist, state, &dimension_ref, &region_pos)| {
             if *state != RegionState::OfferingChunks {
-                return;
-            }
-            if river_plans
-                .registered_offer(dimension_ref, region_pos)
-                .is_some_and(|offer| offer.offer_i == claimlist.processed_up_to_i as u64)
-            {
-                claimlist.advance_timer.reset();
                 return;
             }
             claimlist.advance_timer.tick(time.delta());
@@ -719,14 +711,24 @@ pub fn on_region_despawn_remove_from_loaded_regions(
     region_query: Query<(&DimensionRef, &RegionPos), (common::AnyDisabling)>,
     mut loaded_regions: ResMut<LoadedRegions>,
     mut prioritized_per_region: ResMut<PrioritizedPerRegion>,
-    mut river_debug: ResMut<RiverDebugData>,
-    mut river_plans: ResMut<RiverPlans>,
+    mut blocked_terrgen_gpos: ResMut<TerrGenDisabledGposByChunk>,
 ) {
     let Ok((&dimension_ref, &region_pos)) = region_query.get(trig.entity) else {
         return;
     };
-    river_debug.remove_region(dimension_ref, region_pos);
-    river_plans.remove_region(dimension_ref, region_pos);
+
+    // Region-planned terrgen disable masks are persisted in a global chunk map.
+    // Remove the region's chunk entries on region despawn to avoid stale blocking
+    // when the region is later recreated and regenerated.
+    let (min_chunk, max_chunk_excl) = region_pos.chunk_bounds();
+    for y in min_chunk.y()..max_chunk_excl.y() {
+        for x in min_chunk.x()..max_chunk_excl.x() {
+            blocked_terrgen_gpos
+                .0
+                .remove(&(dimension_ref, ChunkPos::new(x, y)));
+        }
+    }
+
     let Some(region_ent) = loaded_regions.0.get(&(dimension_ref, region_pos)) else {
         return;
     };

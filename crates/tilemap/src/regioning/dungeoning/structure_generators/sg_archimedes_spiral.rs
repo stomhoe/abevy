@@ -16,6 +16,12 @@ use super::super::dungeoning_ids::ARCHI;
 use super::super::dungeoning_utils::{extend_occupied_gpos, resolve_sampled_tile_entity_from_sampler, seal_structure_border_band};
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 
+inventory::submit! {
+    crate::regioning::dungeoning::dungeoning_ids::StructureGeneratorDescriptor {
+        structure_hash_id: ARCHI,
+    }
+}
+
 #[allow(unused_parens, )]
 pub fn archimedes_spiral_building_system(
     mut reader: MessageReader<SgcPrepareTilesOrder>,

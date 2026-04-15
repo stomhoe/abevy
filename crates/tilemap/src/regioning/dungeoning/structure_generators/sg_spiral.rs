@@ -18,6 +18,12 @@ use super::super::dungeoning_carve_helpers::carve_room_circle;
 use super::super::dungeoning_ids::SPIRAL;
 use super::super::dungeoning_utils::{carve_external_wall_doorways, extend_occupied_gpos, ExternalDoorwayConfig, seal_structure_border_band};
 
+inventory::submit! {
+    crate::regioning::dungeoning::dungeoning_ids::StructureGeneratorDescriptor {
+        structure_hash_id: SPIRAL,
+    }
+}
+
 #[allow(unused_parens, )]
 pub fn spiral_dungeon_building_system(
     mut reader: MessageReader<SgcPrepareTilesOrder>,

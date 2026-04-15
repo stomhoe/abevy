@@ -2,6 +2,7 @@ use crate::being_nav::AiNavGrids;
 use ::being_shared::*;
 use bevy::{ecs::system::SystemParam, prelude::*};
 use common::log_targets::BEING_SYSTEM;
+use game_common::Dead;
 use game_common::game_common_components::TemplEntiRef;
 use ::tilemap_shared::{DimensionRef, GlobalTilePos};
 
@@ -31,6 +32,7 @@ pub struct FightOrFlightReactionQueries<'w, 's> {
     fighting_style_query: Query<'w, 's, &'static FightingStyle>,
     pack_templ_ref_query: Query<'w, 's, &'static TemplEntiRef>,
     hunting_query: Query<'w, 's, &'static Hunting>,
+    dead_query: Query<'w, 's, Has<Dead>, >,
     squad_member_of_query: Query<'w, 's, &'static SquadMemberOf>,
     squad_members_query: Query<'w, 's, &'static SquadMembers>,
     position_query: Query<'w, 's, (&'static DimensionRef, &'static GlobalTilePos)>,
@@ -133,10 +135,6 @@ fn current_hp_ratio(
         return 1.0;
     }
     (curr_hp / total_hp).clamp(0.0, 1.0)
-}
-
-fn euclidean_dist(a: GlobalTilePos, b: GlobalTilePos) -> f32 {
-    (a.0 - b.0).as_vec2().length()
 }
 
 fn speed_ratio_over_attacker(
@@ -285,36 +283,19 @@ fn ensure_counterattack(
     cmd.entity(being_ent).try_insert(hunting);
 }
 
-fn should_preserve_current_hunt_for_pack_counterattack(
+fn should_preserve_current_hunt_for_reaction(
     being_ent: Entity,
     attacker_ent: Entity,
     current_hunting: &Hunting,
     queries: &FightOrFlightReactionQueries,
     grids: &AiNavGrids,
 ) -> bool {
-    if !current_hunting.retaliating {
-        return false;
-    }
-
     let Some((being_dim, being_pos)) = queries.position_query.get(being_ent).ok() else {
         return false;
     };
     let Some(being_dim_ent) = queries.dim_map.0.get_opt(being_dim.0).copied() else {
         return false;
     };
-
-    let Some((attacker_dim, attacker_pos)) = queries.position_query.get(attacker_ent).ok() else {
-        return false;
-    };
-    if attacker_dim != being_dim {
-        return false;
-    }
-    let Some(attacker_dim_ent) = queries.dim_map.0.get_opt(attacker_dim.0).copied() else {
-        return false;
-    };
-    if attacker_dim_ent != being_dim_ent {
-        return false;
-    }
 
     let Some((current_prey_dim, current_prey_pos)) = queries.position_query.get(current_hunting.prey).ok() else {
         return false;
@@ -329,11 +310,28 @@ fn should_preserve_current_hunt_for_pack_counterattack(
         return false;
     }
 
+    if queries.dead_query.get(current_hunting.prey).is_ok_and(|is_dead| is_dead) {
+        return false;
+    }
+
     if !grids.can_pathfind_between(*being_pos, *current_prey_pos, *being_dim) {
         return false;
     }
 
-    euclidean_dist(*being_pos, *current_prey_pos) <= euclidean_dist(*being_pos, *attacker_pos)
+    let Some((attacker_dim, attacker_pos)) = queries.position_query.get(attacker_ent).ok() else {
+        return true;
+    };
+    if attacker_dim != being_dim {
+        return true;
+    }
+    let Some(attacker_dim_ent) = queries.dim_map.0.get_opt(attacker_dim.0).copied() else {
+        return true;
+    };
+    if attacker_dim_ent != being_dim_ent {
+        return true;
+    }
+
+    being_pos.euclidean_tile_distance(*current_prey_pos) <= being_pos.euclidean_tile_distance(*attacker_pos)
 }
 
 fn apply_reaction_to_being(
@@ -387,13 +385,11 @@ fn apply_reaction_to_being(
         return;
     }
 
-    if matches!(resolved.source_kind, FightOrFlightSourceKind::Pack)
-        && let Some(current_hunting) = queries.hunting_query.get(being_ent).ok()
-    {
-        if should_preserve_current_hunt_for_pack_counterattack(being_ent, attacker_ent, current_hunting, queries, grids) {
+    if let Some(current_hunting) = queries.hunting_query.get(being_ent).ok() {
+        if should_preserve_current_hunt_for_reaction(being_ent, attacker_ent, current_hunting, queries, grids) {
             trace!(
                 target: BEING_SYSTEM,
-                "Pack reaction kept current hunt for {:?}: current prey {:?} is retaliating and closer than attacker {:?}",
+                "Retained current hunt for {:?}: current prey {:?} stays over attacker {:?}",
                 being_ent,
                 current_hunting.prey,
                 attacker_ent
@@ -403,7 +399,7 @@ fn apply_reaction_to_being(
 
         trace!(
             target: BEING_SYSTEM,
-            "Pack reaction retargeted {:?} from {:?} to attacker {:?}",
+            "Retargeted hunt for {:?} from {:?} to attacker {:?}",
             being_ent,
             current_hunting.prey,
             attacker_ent

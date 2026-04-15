@@ -20,6 +20,12 @@ use super::super::dungeoning_ids::CHAMBERS_CORRIDORS;
 use super::super::dungeoning_utils::{carve_external_wall_doorways, extend_occupied_gpos, ExternalDoorwayConfig, seal_structure_border_band};
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 
+inventory::submit! {
+    crate::regioning::dungeoning::dungeoning_ids::StructureGeneratorDescriptor {
+        structure_hash_id: CHAMBERS_CORRIDORS,
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Room {
     x: i32,

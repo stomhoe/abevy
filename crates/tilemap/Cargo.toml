@@ -40,5 +40,6 @@ bitvec = { workspace = true }
 paste = { workspace = true }
 smallvec = { workspace = true }
 avian2d = { workspace = true }
+inventory = { workspace = true }
 
 noiz = { workspace = true }

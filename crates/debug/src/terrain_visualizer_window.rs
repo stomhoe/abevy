@@ -276,11 +276,11 @@ fn render_region_bounds_and_camera_marker(
     let image_h = preview.image_size[1].max(1) as f32;
 
     let map_x = |tile_x: i32| rect.left() + (((tile_x - min_tile.x) as f32 / step_x) / image_w) * rect.width();
-    let map_y = |tile_y: i32| rect.top() + (((tile_y - min_tile.y) as f32 / step_y) / image_h) * rect.height();
+    let map_y = |tile_y: i32| rect.bottom() - (((tile_y - min_tile.y) as f32 / step_y) / image_h) * rect.height();
 
     let region_rect = egui::Rect::from_min_max(
-        egui::pos2(map_x(base_min_tile.x), map_y(base_min_tile.y)),
-        egui::pos2(map_x(base_max_tile_excl.x), map_y(base_max_tile_excl.y)),
+        egui::pos2(map_x(base_min_tile.x), map_y(base_max_tile_excl.y)),
+        egui::pos2(map_x(base_max_tile_excl.x), map_y(base_min_tile.y)),
     );
     painter.rect_stroke(
         region_rect,

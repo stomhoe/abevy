@@ -69,7 +69,7 @@ pub struct SuitablePosFound {
     pub is_last: bool,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone)]
 pub struct SampledValues {
     pub values: Vec<(GlobalTilePos, Option<f32>)>,
 }
