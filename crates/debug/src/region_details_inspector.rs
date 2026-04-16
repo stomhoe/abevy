@@ -3,7 +3,6 @@ use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
 
 use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
-use ::tilemap_shared::RegionPos;
 
 #[allow(unused_parens)]
 pub fn region_details_inspector(world: &mut World) {
@@ -41,12 +40,9 @@ pub fn region_details_inspector(world: &mut World) {
         .vscroll(true)
         .show(egui_context.get_mut(), |ui| {
             if let Ok(entity_ref) = world.get_entity(selected_region_entity) {
-                let mut title = "Region".to_string();
+                let mut title = "".to_string();
                 if let Some(name) = entity_ref.get::<Name>() {
                     title = format!("{} ({})", title, name);
-                }
-                if let Some(region_pos) = entity_ref.get::<RegionPos>() {
-                    title = format!("{} [{}, {}]", title, region_pos.0.x, region_pos.0.y);
                 }
                 ui.heading(title);
             }

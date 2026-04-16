@@ -347,7 +347,7 @@ fn build_terrain_preview(sampled_values: &SampledValues) -> Option<TerrainPrevie
     let mut min_sample_val = f32::INFINITY;
     let mut max_sample_val = f32::NEG_INFINITY;
     let mut sample_values = Vec::with_capacity(sampled_values.values.len());
-    for &(sample_pos, sample_val_opt) in &sampled_values.values {
+    for (sample_pos, sample_val_opt) in sampled_values.iter() {
         min_tile.0.x = min_tile.0.x.min(sample_pos.0.x);
         min_tile.0.y = min_tile.0.y.min(sample_pos.0.y);
         max_tile_excl.0.x = max_tile_excl.0.x.max(sample_pos.0.x + 1);
@@ -376,7 +376,7 @@ fn build_terrain_preview(sampled_values: &SampledValues) -> Option<TerrainPrevie
             img.pixels[cy * width + cx] = color;
         }
     };
-    for &(sample_pos, sample_val_opt) in &sampled_values.values {
+    for (sample_pos, sample_val_opt) in sampled_values.iter() {
         let Some(sample_val) = sample_val_opt else {
             continue;
         };
@@ -431,8 +431,8 @@ fn sample_value_color(value: f32, min_val: f32, max_val: f32) -> egui::Color32 {
 }
 
 fn estimate_sample_step_tiles(sampled_values: &SampledValues) -> (i32, i32) {
-    let mut xs: Vec<i32> = sampled_values.values.iter().map(|(p, _)| p.0.x).collect();
-    let mut ys: Vec<i32> = sampled_values.values.iter().map(|(p, _)| p.0.y).collect();
+    let mut xs: Vec<i32> = sampled_values.iter().map(|(p, _)| p.0.x).collect();
+    let mut ys: Vec<i32> = sampled_values.iter().map(|(p, _)| p.0.y).collect();
     xs.sort_unstable();
     ys.sort_unstable();
     xs.dedup();

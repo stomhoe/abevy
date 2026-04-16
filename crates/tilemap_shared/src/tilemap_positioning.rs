@@ -126,7 +126,7 @@ impl_position_conversions!(MacrochunkPos);
 
 
 impl MacrochunkPos {
-    pub const SIZE_IN_CHUNKS: ChunkPos = ChunkPos::splat(8);
+    pub const SIZE_IN_CHUNKS: ChunkPos = ChunkPos::splat(16);
     pub fn chunk_bounds(&self) -> (ChunkPos, ChunkPos) {
         let min = ChunkPos(self.0 * Self::SIZE_IN_CHUNKS.0);
         let max = ChunkPos((self.0 + IVec2::ONE) * Self::SIZE_IN_CHUNKS.0);

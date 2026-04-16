@@ -1,5 +1,5 @@
 
-only cargo check crates you altered.
+Only run cargo check on crates you altered.
 never create .md files unless instructed. avoid creating code with redundancies, avoid defining an excessive amount of new bevy Components or Resources (verbosity). if you do so, put them into their respective _components or _resources or _seris files. follow preexistent code style, avoid definying queries which conflict with each other. 
 if a queried component has no fields, use Has<ComponentName> instead of Option<&ComponentName>, the former returns a bool directly. Try to make code easy to understand. 
 Prefer let Ok/Some(...) else {continue;} over if let Ok/Some(...){}. Use
@@ -70,3 +70,4 @@ NEVER ADD .chain() or .before() yourself when registering systems unless it is t
 AFTER YOUR CHANGES, MAKE SURE THAT THERE AREN'T DUPLICATED QUERIES QUERYING FOR THE SAME COMPONENT
 
 
+IMPORTANT: PREFER LOUD FAILURE (error!'s) OVER SOFT DEGRADATION (HACKY PATCHES TO FORCE A SUCCESS SILENTLY IN AN INNEFICIENT OR CODE-SMELLY MANNER)

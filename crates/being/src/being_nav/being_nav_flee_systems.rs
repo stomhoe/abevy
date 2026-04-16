@@ -251,6 +251,9 @@ pub fn update_goto_from_fleeing(
         };
         let mut primary_threat: Option<(Entity, GlobalTilePos, f32)> = None;
         for threat_ent in fleeing.threats.iter().copied() {
+            if threat_ent == being_ent {
+                continue;
+            }
             let Ok(&flee_from_gpos) = blocking_tiles.gpos_query.get(threat_ent) else {
                 continue;
             };
@@ -273,6 +276,10 @@ pub fn update_goto_from_fleeing(
             cmd.entity(being_ent).try_remove::<Fleeing>();
             continue;
         };
+        if primary_threat_ent == being_ent {
+            cmd.entity(being_ent).try_remove::<Fleeing>();
+            continue;
+        }
         let flee_dist = (being_gpos.0 - flee_from_gpos.0).abs().element_sum();
         if (flee_dist as f32) >= fleeing.desired_distance_tiles {
             cmd.entity(being_ent).try_remove::<Fleeing>();

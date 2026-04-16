@@ -70,3 +70,5 @@ mejorar sistemas de asignacion automatica de loadchunksaround
 
 
 pedir a llm que genere script python para generar texturas de terreno mediante noises. vos le decis q tipo de textura queres y el genera la textura mediante algoritmia
+
+poner async tasks para structure generators

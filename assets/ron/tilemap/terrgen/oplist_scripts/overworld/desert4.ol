@@ -1,5 +1,5 @@
 id: desert4
-tags: [portal, land, desert]
+tags: [portal, land, desert, river_candidate]
 size: (3, 3)
 debug: [tree_feature, cave_portal_feature]
 

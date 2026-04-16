@@ -38,7 +38,6 @@ pub fn claim_chunks_for_various_dungeon_types(
 
         if !admitted_structure_ids_for_claiming().contains(&structured_gen_cfg.structure_hash_id()) {
             trace!(target: "dungeoning", "StructuredGenConfig entity {:?} is not in admitted structures, skipping", offer.structured_gen_cfg_ent);
-            mark_skipped(offer.region_ent, offer.i);
             continue;
         }
         let center_chunk = offer.start_pos;

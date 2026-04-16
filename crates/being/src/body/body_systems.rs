@@ -232,8 +232,8 @@ pub fn add_calories_to_being_energy_store(
 
 /// Updates the body's activity multiplier from its current movement state.
 /// Higher speed means the body spends more energy this tick.
-#[allow(unused_parens, )]
-pub fn update_body_energy_activity_multipliers(
+#[allow(unused_parens, unused)]
+pub fn ______________update_body_energy_activity_multipliers(
     mut bodies_query: Query<(&'static BodyOf, &'static mut BodyEnergyStore, ), (With<BodyOf>, Without<Templ>, )>,
     speed_query: Query<&'static SpeedMagnitude, (With<Being>, )>,
 ) {

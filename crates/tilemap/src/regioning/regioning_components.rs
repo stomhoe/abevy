@@ -31,13 +31,29 @@ pub struct ClaimList {
     pub processed_up_to_i: usize,
     pub claims: Vec<Option<ChunksClaim>>,
     pub skipped_is: HashSet<usize>,
+    pub pending_is: HashSet<usize>,
     pub advance_timer: Timer,
 }
 impl ClaimList {
     pub fn advance_processed_upto_i(&mut self) {
+        self.pending_is.remove(&self.processed_up_to_i);
         self.processed_up_to_i += 1;
         self.advance_timer.reset();
     }
+
+    pub fn mark_pending_i(&mut self, i: usize) {
+        self.pending_is.insert(i);
+        self.advance_timer.reset();
+    }
+
+    pub fn clear_pending_i(&mut self, i: usize) {
+        self.pending_is.remove(&i);
+    }
+
+    pub fn waiting_for_current_i(&self) -> bool {
+        self.pending_is.contains(&self.processed_up_to_i)
+    }
+
     pub fn reached_end(&self) -> bool {
         self.processed_up_to_i >= MAX_CLAIMS
     }
@@ -50,7 +66,8 @@ impl Default for ClaimList {
             claims,
             processed_up_to_i: 0,
             skipped_is: HashSet::new(),
-            advance_timer: Timer::from_seconds(0.02, TimerMode::Once),
+            pending_is: HashSet::new(),
+            advance_timer: Timer::from_seconds(0.1, TimerMode::Once),
         }
     }
 }

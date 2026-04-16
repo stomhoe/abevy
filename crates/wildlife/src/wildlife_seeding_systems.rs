@@ -88,6 +88,7 @@ pub struct SeedQueries<'w, 's> {
 }
 
 #[derive(SystemParam)]
+#[allow(non_camel_case_types, )]
 pub struct init_naturalLocals<'s> {
     occupied_pack_anchor_chunkpos: Local<'s, Vec<PackAnchorCpos>>,
 }

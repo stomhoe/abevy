@@ -55,7 +55,7 @@ pub fn add_grid_locked_movement_requirements(
         }
     }
     if total > 0 {
-        debug!(
+        trace!(
             target: MOVEMENT_SYSTEM,
             "Backfilled GridLockedMovement requirements for {} entities (MoveAnimActive on {} loaded beings)",
             total,

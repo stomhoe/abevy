@@ -476,6 +476,10 @@ pub fn update_predator_hunting_targets(
         };
         let mut chosen_target = closest_target;
         if let Some(current_prey) = hunting.map(|hunting| hunting.prey) {
+            if current_prey == pred_ent {
+                cmd.entity(pred_ent).try_remove::<Hunting>();
+                continue;
+            }
             let Some(current_prey) = find_hunt_candidate(candidates, current_prey) else {
                 cmd.entity(pred_ent).try_remove::<Hunting>();
                 continue;
@@ -577,10 +581,14 @@ pub fn update_predator_hunting_targets(
         let squad_weight_newtons = nearby_squad_body_weight(anchor_pos, &squad_dim, squad_members, &params.pos_dim_query, &params.body_weight_query);
 
         let mut committed_counts: EntityHashMap<u32> = EntityHashMap::default();
-        for (_, member_pos, member_dim, current_prey) in locals.active_member_ents.iter().copied() {
+        for (member_ent, member_pos, member_dim, current_prey) in locals.active_member_ents.iter().copied() {
             let Some(current_prey) = current_prey else {
                 continue;
             };
+            if current_prey == member_ent {
+                cmd.entity(member_ent).try_remove::<Hunting>();
+                continue;
+            }
             let Some(_member_dim_ent) = resolve_dim_ent(&member_dim) else {
                 continue;
             };
@@ -732,6 +740,10 @@ pub fn update_predator_hunting_targets(
                 );
                 continue;
             };
+            if assigned_target == member_ent {
+                cmd.entity(member_ent).try_remove::<Hunting>();
+                continue;
+            }
             let previous_target = locals
                 .active_member_ents
                 .iter()

@@ -16,7 +16,6 @@ use smallset::SmallSet;
 use ::being_shared::movement_shared_components::{InputMaxSpeed, InputSpeedThrottleMult};
 
 use super::being_nav_resources::*;
-use super::being_nav_structs::AiNavGridCache;
 
 type NavDimensionSet = SmallSet<[DimensionRef; 6]>;
 

@@ -14,7 +14,7 @@ use std::mem::take;
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use tilemap_shared::*;
 
-use crate::regioning::natural::{RiverDebugData, };
+use crate::regioning::natural::RiverDebugData;
 use crate::regioning::regioning_sgc_seris::load_structure_generation_settings_seri_defs;
 use crate::terrain::terrgen_resources::TerrGenDisabledGposByChunk;
 use crate::{
@@ -228,7 +228,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
             cmd.entity(region_ent)
                 .try_insert(RegionState::BuildingStarted);
         } else {
-            cmd.entity(region_ent).try_insert(TimeoutTimer::secs(0.2));
+            cmd.entity(region_ent).try_insert(TimeoutTimer::secs(2.));
             writer.write_batch(take(&mut offers));
         }
     }
@@ -242,8 +242,6 @@ pub fn advance_i_on_claimlist_timeout(
             Entity,
             &mut ClaimList,
             &RegionState,
-            &DimensionRef,
-            &RegionPos,
         ),
         (),
     >,
@@ -253,8 +251,12 @@ pub fn advance_i_on_claimlist_timeout(
     let mut recheck = Vec::new();
 
     query.iter_mut().for_each(
-        |(region_ent, mut claimlist, state, &dimension_ref, &region_pos)| {
+        |(region_ent, mut claimlist, state)| {
             if *state != RegionState::OfferingChunks {
+                return;
+            }
+            if claimlist.waiting_for_current_i() {
+                claimlist.advance_timer.reset();
                 return;
             }
             claimlist.advance_timer.tick(time.delta());
@@ -327,6 +329,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
         let i = claim.i as usize;
         unsafe {
             *claimlist.claims.get_unchecked_mut(i) = Some(take(claim));
+            claimlist.clear_pending_i(i);
             let claim = claimlist
                 .claims
                 .get_unchecked(i)
@@ -351,7 +354,10 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             }
         }
     }
-    let max_used_chunks_per_region = (REGION_SIZE_IN_CHUNKS.area_usize() as f32 * 0.14) as u64;
+    let max_used_chunks_per_region = (
+        REGION_SIZE_IN_CHUNKS.area_usize() as f32
+        * structure_settings.max_used_chunks_per_region_ratio
+    ) as u64;
 
     for region_ent in regions_with_new_claims {
         let Ok((
@@ -514,7 +520,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                     };
                     build_orders.push(order);
                 }
-                claimlist.processed_up_to_i += 1;
+                claimlist.advance_processed_upto_i();
             }
         }
     }
@@ -692,7 +698,7 @@ pub fn despawn_empty_regions(
 ) {
     for (region_ent,) in to_add_despawn_timer_query.iter() {
         cmd.entity(region_ent)
-            .try_insert_if_new(DespawnTimer::secs(0.5));
+            .try_insert_if_new(DespawnTimer::secs(10.0));
     }
     for (region_ent, &dimension_ref, &region_pos, chunks_active_in_region) in
         regions_which_regained_chunks_query.iter()
@@ -712,10 +718,13 @@ pub fn on_region_despawn_remove_from_loaded_regions(
     mut loaded_regions: ResMut<LoadedRegions>,
     mut prioritized_per_region: ResMut<PrioritizedPerRegion>,
     mut blocked_terrgen_gpos: ResMut<TerrGenDisabledGposByChunk>,
+    mut river_debug_data: ResMut<RiverDebugData>,
 ) {
     let Ok((&dimension_ref, &region_pos)) = region_query.get(trig.entity) else {
         return;
     };
+
+    river_debug_data.remove_region(dimension_ref, region_pos);
 
     // Region-planned terrgen disable masks are persisted in a global chunk map.
     // Remove the region's chunk entries on region despawn to avoid stale blocking

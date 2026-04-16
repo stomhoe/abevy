@@ -1,5 +1,6 @@
 id: elf4
 size: (1, 1)
+tags: [river_candidate]
 
 let tree_feature = idxmax(hp81, 0.14)
 let tree_feature = avg(fnl.forest.s3, tree_feature)

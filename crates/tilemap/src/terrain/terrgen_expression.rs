@@ -89,6 +89,9 @@ pub enum Expr {
     IndexNorm { value: Box<Expr>, multiplier: Box<Expr> },
 
     /// Linear interpolation
+    Lerp { start: Box<Expr>, end: Box<Expr>, t: Box<Expr> },
+
+    /// Legacy terrain-gen linear form
     Linear { values: Vec<Expr> },
 
     /// Clamp value between min and max
@@ -105,7 +108,7 @@ impl Expr {
             return output_min;
         }
 
-        let t = ((value - input_min) / input_span).clamp(0.0, 1.0);
+        let t = (value - input_min) / input_span;
         output_min + t * (output_max - output_min)
     }
 
@@ -307,6 +310,13 @@ impl Expr {
                 value.eval(context) * multiplier.eval(context)
             }
 
+            Expr::Lerp { start, end, t } => {
+                let start = start.eval(context);
+                let end = end.eval(context);
+                let t = t.eval(context);
+                start + (end - start) * t
+            }
+
             Expr::Linear { values } => {
                 // Legacy terrain-gen "lin" behavior:
                 // lin(x, a, b, m1, m2, ...) = sigmoid(a*x + b) * m1 * m2 * ...
@@ -377,6 +387,11 @@ impl Expr {
             Expr::IndexNorm { value, multiplier } => {
                 value.collect_noise_hash_ids(out);
                 multiplier.collect_noise_hash_ids(out);
+            }
+            Expr::Lerp { start, end, t } => {
+                start.collect_noise_hash_ids(out);
+                end.collect_noise_hash_ids(out);
+                t.collect_noise_hash_ids(out);
             }
             Expr::Clamp { value, min, max } => {
                 value.collect_noise_hash_ids(out);

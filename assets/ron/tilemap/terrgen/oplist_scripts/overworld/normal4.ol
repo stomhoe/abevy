@@ -1,5 +1,5 @@
 id: normal4
-tags: [portal, land, land_temp]
+tags: [portal, land, land_temp, river_candidate]
 size: (3, 3)
 debug: [cave_portal_feature]
 

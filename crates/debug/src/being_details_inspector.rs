@@ -695,8 +695,6 @@ pub fn being_details_inspector(world: &mut World) {
     let mut fleeing_query = world.query::<&Fleeing>();
     let mut lod_level_query = world.query::<&LodLevel>();
     let mut behavorial_nav_state_query = world.query::<Has<BehavorialNavState>>();
-    let mut final_norm_move_dir_query = world.query::<&FinalNormMoveDir>();
-    let mut grid_locked_movement_visual_query = world.query::<&GridLockedMovementVisual>();
     let mut retained_chase_path_snapshot_query = world.query::<&RetainedChasePathSnapshot>();
 
     let Ok(body) = body_query.get(world, selected_being_entity) else {
@@ -1190,14 +1188,6 @@ pub fn being_details_inspector(world: &mut World) {
                     let fleeing = fleeing_query.get(world, selected_being_entity).ok();
                     let go_to = go_to_query.get(world, selected_being_entity).ok();
                     let lod_level = lod_level_query.get(world, selected_being_entity).ok().copied();
-                    let final_norm_move_dir = final_norm_move_dir_query
-                        .get(world, selected_being_entity)
-                        .ok()
-                        .copied();
-                    let grid_locked_movement_visual = grid_locked_movement_visual_query
-                        .get(world, selected_being_entity)
-                        .ok()
-                        .copied();
                     let retained_chase_path_snapshot = retained_chase_path_snapshot_query
                         .get(world, selected_being_entity)
                         .ok();

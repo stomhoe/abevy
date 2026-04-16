@@ -356,6 +356,7 @@ fn normalize_operation(op: &str) -> Option<&'static str> {
         "islanddiff" | "idiff" => Some("islanddiff"),
         "remap" | "range_remap" | "remapclamp" => Some("remap"),
         "idxnorm" | "inorm" => Some("idxnorm"),
+        "lerp" => Some("lerp"),
         "lin" | "linear" => Some("lin"),
         "clamp" => Some("clamp"),
         _ => None,
@@ -514,6 +515,16 @@ fn build_expression_tree(operation: &str, operands: Vec<Expr>) -> Result<Expr, S
             Ok(Expr::IndexNorm {
                 value: Box::new(operands[0].clone()),
                 multiplier: Box::new(operands[1].clone()),
+            })
+        }
+        "lerp" => {
+            if operands.len() < 3 {
+                return Err("Lerp requires 3 operands (start, end, t)".to_string());
+            }
+            Ok(Expr::Lerp {
+                start: Box::new(operands[0].clone()),
+                end: Box::new(operands[1].clone()),
+                t: Box::new(operands[2].clone()),
             })
         }
         "lin" => Ok(Expr::Linear { values: operands }),

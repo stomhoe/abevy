@@ -115,13 +115,10 @@ pub struct DebugSelectedEntities {
     pub selected_sprite: Option<Entity>,
     pub selected_tilemap: Option<Entity>,
     pub selected_river_debug_region: Option<Entity>,
-    pub river_samples_show_river_overlay: bool,
     pub river_samples_show_sources: bool,
     pub river_samples_show_mouths: bool,
-    pub river_samples_show_camera_tile: bool,
     pub river_samples_show_region_bounds: bool,
     pub river_samples_show_failed_centers: bool,
-    pub river_samples_show_none_points: bool,
 }
 impl Default for DebugSelectedEntities {
     fn default() -> Self {
@@ -144,13 +141,10 @@ impl Default for DebugSelectedEntities {
             selected_sprite: None,
             selected_tilemap: None,
             selected_river_debug_region: None,
-            river_samples_show_river_overlay: true,
             river_samples_show_sources: true,
             river_samples_show_mouths: true,
-            river_samples_show_camera_tile: true,
             river_samples_show_region_bounds: true,
             river_samples_show_failed_centers: true,
-            river_samples_show_none_points: true,
         }
     }
 }

@@ -33,7 +33,7 @@
     size_variation: (min_dev: 0.251, max_dev: 0.251, mean: 1.0, std_dev: 0.1),
     spawn_pack_size_normal_dist: (min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0),
     biome_affinity: {
-        "artic": 0.2,
+        "arctic": 0.2,
     },
     pack_spawn_radius: 7,
 )

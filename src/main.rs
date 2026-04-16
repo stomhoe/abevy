@@ -16,92 +16,92 @@ use item_systems::ItemSystems;
 use tilemap::tile::TilingSystems;
 use tilemap_shared::GlobalTilePos;
 
-const ERROR: &str = "error";
-const WARN: &str = "warn";
-const INFO: &str = "info";
-const DEBUG: &str = "debug";
-const TRACE: &str = "trace";
 
 #[derive(Resource, Default)]
 struct InspectorVisibility(bool);
 
+#[allow(non_upper_case_globals, )]
 fn build_filter() -> String {
+    const error: &str = "error";
+    const warn: &str = "warn";
+    const info: &str = "info";
+    const debug: &str = "debug";
+    const trace: &str = "trace";
     let mut filter = String::from("info");
     for (target, level) in [
-        (log_targets::NAGA, ERROR),
-        (log_targets::WGPU_HAL, ERROR),
-        (log_targets::BEVY_ECS_TILEMAP, WARN),
-        (log_targets::WGPU_CORE, ERROR),
-        (log_targets::BEVY_EGUI, WARN),
-        (log_targets::BEVY_REPLICON, WARN),
-        (log_targets::BEVY_RENDER, WARN),
-        (log_targets::BEVY_APP, WARN),
-        (log_targets::COSMIC_TEXT, WARN),
-        (log_targets::OFFSET_ALLOCATOR, WARN),
-        (log_targets::BEVY_ASSET_LOADER, WARN),
-        (log_targets::BEVY_ECS_RELATIONSHIP, ERROR),
-        (log_targets::CALLOOP_LOOP_LOGIC, ERROR),
-        (log_targets::BEVY_W_INIT, WARN),
+        (log_targets::NAGA, error),
+        (log_targets::WGPU_HAL, error),
+        (log_targets::BEVY_ECS_TILEMAP, warn),
+        (log_targets::WGPU_CORE, error),
+        (log_targets::BEVY_EGUI, warn),
+        (log_targets::BEVY_REPLICON, warn),
+        (log_targets::BEVY_RENDER, warn),
+        (log_targets::BEVY_APP, warn),
+        (log_targets::COSMIC_TEXT, warn),
+        (log_targets::OFFSET_ALLOCATOR, warn),
+        (log_targets::BEVY_ASSET_LOADER, warn),
+        (log_targets::BEVY_ECS_RELATIONSHIP, error),
+        (log_targets::CALLOOP_LOOP_LOGIC, error),
+        (log_targets::BEVY_W_INIT, warn),
 
-        (log_targets::PORTAL_INIT, WARN),
-        (log_targets::POSITION_SEARCH, INFO),
-        (log_targets::CHILDRENSPRITE_INIT, DEBUG),
-        (log_targets::BIOME_INIT, DEBUG),
+        (log_targets::PORTAL_INIT, warn),
+        (log_targets::POSITION_SEARCH, info),
+        (log_targets::CHILDRENSPRITE_INIT, debug),
+        (log_targets::BIOME_INIT, debug),
 
-        (log_targets::OPLIST_INIT, WARN),
-        (log_targets::TERRGEN_INIT, INFO),
-        (log_targets::TERRPROBE_INIT, DEBUG),
-        (log_targets::SGC_INIT, DEBUG),
-        (log_targets::REGION_SYSTEM, DEBUG),
-        (log_targets::SGC_CHUNK_OFFER, DEBUG),
-        (log_targets::SGC_CHUNK_CLAIM, WARN),
+        (log_targets::OPLIST_INIT, warn),
+        (log_targets::TERRGEN_INIT, info),
+        (log_targets::TERRPROBE_INIT, debug),
+        (log_targets::SGC_INIT, debug),
+        (log_targets::REGION_SYSTEM, debug),
+        (log_targets::SGC_CHUNK_OFFER, debug),
+        (log_targets::SGC_CHUNK_CLAIM, warn),
 
-        (log_targets::TERRGEN_SYSTEM, DEBUG),
-        (log_targets::TERRGEN_PROCESS, INFO),
-        (log_targets::STRUCTURE_SPAWN, INFO),
-        (log_targets::TILEMAP_SYSTEM, INFO),
-        (log_targets::GPOS_MAP, WARN),
-        (log_targets::CHUNK_DESPAWN, INFO),
-        (log_targets::CHUNK_VISIBILITY, WARN),
-        (log_targets::CHUNK_ACTIVATION, DEBUG),
+        (log_targets::TERRGEN_SYSTEM, debug),
+        (log_targets::TERRGEN_PROCESS, info),
+        (log_targets::STRUCTURE_SPAWN, info),
+        (log_targets::TILEMAP_SYSTEM, info),
+        (log_targets::GPOS_MAP, warn),
+        (log_targets::CHUNK_DESPAWN, info),
+        (log_targets::CHUNK_VISIBILITY, warn),
+        (log_targets::CHUNK_ACTIVATION, debug),
 
-        (log_targets::DEBUG, DEBUG),
+        (log_targets::DEBUG, debug),
 
-        (log_targets::MOVEMENT_SYSTEM, DEBUG),
-        (log_targets::SPRITE_SAMPLER_SYSTEM, WARN),
-        (log_targets::SPRITE_INIT, WARN),
-        (log_targets::SPRITE_BUILD, INFO),
-        (log_targets::SPRITE_SYSTEM, WARN),
+        (log_targets::MOVEMENT_SYSTEM, debug),
+        (log_targets::SPRITE_SAMPLER_SYSTEM, warn),
+        (log_targets::SPRITE_INIT, warn),
+        (log_targets::SPRITE_BUILD, info),
+        (log_targets::SPRITE_SYSTEM, warn),
 
-        (log_targets::BEING_CONTROL, DEBUG),
-        (log_targets::BODY_BUILD, DEBUG),
-        (log_targets::BODY_HP_SYSTEM, TRACE),
-        (log_targets::BODY_ENERGY_SYSTEM, DEBUG),
-        (log_targets::GAME_COMMON_SYSTEM, INFO),
-        (log_targets::GAME_INIT, DEBUG),
+        (log_targets::BEING_CONTROL, debug),
+        (log_targets::BODY_BUILD, debug),
+        (log_targets::BODY_HP_SYSTEM, trace),
+        (log_targets::BODY_ENERGY_SYSTEM, debug),
+        (log_targets::GAME_COMMON_SYSTEM, info),
+        (log_targets::GAME_INIT, debug),
 
-        (log_targets::SPRITE_ANIMATION_INIT, DEBUG),
-        (log_targets::SPRITE_ANIMATION_SYSTEM, DEBUG),
-        (log_targets::ENTITY_ZERO_SYSTEM, INFO),
-        (log_targets::DUNGEONING_SYSTEM, DEBUG),
+        (log_targets::SPRITE_ANIMATION_INIT, debug),
+        (log_targets::SPRITE_ANIMATION_SYSTEM, debug),
+        (log_targets::ENTITY_ZERO_SYSTEM, info),
+        (log_targets::DUNGEONING_SYSTEM, debug),
 
-        (log_targets::TILE_INIT, INFO),
-        (log_targets::ASSET_LOADING, INFO),
-        (log_targets::TILEMAP_LOAD, INFO),
-        (log_targets::DIMENSION_LOADING, WARN),
-        (log_targets::DEF_VALIDATION, INFO),
-        (log_targets::CONTROL, WARN),
-        (log_targets::BEING_TEMPLATE_INIT, INFO),
-        (log_targets::BEING_BUILD, DEBUG),
-        (log_targets::BEING_SYSTEM, DEBUG),
-        (log_targets::BEING_MELEE_SYSTEMS, DEBUG),
-        (log_targets::BEING_MELEE_DEBUG, TRACE),
-        (log_targets::FACTION_SYSTEM, WARN),
-        (log_targets::ENTITY_MAP_SYSTEM, DEBUG),
-        (log_targets::INSPECTOR, WARN),
-        (log_targets::RIVER_SYSTEM, WARN),
-        (log_targets::ITEM_SYSTEM, DEBUG),
-        (log_targets::WILDLIFE_SYSTEM, DEBUG),
+        (log_targets::TILE_INIT, info),
+        (log_targets::ASSET_LOADING, info),
+        (log_targets::TILEMAP_LOAD, info),
+        (log_targets::DIMENSION_LOADING, warn),
+        (log_targets::DEF_VALIDATION, info),
+        (log_targets::CONTROL, warn),
+        (log_targets::BEING_TEMPLATE_INIT, info),
+        (log_targets::BEING_BUILD, info),
+        (log_targets::BEING_SYSTEM, debug),
+        (log_targets::BEING_MELEE_SYSTEMS, debug),
+        (log_targets::FACTION_SYSTEM, warn),
+        (log_targets::ENTITY_MAP_SYSTEM, debug),
+        (log_targets::INSPECTOR, warn),
+        (log_targets::RIVER_SYSTEM, info),
+        (log_targets::ITEM_SYSTEM, debug),
+        (log_targets::WILDLIFE_SYSTEM, debug),
     ] {
         filter.push(',');
         filter.push_str(target);

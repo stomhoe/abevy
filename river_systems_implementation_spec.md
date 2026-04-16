@@ -6,7 +6,7 @@
 Implement deterministic river generation in the existing river systems so that:
 
 1. Reloading the same region always produces the exact same river claims and river tiles.
-2. Neighboring regions generate seamless rivers across borders, regardless of load order.
+2. Rivers are only generated for regions with sufficiently high inlandness and an accessible coastline.
 3. River shape looks natural: one dominant trunk, sparse tributaries, smooth direction changes, and no spider-web pattern.
 4. Small islands do not get rivers.
 5. Rivers are configured through SGC args, with phase 1 focusing on the essential subset.
@@ -32,11 +32,12 @@ Do not redesign the pipeline. Build on the existing regioning and terrprobe infr
 
 1. Exact border continuity is required.
 2. Each region claims only its own in-region chunks.
-3. Rivers should always attempt generation in eligible regions.
+3. Rivers should only attempt generation in eligible regions with high inlandness and an accessible coastline.
 4. Tributaries must stay sparse and must merge into the main trunk only.
 5. Tributaries must remain narrower than the trunk.
-6. Use smooth tapering so the river does not look blocky or polygonal.
-7. Reroute is allowed only if it is cheap and deterministic: at most 4 detour steps and 1 retry.
+6. Rivers must be at least 2 tiles wide.
+7. Use smooth tapering so the river does not look blocky or polygonal.
+8. Reroute is allowed only if it is cheap and deterministic: at most 4 detour steps and 1 retry.
 8. If reroute budget is exceeded, skip the river.
 9. If a strict mouth cannot be found, use the nearest low-inlandness fallback terminal.
 10. Use the ocean probe to identify ocean / non-land tiles.
@@ -165,12 +166,11 @@ Update RiverDebugData with:
 The implementation should pass these checks:
 
 1. Same region reload produces identical rivers.
-2. Neighboring regions produce seamless border rivers.
-3. Small islands produce no rivers.
-4. River shape stays trunk-dominant and sparse.
-5. Claim pipeline does not produce holes.
-6. Build pipeline finishes without timeouts.
-7. Terrgen suppression only happens when configured.
+2. Small islands produce no rivers.
+3. River shape stays trunk-dominant and sparse.
+4. Claim pipeline does not produce holes.
+5. Build pipeline finishes without timeouts.
+6. Terrgen suppression only happens when configured.
 
 ## How To Implement It
 

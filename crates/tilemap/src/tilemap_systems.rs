@@ -349,7 +349,7 @@ pub fn process_tiles_pre(
                 let Some(neighbor_mapstruct) = resources.tmap_map.0.get(&neighbor_key) else {
                     continue;
                 };
-                cmd.entity(neighbor_mapstruct.tmap_ent).insert(NeedsTerrblRefresh);
+                cmd.entity(neighbor_mapstruct.tmap_ent).try_insert(NeedsTerrblRefresh);
             }
         }
     }
@@ -538,7 +538,7 @@ fn process_tile_into_corresponding_tilemap(
     if let Some(mapstruct) = tmap_map.get_mut(&map_key) {
         let tmap_ent = mapstruct.tmap_ent;
         if map_key.shader_ref().is_some() {
-            cmd.entity(tmap_ent).insert(NeedsTerrblRefresh);
+            cmd.entity(tmap_ent).try_insert(NeedsTerrblRefresh);
         }
 
         let (storage, tmap_hash_id_map, tmap_handles) =
@@ -612,7 +612,7 @@ fn process_tile_into_corresponding_tilemap(
             ))
         );
         if map_key.shader_ref().is_some() {
-            cmd.entity(tmap_ent).insert(NeedsTerrblRefresh);
+            cmd.entity(tmap_ent).try_insert(NeedsTerrblRefresh);
         }
         tilemap_id.0 = tmap_ent;
 

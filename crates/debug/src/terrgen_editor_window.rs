@@ -118,6 +118,12 @@ fn format_expr(expr: &Expr, indent: usize) -> String {
                 format_expr_compact(value),
                 format_expr_compact(multiplier))
         }
+        Expr::Lerp { start, end, t } => {
+            format!("lerp({}, {}, {})",
+                format_expr_compact(start),
+                format_expr_compact(end),
+                format_expr_compact(t))
+        }
         Expr::Linear { values } => {
             let args = values.iter()
                 .map(|v| format_expr_compact(v))
@@ -204,6 +210,12 @@ fn format_expr_compact(expr: &Expr) -> String {
                 format_expr_compact(input_max),
                 format_expr_compact(output_min),
                 format_expr_compact(output_max))
+        }
+        Expr::Lerp { start, end, t } => {
+            format!("lerp({}, {}, {})",
+                format_expr_compact(start),
+                format_expr_compact(end),
+                format_expr_compact(t))
         }
         Expr::Linear { values } => {
             let args = values.iter()

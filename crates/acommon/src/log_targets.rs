@@ -97,11 +97,11 @@ pub const RIVER_SYSTEM: &str = "river_system";
 // RUNTIME SYSTEMS - GAMEPLAY (format: <name>_system)
 // ============================================================================
 pub const BEING_SYSTEM: &str = "being_system";
+pub const BEING_SIMULATION_SYSTEMS: &str = "being_simulation_systems";
 pub const BEING_MELEE_SYSTEMS: &str = "being_melee_systems";
 pub const WANDER_SYSTEM: &str = "wander_system";
 pub const BODY_HP_SYSTEM: &str = "body_hp_system";
 pub const BODY_ENERGY_SYSTEM: &str = "body_energy_system";
-pub const BEING_MELEE_DEBUG: &str = "being_melee_debug";
 pub const MOVEMENT_SYSTEM: &str = "movement_system";
 pub const FACTION_SYSTEM: &str = "faction_system";
 pub const DUNGEONING_SYSTEM: &str = "dungeoning_system";

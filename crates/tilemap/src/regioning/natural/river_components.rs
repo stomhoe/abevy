@@ -2,20 +2,105 @@ use bevy::{
     platform::collections::{HashMap, HashSet},
     prelude::*,
 };
-use tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos, RegionPos};
+use tilemap_shared::{ChunkGposMask, ChunkPos, DimensionRef, GlobalTilePos, RegionPos};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RiverProbeKind {
+    Inlandness,
+}
 
+#[derive(Component, Debug, Clone, Copy)]
+pub struct RiverProbeRequest {
+    pub region_ent: Entity,
+    pub sgc_ent: Entity,
+    pub offer_i: u64,
+    pub start_chunk: ChunkPos,
+    pub probe_kind: RiverProbeKind,
+}
+
+#[derive(Component, Debug, Clone, Default)]
+pub struct RiverRegionPlan {
+    pub claimed_chunks: HashSet<ChunkPos>,
+    pub river_tiles: HashMap<ChunkPos, ChunkGposMask>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RiverMouthRejectReason {
+    OutsideRegion,
+    NearBorder,
+    WrongLandComponent,
+    TooCloseToSource,
+    TooInland,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RiverMouthRejectStats {
+    pub total_rejections: u32,
+    pub counts: HashMap<RiverMouthRejectReason, u32>,
+}
+
+impl RiverRegionPlan {
+    pub fn river_tile_count(&self) -> usize {
+        self.river_tiles.values().map(ChunkGposMask::count_set).sum()
+    }
+
+    pub fn iter_river_tiles_sorted(&self) -> Vec<GlobalTilePos> {
+        let mut tiles = Vec::with_capacity(self.river_tile_count());
+        let mut chunk_positions = self.river_tiles.keys().copied().collect::<Vec<_>>();
+        chunk_positions.sort_unstable_by_key(|chunk| (chunk.0.y, chunk.0.x));
+        for chunk_pos in chunk_positions {
+            let Some(mask) = self.river_tiles.get(&chunk_pos) else {
+                continue;
+            };
+            let chunk_tile_origin = chunk_pos.to_tilepos();
+            for bit_idx in 0..ChunkPos::CHUNK_AREA {
+                if !mask.is_set(bit_idx) {
+                    continue;
+                }
+                let x = (bit_idx % ChunkPos::CHUNK_SIZE.x as usize) as i32;
+                let y = (bit_idx / ChunkPos::CHUNK_SIZE.x as usize) as i32;
+                tiles.push(GlobalTilePos(chunk_tile_origin.0 + IVec2::new(x, y)));
+            }
+        }
+        tiles
+    }
+}
+
+#[derive(Component, Debug, Clone)]
+pub struct RiverPendingOffer {
+    pub region_ent: Entity,
+    pub sgc_ent: Entity,
+    pub offer_i: u64,
+    pub start_chunk: ChunkPos,
+    pub inland_requester: Option<Entity>,
+}
+
+impl RiverPendingOffer {
+    pub fn new(
+        region_ent: Entity,
+        sgc_ent: Entity,
+        offer_i: u64,
+        start_chunk: ChunkPos,
+    ) -> Self {
+        Self {
+            region_ent,
+            sgc_ent,
+            offer_i,
+            start_chunk,
+            inland_requester: None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct RiverRegionDebugInfo {
     pub active_probe_chunks: HashSet<ChunkPos>,
-    pub claimed_chunks: HashSet<ChunkPos>,
     pub failed_chunks: HashSet<ChunkPos>,
-    pub river_tiles: HashSet<GlobalTilePos>,
+    pub failed_probe_points: HashSet<GlobalTilePos>,
+    pub sampled_points: HashMap<GlobalTilePos, f32>,
     pub river_source_points: HashSet<GlobalTilePos>,
     pub river_mouth_points: HashSet<GlobalTilePos>,
-    pub sampled_points: HashMap<GlobalTilePos, f32>,
-    pub sampled_none_points: HashSet<GlobalTilePos>,
+    pub mouth_reject_stats: RiverMouthRejectStats,
     pub success_count: u32,
     pub failure_count: u32,
 }
@@ -62,14 +147,5 @@ impl RiverDebugData {
         self.bump_revision();
     }
 
-    pub(crate) fn clear_generated_river(&mut self, dimension_ref: DimensionRef, region_pos: RegionPos) {
-        let Some(info) = self.data.get_mut(&(dimension_ref, region_pos)) else {
-            return;
-        };
-        info.river_tiles.clear();
-        info.river_source_points.clear();
-        info.river_mouth_points.clear();
-        self.bump_revision();
-    }
 }
 

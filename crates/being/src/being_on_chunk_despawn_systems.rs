@@ -1,4 +1,3 @@
-use crate::being_bundles::*;
 use crate::being_messages::MakeChunkSnapshotForChaser;
 
 use ::being_shared::*;
@@ -7,7 +6,7 @@ use common::log_targets::BEING_SYSTEM;
 use sprite_shared::HeldSprites;
 use ::tilemap_shared::*;
 
-#[allow(unused_parens)]
+#[allow(unused_parens, unused)]
 pub fn faithful_sim_being(mut cmd: Commands,
     mut reader: MessageReader<FaithfulSimBeing>,
     query: Query<(&DimensionRef, &ChunkPos, &HeldSprites), (With<Being>, )>,

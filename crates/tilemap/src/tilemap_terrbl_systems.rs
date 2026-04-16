@@ -79,11 +79,11 @@ pub fn refresh_terrbl_tilemaps(
 
     for (tmap_ent, storage, shader_ref, tile_size, &dim_ref, &chunk_pos, &ac_z, mut material_handle) in &mut params.tilemaps {
         let Ok(shader_ent) = params.shader_map.0.get_cloned(shader_ref.0) else {
-            cmd.entity(tmap_ent).remove::<NeedsTerrblRefresh>();
+            cmd.entity(tmap_ent).try_remove::<NeedsTerrblRefresh>();
             continue;
         };
         let Ok(shader) = params.shader_query.get(shader_ent) else {
-            cmd.entity(tmap_ent).remove::<NeedsTerrblRefresh>();
+            cmd.entity(tmap_ent).try_remove::<NeedsTerrblRefresh>();
             continue;
         };
         let tile_size_px = U16Vec2::new(tile_size.x as u16, tile_size.y as u16);
@@ -161,7 +161,7 @@ pub fn refresh_terrbl_tilemaps(
                         storage.size.x,
                         storage.size.y,
                     );
-                    cmd.entity(tmap_ent).remove::<NeedsTerrblRefresh>();
+                    cmd.entity(tmap_ent).try_remove::<NeedsTerrblRefresh>();
                     continue;
                 };
                 trace!(target: TILEMAP_SYSTEM, "terrbl debug: refreshed marked material for tmap {:?}", tmap_ent);
@@ -173,7 +173,7 @@ pub fn refresh_terrbl_tilemaps(
                 }
             }
         }
-        cmd.entity(tmap_ent).remove::<NeedsTerrblRefresh>();
+        cmd.entity(tmap_ent).try_remove::<NeedsTerrblRefresh>();
     }
 }
 

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use being_shared::SimulatedBeingsWithin;
-use common::log_targets::BEING_SYSTEM;
+#[allow(unused_imports, )]
+use common::log_targets::BEING_SIMULATION_SYSTEMS;
 use tilemap_shared::*;
 
 use crate::being_simulation_resources::MacroChunkNavIslands;
@@ -21,11 +22,6 @@ pub fn insert_macrochunk_nav_islands(
     query: Query<Entity, (With<MacroChunk>, Added<MacrochunkPos>)>,
 ) {
     for macro_chunk_ent in query.iter() {
-        debug!(
-            target: BEING_SYSTEM,
-            "Initializing macrochunk nav islands on macrochunk {:?}",
-            macro_chunk_ent
-        );
         cmd.entity(macro_chunk_ent).try_insert(MacroChunkNavIslands::default());
     }
 }

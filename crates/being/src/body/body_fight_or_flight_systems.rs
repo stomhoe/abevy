@@ -290,6 +290,10 @@ fn should_preserve_current_hunt_for_reaction(
     queries: &FightOrFlightReactionQueries,
     grids: &AiNavGrids,
 ) -> bool {
+    if current_hunting.prey == being_ent {
+        return false;
+    }
+
     let Some((being_dim, being_pos)) = queries.position_query.get(being_ent).ok() else {
         return false;
     };
@@ -341,6 +345,10 @@ fn apply_reaction_to_being(
     queries: &FightOrFlightReactionQueries,
     grids: &AiNavGrids,
 ) {
+    if being_ent == attacker_ent {
+        return;
+    }
+
     let resolved = resolve_fight_or_flight_state(being_ent, queries);
     let current_hp_ratio = current_hp_ratio(being_ent, &queries.held_body_query, &queries.body_sums_query);
     let (victim_strength, attacker_strength) = if let Ok((victim_dim, victim_gpos)) = queries.position_query.get(being_ent) {

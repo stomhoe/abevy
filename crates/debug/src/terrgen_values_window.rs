@@ -36,7 +36,7 @@ pub fn terrgen_debug_window_system(
     let Ok(ctx) = contexts.ctx_mut() else { return; };
 
     let mut open = window_visible.terrgen_values;
-    egui::Window::new("Terrain generation Debug")
+    egui::Window::new("Terrgen values debug")
         .default_size([1200.0, 760.0])
         .open(&mut open)
         .show(ctx, |ui| {
@@ -277,7 +277,7 @@ pub fn terrgen_debug_window_system(
                                         painter.text(
                                             cell_rect.center(),
                                             egui::Align2::CENTER_CENTER,
-                                            format!("{v:.2}"),
+                                            format!("{v:.3}"),
                                             egui::FontId::proportional(10.0),
                                             egui::Color32::WHITE,
                                         );

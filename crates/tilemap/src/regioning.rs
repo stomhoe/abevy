@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
 use game_common::game_common_timers::TimedOut;
-use crate::{ regioning::{regioning_sgc_init_systems::*, regioning_systems::*}, terrain::terrprobe::terrprobe_messages::*, };
+use crate::{ regioning::{regioning_sgc_init_systems::*, regioning_systems::*}, };
 
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -16,6 +16,7 @@ pub fn plugin(app: &mut App) {
     app
     .add_plugins((
         plugin_structured_gen_config,
+        natural::river::plugin,
     ))
     .add_systems(Update, (
         (
@@ -25,7 +26,6 @@ pub fn plugin(app: &mut App) {
                 spiral_dungeon_building_system,
                 archimedes_spiral_building_system,
                 maze_dungeon_building_system,
-                river_structure_building_system,
             )
             .in_set(StructureBuildingSystems),
             offer_chunks_of_new_regions_to_dungeoning_systems,
@@ -33,9 +33,6 @@ pub fn plugin(app: &mut App) {
                 claim_chunks_for_various_dungeon_types
                     .after(offer_chunks_of_new_regions_to_dungeoning_systems)
                     .run_if(on_message::<OfferChunk>),
-                claim_chunks_for_river_structures
-                    .after(offer_chunks_of_new_regions_to_dungeoning_systems)
-                    .run_if(on_message::<OfferChunk>.or(on_message::<SampledValuesCollected>)),
             ),
             read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems
                 .after(claim_chunks_for_various_dungeon_types)
@@ -64,7 +61,6 @@ pub fn plugin(app: &mut App) {
     .init_resource::<LoadedRegions>()
     .init_resource::<PrioritizedPerRegion>()
     .insert_resource(SgcCommandRegistry::with_builtins())
-    .init_resource::<RiverDebugData>()
 
     .replicate::<WhitelistedFilterOf>()
     .replicate::<StructuredGenConfig>()

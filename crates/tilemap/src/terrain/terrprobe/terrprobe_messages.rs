@@ -71,37 +71,88 @@ pub struct SuitablePosFound {
 
 #[derive(Debug, Clone)]
 pub struct SampledValues {
-    pub values: Vec<(GlobalTilePos, Option<f32>)>,
+    pub anchor_gpos: GlobalTilePos,
+    pub matrix_size: UVec2,
+    pub spacing: u16,
+    pub values: Vec<Option<f32>>,
 }
 impl SampledValues {
-    pub fn new(min: GlobalTilePos, matrix_size: UVec2, spacing: u16) -> Self {
-        let spacing = spacing.max(1) as i32;
-        let mut values = Vec::with_capacity((matrix_size.x * matrix_size.y) as usize);
-        for row in 0..matrix_size.y {
-            for col in 0..matrix_size.x {
-                let gpos = GlobalTilePos(min.0 + IVec2::new(col as i32 * spacing, row as i32 * spacing));
-                values.push((gpos, None));
-            }
+    pub fn new(anchor_gpos: GlobalTilePos, matrix_size: UVec2, spacing: u16) -> Self {
+        let spacing = spacing.max(1);
+        let capacity = (matrix_size.x * matrix_size.y) as usize;
+        let values = vec![None; capacity];
+        Self {
+            anchor_gpos,
+            matrix_size,
+            spacing,
+            values,
         }
-        Self { values }
+    }
+
+    fn position_to_index(&self, gpos: GlobalTilePos) -> Option<usize> {
+        let delta = gpos.0 - self.anchor_gpos.0;
+        let spacing = self.spacing as i32;
+        if spacing <= 0 {
+            return None;
+        }
+        if delta.x % spacing != 0 || delta.y % spacing != 0 {
+            return None;
+        }
+        let col = (delta.x / spacing) as i32;
+        let row = (delta.y / spacing) as i32;
+        if col < 0 || row < 0 {
+            return None;
+        }
+        let col = col as u32;
+        let row = row as u32;
+        if col >= self.matrix_size.x || row >= self.matrix_size.y {
+            return None;
+        }
+        Some((row * self.matrix_size.x + col) as usize)
     }
 
     pub fn flat_index(&self, gpos: GlobalTilePos) -> Option<usize> {
-        self.values
-            .iter()
-            .position(|(sample_pos, _)| *sample_pos == gpos)
+        self.position_to_index(gpos)
+    }
+
+    pub fn index_to_gpos(&self, index: usize) -> Option<GlobalTilePos> {
+        if self.matrix_size.x == 0 {
+            return None;
+        }
+        let col = (index as u32) % self.matrix_size.x;
+        let row = (index as u32) / self.matrix_size.x;
+        if row >= self.matrix_size.y {
+            return None;
+        }
+        let offset = IVec2::new(
+            col as i32 * self.spacing as i32,
+            row as i32 * self.spacing as i32,
+        );
+        Some(GlobalTilePos(self.anchor_gpos.0 + offset))
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (GlobalTilePos, Option<f32>)> + '_ {
+        self.values.iter().enumerate().filter_map(move |(i, value)| {
+            let Some(gpos) = self.index_to_gpos(i) else {
+                return None;
+            };
+            Some((gpos, *value))
+        })
     }
 
     pub fn get(&self, gpos: GlobalTilePos) -> Option<Option<f32>> {
-        self.flat_index(gpos)
-            .and_then(|i| self.values.get(i).map(|(_, val)| *val))
+        self.position_to_index(gpos)
+            .and_then(|i| self.values.get(i).copied())
     }
 
     pub fn set(&mut self, gpos: GlobalTilePos, value: Option<f32>) -> bool {
-        let Some(i) = self.flat_index(gpos) else {
+        let Some(i) = self.position_to_index(gpos) else {
             return false;
         };
-        self.values[i].1 = value;
+        let Some(slot) = self.values.get_mut(i) else {
+            return false;
+        };
+        *slot = value;
         true
     }
 }

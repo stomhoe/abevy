@@ -53,7 +53,7 @@ pub fn plugin(app: &mut App) {
         Update,
         (
             add_calories_to_being_energy_store.run_if(on_message::<AddCaloriesToBeing>),
-            update_body_energy_activity_multipliers,
+            ______________update_body_energy_activity_multipliers,
             tick_global_body_energy.run_if(on_timer(core::time::Duration::from_secs(1))),
             apply_damage.run_if(on_message::<IncHealthDamageOrHeal>),
             update_bodypart_max_hp_map.run_if(on_timer(core::time::Duration::from_millis(200))),
