@@ -5,7 +5,7 @@ pack {
         penguin: 1.0,
     },
     biome_affinity: {
-        artic: 1.0,
+        anta: 1.0,
     },
     fight_or_flight_config: {
         reaction: "flee",

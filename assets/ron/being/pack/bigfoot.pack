@@ -2,10 +2,10 @@ pack {
     id: "bigfoot",
     spawn_being_count_normal_dist: { min_dev: 1.0, max_dev: 2.0, mean: 1.0, std_dev: 0.5 },
     ids: {
-        bigfoot_artic: 1.0,
+        bigfoot_anta: 1.0,
     },
     biome_affinity: {
-        artic: 1.2,
+        anta: 1.2,
     },
     pack_spawn_radius: 7,
 }

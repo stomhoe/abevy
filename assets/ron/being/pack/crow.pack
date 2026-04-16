@@ -6,7 +6,7 @@ pack {
     },
     biome_affinity: {
         ocean: -2.5,
-        temp: 1.1,
+        temp: 0.5,
     },
     fight_or_flight_config: {
         reaction: "flee",

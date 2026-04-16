@@ -1,5 +1,5 @@
-id: arctic4
-tags: [portal, land, arctic]
+id: anta4
+tags: [portal, land, anta]
 size: (3, 3)
 debug: [cave_portal_feature]
 

@@ -1086,7 +1086,7 @@ fn take_wander_seri(
 }
 
 pub fn load_pack_seri_defs() -> Vec<PackSeri> {
-    let mut discovered = match def_db::discover_assets_files_by_suffixes(&[".pack.ron"]) {
+    let mut discovered = match def_db::discover_assets_files_by_suffixes(&[".pack"]) {
         Ok(discovered) => discovered,
         Err(err) => {
             error!(target: BEING_TEMPLATE_INIT, "Failed discovering pack defs: {}", err);

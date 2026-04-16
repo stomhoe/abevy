@@ -49,7 +49,7 @@ pub fn add_hash_id_from_str_id(mut cmd: Commands,
     cmd.try_insert_batch(to_add);
 }
 
-#[allow(unused_parens, )]
+#[allow(unused_parens, unused)]
 pub fn add_signature_from_hash_id(
     mut cmd: Commands,
     query: Query<(Entity, &HashId, ), (Without<Signature>, )>,

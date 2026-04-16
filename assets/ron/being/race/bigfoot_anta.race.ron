@@ -1,6 +1,6 @@
 (
-    id: "bigfoot_artic",
-    name: "Artic Bigfoot",
+    id: "bigfoot_anta",
+    name: "Anta Bigfoot",
     name_generator: None,
     icon_path: "",
     description: "",
@@ -8,7 +8,7 @@
     singular: "bigfoot",
     plural: "bigfoots",
     sentient: true,
-    fallback_sprites_to_sample: ["bigfoot_artic"],
+    fallback_sprites_to_sample: ["bigfoot_anta"],
     sets_of_choosable_sprites: [],
     can_walk_on: [],
     walk_speeds_on_tiles: {},

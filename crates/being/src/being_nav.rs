@@ -13,6 +13,7 @@ use crate::being_on_chunk_despawn_systems::on_chunk_with_beings_attempt_unload a
 
 pub mod being_nav_resources;
 pub mod being_nav_structs;
+pub mod being_nav_chase_structs;
 pub mod being_nav_components;
 pub mod being_nav_helpers;
 pub mod being_nav_debug;
@@ -24,6 +25,7 @@ pub mod being_nav_chase_systems;
 
 pub use being_nav_resources::*;
 pub use being_nav_structs::*;
+pub use being_nav_chase_structs::*;
 pub use being_nav_components::*;
 pub use being_nav_helpers::*;
 pub use being_nav_debug::*;

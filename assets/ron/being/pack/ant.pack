@@ -8,6 +8,7 @@ pack {
         ocean: -2.5,
         temp: 1.2,
         desert: 1.0,
+        elf: 1.0,
     },
     pack_spawn_radius: 7,
 }

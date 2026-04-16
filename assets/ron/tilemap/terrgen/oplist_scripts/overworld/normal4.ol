@@ -15,7 +15,7 @@ let tree_feature = max(fnl.forest, tree_feature, shore_proximity)
 let tree_feature = *(tree_feature, shared_pd, sandy_beach_farness)
 
 let cave_portal_feature = idxmax(hp82, 0.005)
-let cave_portal_feature = *(inlandness, cave_portal_feature)
+let cave_portal_feature = lerp(cave_portal_feature, inlandness, 0.3)
 
 out = idxmax(0.5, bush_feature, tree_feature, cave_portal_feature)
 

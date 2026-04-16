@@ -18,7 +18,8 @@ use std::time::Duration;
 
 use super::being_nav_components::RetainedChasePathSnapshot;
 use super::being_nav_resources::{AiNavGrids, ChaserNavPlans, SharedChaseFlowFields};
-use super::being_nav_structs::{AiNavGridCache, ChaserNavPlan, SharedChaseFlowField};
+use super::being_nav_chase_structs::ChaserNavPlan;
+use super::being_nav_structs::{AiNavGridCache, SharedChaseFlowField};
 use super::being_nav_helpers::{
     cardinal_step_toward,
     rebuild_connected_chase_chunk_path,

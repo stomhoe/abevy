@@ -1,7 +1,7 @@
-id: arctic2
+id: anta2
 size: (1, 1)
 debug: [beach_avg_noise, shore_proximity, gravelness, inlandness, continentness]
-tags: [arctic, ]
+tags: [anta, ]
 let inlandness = remap(continentness, 0.4, 1.007, 0.0, 1.0)
 
 let shore_proximity = COMPL inlandness * 0.65
@@ -10,5 +10,5 @@ let gravelness = *(COMPL beach_avg_noise, shore_proximity)
 
 out = idxmax(0.4, gravelness)
 
-bif arctic3 -> []
+bif anta3 -> []
 bif "" -> [dirt]

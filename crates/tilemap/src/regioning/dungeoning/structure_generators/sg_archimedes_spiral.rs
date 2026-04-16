@@ -169,6 +169,26 @@ pub fn archimedes_spiral_building_system(
             .args
             .parse_arg("arch_spiral_angle_step", 0.08);
         let angle_step = angle_step.clamp(0.02, 0.5);
+        let ring_pack_count_min = structured_gen_cfg
+            .args
+            .parse_arg("arch_spiral_ring_pack_count_min", 1_usize)
+            .max(1);
+        let ring_pack_count_max = structured_gen_cfg
+            .args
+            .parse_arg("arch_spiral_ring_pack_count_max", 4_usize)
+            .max(ring_pack_count_min);
+        let ring_pack_count_outer_start_pct = structured_gen_cfg
+            .args
+            .parse_arg("arch_spiral_ring_pack_count_outer_start_pct", 35_i32)
+            .clamp(0, 100);
+        let ring_pack_count_outer_step_pct = structured_gen_cfg
+            .args
+            .parse_arg("arch_spiral_ring_pack_count_outer_step_pct", 20_i32)
+            .max(1);
+        let ring_pack_angle_jitter = structured_gen_cfg
+            .args
+            .parse_arg("arch_spiral_ring_pack_angle_jitter", 0.35_f32)
+            .clamp(0.0, std::f32::consts::PI);
 
         let min_x = carve_margin as i32;
         let min_y = carve_margin as i32;
@@ -273,65 +293,79 @@ pub fn archimedes_spiral_building_system(
         let ring_spacing = (b * std::f32::consts::TAU).max(1.0);
         let ring_count = (((max_radius as f32 - start_radius) / ring_spacing).floor().max(0.0) as usize)
             .saturating_add(1);
-        ring_spawn_anchors.reserve(ring_count);
+        ring_spawn_anchors.reserve(ring_count * ring_pack_count_max);
+        let ring_radius_span = (max_radius as f32 - start_radius).max(1.0);
+        let theta_offsets = [
+            0.0_f32,
+            0.35,
+            -0.35,
+            std::f32::consts::PI * 0.5,
+            -std::f32::consts::PI * 0.5,
+            std::f32::consts::PI,
+        ];
         for ring_idx in 0..ring_count {
             let ring_radius = (max_radius as f32 - ring_idx as f32 * ring_spacing)
                 .clamp(start_radius, max_radius as f32);
-            let base_theta = ((ring_radius - start_radius) / b)
-                .clamp(0.0, max_theta);
-            let theta_offsets = [
-                0.0_f32,
-                0.35,
-                -0.35,
-                std::f32::consts::PI * 0.5,
-                -std::f32::consts::PI * 0.5,
-                std::f32::consts::PI,
-            ];
-            let mut found_anchor = None;
-            for offset in theta_offsets {
-                let anchor_theta = (base_theta + offset).clamp(0.0, max_theta);
-                let x = (center_x as f32 + ring_radius * anchor_theta.cos()).round() as i32;
-                let y = (center_y as f32 + ring_radius * anchor_theta.sin()).round() as i32;
-                for search_radius in 0..=3 {
-                    let min_y = (y - search_radius).max(0);
-                    let max_y = (y + search_radius).min(tile_height as i32 - 1);
-                    let min_x = (x - search_radius).max(0);
-                    let max_x = (x + search_radius).min(tile_width as i32 - 1);
-                    let mut local_found = None;
-                    for ay in min_y..=max_y {
-                        for ax in min_x..=max_x {
-                            let idx = ay as usize * tile_width + ax as usize;
-                            if floor_map[idx] {
-                                local_found = Some((ax, ay));
+            let ring_radius_pct = (((ring_radius - start_radius) / ring_radius_span) * 100.0)
+                .round()
+                .clamp(0.0, 100.0) as i32;
+            let ring_extra_pack_count = if ring_radius_pct <= ring_pack_count_outer_start_pct {
+                0usize
+            } else {
+                ((ring_radius_pct - ring_pack_count_outer_start_pct) / ring_pack_count_outer_step_pct) as usize
+            };
+            let ring_pack_count = (ring_pack_count_min + ring_extra_pack_count).min(ring_pack_count_max);
+            let ring_phase = rng.random_range(0.0..std::f32::consts::TAU);
+            for pack_idx in 0..ring_pack_count {
+                let anchor_theta = ring_phase
+                    + (pack_idx as f32 * std::f32::consts::TAU / ring_pack_count as f32)
+                    + rng.random_range(-ring_pack_angle_jitter..=ring_pack_angle_jitter);
+                let mut found_anchor = None;
+                for offset in theta_offsets {
+                    let search_theta = (anchor_theta + offset).rem_euclid(std::f32::consts::TAU);
+                    let search_x = (center_x as f32 + ring_radius * search_theta.cos()).round() as i32;
+                    let search_y = (center_y as f32 + ring_radius * search_theta.sin()).round() as i32;
+                    for search_radius in 0..=3 {
+                        let min_y = (search_y - search_radius).max(0);
+                        let max_y = (search_y + search_radius).min(tile_height as i32 - 1);
+                        let min_x = (search_x - search_radius).max(0);
+                        let max_x = (search_x + search_radius).min(tile_width as i32 - 1);
+                        let mut local_found = None;
+                        for ay in min_y..=max_y {
+                            for ax in min_x..=max_x {
+                                let idx = ay as usize * tile_width + ax as usize;
+                                if floor_map[idx] {
+                                    local_found = Some((ax, ay));
+                                    break;
+                                }
+                            }
+                            if local_found.is_some() {
                                 break;
                             }
                         }
-                        if local_found.is_some() {
+                        if let Some(found) = local_found {
+                            found_anchor = Some(found);
                             break;
                         }
                     }
-                    if let Some(found) = local_found {
-                        found_anchor = Some(found);
+                    if found_anchor.is_some() {
                         break;
                     }
                 }
-                if found_anchor.is_some() {
-                    break;
-                }
-            }
-            let Some((anchor_x, anchor_y)) = found_anchor else {
-                continue;
-            };
-            let dx = anchor_x - center_x;
-            let dy = anchor_y - center_y;
-            let radius_pct = (((dx * dx + dy * dy) as f32).sqrt() / max_radius as f32 * 100.0)
+                let Some((anchor_x, anchor_y)) = found_anchor else {
+                    continue;
+                };
+                let dx = anchor_x - center_x;
+                let dy = anchor_y - center_y;
+                let radius_pct = (((dx * dx + dy * dy) as f32).sqrt() / max_radius as f32 * 100.0)
                 .round()
                 .clamp(0.0, 100.0) as i32;
-            let anchor_gpos = GlobalTilePos::new(
-                origin_tile.x() + anchor_x,
-                origin_tile.y() + anchor_y,
-            );
-            ring_spawn_anchors.push((anchor_gpos, format!("ring_{ring_idx}"), radius_pct));
+                let anchor_gpos = GlobalTilePos::new(
+                    origin_tile.x() + anchor_x,
+                    origin_tile.y() + anchor_y,
+                );
+                ring_spawn_anchors.push((anchor_gpos, format!("ring_{ring_idx}_pack_{pack_idx}"), radius_pct));
+            }
         }
         for (anchor_gpos, ring_key, radius_pct) in ring_spawn_anchors.iter() {
             let queued = super::super::dungeoning_utils::queue_room_spawn_instance_message(

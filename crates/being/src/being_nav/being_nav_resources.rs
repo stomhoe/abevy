@@ -3,9 +3,12 @@ use bevy::ecs::entity::EntityHashMap;
 use bevy::platform::collections::HashMap;
 use bevy::platform::collections::HashSet;
 use bevy::tasks::Task;
+use bevy_northstar::prelude::*;
 use ::tilemap_shared::DimensionRef;
+use ::tilemap_shared::GlobalTilePos;
 
-use super::being_nav_structs::{AiNavGridCache, ChaserNavPlan, SharedChaseFlowField};
+use super::being_nav_chase_structs::ChaserNavPlan;
+use super::being_nav_structs::{AiNavGridCache, SharedChaseFlowField};
 
 #[derive(Resource)]
 pub struct AiNavGrids {
@@ -81,6 +84,27 @@ pub struct AiNavGridRebuildTasks {
 #[derive(Resource, Default)]
 pub struct SharedChaseFlowFields {
     pub by_target: EntityHashMap<SharedChaseFlowField>,
+}
+
+impl AiNavGrids {
+    pub fn can_pathfind_between(
+        &self,
+        from_pos: GlobalTilePos,
+        to_pos: GlobalTilePos,
+        dim: DimensionRef,
+    ) -> bool {
+        let Some(cache) = self.by_dim.get(&dim) else {
+            return false;
+        };
+        let Some((start, goal)) = cache.local_path_points(from_pos, to_pos) else {
+            return false;
+        };
+        let mut req = PathfindArgs::new(start, goal).astar();
+        let Some(path) = cache.grid.pathfind(&mut req) else {
+            return false;
+        };
+        !path.is_partial()
+    }
 }
 
 #[derive(Resource, Default)]

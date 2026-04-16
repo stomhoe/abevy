@@ -5,7 +5,7 @@ pack {
         tiama: 1.0,
     },
     biome_affinity: {
-        artic: 1.2,
+        anta: 1.2,
     },
     pack_spawn_radius: 7,
 }

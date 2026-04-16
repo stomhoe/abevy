@@ -8,7 +8,7 @@
         "hp_regen_rate": 23.5,
         "blood_capacity": 0.0,
         "bleed_rate": 0.0,
-        "walk_strength": 3800.0,
+        "walk_strength": 2000.0,
         "manip_str": 4.4,
         "vision": 2.0,
     },

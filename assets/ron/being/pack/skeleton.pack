@@ -5,8 +5,12 @@ pack {
         skeleton: { weight: 0.75, rank: { min_dev: 0.10, max_dev: 0.10, mean: 0.20, std_dev: 0.10 }, min: 1 },
         skeleton_armed: { weight: 0.25, rank: { min_dev: 0.20, max_dev: 0.20, mean: 1.35, std_dev: 0.20 }, max: 1 },
     },
+    fight_or_flight_config: {
+        reaction: "counterattack",
+        min_melee_strength_ratio_to_counterattack: 0.0,
+    },
     biome_affinity: {
-        artic: 0.8,
+        anta: 0.8,
         temp: 0.2,
         desert: 0.2,
         ocean: -2.5,

@@ -1,14 +1,13 @@
 (
     id: "golem_bronze",
     name: "Bronze golem Body",
-    tags: ["humanoid"],
     distributed_totals: {
         "mass_kg": 20000.0,
         "hp_capacity": 1200.0,
         "hp_regen_rate": 1.0,
         "blood_capacity": 0.0,
         "bleed_rate": 0.0,
-        "walk_strength": 1200.0,
+        "walk_strength": 2000.0,
         "manip_str": 4.4,
         "vision": 2.0,
     },

@@ -32,7 +32,7 @@
     body_or_sampler: "pobear",
     size_variation: (min_dev: 0.251, max_dev: 0.251, mean: 1.0, std_dev: 0.1),
     biome_affinity: {
-        "artic": 1.0,
+        "anta": 1.0,
         "ocean": -1.0,
     },
     pack_spawn_radius: 7,

@@ -20,22 +20,26 @@ sgc {
         claim_square_max_side_length = 10
         claim_square_normal_mean = 9.0
         claim_square_normal_std_dev = 3.0
+        arch_spiral_ring_pack_count_min = 1
+        arch_spiral_ring_pack_count_max = 4
+        arch_spiral_ring_pack_count_outer_start_pct = 35
+        arch_spiral_ring_pack_count_outer_step_pct = 20
+        arch_spiral_ring_pack_angle_jitter = 0.35
         room_spawn.center_spiral = [
             { radius_min_pct = 0, radius_max_pct = 8, source_id = dragon, override_being_count = 1, pack_spawn_radius = 0, weight = 3.0 },
             { radius_min_pct = 0, radius_max_pct = 8, source_id = dragon_yellow, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
-            { radius_min_pct = 6, radius_max_pct = 18, source_id = golem_infernal, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
-            { radius_min_pct = 6, radius_max_pct = 18, source_id = golem_gold, override_being_count = 1, pack_spawn_radius = 0, weight = 1.25 },
-            { radius_min_pct = 6, radius_max_pct = 18, source_id = golem_bronze, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
-            { radius_min_pct = 14, radius_max_pct = 32, source_id = golem, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
-            { radius_min_pct = 14, radius_max_pct = 32, source_id = astaroth, override_being_count = 1, pack_spawn_radius = 0, weight = 1.25 },
-            { radius_min_pct = 14, radius_max_pct = 32, source_id = basilisk, override_being_count = 1, pack_spawn_radius = 0, weight = 1.1 },
-            { radius_min_pct = 14, radius_max_pct = 32, source_id = elemental_fire_ancient, override_being_count = 1, pack_spawn_radius = 0, weight = 0.9 },
-            { radius_min_pct = 28, radius_max_pct = 55, source_id = lich, override_being_count = 1, pack_spawn_radius = 0, weight = 1.25 },
-            { radius_min_pct = 28, radius_max_pct = 55, source_id = demon, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
-            { radius_min_pct = 28, radius_max_pct = 55, source_id = medusa, override_being_count = 1, pack_spawn_radius = 0, weight = 0.9 },
-            { radius_min_pct = 50, radius_max_pct = 100, source_id = ghost, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
-            { radius_min_pct = 50, radius_max_pct = 100, source_id = spawn, override_being_count = 1, pack_spawn_radius = 0, weight = 1.25 },
-            { radius_min_pct = 50, radius_max_pct = 100, source_id = skeleton, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+            { radius_min_pct = 14, radius_max_pct = 22, source_id = golem_infernal, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
+            { radius_min_pct = 14, radius_max_pct = 22, source_id = golem_gold, override_being_count = 1, pack_spawn_radius = 0, weight = 1.25 },
+            { radius_min_pct = 14, radius_max_pct = 22, source_id = golem_bronze, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+            { radius_min_pct = 14, radius_max_pct = 22, source_id = golem, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+            { radius_min_pct = 22, radius_max_pct = 32, source_id = astaroth, override_being_count = 1, pack_spawn_radius = 0, weight = 1.25 },
+            { radius_min_pct = 22, radius_max_pct = 32, source_id = basilisk, override_being_count = 1, pack_spawn_radius = 0, weight = 1.1 },
+            { radius_min_pct = 22, radius_max_pct = 32, source_id = elemental_fire_ancient, override_being_count = 1, pack_spawn_radius = 0, weight = 0.9 },
+            { radius_min_pct = 32, radius_max_pct = 55, source_id = lich, override_being_count = 2, pack_spawn_radius = 0, weight = 1.25 },
+            { radius_min_pct = 32, radius_max_pct = 55, source_id = demon, pack_spawn_radius = 0, weight = 1.0 },
+            { radius_min_pct = 32, radius_max_pct = 55, source_id = medusa, pack_spawn_radius = 0, weight = 0.9 },
+            { radius_min_pct = 80, radius_max_pct = 100, source_id = spawn, pack_spawn_radius = 0, weight = 1.25 },
+            { radius_min_pct = 80, radius_max_pct = 100, source_id = skeleton, pack_spawn_radius = 0, weight = 1.0 },
         ]
     }
 }
