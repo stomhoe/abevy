@@ -106,7 +106,7 @@ common::define_entity_map_systems_no_replicate!(
     main_component: Pack,
     with_filters: (With<game_common::game_common_components::Templ>, ),
     abbreviation: Pack,
-    target: common::log_targets::ENTITY_MAP_SYSTEM,
+    target: "pack",
     entity_prefix: "Pack",
     despawn_trigger: (Pack, game_common::game_common_components::Templ),
     id_type: common::common_components::StrId,

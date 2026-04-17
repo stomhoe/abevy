@@ -87,7 +87,6 @@ pub struct RaceSeri {
     pub pack_size_min_max: (u32, u32),
     pub spawn_pack_size_normal_dist: NormalDistSeri,
     pub pack_spawn_radius: u8,
-    pub belongs_to_packs: Vec<String>,
     pub biome_affinity: HashMap<String, f32>,
     pub whitelisted_spawn_tile_tags: HashSet<String>,
     pub blacklisted_spawn_tile_tags: HashSet<String>,
@@ -134,7 +133,6 @@ impl Default for RaceSeri {
             pack_size_min_max: (0, 0),
             spawn_pack_size_normal_dist: NormalDistSeri::default(),
             pack_spawn_radius: crate::PackSpawnRadius::default().0,
-            belongs_to_packs: Vec::default(),
             biome_affinity: HashMap::default(),
             whitelisted_spawn_tile_tags: HashSet::default(),
             blacklisted_spawn_tile_tags: HashSet::default(),
@@ -161,7 +159,7 @@ pub struct RaceSexEntrySeri {//TODO fix usage
 }
 
 
-common::define_entity_map_systems!(
+common::define_entity_map_systems_no_replicate!(
     main_component: Race,
     with_filters: (),
     abbreviation: Race,
@@ -169,5 +167,4 @@ common::define_entity_map_systems!(
     entity_prefix: "",
     despawn_trigger: Race,
     id_type: common::common_components::StrId,
-    assets: [(RaceSeri, "seri.being.race", "race.ron")],
 );

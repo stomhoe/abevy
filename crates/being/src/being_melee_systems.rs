@@ -12,9 +12,7 @@ use crate::{being_interaction_zone_helper::resolve_being_interaction_zone, being
 
 const TEMP_AI_MELEE_ATTACK_COOLDOWN: Duration = Duration::from_secs(1);
 
-fn should_log_info(attacker_ent: Entity, local_human_controlled_query: &Query<(), LocalHumanControlled, >) -> bool {
-    local_human_controlled_query.get(attacker_ent).is_ok()
-}
+
 
 #[allow(unused_parens, )]
 pub fn make_hunted_be_melee_targets(

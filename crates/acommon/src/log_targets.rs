@@ -75,6 +75,7 @@ pub const SPRITE_ANIMATION_SYSTEM: &str = "sprite_animation_system";
 pub const TERRGEN_PROCESS: &str = "terrgen_process";
 pub const TERRGEN_SYSTEM: &str = "terrgen_system";
 pub const STRUCTURE_SPAWN: &str = "structure_spawn";
+pub const MACROCHUNK_BIOME: &str = "macrochunk_biome";
 
 // ============================================================================
 // RUNTIME SYSTEMS - TILEMAP & CHUNKING (format: <name>_system)

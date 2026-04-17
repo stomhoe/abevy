@@ -1,0 +1,13 @@
+bit bigfoot_anta {
+    points: 0,
+
+    race: "bigfoot",
+    scs_samplers: ["bigfoot_anta"],
+    health_multiplier: 1.0,
+    body: "bigfoot",
+    spawn_pack_size_normal_dist: { min_dev: 1.0, max_dev: 2.0, mean: 1.0, std_dev: 0.5 },
+    biome_affinity: {
+        "anta": 1.2,
+    },
+    pack_spawn_radius: 7,
+}

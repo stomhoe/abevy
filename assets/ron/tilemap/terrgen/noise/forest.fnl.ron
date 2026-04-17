@@ -1,6 +1,6 @@
 (
     id: "forest",
-    frequency: 0.03,
+    frequency: 0.02,
     noise_type: "OpenSimplex2",
     fractal_type: "FBm",
     octaves: 5,

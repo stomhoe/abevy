@@ -1,6 +1,6 @@
 #[allow(unused_imports, )]
 use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, platform::collections::HashMap, prelude::*};
-use common::common_components::{HashId, HashIdMap};
+use common::common_components::{HashId, HashIdMap, StrId};
 use common::common_tag_components::HashedTagsVec;
 use std::sync::Arc;
 
@@ -105,6 +105,7 @@ pub(crate) struct TerrGenSharedTaskData {
 #[derive(Debug)]
 pub(crate) struct TerrGenSharedTaskDataInner {
     pub(crate) oplists: HashIdMap<OperationList>,
+    pub(crate) oplist_ids: HashIdMap<StrId>,
     pub(crate) oplist_debug_var_ids: HashIdMap<Vec<HashId>>,
     pub(crate) oplist_sizes: HashIdMap<OplistSize>,
     pub(crate) oplist_tags: HashIdMap<HashedTagsVec>,

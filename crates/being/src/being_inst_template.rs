@@ -1,5 +1,6 @@
 use ::being_shared::*;
 use bevy::{prelude::*, };
+use bevy_replicon::prelude::AppRuleExt;
 use common::{common_states::AssetLoading, };
 
 use crate::{being_inst_template::{ being_inst_template_init_systems::* } };
@@ -14,6 +15,10 @@ pub fn plugin(app: &mut App) {
     .add_plugins((
         plugin_being_inst_template,
     ))
+    .replicate::<BeingInstTemplate>()
+    .replicate::<EguiBitsHolder>()
+    .replicate::<BitRef>()
+    .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<EguiBitsHolder>,)>()
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
         (

@@ -57,8 +57,13 @@ pub struct BitSeri {
     pub collision_zone: InteractionZoneSeri,
     pub spawn_pack_size_normal_dist: NormalDistSeri,
     pub pack_spawn_radius: u8,
-    pub belongs_to_packs: Vec<String>,
+    pub avgpos_rank_based_weight_multiplier: f32,
+    pub avgpos_rank_based_weight_multipliers: HashMap<String, f32>,
     pub biome_affinity: HashMap<String, f32>,
+    pub behavior_on_member_attack: String,
+    pub attack_alert_effectiveness_falloff: f32,
+    pub counter_regroup_tightness: f32,
+    pub chunk_separation_to_others: HashMap<String, u8>,
     pub whitelisted_spawn_tile_tags: HashSet<String>,
     pub blacklisted_spawn_tile_tags: HashSet<String>,
     pub dont_extend_from_bit_spawn_whitelist: bool,
@@ -101,8 +106,13 @@ impl Default for BitSeri {
             collision_zone: InteractionZoneSeri::default(),
             spawn_pack_size_normal_dist: NormalDistSeri::default(),
             pack_spawn_radius: crate::PackSpawnRadius::default().0,
-            belongs_to_packs: Vec::default(),
+            avgpos_rank_based_weight_multiplier: 1.0,
+            avgpos_rank_based_weight_multipliers: HashMap::default(),
             biome_affinity: HashMap::default(),
+            behavior_on_member_attack: String::default(),
+            attack_alert_effectiveness_falloff: 0.05,
+            counter_regroup_tightness: 1.5,
+            chunk_separation_to_others: HashMap::default(),
             whitelisted_spawn_tile_tags: HashSet::default(),
             blacklisted_spawn_tile_tags: HashSet::default(),
             dont_extend_from_bit_spawn_whitelist: false,
@@ -114,7 +124,7 @@ impl Default for BitSeri {
         }
     }
 }
-common::define_entity_map_systems!(
+common::define_entity_map_systems_no_replicate!(
     main_component: BeingInstTemplate,
     with_filters: (),
     abbreviation: Bit,
@@ -122,5 +132,4 @@ common::define_entity_map_systems!(
     entity_prefix: "BIT",
     despawn_trigger: BeingInstTemplate,
     id_type: common::common_components::StrId,
-    assets: [(BitSeri, "seri.being.inst_templ", "bit.ron")],
 );

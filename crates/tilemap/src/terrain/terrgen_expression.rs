@@ -146,13 +146,11 @@ impl Expr {
 
             Expr::PoissonDisk { min_dist, seed } => {
                 match PoissonDisk::new(*min_dist, *seed) {
-                    Ok(pd) => pd.sample(
+                    Ok(pd) => pd.allows_position(
                         context.global_pos,
                         context.gen_settings,
                         context.dimension_hash,
-                        true,
-                        context.oplist_size,
-                    ) as f32,
+                    ) as i32 as f32,
                     Err(_) => 0.0,
                 }
             }
@@ -167,8 +165,9 @@ impl Expr {
                     if let Ok(mut set) = warned.lock() && set.insert(var_id) {
                         warn!(
                             target: "oplist_eval",
-                            "Missing variable '{}' ({:?}) during expr eval; defaulting to 0.0",
+                            "Missing variable '{}' in oplist '{}' ({:?}) during expr eval; defaulting to 0.0",
                             name,
+                            context.oplist_id,
                             var_id
                         );
                     }
@@ -409,6 +408,7 @@ pub struct EvalContext<'a> {
     pub dimension_hash: HashId,
     pub gen_settings: &'a GlobalGenSettings,
     pub oplist_size: OplistSize,
+    pub oplist_id: &'a StrId,
     pub noises: &'a HashIdMap<FnlNoiseComp>,
     pub variables: &'a HashIdMap<f32>,
 }

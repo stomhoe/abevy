@@ -8,6 +8,7 @@ use game_common::{
 use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources::BiomeEntityMap};
 use tilemap_shared::CappedNormalDist;
 
+use crate::being_asset_loaders::{load_race_asset_seri_defs, parse_inline_pack_def};
 use crate::pack::pack_seris::load_pack_seri_defs;
 
 
@@ -28,7 +29,26 @@ pub fn init_packs(
     let Some(bit_emap) = bit_emap else {
         return;
     };
-    let pack_seris = load_pack_seri_defs();
+    let mut pack_seris = load_pack_seri_defs();
+    for race_asset_seri in load_race_asset_seri_defs() {
+        let race_id = race_asset_seri.race.id.clone();
+        let Some(pack_value) = race_asset_seri.pack else {
+            continue;
+        };
+        let Ok(inline_pack) = parse_inline_pack_def(
+            &pack_value,
+            Some(race_id.as_str()),
+            std::path::Path::new("<inline race pack>"),
+        ) else {
+            error!(
+                target: "pack_init",
+                "Failed parsing inline pack config for race '{}'",
+                race_id,
+            );
+            continue;
+        };
+        pack_seris.push(inline_pack);
+    }
     let mut pack_by_id: HashMap<StrId, Entity> = HashMap::default();
     let mut being_samplers_by_pack: EntityHashMap<PackRaceOrBitSampler> = EntityHashMap::default();
     let mut rank_sampler_by_pack: EntityHashMap<PackMemberRankSampler> = EntityHashMap::default();
@@ -235,110 +255,6 @@ pub fn init_packs(
                 continue;
             };
             biome_pack_sampler.add_affinity(HashId::from(pack_seri.id.as_str()), *weight);
-        }
-    }
-
-    for race_seri in load_race_seri_defs() {
-        let race_id = match StrId::new_with_result(race_seri.id.trim(), 0) {
-            Ok(race_id) => race_id,
-            Err(err) => {
-                error!(
-                    target: "pack_init",
-                    "Skipping race membership mapping due to invalid race id '{}': {}",
-                    race_seri.id,
-                    err,
-                );
-                continue;
-            }
-        };
-        let Ok(race_ent) = race_emap.0.get_cloned(&race_id) else {
-            continue;
-        };
-        for pack_id in &race_seri.belongs_to_packs {
-            let trimmed = pack_id.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-            let pack_str_id = match StrId::new_with_result(trimmed, 0) {
-                Ok(pack_str_id) => pack_str_id,
-                Err(err) => {
-                    error!(
-                        target: "pack_init",
-                        "Race '{}' references invalid pack id '{}': {}",
-                        race_id,
-                        pack_id,
-                        err,
-                    );
-                    continue;
-                }
-            };
-            let Some(&pack_ent) = pack_by_id.get(&pack_str_id) else {
-                continue;
-            };
-            if let Err(negative_item) = being_samplers_by_pack
-                .entry(pack_ent)
-                .or_default()
-                .0
-                .insert(HashId::from(race_id.as_str()), 1.0)
-            {
-                error!(target: "being_pack_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", race_id.as_str(), negative_item);
-            }
-            rank_sampler_by_pack
-                .entry(pack_ent)
-                .or_default()
-                .0.insert(race_ent, CappedNormalDist::default());
-        }
-    }
-
-    for bit_seri in load_bit_seri_defs() {
-        let bit_id = match StrId::new_with_result(bit_seri.id.trim(), 0) {
-            Ok(bit_id) => bit_id,
-            Err(err) => {
-                error!(
-                    target: "pack_init",
-                    "Skipping bit membership mapping due to invalid bit id '{}': {}",
-                    bit_seri.id,
-                    err,
-                );
-                continue;
-            }
-        };
-        let Ok(bit_ent) = bit_emap.0.get_cloned(&bit_id) else {
-            continue;
-        };
-        for pack_id in &bit_seri.belongs_to_packs {
-            let trimmed = pack_id.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-            let pack_str_id = match StrId::new_with_result(trimmed, 0) {
-                Ok(pack_str_id) => pack_str_id,
-                Err(err) => {
-                    error!(
-                        target: "pack_init",
-                        "Bit '{}' references invalid pack id '{}': {}",
-                        bit_id,
-                        pack_id,
-                        err,
-                    );
-                    continue;
-                }
-            };
-            let Some(&pack_ent) = pack_by_id.get(&pack_str_id) else {
-                continue;
-            };
-            if let Err(negative_item) = being_samplers_by_pack
-                .entry(pack_ent)
-                .or_default()
-                .0
-                .insert(HashId::from(bit_id.as_str()), 1.0)
-            {
-                error!(target: "being_pack_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", bit_id.as_str(), negative_item);
-            }
-            rank_sampler_by_pack
-                .entry(pack_ent)
-                .or_default()
-                .0.insert(bit_ent, CappedNormalDist::default());
         }
     }
 

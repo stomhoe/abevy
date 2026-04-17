@@ -1,6 +1,6 @@
 use bevy::{ecs::entity::EntityHashMap, prelude::*};
 use common::{
-    common_components::{HashId, HashIdMap},
+    common_components::{HashId, HashIdMap, StrId},
     common_tag_components::{HashedTagsVec, TagSet},
 };
 use std::sync::Arc;
@@ -37,6 +37,7 @@ pub fn init_terrgen_shared_task_data(
     oplist_query: Query<
         (
             &HashId,
+            &StrId,
             &OperationList,
             &OplistSize,
             Option<&HashedTagsVec>,
@@ -52,7 +53,7 @@ pub fn init_terrgen_shared_task_data(
     let filters_count = op_filters.iter().count();
     let any_oplist_has_tags = oplist_query
         .iter()
-        .any(|(_, _, _, oplist_tags_opt, oplist_tagset_opt, )| {
+        .any(|(_, _, _, _, oplist_tags_opt, oplist_tagset_opt, )| {
             oplist_tags_opt.is_some() || oplist_tagset_opt.is_some()
         });
     if let Some(shared) = shared_task_data.shared.as_ref()
@@ -68,13 +69,15 @@ pub fn init_terrgen_shared_task_data(
     }
 
     let mut oplists: HashIdMap<OperationList> = HashIdMap::default();
+    let mut oplist_ids: HashIdMap<StrId> = HashIdMap::default();
     let mut oplist_debug_var_ids: HashIdMap<Vec<HashId>> = HashIdMap::default();
     let mut oplist_sizes: HashIdMap<OplistSize> = HashIdMap::default();
     let mut oplist_tags: HashIdMap<HashedTagsVec> = HashIdMap::default();
-    for (&oplist_hash, oplist, &oplist_size, oplist_tags_opt, oplist_tagset_opt) in
+    for (&oplist_hash, oplist_id, oplist, &oplist_size, oplist_tags_opt, oplist_tagset_opt) in
         oplist_query.iter()
     {
         let _ = oplists.overwrite(oplist_hash, oplist.clone());
+        let _ = oplist_ids.overwrite(oplist_hash, oplist_id.clone());
         let _ = oplist_debug_var_ids.overwrite(
             oplist_hash,
             oplist.hash_ids_mapped_to_strids.keys().copied().collect::<Vec<_>>(),
@@ -100,6 +103,7 @@ pub fn init_terrgen_shared_task_data(
 
     shared_task_data.shared = Some(Arc::new(TerrGenSharedTaskDataInner {
         oplists,
+        oplist_ids,
         oplist_debug_var_ids,
         oplist_sizes,
         oplist_tags,
@@ -163,11 +167,13 @@ pub(crate) fn process_pending_ops_batch(
             if oplist.bifurcations.is_empty() {
                 continue;
             }
+            let Ok(oplist_id) = context.shared.oplist_ids.get(frame.oplist) else { continue; };
             let eval_context = EvalContext {
                 global_pos: frame.gpos,
                 dimension_hash,
                 gen_settings: &gen_settings,
                 oplist_size: frame.oplist_size,
+                oplist_id,
                 noises: &context.shared.noises,
                 variables: &frame.variables,
             };

@@ -1,0 +1,36 @@
+race penguin {
+    name: "Penguin"
+    icon_path: ""
+    description: ""
+    demonym: "penguin"
+    singular: "penguin"
+    plural: "penguins"
+    sentient: false
+    fallback_sprites_to_sample: [penguin]
+    sets_of_choosable_sprites: []
+    can_walk_on: []
+    walk_speeds_on_tiles: {}
+    whitelisted_tiles_for_spawning: []
+    blacklisted_tiles_for_spawning: []
+    wander: (
+        dir_secs_min: 4.0
+        dir_secs_max: 8.0
+        move_secs_min: 0.4
+        move_secs_max: 5.2
+        halt_secs_min: 6.0
+        halt_secs_max: 10.0
+        speed_min: 0.8
+        speed_max: 0.8
+        avoid_tile_tags: []
+    )
+    body_or_sampler: penguin
+    size_variation: (min_dev: 0.251 max_dev: 0.251 mean: 1.0 std_dev: 0.1)
+    spawn_pack_size_normal_dist: (min_dev: 6 max_dev: 6 mean: 14 std_dev: 3)
+    biome_affinity: {
+        anta: 1.0
+    }
+    fight_or_flight_config: (
+        reaction: flee
+    )
+    pack_spawn_radius: 6
+}

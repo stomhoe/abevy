@@ -199,12 +199,10 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
                 }
 
                 if let Some(poisson_disk) = poisson_disk {
-                    if !poisson_disk.is_allowed_position(
+                    if !poisson_disk.allows_position(
                         chunk_pos,
                         &settings,
                         dim_hash,
-                        false,
-                        OplistSize::default(),
                     ) {
                         trace!(target: "sgc_chunk_offer", "Chunk position {:?} within {} rejected by PoissonDisk for structure '{}', reattempting", chunk_pos, region_pos, structured_gen_label);
                         reattempt_count += 1;

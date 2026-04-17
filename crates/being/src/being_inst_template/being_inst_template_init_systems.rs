@@ -3,8 +3,9 @@ use bevy::prelude::*;
 use common::common_components::*;
 use common::common_id_components::HashId;
 use ::being_shared::*;
+use crate::being_asset_loaders::load_bit_asset_seri_defs;
 
-use game_common::{Templ, game_common_components::TemplHashIdRef};
+use game_common::Templ;
 use ::sprite_shared::*;
 use tilemap_shared::tilemap_shared_samplers::*;
 
@@ -16,9 +17,33 @@ use tilemap::terrain::biome::{biome_components::CreatureSampler, biome_resources
 use tilemap_shared::{BlacklistedSpawnTileTags, WhitelistedSpawnTileTags};
 use common::common_tag_components::TagSet;
 
+fn resolve_bit_or_race_entity(
+    id: &str,
+    bit_map: &BeingInstTemplateEntityMap,
+    race_emap: Option<&RaceEntityMap>,
+) -> Option<Entity> {
+    bit_map
+        .0
+        .get_cloned(id)
+        .ok()
+        .or_else(|| race_emap.and_then(|race_emap| race_emap.0.get_cloned(id).ok()))
+}
+
+fn resolve_pack_or_race_entity(
+    id: &str,
+    pack_emap: Option<&PackEntityMap>,
+    race_emap: Option<&RaceEntityMap>,
+) -> Option<Entity> {
+    pack_emap
+        .and_then(|pack_emap| pack_emap.0.get_cloned(id).ok())
+        .or_else(|| race_emap.and_then(|race_emap| race_emap.0.get_cloned(id).ok()))
+}
+
+#[allow(unused_parens, )]
 pub fn init_being_templates(
     mut cmd: Commands,
     race_emap: Option<Res<RaceEntityMap>>,
+    pack_emap: Option<Res<PackEntityMap>>,
     bit_map: Res<BeingInstTemplateEntityMap>,
     body_map: Res<BodyEntityMap>,
     body_sampler_map: Res<BodyWeightedSamplerEntityMap>,
@@ -39,7 +64,7 @@ pub fn init_being_templates(
     let mut race_refs_to_insert = Vec::new();
     let mut faction_refs_to_insert = Vec::new();
 
-    for template_seri in load_bit_seri_defs() {
+    for template_seri in load_bit_asset_seri_defs() {
         let bit_strid = match StrId::new_with_result(template_seri.id.trim(), 0) {
             Ok(str_id) => str_id,
             Err(err) => {
@@ -128,6 +153,27 @@ pub fn init_being_templates(
             )));
         }
         cmd.entity(bit_entity).insert(PackSpawnRadius(template_seri.pack_spawn_radius));
+        if template_seri.avgpos_rank_based_weight_multiplier != 1.0 {
+            cmd.entity(bit_entity).insert(GlobalCenterRankWeightMultiplier(
+                template_seri.avgpos_rank_based_weight_multiplier,
+            ));
+        }
+        if !template_seri.avgpos_rank_based_weight_multipliers.is_empty() {
+            let mut center_rank_multipliers = bevy::ecs::entity::EntityHashMap::default();
+            for (member_id, multiplier) in &template_seri.avgpos_rank_based_weight_multipliers {
+                let trimmed = member_id.trim();
+                if trimmed.is_empty() || *multiplier <= 0.0 {
+                    continue;
+                }
+                let Some(member_ent) = resolve_bit_or_race_entity(trimmed, &bit_map, race_emap.as_deref()) else {
+                    continue;
+                };
+                center_rank_multipliers.insert(member_ent, *multiplier);
+            }
+            if !center_rank_multipliers.is_empty() {
+                cmd.entity(bit_entity).insert(CenterWeightRankBasedMultiplier(center_rank_multipliers));
+            }
+        }
         if !template_seri.spawn_pack_entity {
             cmd.entity(bit_entity).insert(NoSpawnSquadEntity);
         }
@@ -165,6 +211,48 @@ pub fn init_being_templates(
         }
         if let Some(predator_cfg) = PredatorCfg::from_seri(&template_seri.predator) {
             cmd.entity(bit_entity).insert(predator_cfg);
+        }
+        if !template_seri.behavior_on_member_attack.trim().is_empty() {
+            let behavior_str_id = match StrId::new_with_result(template_seri.behavior_on_member_attack.trim(), 0) {
+                Ok(behavior_str_id) => behavior_str_id,
+                Err(err) => {
+                    error!(
+                        target: "being_template_init",
+                        "BeingInstTemplate '{}' has invalid behavior_on_member_attack id '{}': {}",
+                        bit_strid,
+                        template_seri.behavior_on_member_attack,
+                        err,
+                    );
+                    continue;
+                }
+            };
+            cmd.entity(bit_entity).insert(PackOnPreyedOnBehavior(behavior_str_id));
+        }
+        if template_seri.attack_alert_effectiveness_falloff != 0.05 {
+            cmd.entity(bit_entity).insert(PackAttackAlertEffectivenessFalloff(
+                template_seri.attack_alert_effectiveness_falloff.max(0.0),
+            ));
+        }
+        if template_seri.counter_regroup_tightness != 1.5 {
+            cmd.entity(bit_entity).insert(PackCounterRegroupTightness(
+                template_seri.counter_regroup_tightness.max(0.0),
+            ));
+        }
+        if !template_seri.chunk_separation_to_others.is_empty() {
+            let mut min_dists = PackMinSepToPacksOrRaces::default();
+            for (target_id, min_inbetween_chunks) in &template_seri.chunk_separation_to_others {
+                let trimmed = target_id.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                let Some(target_ent) = resolve_pack_or_race_entity(trimmed, pack_emap.as_deref(), race_emap.as_deref()) else {
+                    continue;
+                };
+                min_dists.insert(target_ent, *min_inbetween_chunks);
+            }
+            if !min_dists.is_empty() {
+                cmd.entity(bit_entity).insert(min_dists);
+            }
         }
         // Resolve race entity from race string
         let race_str_id = match StrId::new_with_result(template_seri.race.trim(), 0) {

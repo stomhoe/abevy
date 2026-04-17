@@ -48,7 +48,7 @@ de interaccion asi se pueden tener como 50 beings en nuestra faction muy dispers
 
 hacer q ghosts peudan transpasar beings y walls pero q no puedan agarrar nada
 
-posibilidad de anclar wanderers a posiciones así n
+posibilidad de anclar wanderers a sus areas de spawn así no salen de sus dungeons?
 
 
 hacer q algunos sean hostil a todo lo q vean
@@ -72,3 +72,7 @@ mejorar sistemas de asignacion automatica de loadchunksaround
 pedir a llm que genere script python para generar texturas de terreno mediante noises. vos le decis q tipo de textura queres y el genera la textura mediante algoritmia
 
 poner async tasks para structure generators
+
+priorizar no-simulación fake de beings más importantes y simular beings menos significativos (hormigas, zombies, undead)
+
+buscar artic wolf

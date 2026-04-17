@@ -1,0 +1,36 @@
+race unicorn {
+    name: "Unicorn"
+    icon_path: ""
+    description: ""
+    demonym: "unicorn"
+    singular: "unicorn"
+    plural: "unicorns"
+    sentient: false
+    fallback_sprites_to_sample: [unicorn]
+    sets_of_choosable_sprites: []
+    can_walk_on: []
+    walk_speeds_on_tiles: {}
+    whitelisted_tiles_for_spawning: []
+    blacklisted_tiles_for_spawning: []
+    wander: (
+        dir_secs_min: 1.0
+        dir_secs_max: 2.5
+        move_secs_min: 0.8
+        move_secs_max: 1.8
+        halt_secs_min: 0.7
+        halt_secs_max: 2.0
+        speed_min: 0.4
+        speed_max: 0.6
+        avoid_tile_tags: [liquid]
+    )
+    body_or_sampler: unicorn
+    size_variation: (min_dev: 0.251 max_dev: 0.251 mean: 1.0 std_dev: 0.1)
+    spawn_pack_size_normal_dist: (min_dev: 0.0 max_dev: 0.0 mean: 1.0 std_dev: 0.0)
+    biome_affinity: {
+        elf: 0.5
+    }
+    fight_or_flight_config: (
+        reaction: flee
+    )
+    pack_spawn_radius: 7
+}

@@ -9,6 +9,8 @@ mod being_messages;
 mod being_systems;
 mod being_melee_systems;
 mod being_control_systems;
+mod being_def_parser;
+mod being_asset_loaders;
 pub mod being_portal_resources;
 mod being_portal_systems;
 mod being_hunt_systems;

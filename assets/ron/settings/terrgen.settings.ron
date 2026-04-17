@@ -2,5 +2,5 @@
     id: "terrgen_settings",
     seed: 3,
     world_freq: 0.010,
-    tectonic_frequency: 1.0,
+    tectonic_frequency: 0.8,
 )

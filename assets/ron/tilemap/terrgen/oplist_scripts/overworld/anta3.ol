@@ -4,8 +4,7 @@ size: (1, 1)
 debug: [cave_portal_feature]
 
 let lakeness = max(fnl.lakebig)
-let lakeness = *(lakeness, continentness, 1.4)
-let lakeness = *opo(lakeness, gravelness)
+let lakeness = *(lakeness, inlandness, 0.2)
 
 out = idxmax(continent_threshold, lakeness, )
 

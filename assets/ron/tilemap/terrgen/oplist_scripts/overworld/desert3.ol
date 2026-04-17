@@ -3,9 +3,8 @@ tags: [portal, land, desert]
 size: (1, 1)
 debug: [oasis_feature]
 
-let oasisness = *(max(fnl.lakesmol, fnl.lakebig), 0.5)
-let oasisness = avg(oasisness, continentness)
-let oasisness = *opo(oasisness, beachness)
+let oasisness = *(fnl.lakesmol, 0.08)
+let oasisness = lerp(oasisness, inlandness, 0.3)
 
 out = idxmax(continent_threshold, oasisness, )
 

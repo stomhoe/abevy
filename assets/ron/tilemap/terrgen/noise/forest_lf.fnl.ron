@@ -1,0 +1,10 @@
+(
+    id: "forest_lf",
+    frequency: 0.01,
+    noise_type: "OpenSimplex2",
+    fractal_type: "FBm",
+    octaves: 5,
+    lacunarity: 3.0,
+    gain: 0.77,
+    weighted_strength: 1.0,
+)

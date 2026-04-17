@@ -4,7 +4,6 @@ tags: ["elf"]
 
 let lakeness = max(fnl.lakesmol, fnl.lakebig)
 let lakeness = *(lakeness, continentness)
-let lakeness = *opo(lakeness, beachness)
 
 out = idxmax(0.8, lakeness)
 

@@ -1,0 +1,14 @@
+bit orc0 {
+    points: 0,
+
+    race: "orc",
+    scs_samplers: ["orc0"],
+    sprites_scale_ranges: {},
+    health_multiplier: 1.0,
+    body: "orc0",
+
+    whitelisted_tiles_for_spawning: [],
+    blacklisted_tiles_for_spawning: [],
+
+    pack_spawn_radius: 7,
+}

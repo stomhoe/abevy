@@ -1,19 +1,18 @@
-pack {
-    id: "skeleton",
-    spawn_being_count_normal_dist: { min_dev: 1.0, max_dev: 2.0, mean: 3.0, std_dev: 2.0 },
+pack skeleton {
+    spawn_being_count_normal_dist: { min_dev: 1.0 max_dev: 2.0 mean: 3.0 std_dev: 2.0 }
     ids: {
-        skeleton: { weight: 0.75, rank: { min_dev: 0.10, max_dev: 0.10, mean: 0.20, std_dev: 0.10 }, min: 1 },
-        skeleton_armed: { weight: 0.25, rank: { min_dev: 0.20, max_dev: 0.20, mean: 1.35, std_dev: 0.20 }, max: 1 },
-    },
+        skeleton: { weight: 0.75 rank: { min_dev: 0.10 max_dev: 0.10 mean: 0.20 std_dev: 0.10 } min: 1 }
+        skeleton_armed: { weight: 0.25 rank: { min_dev: 0.20 max_dev: 0.20 mean: 1.35 std_dev: 0.20 } max: 1 }
+    }
     fight_or_flight_config: {
-        reaction: "counterattack",
-        min_melee_strength_ratio_to_counterattack: 0.0,
-    },
+        reaction: counterattack
+        min_melee_strength_ratio_to_counterattack: 0.0
+    }
     biome_affinity: {
-        anta: 0.8,
-        temp: 0.2,
-        desert: 0.2,
-        ocean: -2.5,
-    },
-    pack_spawn_radius: 7,
+        anta: 0.8
+        temp: 0.2
+        desert: 0.2
+        ocean: -2.5
+    }
+    pack_spawn_radius: 7
 }

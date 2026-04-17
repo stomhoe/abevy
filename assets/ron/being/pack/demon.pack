@@ -1,8 +1,7 @@
-pack {
-    id: "demon",
-    spawn_being_count_normal_dist: { min_dev: 0.0, max_dev: 1.0, mean: 2.0, std_dev: 1.0 },
+pack demon {
+    spawn_being_count_normal_dist: { min_dev: 0.0 max_dev: 1.0 mean: 2.0 std_dev: 1.0 }
     ids: {
-        demon: 1.0,
-    },
-    pack_spawn_radius: 7,
+        demon: 1.0
+    }
+    pack_spawn_radius: 7
 }

@@ -2,8 +2,11 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "PascalCase")]
 pub enum FightOrFlightReaction {
+    #[serde(alias = "counterattack", alias = "counter_attack", alias = "counter-attack")]
     Counterattack,
+    #[serde(alias = "flee")]
     Flee,
 }
 
@@ -50,6 +53,7 @@ impl Default for RangedFightingStyle {
 }
 
 #[derive(Component, Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum FightingStyle {
     Melee,
     Ranged(RangedFightingStyle),

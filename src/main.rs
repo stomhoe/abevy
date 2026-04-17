@@ -58,6 +58,7 @@ fn build_filter() -> String {
         (log_targets::SGC_CHUNK_CLAIM, warn),
 
         (log_targets::TERRGEN_SYSTEM, debug),
+        (log_targets::MACROCHUNK_BIOME, trace),
         (log_targets::TERRGEN_PROCESS, info),
         (log_targets::STRUCTURE_SPAWN, info),
         (log_targets::TILEMAP_SYSTEM, info),

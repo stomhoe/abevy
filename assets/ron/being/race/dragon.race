@@ -1,0 +1,33 @@
+race dragon {
+    name: "Dragon"
+    icon_path: ""
+    description: ""
+    demonym: "dragon"
+    singular: "dragon"
+    plural: "dragons"
+    sentient: false
+    fallback_sprites_to_sample: [dragon]
+    sets_of_choosable_sprites: []
+    can_walk_on: []
+    walk_speeds_on_tiles: {}
+    whitelisted_tiles_for_spawning: []
+    blacklisted_tiles_for_spawning: []
+    predator: (
+        do_not_hunt_tags: [dragon]
+        min_hunger_to_hunt: 0.401
+    )
+    wander: (
+        dir_secs_min: 1.0
+        dir_secs_max: 2.5
+        move_secs_min: 0.8
+        move_secs_max: 10.8
+        halt_secs_min: 0.7
+        halt_secs_max: 10.0
+        speed_min: 0.5
+        speed_max: 0.6
+        avoid_tile_tags: [liquid]
+    )
+    body_or_sampler: dragon
+    size_variation: (min_dev: 0.251 max_dev: 0.251 mean: 1.0 std_dev: 0.1)
+    pack_spawn_radius: 7
+}

@@ -1,0 +1,1 @@
+- no usar max entre dos noises. crea contornos feos q no parecen naturales

@@ -1,6 +1,10 @@
 {
     "chat.tools.terminal.autoApprove": {
-        "mv": true
+      "mv": true,
+      "/^python - <<'PY'\nfrom pathlib import Path\nimport re\n\nroot = Path\\('/home/stefan/abevy/assets/ron/being'\\)\npatterns = \\[\\('\\.race', 'race'\\), \\('\\.bit', 'bit'\\)\\]\n\nfor suffix, keyword in patterns:\n    for path in root\\.rglob\\(f'\\*\\{suffix\\}'\\):\n        text = path\\.read_text\\(\\)\n        lines = text\\.splitlines\\(\\)\n        first_nonblank = next\\(\\(i for i, line in enumerate\\(lines\\) if line\\.strip\\(\\)\\), None\\)\n        if first_nonblank is None:\n            continue\n        if lines\\[first_nonblank\\]\\.lstrip\\(\\)\\.startswith\\(f'\\{keyword\\} '\\):\n            continue\n        if lines\\[first_nonblank\\]\\.strip\\(\\) != '\\(':\n            continue\n\n        id_value = None\n        body_lines = \\[\\]\n        for line in lines:\n            stripped = line\\.strip\\(\\)\n            if stripped == '\\(':\n                continue\n            if stripped == '\\)':\n                continue\n            match = re\\.match\\(r'\\^\\\\s\\*id:\\\\s\\*\"\\?\\(\\.\\*\\?\\)\"\\?,\\\\s\\*\\$', line\\)\n            if match and id_value is None:\n                id_value = match\\.group\\(1\\)\n                continue\n            body_lines\\.append\\(line\\)\n\n        if id_value is None:\n            raise SystemExit\\(f'missing id in \\{path\\}'\\)\n\n        new_lines = \\[f'\\{keyword\\} \\{id_value\\} \\{\\{'\\]\n        new_lines\\.extend\\(body_lines\\)\n        new_lines\\.append\\('\\}'\\)\n        path\\.write_text\\('\\\\n'\\.join\\(new_lines\\) \\+ '\\\\n'\\)\nPY$/": {
+        "approve": true,
+        "matchCommandLine": true
+      }
     },
   "editor.fontFamily": "JetBrains Mono",
   "workbench.statusBar.visible": true, // Zed tiene una barra de estado muy fina

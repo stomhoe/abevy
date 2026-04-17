@@ -1,10 +1,14 @@
+#![allow(dead_code)]
+
 use std::path::Path;
 
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use common::{common_tag_components::TagSet, def_db, log_targets::BEING_TEMPLATE_INIT};
+use common::def_db::DefValue;
 use tilemap_shared::tilemap_shared_samplers::NormalDistSeri;
 
 use being_shared::{FightOrFlightConfig, FightOrFlightReaction, FightingStyle, PredatorSeri, RangedFightingStyle, WanderSeri};
+use crate::being_def_parser::{parse_def_value, def_value_to_map};
 
 pub type SpawnWeight = f32;
 pub type RankDist = NormalDistSeri;
@@ -16,6 +20,38 @@ pub struct PackMemberConfigSeri {
     pub min: u32,
     pub max: u32,
     pub race_first: bool,
+}
+
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[serde(default)]
+struct PackMemberConfigSeriRaw {
+    pub weight: SpawnWeight,
+    pub rank_dist: RankDist,
+    pub min: u32,
+    pub max: u32,
+    pub race_first: bool,
+}
+
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[serde(default)]
+struct PackSeriRaw {
+    pub id: Option<String>,
+    pub tags: HashSet<String>,
+    pub spawn_pack_entity: bool,
+    pub spawn_being_count_normal_dist: NormalDistSeri,
+    pub pack_spawn_radius: u8,
+    pub ids: HashMap<String, PackMemberConfigSeriRaw>,
+    pub avgpos_rank_based_weight_multiplier: f32,
+    pub avgpos_rank_based_weight_multipliers: HashMap<String, f32>,
+    pub biome_affinity: HashMap<String, f32>,
+    pub fight_or_flight_config: FightOrFlightConfig,
+    pub member_predator: PredatorSeri,
+    pub fighting_style: FightingStyle,
+    pub behavior_on_member_attack: String,
+    pub attack_alert_effectiveness_falloff: f32,
+    pub counter_regroup_tightness: f32,
+    pub wander: WanderSeri,
+    pub chunk_separation_to_others: HashMap<String, u8>,
 }
 
 impl Default for PackMemberConfigSeri {
@@ -214,6 +250,57 @@ impl PackSeri {
             }
             _ => default,
         }
+    }
+}
+
+impl PackSeriRaw {
+    fn into_pack_seri(self, default_id: Option<&str>, path: &Path) -> Result<PackSeri, String> {
+        let id = match self.id {
+            Some(id) if !id.trim().is_empty() => id,
+            _ => default_id.unwrap_or_default().to_string(),
+        };
+        if id.trim().is_empty() {
+            return Err(format!("Missing required field 'id' in {}", path.display()));
+        }
+
+        let mut out = PackSeri {
+            id,
+            tags: self.tags,
+            spawn_pack_entity: self.spawn_pack_entity,
+            spawn_being_count_normal_dist: self.spawn_being_count_normal_dist,
+            pack_spawn_radius: self.pack_spawn_radius,
+            ids: HashMap::default(),
+            avgpos_rank_based_weight_multiplier: self.avgpos_rank_based_weight_multiplier,
+            avgpos_rank_based_weight_multipliers: self.avgpos_rank_based_weight_multipliers,
+            biome_affinity: self.biome_affinity,
+            fight_or_flight_config: self.fight_or_flight_config,
+            member_predator: self.member_predator,
+            fighting_style: self.fighting_style,
+            behavior_on_member_attack: self.behavior_on_member_attack,
+            attack_alert_effectiveness_falloff: self.attack_alert_effectiveness_falloff,
+            counter_regroup_tightness: self.counter_regroup_tightness,
+            wander: self.wander,
+            chunk_separation_to_others: self.chunk_separation_to_others,
+        };
+        out.ids.reserve(self.ids.len());
+        for (raw_id, raw_cfg) in self.ids {
+            let (id, race_first) = parse_member_key(&raw_id);
+            if id.trim().is_empty() {
+                continue;
+            }
+            let mut cfg = PackMemberConfigSeri {
+                weight: raw_cfg.weight,
+                rank_dist: raw_cfg.rank_dist,
+                min: raw_cfg.min,
+                max: raw_cfg.max,
+                race_first: raw_cfg.race_first || race_first,
+            };
+            if cfg.max < cfg.min {
+                cfg.max = cfg.min;
+            }
+            out.ids.insert(id, cfg);
+        }
+        Ok(out)
     }
 }
 
@@ -554,13 +641,14 @@ impl PackParser {
     }
 
     fn parse_root(&mut self) -> Result<HashMap<String, PackArgValue>, String> {
-        if self.peek_ident_is("pack") {
-            self.pos += 1;
-        }
+        let header_id = self.try_parse_header_id()?;
         if self.peek_kind(&PackTokenKind::LBrace) {
-            return self.parse_object();
+            let mut map = self.parse_object()?;
+            if let Some(header_id) = header_id {
+                map.entry("id".to_string()).or_insert(PackArgValue::Str(header_id));
+            }
+            return Ok(map);
         }
-
         let mut map = HashMap::default();
         while self.pos < self.tokens.len() {
             let key = self.expect_key()?;
@@ -572,6 +660,42 @@ impl PackParser {
             }
         }
         Ok(map)
+    }
+
+    fn try_parse_header_id(&mut self) -> Result<Option<String>, String> {
+        let Some(token) = self.tokens.get(self.pos) else {
+            return Ok(None);
+        };
+        let PackTokenKind::Ident(header) = &token.kind else {
+            return Ok(None);
+        };
+        if header != "pack" {
+            return Ok(None);
+        }
+
+        let Some(id_token) = self.tokens.get(self.pos + 1) else {
+            self.pos += 1;
+            return Ok(None);
+        };
+        let Some(brace_token) = self.tokens.get(self.pos + 2) else {
+            self.pos += 1;
+            return Ok(None);
+        };
+        if !matches!(brace_token.kind, PackTokenKind::LBrace) {
+            self.pos += 1;
+            return Ok(None);
+        }
+
+        match &id_token.kind {
+            PackTokenKind::Ident(id) | PackTokenKind::String(id) => {
+                self.pos += 2;
+                Ok(Some(id.clone()))
+            }
+            _ => {
+                self.pos += 1;
+                Ok(None)
+            }
+        }
     }
 
     fn parse_object(&mut self) -> Result<HashMap<String, PackArgValue>, String> {
@@ -593,9 +717,7 @@ impl PackParser {
         let mut out = Vec::new();
         while !self.peek_kind(&PackTokenKind::RBracket) {
             out.push(self.parse_value()?);
-            if !self.consume_if_kind(&PackTokenKind::Comma) {
-                break;
-            }
+            self.consume_if_kind(&PackTokenKind::Comma);
         }
         self.expect_kind(PackTokenKind::RBracket)?;
         Ok(out)
@@ -693,16 +815,6 @@ impl PackParser {
         std::mem::discriminant(&token.kind) == std::mem::discriminant(expected)
     }
 
-    fn peek_ident_is(&self, expected: &str) -> bool {
-        let Some(token) = self.tokens.get(self.pos) else {
-            return false;
-        };
-        let PackTokenKind::Ident(value) = &token.kind else {
-            return false;
-        };
-        value == expected
-    }
-
     fn expect_kind(&mut self, expected: PackTokenKind) -> Result<(), String> {
         if self.peek_kind(&expected) {
             self.pos += 1;
@@ -718,13 +830,60 @@ impl PackParser {
     }
 }
 
-fn parse_pack_seri(content: &str, path: &Path) -> Result<PackSeri, String> {
-    let tokens = PackTokenizer::new(content).tokenize()?;
-    let mut parser = PackParser::new(tokens);
-    let mut fields = parser.parse_root()?;
+fn def_value_to_pack_arg_map(value: DefValue) -> Result<HashMap<String, PackArgValue>, String> {
+    let fields = def_value_to_map(value)?;
+    let mut out = HashMap::with_capacity(fields.len());
+    for (key, value) in fields {
+        out.insert(key, def_value_to_pack_arg_value(value)?);
+    }
+    Ok(out)
+}
 
+fn def_value_to_pack_arg_value(value: DefValue) -> Result<PackArgValue, String> {
+    match value {
+        DefValue::Bool(value) => Ok(PackArgValue::Bool(value)),
+        DefValue::String(value) => Ok(PackArgValue::Str(value)),
+        DefValue::I64(value) => Ok(PackArgValue::Int(value)),
+        DefValue::U64(value) => i64::try_from(value)
+            .map(PackArgValue::Int)
+            .map_err(|_| format!("Integer value {} is too large for pack parsing", value)),
+        DefValue::F64(value) => Ok(PackArgValue::Float(value)),
+        DefValue::Seq(values) => {
+            let mut out = Vec::with_capacity(values.len());
+            for value in values {
+                out.push(def_value_to_pack_arg_value(value)?);
+            }
+            Ok(PackArgValue::List(out))
+        }
+        DefValue::Map(entries) => {
+            let mut out = HashMap::with_capacity(entries.len());
+            for (key, value) in entries {
+                let DefValue::String(key) = key else {
+                    return Err("Pack config keys must be strings".to_string());
+                };
+                out.insert(key, def_value_to_pack_arg_value(value)?);
+            }
+            Ok(PackArgValue::Map(out))
+        }
+        DefValue::Option(Some(value)) => def_value_to_pack_arg_value(*value),
+        DefValue::Option(None) | DefValue::Unit => Ok(PackArgValue::Null),
+        DefValue::Char(value) => Ok(PackArgValue::Str(value.to_string())),
+        DefValue::Bytes(_) | DefValue::Enum(_, _) => Err("Unsupported pack config value".to_string()),
+    }
+}
+
+pub(crate) fn parse_pack_seri_value(
+    value: &DefValue,
+    default_id: Option<&str>,
+    path: &Path,
+) -> Result<PackSeri, String> {
+    let mut fields = def_value_to_pack_arg_map(value.clone())?;
     let mut seri = PackSeri::default();
-    seri.id = take_required_string(&mut fields, "id")?;
+    seri.id = fields
+        .remove("id")
+        .and_then(|value| value.as_string())
+        .or_else(|| default_id.map(|value| value.to_string()))
+        .ok_or_else(|| format!("Missing required field 'id' in {}", path.display()))?;
     seri.tags = take_string_set(&mut fields, "tags");
     if let Some(value) = fields.remove("spawn_pack_entity").and_then(|value| value.as_bool()) {
         seri.spawn_pack_entity = value;
@@ -785,6 +944,11 @@ fn parse_pack_seri(content: &str, path: &Path) -> Result<PackSeri, String> {
         );
     }
     Ok(seri)
+}
+
+fn parse_pack_seri(content: &str, path: &Path) -> Result<PackSeri, String> {
+    let def_value = parse_def_value(content)?;
+    parse_pack_seri_value(&def_value, None, path)
 }
 
 fn take_required_string(

@@ -14,6 +14,7 @@ use crate::body::BodyRef;
 use crate::body::body_components::*;
 use crate::body::body_sampler::body_sampler_resources::*;
 use crate::being_interaction_zone_helper::build_being_interaction_zones_with_fallback;
+use crate::being_asset_loaders::load_race_asset_seri_defs;
 use crate::{sex };
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use ::being_shared::*;
@@ -30,7 +31,8 @@ pub fn init_races(
     biome_emap: Res<BiomeEntityMap>,
     mut biome_pack_samplers: Query<&mut CreatureSampler>,
 ) {
-    for race_seri in load_race_seri_defs() {
+    for race_asset_seri in load_race_asset_seri_defs() {
+        let race_seri = race_asset_seri.race;
         let str_id = match StrId::new_with_result(race_seri.id.trim(), 0) {
             Ok(str_id) => str_id,
             Err(err) => {

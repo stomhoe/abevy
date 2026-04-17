@@ -1,15 +1,13 @@
-pack {
-    id: "ogre",
-    spawn_being_count_normal_dist: { min_dev: 0.0, max_dev: 1.0, mean: 2.0, std_dev: 1.0 },
+pack ogre {
+    spawn_being_count_normal_dist: { min_dev: 0.0 max_dev: 1.0 mean: 2.0 std_dev: 1.0 }
     ids: {
-        ogre_slave: { weight: 0.70, rank: { min_dev: 0.10, max_dev: 0.10, mean: 0.20, std_dev: 0.10 }, min: 1 },
-        ogre: { weight: 0.30, rank: { min_dev: 0.20, max_dev: 0.20, mean: 1.40, std_dev: 0.20 }, max: 1 },
-    },
+        ogre_slave: { weight: 0.70 rank: { min_dev: 0.10 max_dev: 0.10 mean: 0.20 std_dev: 0.10 } min: 1 }
+        ogre: { weight: 0.30 rank: { min_dev: 0.20 max_dev: 0.20 mean: 1.40 std_dev: 0.20 } max: 1 }
+    }
     biome_affinity: {
-        temp: 0.7,
-        desert: 0.5,
-        anta: 0.3,
-        ocean: -2.5,
-    },
-    pack_spawn_radius: 7,
+        temp: 0.3
+        desert: 0.5
+        ocean: -2.5
+    }
+    pack_spawn_radius: 7
 }

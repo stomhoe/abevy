@@ -2,9 +2,9 @@ id: anta1
 size: (1, 1)
 debug: [boulder_feature]
 
-let continentness = max(fnl.conti, fnl.penin)
+let continentness = avg(fnl.conti, fnl.penin)
 let continentness = *(continentness, anta_diff)
-let continent_threshold = 0.4
+let continent_threshold = 0.3
 
 out = idxmax(continent_threshold, continentness)
 

@@ -1,0 +1,34 @@
+race skeleton {
+    name: "Skeleton"
+    icon_path: ""
+    description: ""
+    demonym: "skeleton"
+    singular: "skeleton"
+    plural: "skeletons"
+    sentient: false
+    fallback_sprites_to_sample: [skeleton]
+    sets_of_choosable_sprites: []
+    can_walk_on: []
+    walk_speeds_on_tiles: {}
+    whitelisted_tiles_for_spawning: []
+    blacklisted_tiles_for_spawning: []
+    wander: (
+        dir_secs_min: 3.0
+        dir_secs_max: 12.0
+        move_secs_min: 0.7
+        move_secs_max: 6.8
+        halt_secs_min: 6.0
+        halt_secs_max: 12.0
+        speed_min: 0.7
+        speed_max: 0.8
+        avoid_tile_tags: [liquid]
+    )
+    fight_or_flight_config: (
+        reaction: Counterattack
+        min_melee_strength_ratio_to_counterattack: 0.0
+    )
+
+    body_or_sampler: skeleton
+    size_variation: (min_dev: 0.251 max_dev: 0.251 mean: 1.0 std_dev: 0.1)
+    pack_spawn_radius: 7
+}

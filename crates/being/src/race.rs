@@ -16,6 +16,10 @@ pub fn plugin(app: &mut App) {
         .add_plugins((
             plugin_race,
         ))
+        .replicate::<Race>()
+        .replicate::<EguiRacesHolder>()
+        .replicate::<RaceRef>()
+        .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<EguiRacesHolder>,)>()
         .add_systems(
             OnEnter(AssetLoading::SpawnReplicatedEntities),
             (

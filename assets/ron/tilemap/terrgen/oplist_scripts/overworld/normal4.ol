@@ -1,18 +1,19 @@
 id: normal4
 tags: [portal, land, land_temp, river_candidate]
 size: (3, 3)
-debug: [cave_portal_feature]
+debug: [cave_portal_feature, tree_feature, shared_pd]
 
-let sandy_beach_farness = *(COMPL beachness, 1.1)
 let shared_pd = pd299
 
 let bush_feature = idxmax(hp82, 0.10)
 let bush_feature = *(bush_feature, pd12)
 let bush_feature = +(bush_feature, -0.0)
 
-let tree_feature = idxmax(hp81, 0.05)
-let tree_feature = max(fnl.forest, tree_feature, shore_proximity)
-let tree_feature = *(tree_feature, shared_pd, sandy_beach_farness)
+let lucky_tree = idxmax(hp81, 0.02)
+let tree_feature = max(fnl.forest_lf, lucky_tree)
+
+let tree_feature = lerp(tree_feature, inlandness, 0.2)
+let tree_feature = *(tree_feature, shared_pd, 0.9)
 
 let cave_portal_feature = idxmax(hp82, 0.005)
 let cave_portal_feature = lerp(cave_portal_feature, inlandness, 0.3)

@@ -1,13 +1,12 @@
-pack {
-    id: "tiger",
-    spawn_being_count_normal_dist: { min_dev: 0.0, max_dev: 0.0, mean: 1.0, std_dev: 0.0 },
+pack tiger {
+    spawn_being_count_normal_dist: { min_dev: 0.0 max_dev: 0.0 mean: 1.0 std_dev: 0.0 }
     ids: {
-        tiger: 1.0,
-    },
+        tiger: 1.0
+    }
     biome_affinity: {
-        ocean: -2.5,
-        temp: 1.0,
-        elf: 0.6,
-    },
-    pack_spawn_radius: 7,
+        ocean: -2.5
+        temp: 1.0
+        elf: 0.6
+    }
+    pack_spawn_radius: 7
 }
