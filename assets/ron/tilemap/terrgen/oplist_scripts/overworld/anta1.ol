@@ -1,6 +1,6 @@
 id: anta1
 size: (1, 1)
-debug: [boulder_feature]
+debug: [anta_diff]
 
 let continentness = avg(fnl.conti, fnl.penin)
 let continentness = *(continentness, anta_diff)
