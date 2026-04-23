@@ -6,5 +6,5 @@ let inlandness = remap(continentness, shared_continentness_min, shared_continent
 
 out = idxmax(inlandness, 0.05)
 
-bif elf3 -> []
-bif beach_gravel -> [] biomes: [beach=1.0(1.0,0.)]
+[] elf3
+[] biomes: [beach=1.0(1.0,0.)] beach_gravel

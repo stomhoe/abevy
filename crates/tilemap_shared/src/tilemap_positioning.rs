@@ -315,6 +315,25 @@ impl OplistSize {
     pub fn y(&self) -> u32 { self.0.y }
     pub fn inner(&self) -> UVec2 { self.0 }
     pub fn size(&self) -> usize { (self.x() * self.y()) as usize }
+
+    pub fn child_positions(&self, gpos: GlobalTilePos, child_size: OplistSize) -> Vec<GlobalTilePos> {
+        if *self <= child_size {
+            return if gpos.0.abs().as_uvec2() % child_size.inner() == UVec2::ZERO {
+                vec![gpos]
+            } else {
+                Vec::new()
+            };
+        }
+        let x_end = self.x() as i32 / child_size.x() as i32;
+        let y_end = self.y() as i32 / child_size.y() as i32;
+        let mut positions = Vec::with_capacity((x_end * y_end) as usize);
+        for x in 0..x_end {
+            for y in 0..y_end {
+                positions.push(gpos + GlobalTilePos::new(x, y));
+            }
+        }
+        positions
+    }
 }
 impl_display_debug!(OplistSize, "OplistSize", "OplistSize");
 

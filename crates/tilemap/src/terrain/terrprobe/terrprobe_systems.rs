@@ -6,7 +6,7 @@ use crate::terrain::{
     terrprobe::terrprobe_pattern_concentric::process_concentric_pattern,
     terrprobe::terrprobe_messages::*,
     terrprobe::terrprobe_pattern_region::process_region_pattern,
-    terrgen_async_resources::{TerrGenAsyncTasks, TerrGenSearchTaskResult},
+    terrgen_async_resources::{TerrAsyncTasks, TerrSearchTaskResult},
     terrgen_components::FailedSearchOplistFilterHolder,
     terrgen_messages::PendingOp,
 };
@@ -87,7 +87,7 @@ pub fn search_suitable_positions(
     terrprobe_query: Query<&TerrProbeTempl>,
     dimensions_query: Query<&DimensionRootOplist>,
     failed_search_oplist_filter_holder: Query<Entity, (With<FailedSearchOplistFilterHolder>)>,
-    mut terrgen_tasks: ResMut<TerrGenAsyncTasks>,
+    mut terrgen_tasks: ResMut<TerrAsyncTasks>,
     mut search_locals: SearchLocals,
 ) {
     let SearchLocals {
@@ -120,8 +120,9 @@ pub fn search_suitable_positions(
             true
         }
     });
+    let failed_search_oplist_filter_holder = failed_search_oplist_filter_holder.single().ok();
     for failed in failed_entities.drain(..) {
-        if let Ok(failed_search_oplist_filter_holder) = failed_search_oplist_filter_holder.single() {
+        if let Some(failed_search_oplist_filter_holder) = failed_search_oplist_filter_holder {
             cmd.entity(failed).try_insert(ChildOf(failed_search_oplist_filter_holder));
         }
     }
@@ -157,7 +158,7 @@ pub fn search_suitable_positions(
 }
 
 
-fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requesters: EntityHashSet) -> TerrGenSearchTaskResult {
+fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requesters: EntityHashSet) -> TerrSearchTaskResult {
     let pending_count = inputs.len();
     let mut new_pending_ops: Vec<PendingOp> = Vec::with_capacity(pending_count);
     let mut new_pos_searches: Vec<TerrProbeJob> = Vec::with_capacity(pending_count);
@@ -220,7 +221,7 @@ fn process_search_batch(inputs: Vec<TerrGenSearchTaskInput>, successful_requeste
         }
     }
 
-    TerrGenSearchTaskResult {
+    TerrSearchTaskResult {
         new_pending_ops,
         new_pos_searches,
         search_failed,

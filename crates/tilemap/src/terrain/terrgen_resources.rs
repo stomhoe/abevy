@@ -97,10 +97,8 @@ impl Default for TerrGenDebugGrid {
     }
 }
 
-#[derive(Resource, Debug, Clone, Default)]
-pub(crate) struct TerrGenSharedTaskData {
-    pub(crate) shared: Option<Arc<TerrGenSharedTaskDataInner>>,
-}
+#[derive(Resource, Debug, Clone)]
+pub(crate) struct TerrGenSharedTaskData(pub Arc<TerrGenSharedTaskDataInner>);
 
 #[derive(Debug)]
 pub(crate) struct TerrGenSharedTaskDataInner {

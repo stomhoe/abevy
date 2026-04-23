@@ -1,6 +1,7 @@
 
 use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashSet;
+use ::being_shared::WallPhaserOnSpawn;
 pub use crate::debug_seris::*;
 use common::common_components::HashId;
 use common::common_states::HotReloadSelection;
@@ -295,6 +296,7 @@ impl Default for DebugNoiseWorkshopState {
 #[derive(Resource, Debug, Clone)]
 pub struct DebugUiConfig {
     pub enable_debug_menus: bool,
+    pub wall_phaser: bool,
     pub hot_reload_defaults: common::common_states::HotReloadSelection,
     pub windows_open_on_start: DubugWindowsVisibility,
 }
@@ -303,6 +305,7 @@ pub fn load_debug_ui_config(
     mut cfg: ResMut<DebugUiConfig>,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selection: ResMut<HotReloadSelection>,
+    mut wall_phaser_on_spawn: ResMut<WallPhaserOnSpawn>,
 ) {
     let defs = load_debug_ui_config_seri_defs();
     let Some(def) = defs.first() else {
@@ -312,12 +315,14 @@ pub fn load_debug_ui_config(
     *cfg = def.to_config();
     *selection = cfg.hot_reload_defaults.clone();
     *window_visible = cfg.windows_open_on_start.clone();
+    wall_phaser_on_spawn.0 = cfg.wall_phaser;
 }
 
 impl Default for DebugUiConfig {
     fn default() -> Self {
         Self {
             enable_debug_menus: true,
+            wall_phaser: false,
             hot_reload_defaults: common::common_states::HotReloadSelection::default(),
             windows_open_on_start: DubugWindowsVisibility::default(),
         }
@@ -328,6 +333,7 @@ impl DebugUiConfigSeri {
     pub fn to_config(&self) -> DebugUiConfig {
         DebugUiConfig {
             enable_debug_menus: self.enable_debug_menus,
+            wall_phaser: self.wall_phaser,
             hot_reload_defaults: common::common_states::HotReloadSelection {
                 tiles: self.hot_reload_defaults.tiles,
                 sprite_configs_and_animations: self.hot_reload_defaults.sprite_configs_and_animations,

@@ -1,7 +1,9 @@
-use bevy::{ecs::entity::EntityHashMap, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
+use bevy::{platform::collections::HashMap, prelude::*, tasks::{AsyncComputeTaskPool, futures_lite::future}};
 use camera::camera_components::CameraTarget;
+use std::sync::Arc;
 use common::{common_components::{HashId, HashIdMap}};
 use common::log_targets::TERRGEN_SYSTEM;
+use ::tilemap_shared::*;
 use std::mem::take;
 
 use crate::{
@@ -11,16 +13,12 @@ use crate::{
         operation_list::operation_list_resources::OperationListEntityMap,
         terrprobe::terrprobe_messages::*,
         terrgen_async_resources::*,
-        terrgen_helpers::{
-            TerrGenTaskContext,
-            pending_root_gpos_count_for_chunk,
-            process_pending_ops_batch,
-            register_completed_chunk_gpos,
-        },
+        terrgen_helpers::*,
+        terrgen_async_fns::*,
         terrgen_messages::*,
         terrgen_resources::*,
     },
-    tile::{tile_components::*, tile_sampler_components::*, tile_resources::*},
+    tile::{tile_components::*, tile_sampler_components::*},
     tilemap_resources::{CloneSpawnParamSet, MassCollectedTiles},
 };
 
@@ -28,7 +26,6 @@ pub use crate::terrain::terrprobe::terrprobe_systems::search_suitable_positions;
 
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct TerrgenQueries<'w, 's> {
-	pub dim_hash_query: Query<'w, 's, &'static HashId, common::AnyDisabling>,
 	pub camera_query: Query<'w, 's, (&'static DimensionRef, &'static GlobalTransform), With<CameraTarget>>,
 	pub macro_chunk_biome_distributions: Query<'w, 's, &'static mut BiomeDistribution>,
 	pub macro_chunk_biome_sampling_states: Query<'w, 's, &'static mut MacrochunkPendingBiomeSamples>,
@@ -38,10 +35,10 @@ pub struct TerrgenQueries<'w, 's> {
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct TerrgenResources<'w> {
     pub collected: ResMut<'w, MassCollectedTiles>,
-    pub(crate) shared_task_data: Res<'w, TerrGenSharedTaskData>,
-    pub terrgen_tasks: ResMut<'w, TerrGenAsyncTasks>,
+    pub(crate) shared_task_data: Option<Res<'w, TerrGenSharedTaskData>>,
     pub debug_grid: ResMut<'w, TerrGenDebugGrid>,
-    pub launch_queue: ResMut<'w, TerrGenLaunchQueue>,
+    pub terrgen_tasks: ResMut<'w, TerrAsyncTasks>,
+    pub chunk_terrgen_queue: ResMut<'w, ChunksTerrgenQueue>,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
@@ -55,8 +52,8 @@ pub struct TerrgenMessageWriters<'w> {
 pub struct TerrgenLocalBuffers<'s> {
     pub pending_ops_batch: Local<'s, Vec<PendingOp>>,
     pub tile_requests: Local<'s, Vec<TerrGenTileRequest>>,
-    pub expected_root_gpos_by_chunk: Local<'s, EntityHashMap<usize>>,
-    pub completed_root_gpos_by_chunk: Local<'s, EntityHashMap<ChunkGposMask>>,
+    pub expected_root_gpos_by_chunk: Local<'s, HashMap<(DimensionRef, ChunkPos), usize>>,
+    pub completed_root_gpos_by_chunk: Local<'s, HashMap<(DimensionRef, ChunkPos), ChunkGposMask>>,
     pub chunk_built_msgs: Local<'s, Vec<ChunkTerrainBuilt>>,
     pub sampled_value_events: Local<'s, Vec<SuitablePosFound>>,
     pub sampled_value_matrix_events: Local<'s, Vec<SampledValuesCollected>>,
@@ -64,18 +61,18 @@ pub struct TerrgenLocalBuffers<'s> {
 }
 
 #[allow(unused_parens, )]
-pub fn launch_terrain_based_tile_generation_operations(
+pub fn enqueue_chunk_terrgen_jobs(
     mut chunks_query: Query<(Entity, &ChunkPos, &DimensionRef, &mut TerrGenState), (With<Chunk>, Changed<TerrGenState>)>,
     dimension_query: Query<(&DimensionRootOplist), ()>,
     dimension_map: Res<DimensionEntityMap>,
     oplist_map: Res<OperationListEntityMap>,
     oplist_size_query: Query<(&OplistSize), (With<OperationList>,)>,
-    mut launch_queue: ResMut<TerrGenLaunchQueue>,
+    mut chunk_terrgen_queue: ResMut<ChunksTerrgenQueue>,
     blocked_terrgen_gpos: Res<TerrGenDisabledGposByChunk>,
 ) {
     if chunks_query.is_empty() { return; }
 
-    for (chunk_ent, &chunk_pos, &dim_ref, mut terrgen_state) in chunks_query.iter_mut() {
+    for (_chunk_ent, &chunk_pos, &dim_ref, mut terrgen_state) in chunks_query.iter_mut() {
         if *terrgen_state != TerrGenState::Ready {
             continue;
         }
@@ -97,8 +94,7 @@ pub fn launch_terrain_based_tile_generation_operations(
         };
         let blocked_gpos = blocked_terrgen_gpos.get_for_chunk(dim_ref, chunk_pos);
 
-        launch_queue.0.push(TerrGenLaunchWork {
-            chunk_ent,
+        chunk_terrgen_queue.0.push(ChunkTerrGenWork {
             chunk_pos: chunk_pos,
             dim_ref,
             root_oplist: dim_root_op_list,
@@ -114,6 +110,7 @@ pub fn process_pending_ops_and_collect_tiles(
     mut cmd: Commands,
     mut queries: TerrgenQueries,
     mut resources: TerrgenResources,
+    loaded_chunks: Res<LoadedChunks>,
     param_set: CloneSpawnParamSet,
     mut msg_buffers: TerrgenMessageWriters,
     mut local_buffers: TerrgenLocalBuffers,
@@ -122,10 +119,9 @@ pub fn process_pending_ops_and_collect_tiles(
     let camera_query = &queries.camera_query;
     let tile_hash_query = &queries.tile_hash_query;
     let collected = &mut resources.collected;
-    let shared_task_data = &resources.shared_task_data;
     let terrgen_tasks = &mut resources.terrgen_tasks;
     let debug_grid = &mut resources.debug_grid;
-    let launch_queue = &mut resources.launch_queue;
+    let chunk_terrgen_queue = &mut resources.chunk_terrgen_queue;
 
     let Ok(gen_settings) = param_set.gen_settings.single() else {
         error!("Failed to get gen settings");
@@ -302,29 +298,34 @@ pub fn process_pending_ops_and_collect_tiles(
         .sampled_value_matrix_writer
         .write_batch(local_buffers.sampled_value_matrix_events.drain(..));
     for chunk_built in local_buffers.chunk_built_msgs.iter() {
-        cmd.entity(chunk_built.chunk_ent).try_insert(TerrGenState::Finished);
+        if let Some(&chunk_ent) = loaded_chunks.0.get(&(chunk_built.dimension_ref, chunk_built.chunk_pos)) {
+            cmd.entity(chunk_ent).try_insert(TerrGenState::Finished);
+        }
     }
     msg_buffers
         .chunk_built_writer
         .write_batch(local_buffers.chunk_built_msgs.drain(..));
-    if !launch_queue.0.is_empty() {
-        let work_items = take(&mut launch_queue.0);
+    if !chunk_terrgen_queue.0.is_empty() {
+        let work_items = take(&mut chunk_terrgen_queue.0);
         for work in work_items.iter() {
             let expected_count = pending_root_gpos_count_for_chunk(work);
             if expected_count == 0 {
                 local_buffers.chunk_built_msgs.push(ChunkTerrainBuilt {
-                    chunk_ent: work.chunk_ent,
+                    dimension_ref: work.dim_ref,
+                    chunk_pos: work.chunk_pos,
                 });
                 continue;
             }
-            local_buffers.expected_root_gpos_by_chunk.insert(work.chunk_ent, expected_count);
-            *local_buffers.completed_root_gpos_by_chunk.entry(work.chunk_ent).or_default() = ChunkGposMask::default();
+            local_buffers.expected_root_gpos_by_chunk.insert((work.dim_ref, work.chunk_pos), expected_count);
+            *local_buffers.completed_root_gpos_by_chunk.entry((work.dim_ref, work.chunk_pos)).or_default() = ChunkGposMask::default();
         }
         local_buffers
             .chunk_built_msgs
             .iter()
             .for_each(|chunk_built| {
-                cmd.entity(chunk_built.chunk_ent).insert(TerrGenState::Finished);
+                if let Some(&chunk_ent) = loaded_chunks.0.get(&(chunk_built.dimension_ref, chunk_built.chunk_pos)) {
+                    cmd.entity(chunk_ent).insert(TerrGenState::Finished);
+                }
             });
         msg_buffers
             .chunk_built_writer
@@ -339,12 +340,12 @@ pub fn process_pending_ops_and_collect_tiles(
     local_buffers.pending_ops_batch.extend(pending_ops_reader.read().cloned());
     if local_buffers.pending_ops_batch.is_empty() { return; }
 
-    let Some(shared_task_data) = shared_task_data.shared.as_ref() else {
+    let Some(shared_task_data) = resources.shared_task_data.as_ref() else {
         error!(target: TERRGEN_SYSTEM, "TerrGenSharedTaskData was not initialized before processing pending ops");
         return;
     };
 
-    let task_context = TerrGenTaskContext::from_shared(shared_task_data);
+    let task_context = Arc::clone(&shared_task_data.0);
 
     let pending_ops_batch = take(&mut *local_buffers.pending_ops_batch);
     let capture_debug = debug_grid.enabled;
@@ -352,48 +353,4 @@ pub fn process_pending_ops_and_collect_tiles(
     terrgen_tasks.op_tasks.push(task_pool.spawn(async move {
         process_pending_ops_batch(pending_ops_batch, task_context, gen_settings, capture_debug)
     }));
-}
-fn build_pending_ops_for_launch(work_items: Vec<TerrGenLaunchWork>) -> Vec<PendingOp> {
-    let total_area: usize = work_items
-        .iter()
-        .map(|work| {
-            (ChunkPos::CHUNK_SIZE.x / work.oplist_size.x()) as usize
-                * (ChunkPos::CHUNK_SIZE.y / work.oplist_size.y()) as usize
-        })
-        .sum();
-    let mut batch = Vec::with_capacity(total_area);
-    for work in work_items {
-        for x in 0..ChunkPos::CHUNK_SIZE.x / work.oplist_size.x() {
-            for y in 0..ChunkPos::CHUNK_SIZE.y / work.oplist_size.y() {
-                let pos_within_chunk = IVec2::new(x as i32, y as i32);
-                let gpos = work.chunk_pos.to_tilepos() + GlobalTilePos(pos_within_chunk * work.oplist_size.inner().as_ivec2());
-                let Some(bit_idx) = work.chunk_pos.bit_index_in_chunk(gpos) else {
-                    continue;
-                };
-                if work.blocked_gpos.is_set(bit_idx) {
-                    continue;
-                }
-                trace!(
-                    target: TERRGEN_SYSTEM,
-                    "Spawning terr operation {:?} at {:?} in chunk {:?}, pos_within_chunk: {:?}, oplist_size: {:?}",
-                    work.root_oplist,
-                    gpos,
-                    work.chunk_ent,
-                    pos_within_chunk,
-                    work.oplist_size
-                );
-                batch.push(PendingOp {
-                    oplist: work.root_oplist,
-                    input: PendingOpInput {
-                        dimension_ref: work.dim_ref,
-                        gpos,
-                    },
-                    purpose: PendingOpPurpose::ChunkTerrainGen {
-                        chunk_ent: work.chunk_ent,
-                    },
-                });
-            }
-        }
-    }
-    batch
 }

@@ -53,6 +53,7 @@ impl SgcCommandRegistry {
                 "circle",
                 "triangle",
                 "regular_polygon",
+                "pentacle",
             ],
         );
         registry.register_room_spawn_shapes(

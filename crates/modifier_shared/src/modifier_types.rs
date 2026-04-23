@@ -20,4 +20,5 @@ common::define_marker_components!(
     ManipulationDexterity,
     ManipulationStrength,
     Vision,
+    WallPhaser,
 );

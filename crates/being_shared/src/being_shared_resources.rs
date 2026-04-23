@@ -8,6 +8,9 @@ use tilemap_shared::{ChunkPos, DimensionRef};
 #[derive(Resource, Debug, Default)]
 pub struct FrozenBgSimulatedBeingsMap(pub HashMap<(DimensionRef, ChunkPos), Vec<Entity>>);
 
+#[derive(Resource, Debug, Default, Copy, Clone)]
+pub struct WallPhaserOnSpawn(pub bool);
+
 #[derive(Resource, Default)]
 pub struct BeingsToEnableOnChunkLoad {
     pub by_chunk: HashMap<(DimensionRef, ChunkPos), EntityHashSet>,

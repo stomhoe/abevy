@@ -1177,13 +1177,14 @@ pub fn goto_behavior(
         }
         if move_axis != IVec2::ZERO {
             let next_pos = GlobalTilePos(chaser_pos.0 + move_axis);
-            if blocking_tiles.is_blocked_at_tiles_only(chaser_dim, next_pos, chaser_ent) {
+            let can_phase = blocking_tiles.can_wall_phase(chaser_ent);
+            if !can_phase && blocking_tiles.is_blocked_at_tiles_only(chaser_dim, next_pos, chaser_ent) {
                 input_move_dir.0 = Vec2::ZERO;
                 request_fast_repath(&mut plans, chaser_ent, target_pos);
                 trace!(target: BEING_SYSTEM, "GoTo repath after static blocked step for {:?}: target {:?}, dir {:?}, from {:?}", chaser_ent, target_pos, move_axis, chaser_pos);
                 continue;
             }
-            if blocking_tiles.is_blocked_at(chaser_dim, next_pos, chaser_ent) {
+            if !can_phase && blocking_tiles.is_blocked_at(chaser_dim, next_pos, chaser_ent) {
                 input_move_dir.0 = Vec2::ZERO;
                 request_fast_repath(&mut plans, chaser_ent, target_pos);
                 trace!(target: BEING_SYSTEM, "GoTo repath after dynamic blocked step for {:?}: target {:?}, dir {:?}, from {:?}", chaser_ent, target_pos, move_axis, chaser_pos);

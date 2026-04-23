@@ -10,6 +10,7 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
 use ::being_shared::*;
+use modifier_shared::modifier_types::WallPhaser;
 use game_common::game_common_components::*;
 use player_shared::player_components::*;
 use ::tilemap_shared::{BlacklistedSpawnTileTagsRef, WhitelistedSpawnTileTagsRef};
@@ -266,7 +267,6 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
         if self.occupied_gposes.is_empty() {
             self.occupied_gposes.push(gpos);
         }
-        let can_phase = self.wallphaser_query.get(entity).is_ok();
 
         let mut all_tiles_failed = true;
         let mut has_whitelist_match = whitelisted_tags.0.is_empty();
@@ -315,9 +315,6 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                         has_blacklist_match = true;
                     }
                 }
-                if can_phase {
-                    continue;
-                }
                 if sample.dead_despawning {
                     continue;
                 }
@@ -358,6 +355,10 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
 
     pub fn is_blocked_at_tiles_only(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity, ) -> bool {
         self.is_blocked_at_impl_except_dead_despawning(dim_ref, gpos, being, false, )
+    }
+
+    pub fn can_wall_phase(&self, being: Entity) -> bool {
+        self.wallphaser_query.get(being).is_ok()
     }
 
     fn is_blocked_at_impl_except_dead_despawning(&mut self, dim_ref: DimensionRef, gpos: GlobalTilePos, being: Entity, include_beings: bool) -> bool {
@@ -410,11 +411,6 @@ impl<'w, 's> BlockingTileParamSet<'w, 's> {
                     }
                 }
             }
-        }
-
-        let can_phase = self.wallphaser_query.get(being).is_ok();
-        if can_phase {
-            return false;
         }
 
         let mut all_tiles_failed = true;

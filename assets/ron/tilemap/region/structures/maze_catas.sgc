@@ -18,16 +18,16 @@ sgc {
         external_doorway_width_max = 2
         external_doorway_wall_axis_preference = horizontal
         room_spawn.square_room = [
-            { source_id = skeleton, override_being_count = 1, pack_spawn_radius = 0, weight = 3.0 },
-            { source_id = goblin, override_being_count = 1, pack_spawn_radius = 0, weight = 2.5 },
-            { source_id = ogre, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
+            { source_id = skeleton, pack_spawn_radius = 0, weight = 3.0 },
+            { source_id = goblin, pack_spawn_radius = 0, weight = 2.5 },
+            { source_id = ogre, pack_spawn_radius = 0, weight = 1.5 },
             { source_id = medusa, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
             { source_id = ghost, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
             { source_id = golem_bronze, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
         ]
         room_spawn.circle_room = [
-            { source_id = skeleton, override_being_count = 1, pack_spawn_radius = 0, weight = 2.5 },
-            { source_id = goblin, override_being_count = 1, pack_spawn_radius = 0, weight = 2.5 },
+            { source_id = skeleton, pack_spawn_radius = 0, weight = 2.5 },
+            { source_id = goblin, pack_spawn_radius = 0, weight = 2.5 },
             { source_id = beholder, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
             { source_id = spawn, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
             { source_id = golem_gold, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },

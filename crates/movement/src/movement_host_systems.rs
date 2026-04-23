@@ -240,7 +240,7 @@ pub fn receive_step_request_from_client(
         let step_ticks = ticks_per_tile(speed_magnitude.0, time_fixed.delta_secs(), dir_vec);
         let steps_taken = if step_ticks > 1 {
             let next_gpos = GlobalTilePos(curr_tile_pos.0 + dir_vec);
-            if blocking_tiles.is_blocked_at(dim_ref, next_gpos, entity) {
+            if !blocking_tiles.can_wall_phase(entity) && blocking_tiles.is_blocked_at(dim_ref, next_gpos, entity) {
                 warn!(
                     target: MOVEMENT_SYSTEM,
                     "Rejected blocked step request for {:?}: dir {:?}, target {:?}",

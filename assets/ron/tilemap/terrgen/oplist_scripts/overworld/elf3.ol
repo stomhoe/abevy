@@ -2,11 +2,11 @@ id: elf3
 size: (1, 1)
 tags: ["elf"]
 
-let lakeness = max(fnl.lakesmol, fnl.lakebig)
+let lakeness = avg(fnl.lakesmol, fnl.lakebig)
 let lakeness = *(lakeness, continentness)
 
 out = idxmax(0.8, lakeness)
 
-bif elf4 -> [tempgrass] biomes: [elf=1.(16, 0)]
-bif "" -> [lake]
-bif "" -> []
+[tempgrass] biomes: [elf=1.(16, 0)] elf4
+[lake] ""
+[] ""

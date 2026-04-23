@@ -7,5 +7,5 @@ let inlandness = remap(continentness, shared_continentness_min, shared_continent
 
 out = idxmax(inlandness, 0.2)
 
-bif anta3 -> []
-bif beach_anta -> []
+[] anta3
+[] beach_anta

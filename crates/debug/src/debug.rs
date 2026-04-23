@@ -7,6 +7,7 @@ use bevy::ecs::schedule::common_conditions::on_message;
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use ::being_shared::{BeingNavDebugLine, DebuggingBeingNav};
+use ::being_shared::WallPhaserOnSpawn;
 
     use crate::{
         being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
@@ -117,6 +118,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DebugNoiseWorkshopState>()
         .init_resource::<DebugFontsInitialized>()
         .init_resource::<DebugUiConfig>()
+        .init_resource::<WallPhaserOnSpawn>()
         .init_resource::<WorldTileClickInspectorState>()
         .init_resource::<TileClickRemoverState>()
         .init_resource::<BeingClickRemoverState>()

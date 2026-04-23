@@ -7,17 +7,20 @@ sgc {
     max_being_count = 40
     args {
         floor_tile_id = dunewbie
+        floor_b_tile_id = dublack
         wall_tile_id = nw
         lava_tile_id = lava
-        room_shape_weight_rectangle = 1.0
-        room_shape_weight_circle = 1.0
-        room_shape_weight_triangle = 1.0
-        room_shape_weight_polygon = 1.0
+        rectangle_weight = 1.0
+        ellipse_weight = 1.0
+        trapezoid_weight = 1.0
+        regular_polygon_weight = 1.0
+        pentacle_weight = 0.2
         room_same_shape_chance = 0.25
         room_same_shape_weight_rectangle = 1.0
-        room_same_shape_weight_circle = 1.0
-        room_same_shape_weight_triangle = 0.0
-        room_same_shape_weight_polygon = 1.0
+        room_same_shape_weight_ellipse = 1.0
+        room_same_shape_weight_trapezoid = 1.0
+        room_same_shape_weight_regular_polygon = 1.0
+        room_same_shape_weight_pentacle = 0.0
         room_polygon_min_sides = 4
         room_polygon_max_sides = 12
         room_polygon_rotation_min_deg = 0.0
@@ -37,12 +40,12 @@ sgc {
             { source_id = golem_bronze, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
             { source_id = ghost, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
         ]
-        room_spawn.circle = [
+        room_spawn.ellipse = [
             { source_id = medusa, override_being_count = 1, pack_spawn_radius = 0, weight = 2.0 },
             { source_id = goblin, override_being_count = 1, pack_spawn_radius = 0, weight = 2.0 },
             { source_id = skeleton, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
         ]
-        room_spawn.triangle = [
+        room_spawn.trapezoid = [
             { source_id = ogre, override_being_count = 1, pack_spawn_radius = 0, weight = 2.0 },
             { source_id = spawn, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
             { source_id = golem_gold, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
@@ -51,6 +54,11 @@ sgc {
             { source_id = beholder, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
             { source_id = golem, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
             { source_id = cyclops, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+        ]
+        room_spawn.pentacle = [
+            { source_id = beholder, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
+            { source_id = golem_infernal, pack_spawn_radius = 0, weight = 0.25 },
+            { source_id = demon, pack_spawn_radius = 0, weight = 0.25 },
         ]
         disable_terrgen.floor_tile_id = true
     }

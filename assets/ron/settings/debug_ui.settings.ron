@@ -3,6 +3,8 @@
 
     // If false, all debug menu toggles and windows are disabled.
     enable_debug_menus: true,
+    // If true, the host-controlled character starts with WallPhaser on spawn.
+    wall_phaser: true,
     drift_file_logging: true,
 
     // Defaults for the Hot Reload window checkboxes.

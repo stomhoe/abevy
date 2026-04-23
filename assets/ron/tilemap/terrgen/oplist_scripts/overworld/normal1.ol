@@ -2,11 +2,11 @@ id: normal1
 debug: [normal_diff, ]
 let continentness = avg(fnl.conti, fnl.penin)
 let continentness = *(continentness, normal_diff)
-let continent_threshold = 0.3
+let continent_min = 0.3
 
-out = idxmax(continent_threshold, continentness)
+out = idxmax(continent_min, continentness)
 
 
 
-bif ocean -> []
-bif normal2 -> []
+[] ocean
+[] normal2

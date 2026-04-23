@@ -34,7 +34,6 @@ impl Default for InGameTiming {
 
 
 
-// Implement division for Days
 
 
 #[derive(Resource, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
@@ -95,4 +94,3 @@ impl std::fmt::Display for CurrSec {
     }
 }
 
-// New Hour and Minute structs

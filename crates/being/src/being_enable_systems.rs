@@ -26,7 +26,6 @@ struct SpawnTileTagsGroup {
 
 #[derive(SystemParam)]
 pub(crate) struct ActivateFirstLoadQueries<'w, 's> {
-    built_chunk_query: Query<'w, 's, (&'static DimensionRef, &'static ChunkPos), (With<Chunk>, )>,
     spawn_tile_tags_query: Query<'w, 's, (
         Option<&'static WhitelistedSpawnTileTags>,
         Option<&'static BlacklistedSpawnTileTags>,
@@ -74,9 +73,8 @@ pub fn activate_beings_in_first_time_loaded_chunks(
     let mut activated_beings = 0usize;
     let mut touched_chunks = 0usize;
     for built_chunk in built_chunks.read() {
-        let Ok((&dim_ref, &chunk_pos)) = queries.built_chunk_query.get(built_chunk.chunk_ent) else {
-            continue;
-        };
+        let dim_ref = built_chunk.dimension_ref;
+        let chunk_pos = built_chunk.chunk_pos;
         let Some(being_ents) = pending_enable_by_cpos.by_chunk.get_mut(&(dim_ref, chunk_pos)) else {
             trace!(target: BEING_SYSTEM, "Natural spawn unfreeze got built chunk {:?} in {:?} but no pending wildlife reservation existed", chunk_pos, dim_ref);
             continue;

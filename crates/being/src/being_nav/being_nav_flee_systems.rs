@@ -28,6 +28,9 @@ fn choose_flee_target_pos(
         avoid_tile_tags: &BlacklistedSpawnTileTagsRef<'_>,
         empty_whitelist: &WhitelistedSpawnTileTagsRef<'_>,
     ) -> bool {
+        if blocking_tiles.can_wall_phase(being_ent) {
+            return true;
+        }
         if blocking_tiles.is_blocked_at(being_dim, candidate, being_ent, ) {
             return false;
         }

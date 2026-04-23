@@ -34,8 +34,8 @@ let ocean_between_tectonic_plates = 0.47
 
 out = idxmaxislands(ocean_between_tectonic_plates, normal_tect, elf_tect, anta_tect, desert_tect)
 
-bif ocean -> []
-bif normal1 -> []
-bif elf1 -> []
-bif anta1 -> []
-bif desert1 -> []
+[] ocean
+[] normal1
+[] elf1
+[] anta1
+[] desert1

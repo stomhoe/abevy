@@ -14,7 +14,7 @@ use crate::regioning::{
 use crate::terrain::biome::biome_resources::BiomeEntityMap;
 use crate::tile::tile_resources::*;
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
-use super::super::dungeoning_carve_helpers::carve_room_circle;
+use super::super::dungeoning_carve_helpers::carve_room_ellipse_typed;
 use super::super::dungeoning_ids::SPIRAL;
 use super::super::dungeoning_utils::{carve_external_wall_doorways, extend_occupied_gpos, ExternalDoorwayConfig, seal_structure_border_band};
 
@@ -176,15 +176,22 @@ pub fn spiral_dungeon_building_system(
         let inner_radius = room_radius;
         let outer_radius = room_radius + wall_thickness;
 
-        carve_room_circle(
-            &mut floor_map,
+        let mut center_floor_map = vec![0u8; tile_map_size];
+        carve_room_ellipse_typed(
+            &mut center_floor_map,
             tile_width,
             tile_height,
             center_x - inner_radius,
             center_y - inner_radius,
             inner_radius * 2 + 1,
             inner_radius * 2 + 1,
+            1,
         );
+        for (idx, tile) in center_floor_map.iter().copied().enumerate() {
+            if tile != 0 {
+                floor_map[idx] = true;
+            }
+        }
 
         let mut wall_ring_map = vec![false; tile_map_size];
         for y in 0..tile_height {

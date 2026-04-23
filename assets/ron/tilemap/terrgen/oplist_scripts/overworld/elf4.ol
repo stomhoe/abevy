@@ -20,7 +20,7 @@ let cave_portal_feature = *(inlandness, cave_portal_feature)
 
 out = idxmax(0.5, bush_feature, tree_feature, cave_portal_feature)
 
-bif "" -> []
-bif "" -> [elfveg_sampler]
-bif "" -> [elftree_sampler]
-bif "" -> [portal_cave, ]
+[] ""
+[elfveg_sampler] ""
+[elftree_sampler] ""
+[portal_cave, ] ""

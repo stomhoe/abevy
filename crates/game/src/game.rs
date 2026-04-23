@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::{ClientState, };
+use ::being_shared::WallPhaserOnSpawn;
 use common::common_states::*;
 use game_common::game_common::*;
 use tilemap::terrain::TerrainProbeSystems;
@@ -13,6 +14,7 @@ pub fn plugin(app: &mut App) {
     app
     .init_resource::<GameInitSettings>()
     .init_resource::<CommonSpawnOriginCache>()
+    .init_resource::<WallPhaserOnSpawn>()
     .add_observer(put_player_beings_on_map)
 
     .add_systems(

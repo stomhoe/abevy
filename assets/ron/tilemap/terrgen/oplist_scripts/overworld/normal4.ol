@@ -20,7 +20,7 @@ let cave_portal_feature = lerp(cave_portal_feature, inlandness, 0.3)
 
 out = idxmax(0.5, bush_feature, tree_feature, cave_portal_feature)
 
-bif normal5 -> []
-bif "" -> [tempveg_sampler, ]
-bif "" -> [temptree_sampler, ]
-bif "" -> [portal_cave, ]
+[] normal5
+[tempveg_sampler, ] ""
+[temptree_sampler, ] ""
+[portal_cave, ] ""

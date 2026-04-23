@@ -6860,6 +6860,7 @@ dependencies = [
  "bevy_ecs_tilemap",
  "common",
  "game_common",
+ "modifier_shared",
  "paste",
  "player_shared",
  "tilemap",

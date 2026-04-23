@@ -17,6 +17,7 @@ use tilemap::{
 
 use bevy::prelude::*;
 use serde::Deserialize;
+use modifier_shared::WallPhaser;
 use tilemap::{
     run_oneshot_suitable_pos_search_logic,
     terrain::{
@@ -203,9 +204,10 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
 
 #[allow(unused_parens)]
 pub fn host_on_player_added(mut cmd: Commands,
-    query: Query<(Entity, &StrId),(Added<StrId>, With<Player>)>,
+    query: Query<(Entity, &StrId, Has<HostPlayer>),(Added<StrId>, With<Player>)>,
     player_query: Query<(&CreatedCharacters)>,
     ________settings: Res<GameInitSettings>,
+    wall_phaser_on_spawn: Res<::being_shared::WallPhaserOnSpawn>,
     host_player_faction_ref: Query<&FactionRef, (With<HostPlayer>, With<Mine>, )>,
     host_faction_query: Query<Entity, (With<Faction>, With<Mine>, Without<Templ>, )>,
     faction_map: Res<FactionEntityMap>,
@@ -223,13 +225,13 @@ pub fn host_on_player_added(mut cmd: Commands,
         error!(target: GAME_INIT, "Failed to get host faction: no HostPlayer FactionRef could be resolved and no fallback Faction+Mine entity was found");
         return;
     };
-    for (player_ent, username) in query.iter() {
+    for (player_ent, username, is_host_player) in query.iter() {
 
         if player_query.get(player_ent).is_err() {
 
             //USAR EL DEFAULT ASE Q SE DESPAWNEE
 
-            let _created_character = cmd.spawn((Being, username.clone(),
+            let created_character = cmd.spawn((Being, username.clone(),
                 CharacterCreatedBy { player: player_ent },
                 JoinedGroups::single(host_faction),
                 ComputedBy {
@@ -237,6 +239,9 @@ pub fn host_on_player_added(mut cmd: Commands,
                     human_dc_input: true,
                 },
             )).id();
+            if wall_phaser_on_spawn.0 && is_host_player {
+                cmd.entity(created_character).insert(WallPhaser);
+            }
             //cmd.spawn(SpeedModifier::new(created_character, created_character, 1000.0, ApplyMode::Add));
 
         }else{

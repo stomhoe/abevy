@@ -10,5 +10,5 @@ let gravelness = COMPL beach_avg_noise
 
 out = idxmax(0.5, beach_avg_noise)
 
-bif "" -> [sand] 
-bif "" -> [gravel]
+[sand] ""
+[gravel] ""

@@ -11,5 +11,5 @@ let b_diff = -(variant_b, variant_a)
 
 out = 0
 
-bif "" -> [dublack]
+[dublack] ""
 

@@ -26,7 +26,8 @@ pub struct PendingOpValueProbe {
 
 #[derive(Message, Debug, Clone)]
 pub struct ChunkTerrainBuilt {
-    pub chunk_ent: Entity,
+    pub dimension_ref: DimensionRef,
+    pub chunk_pos: ChunkPos,
 }
 
 #[derive(Message, Debug, Clone, Copy)]
@@ -36,7 +37,7 @@ pub struct MacroChunkBiomeSampled {
 
 #[derive(Debug, Clone, Copy)]
 pub enum PendingOpPurpose {
-    ChunkTerrainGen { chunk_ent: Entity },
+    ChunkTerrainGen { chunk_pos: ChunkPos },
     ValueProbe(PendingOpValueProbe),
     MacroChunkBiomeSampling { macro_chunk_ent: Entity },
 }

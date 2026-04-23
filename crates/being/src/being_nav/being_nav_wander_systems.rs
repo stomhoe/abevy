@@ -461,6 +461,7 @@ pub fn wander_behavior(
         let empty_whitelist = WhitelistedSpawnTileTagsRef(&empty_whitelist);
         let avoid_spawn_tile_tags = BlacklistedSpawnTileTagsRef(&avoid_tile_tags);
         let lod_level = lod_level.map_or(0, |lod_level| lod_level.0);
+        let can_phase = blocking_tiles.can_wall_phase(pred_ent);
         let Some(elapsed_secs) = advance_wander_lod_tick(
             pred_ent,
             dt,
@@ -575,7 +576,7 @@ pub fn wander_behavior(
                         IVec2::new(0, input_dir.y.signum() as i32)
                     };
                     let next = GlobalTilePos(gpos.0 + step);
-                    if !blocking_tiles.allowed_at_refs(
+                    if !can_phase && !blocking_tiles.allowed_at_refs(
                         dim_ref,
                         next,
                         pred_ent,
@@ -591,7 +592,7 @@ pub fn wander_behavior(
             let axis = FinalNormMoveDir(input_dir).normalize_to_axis_dir();
             if axis != IVec2::ZERO {
                 let next = GlobalTilePos(gpos.0 + axis);
-                if blocking_tiles.is_blocked_at_tiles_only(dim_ref, next, pred_ent) {
+                if !can_phase && blocking_tiles.is_blocked_at_tiles_only(dim_ref, next, pred_ent) {
                     if let Some(detour_axis) = pick_detour_axis_around_blocker(
                         &mut rng,
                         &mut blocking_tiles,
@@ -628,7 +629,7 @@ pub fn wander_behavior(
                 if let Ok(facing_dir) = blocking_tiles.cardinal_direction_query().get_mut(pred_ent) {
                     let current_facing = *facing_dir;
                     let facing_gpos = GlobalTilePos(gpos.0 + current_facing.to_dir_vec());
-                    if blocking_tiles.is_blocked_at_tiles_only(dim_ref, facing_gpos, pred_ent) {
+                    if !can_phase && blocking_tiles.is_blocked_at_tiles_only(dim_ref, facing_gpos, pred_ent) {
                         let next_facing = pick_clear_cardinal_dir(
                             &mut rng,
                             &mut blocking_tiles,
@@ -661,7 +662,7 @@ pub fn wander_behavior(
         let mut farthest_target = gpos;
         for dist in 1..=4 {
             let candidate = GlobalTilePos(gpos.0 + axis * dist);
-            if blocking_tiles.is_blocked_at_tiles_only(dim_ref, candidate, pred_ent) {
+            if !can_phase && blocking_tiles.is_blocked_at_tiles_only(dim_ref, candidate, pred_ent) {
                 break;
             }
             farthest_target = candidate;

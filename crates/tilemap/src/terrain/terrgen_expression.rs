@@ -7,24 +7,11 @@ use crate::terrain::terrgen_components::FnlNoiseComp;
 use common::common_components::{HashId, HashIdMap, StrId};
 
 impl Default for Expr {
-    fn default() -> Self {
-        Self::Literal(0.0)
-    }
+    fn default() -> Self { Self::Literal(0.0) }
 }
-/// Expression tree for terrain generation operations
-/// Replaces the slot-based system with a composable AST
 #[derive(Debug, Clone, Serialize, Deserialize, )]
 pub enum Expr {
-    /// Literal constant value
     Literal(f32),
-
-    /// Reference to a noise entity by hash id
-    Noise {
-        hash_id: HashId,
-        sample_range: fnl::NoiseSampleRange,
-        complement: bool,
-        seed_offset: i32,
-    },
 
     /// Reference to a noise by name hash
     NoiseByName {
@@ -34,35 +21,28 @@ pub enum Expr {
         seed_offset: i32,
     },
 
-    /// Hash-based positional value
     HashPos { seed: u64 },
 
-    /// Poisson disk sampling
     PoissonDisk {
         min_dist: u8,
         seed: u64,
     },
 
-    /// Variable reference (inherited from parent oplist or locally defined)
     Variable { name: StrId },
 
-    /// Binary operations
-    Add { left: Box<Expr>, right: Box<Expr> },
-    Subtract { left: Box<Expr>, right: Box<Expr> },
-    Multiply { left: Box<Expr>, right: Box<Expr> },
+    /// Variadic arithmetic operations
+    Add { values: Vec<Expr> },
+    Subtract { values: Vec<Expr> },
+    Multiply { values: Vec<Expr> },
     Divide { left: Box<Expr>, right: Box<Expr> },
 
     /// Multiply by opposite (1 - x)
     MultiplyOpo { value: Box<Expr> },
 
-    /// Min/Max operations
     Min { values: Vec<Expr> },
     Max { values: Vec<Expr> },
-
-    /// Average of values
     Average { values: Vec<Expr> },
 
-    /// Absolute value
     Abs { value: Box<Expr> },
 
     /// Multiply by normalized value (-0.5 to 0.5 range)
@@ -81,20 +61,13 @@ pub enum Expr {
     /// islanddiff(index, island_0, island_1, ...) = island[index] - mean(other islands)
     IslandDiff { values: Vec<Expr> },
 
-    /// Remap a value from one range into another, clamped to the output range.
-    /// remap(value, input_min, input_max, output_min, output_max)
     RemapRange { value: Box<Expr>, input_min: Box<Expr>, input_max: Box<Expr>, output_min: Box<Expr>, output_max: Box<Expr> },
 
     /// Index normalized to range
     IndexNorm { value: Box<Expr>, multiplier: Box<Expr> },
 
-    /// Linear interpolation
     Lerp { start: Box<Expr>, end: Box<Expr>, t: Box<Expr> },
 
-    /// Legacy terrain-gen linear form
-    Linear { values: Vec<Expr> },
-
-    /// Clamp value between min and max
     Clamp { value: Box<Expr>, min: Box<Expr>, max: Box<Expr> },
 
     /// Complement (1 - x)
@@ -102,23 +75,13 @@ pub enum Expr {
 }
 
 impl Expr {
-    fn remap_clamped(value: f32, input_min: f32, input_max: f32, output_min: f32, output_max: f32) -> f32 {
-        let input_span = input_max - input_min;
-        if !input_span.is_finite() || input_span.abs() < f32::EPSILON {
-            return output_min;
-        }
-
-        let t = (value - input_min) / input_span;
-        output_min + t * (output_max - output_min)
-    }
 
     /// Evaluate the expression recursively
     pub fn eval(&self, context: &EvalContext) -> f32 {
         match self {
             Expr::Literal(v) => *v,
 
-            Expr::Noise { hash_id, sample_range, complement, seed_offset }
-            | Expr::NoiseByName { name: hash_id, sample_range, complement, seed_offset } => {
+            Expr::NoiseByName { name: hash_id, sample_range, complement, seed_offset } => {
                 let Ok(noise) = context.noises.get(*hash_id) else {
                     return 0.0;
                 };
@@ -175,9 +138,16 @@ impl Expr {
                 }
             }
 
-            Expr::Add { left, right } => left.eval(context) + right.eval(context),
-            Expr::Subtract { left, right } => left.eval(context) - right.eval(context),
-            Expr::Multiply { left, right } => left.eval(context) * right.eval(context),
+            Expr::Add { values } => values.iter().map(|v| v.eval(context)).sum(),
+            Expr::Subtract { values } => {
+                let Some((first, rest)) = values.split_first() else {
+                    return 0.0;
+                };
+                rest.iter().fold(first.eval(context), |acc, value| acc - value.eval(context))
+            }
+            Expr::Multiply { values } => {
+                values.iter().map(|v| v.eval(context)).fold(1.0, |acc, value| acc * value)
+            }
             Expr::Divide { left, right } => {
                 let r = right.eval(context);
                 if r != 0.0 {
@@ -302,7 +272,12 @@ impl Expr {
                 let input_max = input_max.eval(context);
                 let output_min = output_min.eval(context);
                 let output_max = output_max.eval(context);
-                Self::remap_clamped(value, input_min, input_max, output_min, output_max)
+                let input_span = input_max - input_min;
+                if !input_span.is_finite() || input_span.abs() < f32::EPSILON {
+                    return output_min;
+                }
+                let t = (value - input_min) / input_span;
+                output_min + t * (output_max - output_min)
             }
 
             Expr::IndexNorm { value, multiplier } => {
@@ -314,22 +289,6 @@ impl Expr {
                 let end = end.eval(context);
                 let t = t.eval(context);
                 start + (end - start) * t
-            }
-
-            Expr::Linear { values } => {
-                // Legacy terrain-gen "lin" behavior:
-                // lin(x, a, b, m1, m2, ...) = sigmoid(a*x + b) * m1 * m2 * ...
-                if values.len() < 3 {
-                    return 0.0;
-                }
-                let x = values[0].eval(context);
-                let a = values[1].eval(context);
-                let b = values[2].eval(context);
-                let mut result = 1.0 / (1.0 + (-(a * x + b)).exp());
-                for expr in &values[3..] {
-                    result *= expr.eval(context);
-                }
-                result
             }
 
             Expr::Clamp { value, min, max } => {
@@ -345,61 +304,6 @@ impl Expr {
         }
     }
 
-    /// Collect all noise entities referenced in this expression
-    pub fn collect_noise_hash_ids(&self, out: &mut BevyHashSet<HashId>) {
-        match self {
-            Expr::Noise { hash_id, .. } | Expr::NoiseByName { name: hash_id, .. } => {
-                out.insert(*hash_id);
-            }
-            Expr::Add { left, right }
-            | Expr::Subtract { left, right }
-            | Expr::Multiply { left, right }
-            | Expr::Divide { left, right }
-            | Expr::MultiplyNormalized { left, right }
-            | Expr::MultiplyNormalizedAbs { left, right } => {
-                left.collect_noise_hash_ids(out);
-                right.collect_noise_hash_ids(out);
-            }
-            Expr::MultiplyOpo { value }
-            | Expr::Abs { value }
-            | Expr::Complement { value } => {
-                value.collect_noise_hash_ids(out);
-            }
-            Expr::Min { values }
-            | Expr::Max { values }
-            | Expr::Average { values }
-            | Expr::IndexMax { values }
-            | Expr::IndexMaxIslands { values }
-            | Expr::IslandDiff { values }
-            | Expr::Linear { values } => {
-                for v in values {
-                    v.collect_noise_hash_ids(out);
-                }
-            }
-            Expr::RemapRange { value, input_min, input_max, output_min, output_max } => {
-                value.collect_noise_hash_ids(out);
-                input_min.collect_noise_hash_ids(out);
-                input_max.collect_noise_hash_ids(out);
-                output_min.collect_noise_hash_ids(out);
-                output_max.collect_noise_hash_ids(out);
-            }
-            Expr::IndexNorm { value, multiplier } => {
-                value.collect_noise_hash_ids(out);
-                multiplier.collect_noise_hash_ids(out);
-            }
-            Expr::Lerp { start, end, t } => {
-                start.collect_noise_hash_ids(out);
-                end.collect_noise_hash_ids(out);
-                t.collect_noise_hash_ids(out);
-            }
-            Expr::Clamp { value, min, max } => {
-                value.collect_noise_hash_ids(out);
-                min.collect_noise_hash_ids(out);
-                max.collect_noise_hash_ids(out);
-            }
-            _ => {}
-        }
-    }
 }
 
 /// Evaluation context for expressions
@@ -413,20 +317,16 @@ pub struct EvalContext<'a> {
     pub variables: &'a HashIdMap<f32>,
 }
 
-/// Variable assignment in an oplist
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Assignment {
-    pub name: HashId,
-    pub expr: Expr,
-}
+pub struct Assignment { pub var_name: HashId, pub expr: Expr, }
 
 /// Oplist definition using expression trees
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExprOpList {
-    /// Named variable assignments
+    /// variable assignments
     pub assignments: Vec<Assignment>,
 
-    /// Final output expression (what becomes 'out')
+    /// lo que se vuelve out
     pub output: Expr,
 }
 
@@ -442,7 +342,7 @@ impl ExprOpList {
                 ..*context
             };
             let value = assignment.expr.eval(&local_context);
-            let _ = variables.overwrite(assignment.name, value);
+            let _ = variables.overwrite(assignment.var_name, value);
         }
 
         // Evaluate output expression

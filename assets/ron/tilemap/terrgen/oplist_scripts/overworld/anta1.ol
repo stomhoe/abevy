@@ -4,10 +4,10 @@ debug: [anta_diff]
 
 let continentness = avg(fnl.conti, fnl.penin)
 let continentness = *(continentness, anta_diff)
-let continent_threshold = 0.3
+let continent_min = 0.3
 
-out = idxmax(continent_threshold, continentness)
+out = idxmax(continent_min, continentness)
 
 
-bif ocean -> []
-bif anta2 -> [] biomes: [anta=3.5(5.0,0.35)]
+[] ocean
+[] biomes: [anta=3.5(5.0,0.35)] anta2

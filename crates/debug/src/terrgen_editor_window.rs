@@ -18,29 +18,31 @@ fn format_expr(expr: &Expr, indent: usize) -> String {
     let prefix = "  ".repeat(indent);
     match expr {
         Expr::Literal(v) => format!("{:.3}", v),
-        Expr::Noise { complement, seed_offset, .. } => {
-            let comp = if *complement { "!" } else { "" };
-            format!("{}Noise(seed: {}){}", prefix, seed_offset, comp)
-        }
         Expr::NoiseByName { name, complement, .. } => {
             let comp = if *complement { "!" } else { "" };
             format!("{}NoiseByName({}){}", prefix, name, comp)
         }
         Expr::Variable { name } => format!("${}", name),
-        Expr::Add { left, right } => {
-            format!("({} + {})",
-                format_expr_compact(left),
-                format_expr_compact(right))
+        Expr::Add { values } => {
+            let args = values.iter()
+                .map(|v| format_expr_compact(v))
+                .collect::<Vec<_>>()
+                .join(" + ");
+            format!("({})", args)
         }
-        Expr::Subtract { left, right } => {
-            format!("({} - {})",
-                format_expr_compact(left),
-                format_expr_compact(right))
+        Expr::Subtract { values } => {
+            let args = values.iter()
+                .map(|v| format_expr_compact(v))
+                .collect::<Vec<_>>()
+                .join(" - ");
+            format!("({})", args)
         }
-        Expr::Multiply { left, right } => {
-            format!("({} * {})",
-                format_expr_compact(left),
-                format_expr_compact(right))
+        Expr::Multiply { values } => {
+            let args = values.iter()
+                .map(|v| format_expr_compact(v))
+                .collect::<Vec<_>>()
+                .join(" * ");
+            format!("({})", args)
         }
         Expr::Divide { left, right } => {
             format!("({} / {})",
@@ -124,13 +126,6 @@ fn format_expr(expr: &Expr, indent: usize) -> String {
                 format_expr_compact(end),
                 format_expr_compact(t))
         }
-        Expr::Linear { values } => {
-            let args = values.iter()
-                .map(|v| format_expr_compact(v))
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("lin({})", args)
-        }
         Expr::Clamp { value, min, max } => {
             format!("clamp({}, {}, {})",
                 format_expr_compact(value),
@@ -149,21 +144,30 @@ fn format_expr(expr: &Expr, indent: usize) -> String {
 fn format_expr_compact(expr: &Expr) -> String {
     match expr {
         Expr::Literal(v) => format!("{:.3}", v),
-        Expr::Noise { complement, .. } => {
-            if *complement { "!noise" } else { "noise" }.to_string()
-        }
         Expr::NoiseByName { name, complement, .. } => {
             if *complement { format!("!{}", name) } else { name.to_string() }
         }
         Expr::Variable { name } => format!("${}", name),
-        Expr::Add { left, right } => {
-            format!("({} + {})", format_expr_compact(left), format_expr_compact(right))
+        Expr::Add { values } => {
+            let args = values.iter()
+                .map(format_expr_compact)
+                .collect::<Vec<_>>()
+                .join(" + ");
+            format!("({})", args)
         }
-        Expr::Subtract { left, right } => {
-            format!("({} - {})", format_expr_compact(left), format_expr_compact(right))
+        Expr::Subtract { values } => {
+            let args = values.iter()
+                .map(format_expr_compact)
+                .collect::<Vec<_>>()
+                .join(" - ");
+            format!("({})", args)
         }
-        Expr::Multiply { left, right } => {
-            format!("({} * {})", format_expr_compact(left), format_expr_compact(right))
+        Expr::Multiply { values } => {
+            let args = values.iter()
+                .map(format_expr_compact)
+                .collect::<Vec<_>>()
+                .join(" * ");
+            format!("({})", args)
         }
         Expr::Divide { left, right } => {
             format!("({} / {})", format_expr_compact(left), format_expr_compact(right))
@@ -216,13 +220,6 @@ fn format_expr_compact(expr: &Expr) -> String {
                 format_expr_compact(start),
                 format_expr_compact(end),
                 format_expr_compact(t))
-        }
-        Expr::Linear { values } => {
-            let args = values.iter()
-                .map(format_expr_compact)
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("lin({})", args)
         }
         _ => format_expr(expr, 0),
     }
@@ -389,7 +386,7 @@ pub fn terrgen_editor_window(
                                     for (assignment) in expr_tree.assignments.iter() {
                                         let expr_str = format_expr_compact(&assignment.expr);
                                         ui.horizontal(|ui| {
-                                            ui.label(format!("${}", assignment.name));
+                                            ui.label(format!("${}", assignment.var_name));
                                             ui.label("=");
                                             ui.label(egui::RichText::new(&expr_str).color(egui::Color32::from_rgb(100, 200, 255)));
                                         });

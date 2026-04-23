@@ -766,6 +766,17 @@ pub fn being_details_inspector(world: &mut World) {
                 if ui.button("Show Full Components").clicked() {
                     show_full_components = !show_full_components;
                 }
+                let wallphaser_enabled = world.get::<WallPhaser>(selected_being_entity).is_some();
+                if ui.button(if wallphaser_enabled { "Disable WallPhaser" } else { "Enable WallPhaser" }).clicked() {
+                    unsafe {
+                        let world = &mut *world_ptr;
+                        if wallphaser_enabled {
+                            world.entity_mut(selected_being_entity).remove::<WallPhaser>();
+                        } else {
+                            world.entity_mut(selected_being_entity).insert(WallPhaser);
+                        }
+                    }
+                }
                 if ui.button("NavLog").clicked() {
                     open_nav_log = true;
                 }

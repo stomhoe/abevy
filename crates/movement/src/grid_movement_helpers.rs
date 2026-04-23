@@ -68,7 +68,7 @@ pub fn try_start_step(
         };
     }
     let next_tile = GlobalTilePos(tile_pos.0 + dir);
-    if blocking_tiles.is_blocked_at(dim_ref, next_tile, being_ent) {
+    if !blocking_tiles.can_wall_phase(being_ent) && blocking_tiles.is_blocked_at(dim_ref, next_tile, being_ent) {
         return TryStartStepOutcome::Blocked;
     }
     movement.start_step(visual, tile_pos, dir, step_ticks_total);
@@ -87,6 +87,14 @@ pub fn advance_steps_immediate(
 ) -> u16 {
     if dir == IVec2::ZERO || steps == 0 || movement.is_stepping() {
         return 0;
+    }
+    if blocking_tiles.can_wall_phase(being_ent) {
+        for _ in 0..steps {
+            tile_pos.0 += dir;
+        }
+        movement.clear_step(visual, *tile_pos);
+        visual.mark_moved();
+        return steps;
     }
     let mut steps_taken = 0;
     for _ in 0..steps {

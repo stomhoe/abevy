@@ -168,10 +168,6 @@ pub struct ComputedBy  {
     pub human_dc_input: bool,
 }
 
-#[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
-pub struct WallPhaser;
-
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, Reflect)]
 pub struct BodyWeightSum(pub f32);
 

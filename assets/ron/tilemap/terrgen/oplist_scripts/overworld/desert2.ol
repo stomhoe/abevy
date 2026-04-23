@@ -7,5 +7,5 @@ let inlandness = remap(continentness, shared_continentness_min, shared_continent
 
 out = idxmax(inlandness, 0.05)
 
-bif desert3 -> []
-bif "" -> [sand] biomes: [desert=1.0(1.0,0.)]
+[] desert3
+[sand] biomes: [desert=1.0(1.0,0.)] ""

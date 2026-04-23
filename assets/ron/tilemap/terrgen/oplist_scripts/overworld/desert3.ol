@@ -6,7 +6,7 @@ debug: [oasis_feature]
 let oasisness = *(fnl.lakesmol, 0.08)
 let oasisness = lerp(oasisness, inlandness, 0.3)
 
-out = idxmax(continent_threshold, oasisness, )
+out = idxmax(continent_min, oasisness, )
 
-bif desert4 -> [sand] biomes: [desert=1.0(9.0,0.)]
-bif "" -> [lake]
+[sand] biomes: [desert=1.0(9.0,0.)] desert4
+[lake] ""

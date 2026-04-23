@@ -7,6 +7,8 @@ pub struct DebugUiConfigSeri {
     #[serde(default = "default_enable_debug_menus")]
     pub enable_debug_menus: bool,
     #[serde(default)]
+    pub wall_phaser: bool,
+    #[serde(default)]
     pub hot_reload_defaults: DebugHotReloadDefaultsSeri,
     #[serde(default)]
     pub windows_open_on_start: DebugWindowsOpenOnStartSeri,

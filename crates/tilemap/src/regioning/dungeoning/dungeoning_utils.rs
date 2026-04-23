@@ -677,23 +677,6 @@ fn is_room_spawn_shape_allowed(
 }
 
 impl DungeonRoomPackSpawnConfig {
-    pub fn as_weighted_sampler(&self) -> StringWeightedSampler {
-        let mut weights = Vec::with_capacity(self.0.len());
-        for (shape_key, sampler) in &self.0 {
-            let weight: f32 = sampler.iter().map(|(_, weight)| weight.max(0.0)).sum();
-            if weight <= 0.0 {
-                continue;
-            }
-            weights.push((shape_key.clone(), weight));
-        }
-        {
-            let (sampler, negative_items) = StringWeightedSampler::new(&weights);
-            for negative_item in negative_items {
-                error!(target: "dungeoning_utils", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", "room_spawn_shapes", negative_item);
-            }
-            sampler
-        }
-    }
 
     pub fn sample_room_spawn_spec<'a>(
         &'a self,
@@ -727,7 +710,7 @@ impl DungeonRoomPackSpawnConfig {
                 room_spawn_key,
                 radius_pct,
             );
-            return sampler.sample_with_rng(rng);
+            return None;
         }
         let (sampler, negative_items) = DungeonRoomPackSpawnSampler::new(&matching_weights);
         for negative_item in negative_items {
@@ -985,10 +968,10 @@ pub fn rebuild_spawn_source_lookup(
         source_lookup.insert(str_id.clone(), entity);
     }
     for (entity, str_id) in race_templates.iter() {
-        source_lookup.insert(str_id.clone(), entity);
+        source_lookup.entry(str_id.clone()).or_insert(entity);
     }
     for (entity, str_id) in bit_templates.iter() {
-        source_lookup.insert(str_id.clone(), entity);
+        source_lookup.entry(str_id.clone()).or_insert(entity);
     }
 }
 
@@ -1003,33 +986,34 @@ pub fn queue_room_spawn_instance_message(
     pending_messages: &mut Vec<InstantiateTemplPackEntity>,
     rng: &mut impl Rng,
 ) -> bool {
-    let room_spec = match room_spawn_radius_pct {
-        Some(room_spawn_radius_pct) => room_spawn_config.sample_room_spawn_spec_for_radius_pct(
-            room_spawn_key,
-            Some(room_spawn_radius_pct),
-            rng,
-        ),
-        None => room_spawn_config.sample_room_spawn_spec(room_spawn_key, rng),
-    };
+    let room_spec = sample_room_spawn_spec_with_aliases(
+        room_spawn_config,
+        room_spawn_key,
+        room_spawn_radius_pct,
+        rng,
+    );
     let Some(room_spec) = room_spec else {
         return false;
     };
     if *beings_remaining == 0 {
         return false;
     }
+    let source_id = StrId::trunc(room_spec.source_template_id.as_str());
+    let Some(&source_ent) = source_lookup.get(&source_id) else {
+        return false;
+    };
     let requested_being_count = room_spec.override_being_count.map(u32::from).unwrap_or(1);
     let final_being_count = requested_being_count.min(*beings_remaining);
     if final_being_count == 0 {
         return false;
     }
-    let source_id = StrId::trunc(room_spec.source_template_id.as_str());
-    let Some(&source_ent) = source_lookup.get(&source_id) else {
-        return false;
-    };
     *beings_remaining = beings_remaining.saturating_sub(final_being_count);
+    let override_being_count = room_spec
+        .override_being_count
+        .and_then(|_| u16::try_from(final_being_count).ok());
     let mut message = InstantiateTemplPackEntity::new(
         source_ent,
-        u16::try_from(final_being_count).ok(),
+        override_being_count,
         None,
         room_spec.pack_spawn_radius.or(Some(0)),
         dim_ref,
@@ -1069,4 +1053,43 @@ fn parse_room_spawn_sampler(value: &SgcArgValue) -> Option<DungeonRoomPackSpawnS
             }
         sampler
     })
+}
+
+
+fn sample_room_spawn_spec_with_aliases(
+    room_spawn_config: &DungeonRoomPackSpawnConfig,
+    room_spawn_key: &str,
+    room_spawn_radius_pct: Option<i32>,
+    rng: &mut impl Rng,
+) -> Option<DungeonRoomPackSpawnSpec> {
+    let direct = match room_spawn_radius_pct {
+        Some(room_spawn_radius_pct) => room_spawn_config.sample_room_spawn_spec_for_radius_pct(
+            room_spawn_key,
+            Some(room_spawn_radius_pct),
+            rng,
+        ),
+        None => room_spawn_config.sample_room_spawn_spec(room_spawn_key, rng),
+    };
+    if direct.is_some() {
+        return direct;
+    }
+
+    let alias_key = match room_spawn_key {
+        "ellipse" => Some("circle"),
+        "circle" => Some("ellipse"),
+        "trapezoid" => Some("triangle"),
+        "triangle" => Some("trapezoid"),
+        "regular_polygon" => Some("polygon"),
+        "polygon" => Some("regular_polygon"),
+        _ => None,
+    }?;
+
+    match room_spawn_radius_pct {
+        Some(room_spawn_radius_pct) => room_spawn_config.sample_room_spawn_spec_for_radius_pct(
+            alias_key,
+            Some(room_spawn_radius_pct),
+            rng,
+        ),
+        None => room_spawn_config.sample_room_spawn_spec(alias_key, rng),
+    }
 }

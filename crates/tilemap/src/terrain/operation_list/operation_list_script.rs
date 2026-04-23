@@ -176,12 +176,17 @@ pub fn parse_tg_script_to_expr_tree(
             continue;
         }
 
-        if let Some(rest) = line.strip_prefix("bif ") {
-            let (branch_raw, tiles_raw) = rest.split_once("->").ok_or_else(|| {
-                format!("{}:{} invalid bif syntax, expected 'bif <oplist> -> [tiles]'", path.display(), line_no)
-            })?;
-            let branch = trim_token(branch_raw.trim()).to_string();
-            let (tiles, biome_tags) = parse_bif_tail(tiles_raw.trim(), path, line_no)?;
+        if line.starts_with("bif ") {
+            return Err(format!(
+                "{}:{} old bif syntax is no longer supported; use '[tiles] biomes: [tag=weight(mean,std)] target'",
+                path.display(),
+                line_no
+            ));
+        }
+
+        if let Some((tiles_raw, trailing)) = split_leading_collection(line) {
+            let tiles = parse_string_list(tiles_raw);
+            let (branch, biome_tags) = parse_bif_branch_tail(trailing, path, line_no)?;
             bifs.push(OpListBifSeri {
                 oplist: branch,
                 tiles,
@@ -211,7 +216,7 @@ pub fn parse_tg_script_to_expr_tree(
                 output_expr = Some(expr);
             } else {
                 assignments.push(Assignment {
-                    name: HashId::from(var_name.as_str()),
+                    var_name: HashId::from(var_name.as_str()),
                     expr,
                 });
                 aliases.insert(var_name.clone(), var_name);
@@ -357,7 +362,6 @@ fn normalize_operation(op: &str) -> Option<&'static str> {
         "remap" | "range_remap" | "remapclamp" => Some("remap"),
         "idxnorm" | "inorm" => Some("idxnorm"),
         "lerp" => Some("lerp"),
-        "lin" | "linear" => Some("lin"),
         "clamp" => Some("clamp"),
         _ => None,
     }
@@ -434,10 +438,25 @@ fn build_operand_expr(
 
 fn build_expression_tree(operation: &str, operands: Vec<Expr>) -> Result<Expr, String> {
     match operation {
-        "+" => fold_binary(operands, "Add"),
-        "-" => fold_binary(operands, "Subtract"),
-        "*" => fold_binary(operands, "Multiply"),
-        "/" => fold_binary(operands, "Divide"),
+        "+" => {
+            if operands.len() < 2 {
+                return Err("Add requires at least 2 operands".to_string());
+            }
+            Ok(Expr::Add { values: operands })
+        }
+        "-" => {
+            if operands.len() < 2 {
+                return Err("Subtract requires at least 2 operands".to_string());
+            }
+            Ok(Expr::Subtract { values: operands })
+        }
+        "*" => {
+            if operands.len() < 2 {
+                return Err("Multiply requires at least 2 operands".to_string());
+            }
+            Ok(Expr::Multiply { values: operands })
+        }
+        "/" => fold_binary(operands),
         "*opo" => {
             if operands.is_empty() {
                 return Err("MultiplyOpo requires at least 1 operand".to_string());
@@ -447,14 +466,12 @@ fn build_expression_tree(operation: &str, operands: Vec<Expr>) -> Result<Expr, S
                     value: Box::new(operands[0].clone()),
                 });
             }
-            let mut result = operands[0].clone();
+            let mut values = Vec::with_capacity(operands.len());
+            values.push(operands[0].clone());
             for operand in &operands[1..] {
-                result = Expr::Multiply {
-                    left: Box::new(result),
-                    right: Box::new(Expr::Complement { value: Box::new(operand.clone()) }),
-                };
+                values.push(Expr::Complement { value: Box::new(operand.clone()) });
             }
-            Ok(result)
+            Ok(Expr::Multiply { values })
         }
         "min" => Ok(Expr::Min { values: operands }),
         "max" => Ok(Expr::Max { values: operands }),
@@ -527,7 +544,6 @@ fn build_expression_tree(operation: &str, operands: Vec<Expr>) -> Result<Expr, S
                 t: Box::new(operands[2].clone()),
             })
         }
-        "lin" => Ok(Expr::Linear { values: operands }),
         "clamp" => {
             if operands.len() < 3 {
                 return Err("Clamp requires 3 operands (value, min, max)".to_string());
@@ -542,30 +558,15 @@ fn build_expression_tree(operation: &str, operands: Vec<Expr>) -> Result<Expr, S
     }
 }
 
-fn fold_binary(operands: Vec<Expr>, op: &str) -> Result<Expr, String> {
+fn fold_binary(operands: Vec<Expr>) -> Result<Expr, String> {
     if operands.len() < 2 {
-        return Err(format!("{} requires at least 2 operands", op));
+        return Err("Divide requires at least 2 operands".to_string());
     }
     let mut result = operands[0].clone();
     for operand in &operands[1..] {
-        result = match op {
-            "Add" => Expr::Add {
-                left: Box::new(result),
-                right: Box::new(operand.clone()),
-            },
-            "Subtract" => Expr::Subtract {
-                left: Box::new(result),
-                right: Box::new(operand.clone()),
-            },
-            "Multiply" => Expr::Multiply {
-                left: Box::new(result),
-                right: Box::new(operand.clone()),
-            },
-            "Divide" => Expr::Divide {
-                left: Box::new(result),
-                right: Box::new(operand.clone()),
-            },
-            _ => unreachable!(),
+        result = Expr::Divide {
+            left: Box::new(result),
+            right: Box::new(operand.clone()),
         };
     }
     Ok(result)
@@ -610,22 +611,13 @@ fn try_parse_inline_arithmetic(
     let right_expr = parse_expr_from_string(right, aliases, path, line_no)?;
 
     let result = match op {
-        '*' => Expr::Multiply {
-            left: Box::new(left_expr),
-            right: Box::new(right_expr),
-        },
+        '*' => Expr::Multiply { values: vec![left_expr, right_expr] },
         '/' => Expr::Divide {
             left: Box::new(left_expr),
             right: Box::new(right_expr),
         },
-        '+' => Expr::Add {
-            left: Box::new(left_expr),
-            right: Box::new(right_expr),
-        },
-        '-' => Expr::Subtract {
-            left: Box::new(left_expr),
-            right: Box::new(right_expr),
-        },
+        '+' => Expr::Add { values: vec![left_expr, right_expr] },
+        '-' => Expr::Subtract { values: vec![left_expr, right_expr] },
         _ => return Ok(None),
     };
     Ok(Some(result))
@@ -672,18 +664,46 @@ fn parse_string_list(input: &str) -> Vec<String> {
     out
 }
 
-fn parse_bif_tail(
+fn parse_bif_branch_tail(
     input: &str,
     path: &Path,
     line_no: usize,
-) -> Result<(Vec<String>, Vec<OpListBifBiomeTagSeri>), String> {
-    let (tiles_raw, trailing) = split_leading_collection(input)
-        .ok_or_else(|| format!("{}:{} bif must contain tile list in []", path.display(), line_no))?;
-    let tiles = parse_string_list(tiles_raw);
+) -> Result<(String, Vec<OpListBifBiomeTagSeri>), String> {
+    let mut input = input.trim_start();
+    let mut branch = String::new();
 
+    // If there is an oplist target before the biome suffix, capture it.
+    if !input.is_empty() && !input.starts_with("biome") {
+        let (branch_raw, trailing) = split_first_token(input).unwrap_or((input, ""));
+        branch = trim_token(branch_raw.trim()).to_string();
+        input = trailing.trim_start();
+    }
+
+    let (biome_tags, leftover) = parse_bif_suffix(input, path, line_no)?;
+    let leftover = leftover.trim();
+    if !leftover.is_empty() {
+        let (branch_raw, rest) = split_first_token(leftover).unwrap_or((leftover, ""));
+        branch = trim_token(branch_raw.trim()).to_string();
+        if !rest.trim().is_empty() {
+            return Err(format!(
+                "{}:{} unexpected text after oplist target '{}'",
+                path.display(),
+                line_no,
+                rest.trim()
+            ));
+        }
+    }
+    Ok((branch, biome_tags))
+}
+
+fn parse_bif_suffix<'a>(
+    trailing: &'a str,
+    path: &Path,
+    line_no: usize,
+) -> Result<(Vec<OpListBifBiomeTagSeri>, &'a str), String> {
     let trailing = trailing.trim();
     if trailing.is_empty() {
-        return Ok((tiles, Vec::new()));
+        return Ok((Vec::new(), ""));
     }
 
     let trimmed = trailing.trim_start();
@@ -704,11 +724,33 @@ fn parse_bif_tail(
     let rest = rest.strip_prefix(':').unwrap_or(rest).trim_start();
     let (biomes_raw, leftover) = split_leading_collection(rest)
         .ok_or_else(|| format!("{}:{} biome tags must be in []", path.display(), line_no))?;
-    if !leftover.trim().is_empty() {
-        return Err(format!("{}:{} unexpected text after biome tags '{}'", path.display(), line_no, leftover.trim()));
-    }
     let biome_tags = parse_weighted_biome_tags(biomes_raw, path, line_no)?;
-    Ok((tiles, biome_tags))
+    Ok((biome_tags, leftover))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn parse_bif_branch_tail_with_postfix_target() {
+        let line = "biomes: [anta=3.5(5.0,0.35)] anta2";
+        let (branch, tags) = parse_bif_branch_tail(line, Path::new("test"), 1).unwrap();
+        assert_eq!(branch, "anta2");
+        assert_eq!(tags.len(), 1);
+        assert_eq!(tags[0].tag, "anta");
+        assert_eq!(tags[0].weight, 3.5);
+    }
+
+    #[test]
+    fn parse_bif_branch_tail_with_empty_target() {
+        let line = "biomes: [ocean=0.5(2.7,0.45)] \"\"";
+        let (branch, tags) = parse_bif_branch_tail(line, Path::new("test"), 1).unwrap();
+        assert_eq!(branch, "");
+        assert_eq!(tags.len(), 1);
+        assert_eq!(tags[0].tag, "ocean");
+    }
 }
 
 fn split_leading_collection(input: &str) -> Option<(&str, &str)> {
@@ -890,16 +932,48 @@ fn split_csv_like(input: &str) -> Vec<String> {
                 current.push(ch);
             }
             ',' if quote.is_none() && depth == 0 => {
-                out.push(current.trim().to_string());
+                let trimmed = current.trim();
+                if !trimmed.is_empty() {
+                    out.push(trimmed.to_string());
+                }
                 current.clear();
             }
             _ => current.push(ch),
         }
     }
-    if !current.trim().is_empty() {
-        out.push(current.trim().to_string());
+    let trimmed = current.trim();
+    if !trimmed.is_empty() {
+        out.push(trimmed.to_string());
     }
     out
+}
+
+fn split_first_token(input: &str) -> Option<(&str, &str)> {
+    let raw = input.trim_start();
+    if raw.is_empty() {
+        return None;
+    }
+
+    let mut quote: Option<char> = None;
+    for (idx, ch) in raw.char_indices() {
+        match ch {
+            '"' | '\'' => {
+                if let Some(q) = quote {
+                    if q == ch {
+                        quote = None;
+                    }
+                } else {
+                    quote = Some(ch);
+                }
+            }
+            c if c.is_whitespace() && quote.is_none() => {
+                return Some((&raw[..idx], &raw[idx..]));
+            }
+            _ => {}
+        }
+    }
+
+    Some((raw, ""))
 }
 
 fn trim_token(token: &str) -> &str {

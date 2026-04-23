@@ -11,5 +11,5 @@ let continentness = *(continentness, a_diff)
 // Determine dungeon floor vs wall based on threshold
 out = idxmax(0.3, continentness)
 
-bif "" -> [dublack]
-bif "" -> [dublack]
+[dublack] ""
+[dublack] ""
