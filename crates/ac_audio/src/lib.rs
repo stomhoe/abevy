@@ -5,6 +5,7 @@ use bevy_kira_audio::{AudioPlugin, DefaultSpatialRadius, SpatialAudioPlugin};
 use common::common_states::AssetLoading;
 use common::log_targets::SPRITE_ANIMATION_INIT;
 use serde::Deserialize;
+use tilemap_shared::DimensionRef;
 
 pub mod ac_audio_components;
 pub mod ac_audio_systems;
@@ -13,6 +14,9 @@ pub use ac_audio_systems::*;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct AcAudioSystems;
+
+#[derive(Resource, Clone, Copy, Debug, Default)]
+pub struct SpatialAudioListenerDimension(pub Option<DimensionRef>);
 
 #[derive(Resource, Clone, Debug, Deserialize)]
 pub struct SpatialAudioSettings {
@@ -81,7 +85,9 @@ pub fn plugin(app: &mut App) {
     app
         .add_plugins((AudioPlugin, SpatialAudioPlugin))
         .configure_sets(Update, AcAudioSystems)
+        .add_systems(Update, sync_spatial_audio_listener_dimension.before(AcAudioSystems))
         .add_systems(Update, (
+            sync_spatial_audio_dimension,
             play_sprite_animation_sfx_on_frame_change,
             play_animation_seri_sfx_on_frame_change,
             sync_sprite_loop_sfx,
@@ -92,6 +98,7 @@ pub fn plugin(app: &mut App) {
             (load_spatial_audio_settings, apply_spatial_audio_settings).chain()
         ).in_set(AcAudioSystems))
         .init_resource::<SpatialAudioSettings>()
+        .init_resource::<SpatialAudioListenerDimension>()
         .init_resource::<DefaultSpatialRadius>()
     ;
 }

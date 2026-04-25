@@ -7,6 +7,8 @@ use rand::{Rng, SeedableRng, seq::SliceRandom};
 use rand_distr::{Distribution, Normal};
 use ::tilemap_shared::*;
 
+use super::sg_cha_types::RoomShape;
+
 use crate::regioning::{    regioning_components::*,
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder, TerrGenDisabledGposForChunks},
     regioning_sgc_components::StructuredGenConfig,
@@ -20,6 +22,7 @@ use super::super::dungeoning_carve_helpers::{
 };
 use super::super::dungeoning_ids::DRUNKWALK;
 use super::super::dungeoning_utils::{carve_external_wall_doorways, extend_occupied_gpos, ExternalDoorwayConfig, resolve_sampled_tile_entity_from_sampler, seal_structure_border_band};
+use super::sg_cha_room_forming::maybe_add_room_interior;
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 
 inventory::submit! {
@@ -201,7 +204,7 @@ pub fn drunkwalk_dungeon_building_system(
         for _ in 0..num_walkers {
             let mut walker_x = rng.random_range(carve_margin..tile_width - carve_margin);
             let mut walker_y = rng.random_range(carve_margin..tile_height - carve_margin);
-            let walker_steps = rng.random_range(100..350);
+            let walker_steps = rng.random_range(70..600);
             let bias_chance = rng.random_range(15..45);
             let path_width = rng.random_range(2..=4);
 
@@ -238,19 +241,20 @@ pub fn drunkwalk_dungeon_building_system(
             }
         }
 
-        // Larger, more ambitious chambers
-        let chamber_count = rng.random_range(6..=12);
+        let min_chamber_radius: usize = 2;
+        let max_chamber_radius: usize = 20;
+        let chamber_count = rng.random_range(6..=20);
         for _ in 0..chamber_count {
-            let min_center_x = carve_margin + 8;
-            let max_center_x = tile_width.saturating_sub(8 + carve_margin);
-            let min_center_y = carve_margin + 8;
-            let max_center_y = tile_height.saturating_sub(8 + carve_margin);
+            let min_center_x = carve_margin + max_chamber_radius;
+            let max_center_x = tile_width.saturating_sub(max_chamber_radius + carve_margin);
+            let min_center_y = carve_margin + max_chamber_radius;
+            let max_center_y = tile_height.saturating_sub(max_chamber_radius + carve_margin);
             if max_center_x <= min_center_x || max_center_y <= min_center_y {
                 continue;
             }
             let center_x = rng.random_range(min_center_x..=max_center_x);
             let center_y = rng.random_range(min_center_y..=max_center_y);
-            let radius = rng.random_range(4..=10) as i32;
+            let radius = rng.random_range(min_chamber_radius..=max_chamber_radius) as i32;
 
             for dy in -radius..=radius {
                 for dx in -radius..=radius {
@@ -268,6 +272,17 @@ pub fn drunkwalk_dungeon_building_system(
                     floor_map[ry * tile_width + rx] = true;
                 }
             }
+            maybe_add_room_interior(
+                &mut rng,
+                RoomShape::Ellipse,
+                center_x as i32 - radius,
+                center_y as i32 - radius,
+                radius * 2 + 1,
+                radius * 2 + 1,
+                |x, y| {
+                    floor_map[y * tile_width + x] = false;
+                },
+            );
             chambers.push(Chamber { center_x, center_y });
         }
 

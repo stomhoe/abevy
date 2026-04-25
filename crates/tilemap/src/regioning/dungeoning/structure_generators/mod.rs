@@ -1,6 +1,7 @@
 pub mod sg_drunkwalk;
 pub mod sg_cha;
 pub mod sg_cha_types;
+pub mod sg_cha_room_forming;
 pub mod sg_spiral;
 pub mod sg_archimedes;
 pub mod sg_maze;

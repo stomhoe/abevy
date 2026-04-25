@@ -135,6 +135,81 @@ pub fn carve_corridor_vertical(
     }
 }
 
+fn stamp_corridor_disk_u8(
+    floor_map: &mut [u8],
+    tile_width: usize,
+    tile_height: usize,
+    corridor_map: &mut [bool],
+    x: i32,
+    y: i32,
+    corridor_radius: i32,
+    floor_kind: u8,
+) {
+    let radius_sq = corridor_radius * corridor_radius;
+    for dy in -corridor_radius..=corridor_radius {
+        for dx in -corridor_radius..=corridor_radius {
+            if dx * dx + dy * dy > radius_sq {
+                continue;
+            }
+
+            let xx = x + dx;
+            let yy = y + dy;
+            if xx < 0 || yy < 0 {
+                continue;
+            }
+
+            let xx = xx as usize;
+            let yy = yy as usize;
+            if xx >= tile_width || yy >= tile_height {
+                continue;
+            }
+
+            let idx = yy * tile_width + xx;
+            floor_map[idx] = floor_kind;
+            corridor_map[idx] = true;
+        }
+    }
+}
+
+pub fn carve_corridor_polyline_typed(
+    floor_map: &mut [u8],
+    tile_width: usize,
+    tile_height: usize,
+    corridor_map: &mut [bool],
+    corridor_radius: Option<i32>,
+    path: &[(i32, i32)],
+    floor_kind: u8,
+) {
+    let corridor_radius = corridor_radius.unwrap_or(1).clamp(1, 8);
+    let Some(_) = path.get(1) else {
+        return;
+    };
+
+    for window in path.windows(2) {
+        let (x0, y0) = window[0];
+        let (x1, y1) = window[1];
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+        let steps = (dx.max(dy) * 2).max(1) as usize;
+
+        for i in 0..=steps {
+            let t = i as f32 / steps as f32;
+            let x = (x0 as f32 + (x1 - x0) as f32 * t).round() as i32;
+            let y = (y0 as f32 + (y1 - y0) as f32 * t).round() as i32;
+            stamp_corridor_disk_u8(
+                floor_map,
+                tile_width,
+                tile_height,
+                corridor_map,
+                x,
+                y,
+                corridor_radius,
+                floor_kind,
+            );
+        }
+    }
+}
+
 fn set_floor_tile_u8(
     floor_map: &mut [u8],
     tile_width: usize,

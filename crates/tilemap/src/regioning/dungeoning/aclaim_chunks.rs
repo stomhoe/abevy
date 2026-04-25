@@ -62,8 +62,8 @@ pub fn claim_chunks_for_various_dungeon_types(
         let (start_offset_x, end_offset_x, start_offset_y, end_offset_y) = if claim_is_square {
             let min_side_length = structured_gen_cfg
                 .args
-                .parse_arg("claim_square_min_side_length", 4)
-                .max(MIN_CLAIM_SIDE_LENGTH);
+                .parse_arg("claim_square_min_side_length", 5)
+                .max(5);
             let max_side_length = structured_gen_cfg
                 .args
                 .parse_arg("claim_square_max_side_length", 9)
@@ -91,11 +91,11 @@ pub fn claim_chunks_for_various_dungeon_types(
         } else {
             let min_side_length = structured_gen_cfg
                 .args
-                .parse_arg("claim_rectangle_min_side_length", structured_gen_cfg.args.parse_arg("claim_square_min_side_length", 3))
-                .max(3);
+                .parse_arg("claim_rectangle_min_side_length", structured_gen_cfg.args.parse_arg("claim_square_min_side_length", 2))
+                .max(2);
             let max_side_length = structured_gen_cfg
                 .args
-                .parse_arg("claim_rectangle_max_side_length", structured_gen_cfg.args.parse_arg("claim_square_max_side_length", 9))
+                .parse_arg("claim_rectangle_max_side_length", structured_gen_cfg.args.parse_arg("claim_square_max_side_length", 22))
                 .max(min_side_length);
             let normal_mean: f32 = structured_gen_cfg
                 .args

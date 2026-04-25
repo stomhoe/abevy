@@ -23,8 +23,8 @@ race dragon {
         move_secs_max: 10.8
         halt_secs_min: 0.7
         halt_secs_max: 10.0
-        speed_min: 0.5
-        speed_max: 0.6
+        speed_min: 0.8
+        speed_max: 0.8
         avoid_tile_tags: [liquid]
     )
     body_or_sampler: dragon

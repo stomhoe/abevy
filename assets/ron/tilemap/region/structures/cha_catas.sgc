@@ -1,7 +1,7 @@
 sgc {
     id = cha_catas
     structure_id = chamberscorridors
-    weight = 1.0
+    weight = 9999999991.0
     tags = [dungeon]
     whitelisted_tags = [dungeon, river]
     max_being_count = 40
@@ -14,7 +14,7 @@ sgc {
         ellipse_weight = 1.0
         trapezoid_weight = 1.0
         regular_polygon_weight = 1.0
-        pentacle_weight = 0.3
+        pentacle_weight = 0.5
         room_same_shape_weight_rectangle = 1.0
         room_same_shape_weight_ellipse = 1.0
         room_same_shape_weight_trapezoid = 1.0

@@ -130,7 +130,7 @@ pub fn cross_portal(
         };
 
         let Some(&TouchingPortal(touching_portal_ent, )) = touching_portal else {
-            cmd.spawn((TempSpeedModifier::new(being_entity, being_entity, 0.0, ApplyMode::Max, 1.0), ));
+            cmd.spawn((TempSpeedModifier::new(being_entity, being_entity, 0.0, ApplyMode::Max, 0.6), ));
             cmd.entity(being_entity).try_insert(TouchingPortal(interacting_portal_ent, ));
 
             let Ok((_, _, _, Some(interacting_portal_to), _, _, _, )) = portal_query.get(interacting_portal_ent) else {

@@ -13,8 +13,7 @@ use crate::regioning::{    regioning_components::*,
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 use crate::tile::tile_resources::*;
 use super::super::dungeoning_carve_helpers::{
-    carve_corridor_horizontal_typed as carve_corridor_horizontal,
-    carve_corridor_vertical_typed as carve_corridor_vertical,
+    carve_corridor_polyline_typed as carve_corridor_path,
     carve_room_ellipse_typed as carve_room_ellipse,
     carve_room_pentacle,
     carve_room_rectangle_typed as carve_room_rectangle,
@@ -23,6 +22,7 @@ use super::super::dungeoning_carve_helpers::{
 };
 use super::super::dungeoning_ids::CHAMBERS_CORRIDORS;
 use super::super::dungeoning_utils::{carve_external_wall_doorways, extend_occupied_gpos, queue_room_spawn_instance_message, ExternalDoorwayConfig, DeleteOtherTilesConfigMap, TerrGenDisableConfigMap};
+use super::sg_cha_room_forming::{maybe_add_room_interior, pick_nearest_room_index, pick_weighted_open_parent_index, room_center, sample_corridor_child_slots, sample_room_spec_for_leaf_with_limit, sample_trapezoid_vertices_for_room, split_room_draft_horizontally, split_room_draft_vertically, RoomDraft};
 use super::sg_cha_types::*;
 
 const FLOOR_NONE: u8 = 0;
@@ -44,7 +44,7 @@ fn seal_structure_border_band_typed(
         hazard_map.fill(false);
         return;
     }
-
+    
     let end_x = map_width - border_band;
     let end_y = map_height - border_band;
     for y in 0..map_height {
@@ -58,223 +58,487 @@ fn seal_structure_border_band_typed(
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct RoomDraft {
-    x: i32,
-    y: i32,
-    w: i32,
-    h: i32,
+fn clamp_to_map(point: (i32, i32), map_width: usize, map_height: usize) -> (i32, i32) {
+    (
+        point.0.clamp(0, map_width.saturating_sub(1) as i32),
+        point.1.clamp(0, map_height.saturating_sub(1) as i32),
+    )
 }
 
-impl RoomDraft {
-    fn area(self) -> i32 {
-        self.w * self.h
-    }
-
-    fn as_room(self) -> Room {
-        Room { x: self.x, y: self.y, w: self.w, h: self.h, shape: RoomShape::Rectangle }
+fn push_unique_point(points: &mut Vec<(i32, i32)>, point: (i32, i32)) {
+    if points.last().copied() != Some(point) {
+        points.push(point);
     }
 }
 
-fn pick_weighted_room_spec(candidates: &[(RoomSpec, f32)], rng: &mut impl Rng) -> Option<RoomSpec> {
-    let total_weight: f32 = candidates.iter().map(|candidate| candidate.1).sum();
-    if total_weight <= 0.0 {
-        return None;
-    }
-
-    let mut roll = rng.random_range(0.0..total_weight);
-    for (spec, score) in candidates.iter().copied() {
-        if roll <= score {
-            return Some(spec);
-        }
-        roll -= score;
-    }
-
-    candidates.last().copied().map(|(spec, _)| spec)
-}
-
-fn sample_room_spec_for_leaf_with_limit(
-    room: &RoomDraft,
-    args: &game_common::game_common_components::ArgsDict,
-    size_configs: &HashMap<RoomShape, RoomSizeConfig>,
-    global_size_config: &RoomSizeConfig,
-    max_area: Option<i32>,
-    allow_oversize_fallback: bool,
+fn build_straight_corridor_route(
+    start: (i32, i32),
+    end: (i32, i32),
+    map_width: usize,
+    map_height: usize,
     rng: &mut impl Rng,
-) -> Option<RoomSpec> {
-    let mut bounded_candidates: Vec<(RoomSpec, f32)> = Vec::with_capacity(5);
-    let mut all_candidates: Vec<(RoomSpec, f32)> = Vec::with_capacity(5);
-    let room_as_room = room.as_room();
+) -> Vec<(i32, i32)> {
+    let mut points = Vec::with_capacity(3);
+    push_unique_point(&mut points, clamp_to_map(start, map_width, map_height));
 
-    for shape in [RoomShape::Rectangle, RoomShape::Ellipse, RoomShape::Trapezoid, RoomShape::RegularPolygon, RoomShape::Pentacle] {
-        let legacy_weight_key = match shape {
-            RoomShape::Rectangle => "room_shape_weight_rectangle",
-            RoomShape::Ellipse => "room_shape_weight_circle",
-            RoomShape::Trapezoid => "room_shape_weight_triangle",
-            RoomShape::RegularPolygon => "room_shape_weight_polygon",
-            RoomShape::Pentacle => "room_shape_weight_pentacle",
+    if start.0 == end.0 || start.1 == end.1 {
+        push_unique_point(&mut points, clamp_to_map(end, map_width, map_height));
+        return points;
+    }
+
+    if rng.random_bool(0.5) {
+        push_unique_point(&mut points, clamp_to_map((end.0, start.1), map_width, map_height));
+    } else {
+        push_unique_point(&mut points, clamp_to_map((start.0, end.1), map_width, map_height));
+    }
+    push_unique_point(&mut points, clamp_to_map(end, map_width, map_height));
+    points
+}
+
+fn build_square_turn_corridor_route(
+    start: (i32, i32),
+    end: (i32, i32),
+    map_width: usize,
+    map_height: usize,
+    turns: usize,
+    turn_offset: i32,
+    rng: &mut impl Rng,
+) -> Vec<(i32, i32)> {
+    let turns = turns.max(1);
+    let turn_offset = turn_offset.max(1);
+    let offset = rng.random_range((turn_offset / 2).max(1)..=turn_offset);
+    let horizontal_major = (end.0 - start.0).abs() >= (end.1 - start.1).abs();
+    let mut points = Vec::with_capacity(turns * 2 + 3);
+    push_unique_point(&mut points, clamp_to_map(start, map_width, map_height));
+
+    let mut current = start;
+    let mut sign = if rng.random_bool(0.5) { 1 } else { -1 };
+    for step_index in 0..turns {
+        let fraction = (step_index + 1) as f32 / (turns + 1) as f32;
+        if horizontal_major {
+            let major_x = (start.0 as f32 + (end.0 - start.0) as f32 * fraction).round() as i32;
+            let major_x = major_x.clamp(0, map_width.saturating_sub(1) as i32);
+            push_unique_point(&mut points, clamp_to_map((major_x, current.1), map_width, map_height));
+            current.0 = major_x;
+            current.1 = (current.1 + sign * offset).clamp(0, map_height.saturating_sub(1) as i32);
+            push_unique_point(&mut points, clamp_to_map((current.0, current.1), map_width, map_height));
+        } else {
+            let major_y = (start.1 as f32 + (end.1 - start.1) as f32 * fraction).round() as i32;
+            let major_y = major_y.clamp(0, map_height.saturating_sub(1) as i32);
+            push_unique_point(&mut points, clamp_to_map((current.0, major_y), map_width, map_height));
+            current.1 = major_y;
+            current.0 = (current.0 + sign * offset).clamp(0, map_width.saturating_sub(1) as i32);
+            push_unique_point(&mut points, clamp_to_map((current.0, current.1), map_width, map_height));
+        }
+        sign *= -1;
+    }
+
+    if horizontal_major {
+        push_unique_point(&mut points, clamp_to_map((end.0, current.1), map_width, map_height));
+    } else {
+        push_unique_point(&mut points, clamp_to_map((current.0, end.1), map_width, map_height));
+    }
+    push_unique_point(&mut points, clamp_to_map(end, map_width, map_height));
+    points
+}
+
+fn build_s_wiggle_corridor_route(
+    start: (i32, i32),
+    end: (i32, i32),
+    map_width: usize,
+    map_height: usize,
+    turns: usize,
+    wiggle_offset: i32,
+    rng: &mut impl Rng,
+) -> Vec<(i32, i32)> {
+    let turns = turns.max(1);
+    let wiggle_offset = wiggle_offset.max(1);
+    let dx = end.0 - start.0;
+    let dy = end.1 - start.1;
+    let distance = dx.abs().max(dy.abs()).max(1);
+    let sample_count = (distance / 4).clamp(8, 24) as usize * turns;
+    let amplitude = rng.random_range((wiggle_offset / 2).max(1)..=wiggle_offset) as f32;
+    let phase = if rng.random_bool(0.5) { 0.0 } else { std::f32::consts::FRAC_PI_2 };
+    let horizontal_major = dx.abs() >= dy.abs();
+
+    let mut points = Vec::with_capacity(sample_count + 1);
+    for sample_index in 0..=sample_count {
+        let t = sample_index as f32 / sample_count as f32;
+        let wave = (t * std::f32::consts::TAU * turns as f32 + phase).sin() * amplitude;
+        let base_x = start.0 as f32 + (end.0 - start.0) as f32 * t;
+        let base_y = start.1 as f32 + (end.1 - start.1) as f32 * t;
+        let point = if horizontal_major {
+            clamp_to_map((base_x.round() as i32, (base_y + wave).round() as i32), map_width, map_height)
+        } else {
+            clamp_to_map(((base_x + wave).round() as i32, base_y.round() as i32), map_width, map_height)
         };
-        let weight = args
-            .get(&format!("{}_weight", shape.as_str()))
-            .or_else(|| args.get(legacy_weight_key))
-            .and_then(|v| v.first())
-            .and_then(|s| s.parse::<f32>().ok())
-            .unwrap_or(if let RoomShape::Pentacle = shape { 0.05 } else { 1. });
+        push_unique_point(&mut points, point);
+    }
 
-        if weight <= 0.0 {
+    if points.len() < 2 {
+        points.push(clamp_to_map(end, map_width, map_height));
+    }
+
+    points
+}
+
+fn build_macro_detour_corridor_route(
+    start: (i32, i32),
+    end: (i32, i32),
+    map_width: usize,
+    map_height: usize,
+    detour_offset_min: i32,
+    detour_offset_max: i32,
+    detour_stack_min: i32,
+    detour_stack_max: i32,
+    rng: &mut impl Rng,
+) -> Vec<(i32, i32)> {
+    let detour_offset_min = detour_offset_min.max(1);
+    let detour_offset_max = detour_offset_max.max(detour_offset_min);
+    let detour_stack_min = detour_stack_min.max(1);
+    let detour_stack_max = detour_stack_max.max(detour_stack_min);
+    let dx = end.0 - start.0;
+    let dy = end.1 - start.1;
+    let horizontal_major = dx.abs() >= dy.abs();
+    let detour_sign = if rng.random_bool(0.5) { 1 } else { -1 };
+    let detour_layers = rng.random_range(detour_stack_min..=detour_stack_max).max(1) as usize;
+    let mut points = Vec::with_capacity(detour_layers.saturating_mul(4).saturating_add(2));
+    push_unique_point(&mut points, clamp_to_map(start, map_width, map_height));
+
+    let route_start_t = 0.18_f32;
+    let route_end_t = 0.82_f32;
+    let layer_span = (route_end_t - route_start_t) / detour_layers as f32;
+    let detour_pattern = rng.random_range(0..4);
+
+    for layer_index in 0..detour_layers {
+        let detour_height = rng.random_range(detour_offset_min..=detour_offset_max);
+        let detour_apex = detour_height.saturating_add(rng.random_range((detour_height / 2).max(1)..=detour_height));
+        let layer_start_t = route_start_t + layer_span * layer_index as f32;
+        let layer_sign = match detour_pattern {
+            0 => detour_sign,
+            1 => {
+                if layer_index % 2 == 0 { detour_sign } else { -detour_sign }
+            }
+            2 => {
+                if layer_index + 1 == detour_layers { -detour_sign } else { detour_sign }
+            }
+            _ => {
+                if rng.random_bool(0.5) { detour_sign } else { -detour_sign }
+            }
+        };
+        let layer_t0 = match detour_pattern {
+            0 => layer_start_t,
+            1 => (layer_start_t + (layer_index as f32 * 0.03)).min(route_end_t - 0.08),
+            2 => (layer_start_t + if layer_index + 1 == detour_layers { 0.12 } else { -0.02 }).clamp(route_start_t, route_end_t - 0.10),
+            _ => (layer_start_t + rng.random_range(-0.04_f32..0.04_f32)).clamp(route_start_t, route_end_t - 0.12),
+        };
+        let layer_t1 = match detour_pattern {
+            0 => (layer_t0 + layer_span * 0.42).min(route_end_t - 0.04),
+            1 => (layer_t0 + layer_span * rng.random_range(0.30_f32..0.52_f32)).min(route_end_t - 0.03),
+            2 => (layer_t0 + layer_span * 0.58).min(route_end_t - 0.03),
+            _ => (layer_t0 + layer_span * rng.random_range(0.22_f32..0.60_f32)).min(route_end_t - 0.03),
+        };
+        let layer_t2 = match detour_pattern {
+            0 => (layer_t0 + layer_span * 0.82).min(route_end_t),
+            1 => (layer_t1 + layer_span * 0.30).min(route_end_t),
+            2 => (layer_t1 + layer_span * 0.18).min(route_end_t),
+            _ => (layer_t1 + layer_span * rng.random_range(0.24_f32..0.58_f32)).min(route_end_t),
+        };
+
+        if horizontal_major {
+            let entry_x = (start.0 as f32 + dx as f32 * layer_t0).round() as i32;
+            let apex_x = (start.0 as f32 + dx as f32 * layer_t1).round() as i32;
+            let exit_x = (start.0 as f32 + dx as f32 * layer_t2).round() as i32;
+            let base_entry_y = (start.1 as f32 + dy as f32 * layer_t0).round() as i32;
+            let base_apex_y = (start.1 as f32 + dy as f32 * layer_t1).round() as i32;
+            let base_exit_y = (start.1 as f32 + dy as f32 * layer_t2).round() as i32;
+            push_unique_point(&mut points, clamp_to_map((entry_x, base_entry_y + detour_sign * detour_height), map_width, map_height));
+            push_unique_point(&mut points, clamp_to_map((apex_x, base_apex_y + detour_sign * detour_apex), map_width, map_height));
+            push_unique_point(&mut points, clamp_to_map((exit_x, base_exit_y + detour_sign * detour_height), map_width, map_height));
+        } else {
+            let entry_y = (start.1 as f32 + dy as f32 * layer_t0).round() as i32;
+            let apex_y = (start.1 as f32 + dy as f32 * layer_t1).round() as i32;
+            let exit_y = (start.1 as f32 + dy as f32 * layer_t2).round() as i32;
+            let base_entry_x = (start.0 as f32 + dx as f32 * layer_t0).round() as i32;
+            let base_apex_x = (start.0 as f32 + dx as f32 * layer_t1).round() as i32;
+            let base_exit_x = (start.0 as f32 + dx as f32 * layer_t2).round() as i32;
+            push_unique_point(&mut points, clamp_to_map((base_entry_x + layer_sign * detour_height, entry_y), map_width, map_height));
+            push_unique_point(&mut points, clamp_to_map((base_apex_x + layer_sign * detour_apex, apex_y), map_width, map_height));
+            push_unique_point(&mut points, clamp_to_map((base_exit_x + layer_sign * detour_height, exit_y), map_width, map_height));
+        }
+    }
+
+    push_unique_point(&mut points, clamp_to_map(end, map_width, map_height));
+    points
+}
+
+fn point_inside_room(point: (i32, i32), room: &Room) -> bool {
+    point.0 >= room.x && point.0 < room.x + room.w && point.1 >= room.y && point.1 < room.y + room.h
+}
+
+fn route_crosses_other_rooms(route: &[(i32, i32)], actual_rooms: &[Room], start_room_idx: usize, end_room_idx: usize) -> bool {
+    if route.len() < 3 {
+        return false;
+    }
+
+    for (point_index, &point) in route.iter().enumerate() {
+        if point_index == 0 || point_index + 1 == route.len() {
             continue;
         }
 
-        let size_cfg = size_configs.get(&shape).unwrap_or(global_size_config);
-        if !shape.can_fit(&room_as_room, size_cfg) {
-            continue;
-        }
+        for (room_idx, room) in actual_rooms.iter().enumerate() {
+            if room_idx == start_room_idx || room_idx == end_room_idx {
+                continue;
+            }
 
-        let Some((rw, rh)) = shape.sample_dimensions(&room_as_room, size_cfg, rng) else { continue; };
-        let spec = RoomSpec { shape, w: rw, h: rh };
-        let score = weight.max(0.0) * spec.area().max(1) as f32;
-        if score > 0.0 {
-            all_candidates.push((spec, score));
-            if max_area.map_or(true, |limit| spec.area() <= limit) {
-                bounded_candidates.push((spec, score));
+            if point_inside_room(point, room) {
+                return true;
             }
         }
     }
 
-    if !bounded_candidates.is_empty() {
-        return pick_weighted_room_spec(&bounded_candidates, rng);
-    }
-
-    if !allow_oversize_fallback {
-        return None;
-    }
-
-    let min_area = all_candidates.iter().map(|(spec, _)| spec.area()).min()?;
-    let smallest_candidates: Vec<(RoomSpec, f32)> = all_candidates
-        .into_iter()
-        .filter(|(spec, _)| spec.area() == min_area)
-        .collect();
-    pick_weighted_room_spec(&smallest_candidates, rng)
+    false
 }
 
-fn sample_trapezoid_vertices_for_room(room: &Room, rng: &mut impl Rng) -> ((i32, i32), (i32, i32), (i32, i32), (i32, i32)) {
-    let left = room.x;
-    let right = room.x + room.w - 1;
-    let top = room.y;
-    let bottom = room.y + room.h - 1;
-    let min_shrink_w = ((room.w - 2) / 2).max(1);
-    let min_shrink_h = ((room.h - 2) / 2).max(1);
+fn pick_room_aware_corridor_route(
+    c1: (i32, i32),
+    c2: (i32, i32),
+    actual_rooms: &[Room],
+    start_room_idx: usize,
+    end_room_idx: usize,
+    map_width: usize,
+    map_height: usize,
+    corridor_zigzag_chance: f32,
+    corridor_zigzag_curve_chance: f32,
+    corridor_zigzag_strength_min: i32,
+    corridor_zigzag_strength_max: i32,
+    corridor_zigzag_offset: i32,
+    corridor_macro_detour_chance: f32,
+    corridor_macro_detour_offset_min: i32,
+    corridor_macro_detour_offset_max: i32,
+    corridor_macro_detour_stack_min: i32,
+    corridor_macro_detour_stack_max: i32,
+    rng: &mut impl Rng,
+) -> (Vec<(i32, i32)>, bool) {
+    let corridor_dx = (c2.0 - c1.0).abs() as usize;
+    let corridor_dy = (c2.1 - c1.1).abs() as usize;
+    let corridor_span = corridor_dx.max(corridor_dy).max(1);
+    let long_corridor_bonus = (((corridor_span.saturating_sub(12)) as f32) / 36.0).clamp(0.0, 0.45);
+    let zigzag_chance = (corridor_zigzag_chance + long_corridor_bonus).clamp(0.0, 1.0);
+    let zigzag_strength_min = corridor_zigzag_strength_min.max(1) as usize;
+    let zigzag_strength_max = corridor_zigzag_strength_max.max(corridor_zigzag_strength_min).max(1) as usize;
+    let fallback_turns = (corridor_span / 14).clamp(2, 5);
 
-    match rng.random_range(0..4) {
-        0 => {
-            let shrink = rng.random_range(1..=min_shrink_w);
-            let left_pad = rng.random_range(0..=shrink);
-            let right_pad = shrink - left_pad;
-            ((left + left_pad, top), (right - right_pad, top), (right, bottom), (left, bottom))
-        }
-        1 => {
-            let shrink = rng.random_range(1..=min_shrink_w);
-            let left_pad = rng.random_range(0..=shrink);
-            let right_pad = shrink - left_pad;
-            ((left, top), (right, top), (right - right_pad, bottom), (left + left_pad, bottom))
-        }
-        2 => {
-            let shrink = rng.random_range(1..=min_shrink_h);
-            let top_pad = rng.random_range(0..=shrink);
-            let bottom_pad = shrink - top_pad;
-            ((left, top + top_pad), (right, top), (right, bottom), (left, bottom - bottom_pad))
-        }
-        _ => {
-            let shrink = rng.random_range(1..=min_shrink_h);
-            let top_pad = rng.random_range(0..=shrink);
-            let bottom_pad = shrink - top_pad;
-            ((left, top), (right, top + top_pad), (right, bottom - bottom_pad), (left, bottom))
-        }
-    }
-}
+    for _ in 0..6 {
+        let route = if rng.random_range(0.0..1.0) < zigzag_chance {
+            let sampled_zigzag_strength = rng.random_range(zigzag_strength_min..=zigzag_strength_max);
+            let span_biased_zigzag_strength = (corridor_span / 6).clamp(zigzag_strength_min, zigzag_strength_max);
+            let zigzag_strength = sampled_zigzag_strength.max(span_biased_zigzag_strength);
+            let zigzag_turns = zigzag_strength.max(2);
+            let zigzag_offset = corridor_zigzag_offset.saturating_add((zigzag_strength / 2) as i32);
+            if rng.random_range(0.0..1.0) < corridor_zigzag_curve_chance {
+                build_s_wiggle_corridor_route(c1, c2, map_width, map_height, zigzag_turns, zigzag_offset, rng)
+            } else {
+                build_square_turn_corridor_route(c1, c2, map_width, map_height, zigzag_turns, zigzag_offset, rng)
+            }
+        } else if c1.0 == c2.0 || c1.1 == c2.1 {
+            build_straight_corridor_route(c1, c2, map_width, map_height, rng)
+        } else if rng.random_range(0.0..1.0) < corridor_macro_detour_chance {
+            build_macro_detour_corridor_route(
+                c1,
+                c2,
+                map_width,
+                map_height,
+                corridor_macro_detour_offset_min,
+                corridor_macro_detour_offset_max,
+                corridor_macro_detour_stack_min,
+                corridor_macro_detour_stack_max,
+                rng,
+            )
+        } else {
+            let fallback_roll = rng.random_range(0.0..1.0);
+            if fallback_roll < 0.15 {
+                build_straight_corridor_route(c1, c2, map_width, map_height, rng)
+            } else if fallback_roll < 0.78 {
+                build_square_turn_corridor_route(c1, c2, map_width, map_height, fallback_turns, corridor_zigzag_offset, rng)
+            } else {
+                build_s_wiggle_corridor_route(c1, c2, map_width, map_height, fallback_turns, corridor_zigzag_offset, rng)
+            }
+        };
 
-fn split_room_draft_horizontally(room: RoomDraft, split_at: i32, keep_left: bool) -> (RoomDraft, Option<RoomDraft>) {
-    let right_width = room.w - split_at;
-    if keep_left {
-        (
-            RoomDraft { x: room.x, y: room.y, w: split_at, h: room.h },
-            Some(RoomDraft { x: room.x + split_at, y: room.y, w: right_width, h: room.h }),
-        )
-    } else {
-        (
-            RoomDraft { x: room.x + right_width, y: room.y, w: split_at, h: room.h },
-            Some(RoomDraft { x: room.x, y: room.y, w: right_width, h: room.h }),
-        )
-    }
-}
-
-fn split_room_draft_vertically(room: RoomDraft, split_at: i32, keep_top: bool) -> (RoomDraft, Option<RoomDraft>) {
-    let bottom_height = room.h - split_at;
-    if keep_top {
-        (
-            RoomDraft { x: room.x, y: room.y, w: room.w, h: split_at },
-            Some(RoomDraft { x: room.x, y: room.y + split_at, w: room.w, h: bottom_height }),
-        )
-    } else {
-        (
-            RoomDraft { x: room.x, y: room.y + bottom_height, w: room.w, h: split_at },
-            Some(RoomDraft { x: room.x, y: room.y, w: room.w, h: bottom_height }),
-        )
-    }
-}
-
-fn room_center(room: &Room) -> (i32, i32) {
-    (room.x + room.w / 2, room.y + room.h / 2)
-}
-
-fn sample_corridor_child_slots(rng: &mut impl Rng) -> usize {
-    match rng.random_range(0..100) {
-        0..=14 => 0,
-        15..=84 => 1,
-        85..=95 => 2,
-        _ => 3,
-    }
-}
-
-fn pick_weighted_open_parent_index(open_parents: &[(usize, usize)], rng: &mut impl Rng) -> Option<usize> {
-    let total_slots = open_parents.iter().map(|(_, slots)| *slots).sum::<usize>();
-    if total_slots == 0 {
-        return None;
-    }
-
-    let mut roll = rng.random_range(0..total_slots);
-    for (idx, (_, slots)) in open_parents.iter().enumerate() {
-        if roll < *slots {
-            return Some(idx);
-        }
-        roll -= *slots;
-    }
-
-    None
-}
-
-fn pick_nearest_room_index(parent_idx: usize, candidate_indices: &[usize], rooms: &[Room], rng: &mut impl Rng) -> Option<usize> {
-    let parent_center = room_center(&rooms[parent_idx]);
-    let mut best_indices = Vec::new();
-    let mut best_distance = i32::MAX;
-
-    for &candidate_idx in candidate_indices {
-        let candidate_center = room_center(&rooms[candidate_idx]);
-        let distance = (parent_center.0 - candidate_center.0).abs() + (parent_center.1 - candidate_center.1).abs();
-        if distance < best_distance {
-            best_distance = distance;
-            best_indices.clear();
-            best_indices.push(candidate_idx);
-        } else if distance == best_distance {
-            best_indices.push(candidate_idx);
+        if !route_crosses_other_rooms(&route, actual_rooms, start_room_idx, end_room_idx) {
+            return (route, false);
         }
     }
 
-    if best_indices.is_empty() {
-        return None;
+    let fallback_route = build_straight_corridor_route(c1, c2, map_width, map_height, rng);
+    (fallback_route, false)
+}
+
+fn stamp_corridor_wall_ribs_typed(
+    floor_map_bool: &mut [bool],
+    wall_map: &mut [bool],
+    tile_width: usize,
+    tile_height: usize,
+    corridor_radius: i32,
+    path: &[(i32, i32)],
+    rib_spacing_min: usize,
+    rib_spacing_max: usize,
+    rib_depth_min: usize,
+    rib_depth_max: usize,
+    rng: &mut impl Rng,
+) {
+    if path.len() < 3 {
+        return;
     }
 
-    best_indices.get(rng.random_range(0..best_indices.len())).copied()
+    let corridor_radius = corridor_radius.max(1);
+    let rib_spacing_min = rib_spacing_min.max(1);
+    let rib_spacing_max = rib_spacing_max.max(rib_spacing_min);
+    let rib_depth_min = rib_depth_min.max(1);
+    let rib_depth_max = rib_depth_max.max(rib_depth_min);
+
+    let mut next_index = rng.random_range(rib_spacing_min..=rib_spacing_max);
+    let mut side_bias = if rng.random_bool(0.5) { 1 } else { -1 };
+
+    while next_index + 1 < path.len() {
+        let current_index = next_index;
+        let prev = path[current_index - 1];
+        let current = path[current_index];
+        let next = path[current_index + 1];
+
+        let dir_x = (next.0 - prev.0).signum();
+        let dir_y = (next.1 - prev.1).signum();
+        if dir_x == 0 && dir_y == 0 {
+            side_bias *= -1;
+            next_index += rng.random_range(rib_spacing_min..=rib_spacing_max);
+            continue;
+        }
+
+        let rib_depth = rng.random_range(rib_depth_min..=rib_depth_max).max(corridor_radius as usize + 2);
+        let rib_width = (rib_depth / 2).clamp(2, 5);
+        let side_depths = [rib_depth, rib_depth];
+        let side_widths = [rib_width, rib_width];
+
+        for (side_idx, side_sign) in [side_bias, -side_bias].into_iter().enumerate() {
+            let normal_x = -dir_y * side_sign;
+            let normal_y = dir_x * side_sign;
+            let base_x = current.0 + normal_x * corridor_radius;
+            let base_y = current.1 + normal_y * corridor_radius;
+            if base_x < 0 || base_y < 0 {
+                continue;
+            }
+
+            let base_ux = base_x as usize;
+            let base_uy = base_y as usize;
+            if base_ux >= tile_width || base_uy >= tile_height {
+                continue;
+            }
+
+            let rib_depth = side_depths[side_idx];
+            let rib_width = side_widths[side_idx];
+            for depth_step in 0..=rib_depth {
+                let inward_step = depth_step as i32;
+                let step_back_x = base_x - normal_x * inward_step;
+                let step_back_y = base_y - normal_y * inward_step;
+                let taper = (rib_width.saturating_sub(depth_step / 3)).max(2) as i32;
+
+                for lateral in -taper..=taper {
+                    let x = step_back_x + dir_x * lateral;
+                    let y = step_back_y + dir_y * lateral;
+                    if x < 0 || y < 0 {
+                        continue;
+                    }
+
+                    let ux = x as usize;
+                    let uy = y as usize;
+                    if ux >= tile_width || uy >= tile_height {
+                        continue;
+                    }
+
+                    let idx = uy * tile_width + ux;
+                    floor_map_bool[idx] = false;
+                    wall_map[idx] = true;
+                }
+            }
+        }
+
+        side_bias *= -1;
+        next_index += rng.random_range(rib_spacing_min..=rib_spacing_max);
+    }
+}
+
+fn carve_regular_polygon_wall_dividers_typed(
+    floor_map_bool: &mut [bool],
+    wall_map: &mut [bool],
+    tile_width: usize,
+    tile_height: usize,
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    sides: i32,
+    rotation_deg: f32,
+    gap_half_width: i32,
+) {
+    let w = w.max(0);
+    let h = h.max(0);
+    if w == 0 || h == 0 {
+        return;
+    }
+
+    let sides = sides.max(3) as usize;
+    let cx = x + w / 2;
+    let cy = y + h / 2;
+    let radius = (w.min(h) / 2).max(1) as f32;
+    let rotation_rad = rotation_deg.to_radians();
+    let step = std::f32::consts::TAU / sides as f32;
+
+    let mut vertices: Vec<(i32, i32)> = Vec::with_capacity(sides);
+    for i in 0..sides {
+        let angle = rotation_rad + step * i as f32;
+        let vx = cx as f32 + radius * angle.cos();
+        let vy = cy as f32 + radius * angle.sin();
+        vertices.push((vx.round() as i32, vy.round() as i32));
+    }
+
+    let gap_half_width = gap_half_width.max(0) as usize;
+    let draw_line_with_gap = |start: (i32, i32), end: (i32, i32), floor_map_bool: &mut [bool], wall_map: &mut [bool]| {
+        let (x0, y0) = start;
+        let (x1, y1) = end;
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+        let steps = (dx.max(dy) * 2).max(1) as usize;
+        let gap_idx = steps / 2;
+
+        for i in 0..=steps {
+            if i.abs_diff(gap_idx) <= gap_half_width {
+                continue;
+            }
+
+            let t = i as f32 / steps as f32;
+            let x = (x0 as f32 + (x1 - x0) as f32 * t).round() as i32;
+            let y = (y0 as f32 + (y1 - y0) as f32 * t).round() as i32;
+            if x < 0 || y < 0 {
+                continue;
+            }
+
+            let ux = x as usize;
+            let uy = y as usize;
+            if ux >= tile_width || uy >= tile_height {
+                continue;
+            }
+
+            let idx = uy * tile_width + ux;
+            floor_map_bool[idx] = false;
+            wall_map[idx] = true;
+        }
+    };
+
+    let center = (cx, cy);
+    for &vertex in &vertices {
+        draw_line_with_gap(vertex, center, floor_map_bool, wall_map);
+    }
 }
 
 inventory::submit! {
@@ -365,12 +629,29 @@ pub fn corridor_dungeon_building_system(
         let origin_chunk = ChunkPos::new(min_chunk_x, min_chunk_y);
         let origin_tile = origin_chunk.to_tilepos();
 
-        let mut max_rooms = 30;
+        let mut max_rooms = 50;
         let mut border_band = 1;
-        let mut corridor_detour_chance = 0.0_f32;
-        let mut corridor_detour_max_offset = 0_i32;
-        let mut corridor_radius = 1_i32;
-        let mut room_density_min: f32 = 0.1;
+        let mut dungeon_non_curved_corridors_chance = 0.10_f32;
+        let mut corridor_zigzag_chance = 0.35_f32;
+        let mut corridor_macro_detour_chance = 0.15_f32;
+        let mut corridor_macro_detour_offset_min = 10_i32;
+        let mut corridor_macro_detour_offset_max = 100_i32;
+        let mut corridor_macro_detour_stack_min = 1_i32;
+        let mut corridor_macro_detour_stack_max = 3_i32;
+        let mut corridor_zigzag_curve_chance = 0.5_f32;
+        let mut corridor_zigzag_strength_min = 5_i32;
+        let mut corridor_zigzag_strength_max = 20_i32;
+        let mut corridor_zigzag_offset = 4_i32;
+        let mut corridor_zigzag_rib_spacing_min = 3_i32;
+        let mut corridor_zigzag_rib_spacing_max = 6_i32;
+        let mut corridor_zigzag_rib_depth_min = 4_i32;
+        let mut corridor_zigzag_rib_depth_max = 8_i32;
+        let mut corridor_radius: i32 = 1;
+        let mut regular_polygon_divider_chance = 0.5_f32;
+        let mut regular_polygon_divider_gap_half_width: i32 = 1;
+        let mut regular_polygon_sides_min: i32 = 5;
+        let mut regular_polygon_sides_max: i32 = 8;
+        let mut room_density_min: f32 = 0.05;
         let mut room_density_max: f32 = 0.8;
         if let Some(v) = structured_gen_cfg.args.get("max_rooms") {
             if let Some(s) = v.first() {
@@ -382,20 +663,130 @@ pub fn corridor_dungeon_building_system(
                 border_band = s.parse::<usize>().unwrap_or(1);
             }
         }
-        if let Some(v) = structured_gen_cfg.args.get("corridor_detour_chance") {
+        if let Some(v) = structured_gen_cfg.args.get("corridor_non_curved_dungeon_chance") {
             if let Some(s) = v.first() {
-                corridor_detour_chance = s.parse::<f32>().unwrap_or(0.0).clamp(0.0, 1.0);
+                dungeon_non_curved_corridors_chance = s.parse::<f32>().unwrap_or(dungeon_non_curved_corridors_chance).clamp(0.0, 1.0);
             }
         }
-        if let Some(v) = structured_gen_cfg.args.get("corridor_detour_max_offset") {
+        if let Some(v) = structured_gen_cfg.args.get("corridor_zigzag_chance").or_else(|| structured_gen_cfg.args.get("corridor_detour_chance")) {
             if let Some(s) = v.first() {
-                corridor_detour_max_offset = s.parse::<i32>().unwrap_or(0).max(0);
+                corridor_zigzag_chance = s.parse::<f32>().unwrap_or(corridor_zigzag_chance).clamp(0.0, 1.0);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_macro_detour_chance") {
+            if let Some(s) = v.first() {
+                corridor_macro_detour_chance = s.parse::<f32>().unwrap_or(corridor_macro_detour_chance).clamp(0.0, 1.0);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_macro_detour_offset_min").or_else(|| structured_gen_cfg.args.get("corridor_detour_offset_min")) {
+            if let Some(s) = v.first() {
+                corridor_macro_detour_offset_min = s.parse::<i32>().unwrap_or(corridor_macro_detour_offset_min).max(1);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_macro_detour_offset_max").or_else(|| structured_gen_cfg.args.get("corridor_detour_offset_max")) {
+            if let Some(s) = v.first() {
+                corridor_macro_detour_offset_max = s.parse::<i32>().unwrap_or(corridor_macro_detour_offset_max).max(1);
+            }
+        }
+        if corridor_macro_detour_offset_max < corridor_macro_detour_offset_min {
+            corridor_macro_detour_offset_max = corridor_macro_detour_offset_min;
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_macro_detour_stack_min").or_else(|| structured_gen_cfg.args.get("corridor_detour_stack_min")) {
+            if let Some(s) = v.first() {
+                corridor_macro_detour_stack_min = s.parse::<i32>().unwrap_or(corridor_macro_detour_stack_min).max(1);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_macro_detour_stack_max").or_else(|| structured_gen_cfg.args.get("corridor_detour_stack_max")) {
+            if let Some(s) = v.first() {
+                corridor_macro_detour_stack_max = s.parse::<i32>().unwrap_or(corridor_macro_detour_stack_max).max(1);
+            }
+        }
+        if corridor_macro_detour_stack_max < corridor_macro_detour_stack_min {
+            corridor_macro_detour_stack_max = corridor_macro_detour_stack_min;
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_zigzag_curve_chance") {
+            if let Some(s) = v.first() {
+                corridor_zigzag_curve_chance = s.parse::<f32>().unwrap_or(corridor_zigzag_curve_chance).clamp(0.0, 1.0);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_zigzag_rib_spacing_min").or_else(|| structured_gen_cfg.args.get("corridor_zigzag_wall_rib_spacing_min")) {
+            if let Some(s) = v.first() {
+                corridor_zigzag_rib_spacing_min = s.parse::<i32>().unwrap_or(corridor_zigzag_rib_spacing_min).max(1);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_zigzag_rib_spacing_max").or_else(|| structured_gen_cfg.args.get("corridor_zigzag_wall_rib_spacing_max")) {
+            if let Some(s) = v.first() {
+                corridor_zigzag_rib_spacing_max = s.parse::<i32>().unwrap_or(corridor_zigzag_rib_spacing_max).max(1);
+            }
+        }
+        if corridor_zigzag_rib_spacing_max < corridor_zigzag_rib_spacing_min {
+            corridor_zigzag_rib_spacing_max = corridor_zigzag_rib_spacing_min;
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_zigzag_rib_depth_min").or_else(|| structured_gen_cfg.args.get("corridor_zigzag_wall_rib_depth_min")) {
+            if let Some(s) = v.first() {
+                corridor_zigzag_rib_depth_min = s.parse::<i32>().unwrap_or(corridor_zigzag_rib_depth_min).max(1);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_zigzag_rib_depth_max").or_else(|| structured_gen_cfg.args.get("corridor_zigzag_wall_rib_depth_max")) {
+            if let Some(s) = v.first() {
+                corridor_zigzag_rib_depth_max = s.parse::<i32>().unwrap_or(corridor_zigzag_rib_depth_max).max(1);
+            }
+        }
+        if corridor_zigzag_rib_depth_max < corridor_zigzag_rib_depth_min {
+            corridor_zigzag_rib_depth_max = corridor_zigzag_rib_depth_min;
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_zigzag_strength_min").or_else(|| structured_gen_cfg.args.get("corridor_zigzag_turns_min")) {
+            if let Some(s) = v.first() {
+                corridor_zigzag_strength_min = s.parse::<i32>().unwrap_or(corridor_zigzag_strength_min).max(1);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_zigzag_strength_max").or_else(|| structured_gen_cfg.args.get("corridor_zigzag_turns_max")) {
+            if let Some(s) = v.first() {
+                corridor_zigzag_strength_max = s.parse::<i32>().unwrap_or(corridor_zigzag_strength_max).max(1);
+            }
+        }
+        if corridor_zigzag_strength_max < corridor_zigzag_strength_min {
+            corridor_zigzag_strength_max = corridor_zigzag_strength_min;
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_zigzag_offset").or_else(|| structured_gen_cfg.args.get("corridor_curve_offset")).or_else(|| structured_gen_cfg.args.get("corridor_detour_max_offset")) {
+            if let Some(s) = v.first() {
+                corridor_zigzag_offset = s.parse::<i32>().unwrap_or(corridor_zigzag_offset).max(0);
             }
         }
         if let Some(v) = structured_gen_cfg.args.get("corridor_radius") {
             if let Some(s) = v.first() {
                 corridor_radius = s.parse::<i32>().unwrap_or(1).max(1);
             }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("regular_polygon_divider_chance") {
+            if let Some(s) = v.first() {
+                regular_polygon_divider_chance = s.parse::<f32>().unwrap_or(regular_polygon_divider_chance).clamp(0.0, 1.0);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("regular_polygon_divider_gap_half_width") {
+            if let Some(s) = v.first() {
+                regular_polygon_divider_gap_half_width = s.parse::<i32>().unwrap_or(regular_polygon_divider_gap_half_width).max(0);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("regular_polygon_sides") {
+            if let Some(s) = v.first() {
+                let sides = s.parse::<i32>().unwrap_or(regular_polygon_sides_min).max(3);
+                regular_polygon_sides_min = sides;
+                regular_polygon_sides_max = sides;
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("regular_polygon_sides.min").or_else(|| structured_gen_cfg.args.get("regular_polygon_sides.min_sides")) {
+            if let Some(s) = v.first() {
+                regular_polygon_sides_min = s.parse::<i32>().unwrap_or(regular_polygon_sides_min).max(3);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("regular_polygon_sides.max").or_else(|| structured_gen_cfg.args.get("regular_polygon_sides.max_sides")) {
+            if let Some(s) = v.first() {
+                regular_polygon_sides_max = s.parse::<i32>().unwrap_or(regular_polygon_sides_max).max(3);
+            }
+        }
+        if regular_polygon_sides_max < regular_polygon_sides_min {
+            regular_polygon_sides_max = regular_polygon_sides_min;
         }
         if let Some(v) = structured_gen_cfg.args.get("room_density.min") {
             if let Some(s) = v.first() {
@@ -462,6 +853,7 @@ pub fn corridor_dungeon_building_system(
 
         let seed = origin_chunk.hash_value(&settings, build_order.dimension_ref.0, build_order.i);
         let mut rng = Pcg64Mcg::seed_from_u64(seed);
+        let corridors_are_non_curved = rng.random_range(0.0..1.0) < dungeon_non_curved_corridors_chance;
         let claimed_area = map_width.saturating_mul(map_height);
         let room_density = rng.random_range(room_density_min..=room_density_max);
         let room_area_budget = ((claimed_area as f32) * room_density).round().max(1.0) as i32;
@@ -471,6 +863,7 @@ pub fn corridor_dungeon_building_system(
 
         let mut actual_rooms = Vec::new();
         let mut used_room_area = 0_i32;
+        let mut curved_zigzag_routes: Vec<Vec<(i32, i32)>> = Vec::with_capacity(max_rooms as usize);
         while actual_rooms.len() < max_rooms as usize && !room_drafts.is_empty() && used_room_area < room_area_budget {
             let remaining_area_budget = room_area_budget.saturating_sub(used_room_area);
             let total_area_weight: usize = room_drafts.iter().map(|room| room.area().max(1) as usize).sum();
@@ -531,29 +924,39 @@ pub fn corridor_dungeon_building_system(
             }
         }
 
+        let mut regular_polygon_sides_by_room: Vec<i32> = Vec::with_capacity(actual_rooms.len());
         for room in &actual_rooms {
             let rx = room.x;
             let ry = room.y;
-
             match room.shape {
                 RoomShape::Rectangle => {
+                    regular_polygon_sides_by_room.push(0);
                     carve_room_rectangle(&mut floor_map, map_width, map_height, rx, ry, room.w, room.h, FLOOR_MAIN);
                 }
                 RoomShape::Ellipse => {
+                    regular_polygon_sides_by_room.push(0);
                     carve_room_ellipse(&mut floor_map, map_width, map_height, rx, ry, room.w, room.h, FLOOR_MAIN);
                 }
                 RoomShape::Trapezoid => {
+                    regular_polygon_sides_by_room.push(0);
                     let (v0, v1, v2, v3) = sample_trapezoid_vertices_for_room(room, &mut rng);
                     carve_room_trapezoid(&mut floor_map, map_width, map_height, v0, v1, v2, v3, FLOOR_MAIN);
                 }
                 RoomShape::RegularPolygon => {
-                    let sides = rng.random_range(5..=8);
+                    let sides = rng.random_range(regular_polygon_sides_min..=regular_polygon_sides_max).max(3);
+                    regular_polygon_sides_by_room.push(sides);
                     carve_room_regular_polygon(&mut floor_map, map_width, map_height, rx, ry, room.w, room.h, sides, 0.0, FLOOR_MAIN);
                 }
                 RoomShape::Pentacle => {
+                    regular_polygon_sides_by_room.push(0);
                     carve_room_pentacle(&mut floor_map, map_width, map_height, rx, ry, room.w, room.h, FLOOR_MAIN, FLOOR_B);
                 }
             }
+
+            maybe_add_room_interior(&mut rng, room.shape, rx, ry, room.w, room.h, |x, y| {
+                let idx = y * map_width + x;
+                floor_map[idx] = FLOOR_NONE;
+            });
         }
 
         let mut corridor_map = vec![false; map_width * map_height];
@@ -582,25 +985,50 @@ pub fn corridor_dungeon_building_system(
                 let c1 = room_center(&actual_rooms[parent_idx]);
                 let c2 = room_center(&actual_rooms[child_idx]);
                 let rad = Some(corridor_radius);
-                if rng.random_range(0.0..1.0) < corridor_detour_chance && corridor_detour_max_offset > 0 {
-                    let min_x = (c1.0.min(c2.0) - corridor_detour_max_offset).clamp(0, map_width.saturating_sub(1) as i32);
-                    let max_x = (c1.0.max(c2.0) + corridor_detour_max_offset).clamp(0, map_width.saturating_sub(1) as i32);
-                    let min_y = (c1.1.min(c2.1) - corridor_detour_max_offset).clamp(0, map_height.saturating_sub(1) as i32);
-                    let max_y = (c1.1.max(c2.1) + corridor_detour_max_offset).clamp(0, map_height.saturating_sub(1) as i32);
-                    let detour_x = rng.random_range(min_x..=max_x);
-                    let detour_y = rng.random_range(min_y..=max_y);
+                if corridors_are_non_curved {
+                    let route = build_straight_corridor_route(c1, c2, map_width, map_height, &mut rng);
+                    carve_corridor_path(&mut floor_map, map_width, map_height, &mut corridor_map, rad, &route, FLOOR_MAIN);
 
-                    carve_corridor_horizontal(&mut rng, &mut floor_map, FLOOR_MAIN, &mut corridor_map, map_width, map_height, rad, None, None, c1.1, c1.0, detour_x);
-                    carve_corridor_vertical(&mut rng, &mut floor_map, FLOOR_MAIN, &mut corridor_map, map_width, map_height, rad, None, None, detour_x, c1.1, detour_y);
-                    carve_corridor_horizontal(&mut rng, &mut floor_map, FLOOR_MAIN, &mut corridor_map, map_width, map_height, rad, None, None, detour_y, detour_x, c2.0);
-                    carve_corridor_vertical(&mut rng, &mut floor_map, FLOOR_MAIN, &mut corridor_map, map_width, map_height, rad, None, None, c2.0, detour_y, c2.1);
-                } else if rng.random_bool(0.5) {
-                    carve_corridor_horizontal(&mut rng, &mut floor_map, FLOOR_MAIN, &mut corridor_map, map_width, map_height, rad, None, None, c1.1, c1.0, c2.0);
-                    carve_corridor_vertical(&mut rng, &mut floor_map, FLOOR_MAIN, &mut corridor_map, map_width, map_height, rad, None, None, c2.0, c1.1, c2.1);
-                } else {
-                    carve_corridor_vertical(&mut rng, &mut floor_map, FLOOR_MAIN, &mut corridor_map, map_width, map_height, rad, None, None, c1.0, c1.1, c2.1);
-                    carve_corridor_horizontal(&mut rng, &mut floor_map, FLOOR_MAIN, &mut corridor_map, map_width, map_height, rad, None, None, c2.1, c1.0, c2.0);
+                    let parent_slots = &mut open_parents[parent_slot_idx].1;
+                    *parent_slots = parent_slots.saturating_sub(1);
+                    if *parent_slots == 0 {
+                        open_parents.swap_remove(parent_slot_idx);
+                    }
+
+                    connected_rooms.push(child_idx);
+                    let child_slots = if remaining_rooms.is_empty() { 0 } else { sample_corridor_child_slots(&mut rng) };
+                    if child_slots > 0 {
+                        open_parents.push((child_idx, child_slots));
+                    }
+                    continue;
                 }
+
+                let (route, _route_is_curved_zigzag) = pick_room_aware_corridor_route(
+                    c1,
+                    c2,
+                    &actual_rooms,
+                    parent_idx,
+                    child_idx,
+                    map_width,
+                    map_height,
+                    corridor_zigzag_chance,
+                    corridor_zigzag_curve_chance,
+                    corridor_zigzag_strength_min,
+                    corridor_zigzag_strength_max,
+                    corridor_zigzag_offset,
+                    corridor_macro_detour_chance,
+                    corridor_macro_detour_offset_min,
+                    corridor_macro_detour_offset_max,
+                    corridor_macro_detour_stack_min,
+                    corridor_macro_detour_stack_max,
+                    &mut rng,
+                );
+
+                if _route_is_curved_zigzag {
+                    curved_zigzag_routes.push(route.clone());
+                }
+
+                carve_corridor_path(&mut floor_map, map_width, map_height, &mut corridor_map, rad, &route, FLOOR_MAIN);
 
                 let parent_slots = &mut open_parents[parent_slot_idx].1;
                 *parent_slots = parent_slots.saturating_sub(1);
@@ -642,6 +1070,47 @@ pub fn corridor_dungeon_building_system(
                         }
                     }
                 }
+            }
+        }
+
+        let rib_spacing_min = corridor_zigzag_rib_spacing_min.max(1) as usize;
+        let rib_spacing_max = corridor_zigzag_rib_spacing_max.max(corridor_zigzag_rib_spacing_min).max(1) as usize;
+        let rib_depth_min = corridor_zigzag_rib_depth_min.max(1) as usize;
+        let rib_depth_max = corridor_zigzag_rib_depth_max.max(corridor_zigzag_rib_depth_min).max(1) as usize;
+        for path in curved_zigzag_routes.iter() {
+            stamp_corridor_wall_ribs_typed(
+                &mut floor_map_bool,
+                &mut wall_map,
+                map_width,
+                map_height,
+                corridor_radius,
+                path,
+                rib_spacing_min,
+                rib_spacing_max,
+                rib_depth_min,
+                rib_depth_max,
+                &mut rng,
+            );
+        }
+
+        for (room, &sides) in actual_rooms.iter().zip(regular_polygon_sides_by_room.iter()) {
+            if let RoomShape::RegularPolygon = room.shape {
+                if sides == 0 || rng.random_range(0.0..1.0) >= regular_polygon_divider_chance {
+                    continue;
+                }
+                carve_regular_polygon_wall_dividers_typed(
+                    &mut floor_map_bool,
+                    &mut wall_map,
+                    map_width,
+                    map_height,
+                    room.x,
+                    room.y,
+                    room.w,
+                    room.h,
+                    sides,
+                    0.0,
+                    regular_polygon_divider_gap_half_width,
+                );
             }
         }
 

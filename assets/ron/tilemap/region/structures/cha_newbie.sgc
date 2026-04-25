@@ -14,7 +14,7 @@ sgc {
         ellipse_weight = 1.0
         trapezoid_weight = 1.0
         regular_polygon_weight = 1.0
-        pentacle_weight = 0.2
+        pentacle_weight = 0.5
         room_same_shape_chance = 0.25
         room_same_shape_weight_rectangle = 1.0
         room_same_shape_weight_ellipse = 1.0
