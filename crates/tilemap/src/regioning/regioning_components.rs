@@ -123,7 +123,7 @@ impl RegionPlannedTiles {
     pub fn add_planned_tiles_and_remove_from_pending(
         &mut self,
         order_i: u64,
-        chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)>,
+        chunk_tiles: Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)>,
         terrgen_disabled_gpos_for_chunks: TerrGenDisabledGposForChunks,
     ) -> Result<bool, BevyError> {
         let Some(order) = self.pending_build_orders.remove(&order_i) else {
@@ -132,20 +132,18 @@ impl RegionPlannedTiles {
                 order_i
             )));
         };
-        let mut provided_chunks: HashSet<ChunkPos> = HashSet::new();
+        let mut chunk_tiles_by_chunk: HashMap<ChunkPos, TilesFromBuilder> = HashMap::new();
         let selected_chunks: HashSet<ChunkPos> = order.chunks.iter().copied().collect();
-        for (chunk_pos, tile_data) in chunk_tiles {
+        for (tile_pos, tile_ref, delete_others) in chunk_tiles {
+            let chunk_pos = tile_pos.to_chunkpos();
             if !selected_chunks.contains(&chunk_pos) {
                 return Err(BevyError::from(format!(
-                    "ChunkPos {:?} is not part of build order {}",
-                    chunk_pos, order_i
+                    "Tile position {:?} maps to ChunkPos {:?} which is not part of build order {}",
+                    tile_pos, chunk_pos, order_i
                 )));
             }
-            for (tile_pos, _, _) in &tile_data {
-                chunk_pos.is_tilepos_within_chunk(*tile_pos)?;
-            }
-            self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new).extend(tile_data);
-            provided_chunks.insert(chunk_pos);
+            chunk_pos.is_tilepos_within_chunk(tile_pos)?;
+            chunk_tiles_by_chunk.entry(chunk_pos).or_insert_with(Vec::new).push((tile_pos, tile_ref, delete_others));
         }
         let mut dropped_out_of_bounds = 0usize;
         for (chunk_pos, blocked_gpos) in terrgen_disabled_gpos_for_chunks.0 {
@@ -164,9 +162,8 @@ impl RegionPlannedTiles {
             );
         }
         for chunk_pos in order.chunks {
-            if !provided_chunks.contains(&chunk_pos) {
-                self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new);
-            }
+            let chunk_tiles = chunk_tiles_by_chunk.remove(&chunk_pos).unwrap_or_default();
+            self.tiles_to_spawn_on_chunk_load_map.entry(chunk_pos).or_insert_with(Vec::new).extend(chunk_tiles);
             self.pending_chunks.remove(&chunk_pos);
         }
         Ok(self.pending_build_orders.is_empty())

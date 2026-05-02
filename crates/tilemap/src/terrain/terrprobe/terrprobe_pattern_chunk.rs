@@ -23,7 +23,7 @@ pub fn process_chunk_pattern(
         new_pending_ops.push(PendingOp {
             oplist: root_oplist,
             input: PendingOpInput {
-                dimension_ref: pos_search.dimension_ref,
+                dim: pos_search.dimension_ref,
                 gpos,
             },
             purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {

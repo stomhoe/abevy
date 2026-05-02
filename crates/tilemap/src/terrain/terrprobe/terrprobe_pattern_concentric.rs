@@ -35,7 +35,7 @@ pub fn process_concentric_pattern(
             new_pending_ops.push(PendingOp {
                 oplist: root_oplist,
                 input: PendingOpInput {
-                    dimension_ref: pos_search.dimension_ref,
+                    dim: pos_search.dimension_ref,
                     gpos: pos_search.search_start_pos,
                 },
                 purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {
@@ -61,7 +61,7 @@ pub fn process_concentric_pattern(
             new_pending_ops.push(PendingOp {
                 oplist: root_oplist,
                 input: PendingOpInput {
-                    dimension_ref: pos_search.dimension_ref,
+                    dim: pos_search.dimension_ref,
                     gpos,
                 },
                 purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {

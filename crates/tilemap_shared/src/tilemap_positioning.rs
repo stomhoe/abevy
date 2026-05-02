@@ -139,13 +139,13 @@ impl MacrochunkPos {
         let (min, max) = self.chunk_bounds();
         cp.x() >= min.x() && cp.y() >= min.y() && cp.x() < max.x() && cp.y() < max.y()
     }
-    pub fn sample_macro_chunk_positions<'a>(&self, n_points: usize, out: &'a mut Vec<GlobalTilePos>) -> &'a [GlobalTilePos] {
+    pub fn gather_gpos_to_sample<'a>(&self, out: &'a mut Vec<GlobalTilePos>, n_points_per_chunk: usize, ) -> &'a [GlobalTilePos] {
         let (min_chunk, max_chunk_excl) = self.chunk_bounds();
         let chunk_count = (max_chunk_excl.x() - min_chunk.x()) as usize * (max_chunk_excl.y() - min_chunk.y()) as usize;
-        out.reserve(chunk_count * n_points * n_points);
+        out.reserve(chunk_count * n_points_per_chunk * n_points_per_chunk);
         for y in min_chunk.y()..max_chunk_excl.y() {
             for x in min_chunk.x()..max_chunk_excl.x() {
-                ChunkPos::new(x, y).get_n_equally_spaced_sample_points(n_points, out);
+                ChunkPos::new(x, y).get_n_equally_spaced_sample_points(n_points_per_chunk, out);
             }
         }
         out.as_slice()

@@ -6,7 +6,7 @@ use common::log_targets::{CHUNK_ACTIVATION, CHUNK_DESPAWN};
 
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(
-    mut activator_query: Query<(&GlobalTilePos, &LoadChunksAround, &mut ActivatingChunks, &DimensionRef), (Or<(Changed<GlobalTilePos>, Changed<DimensionRef>, Changed<LoadChunksAround>)>, )>,
+    mut activator_query: Query<(&GlobalTilePos, &LoadChunksAround, &mut ActivatingChunks, &DimensionRef), (Or<(Changed<GlobalTilePos>, Changed<DimensionRef>, Changed<LoadChunksAround>, Changed<ActivatingChunks>)>, )>,
     loaded_chunks: Res<LoadedChunks>,
     mut ewriter: MessageWriter<CheckIfChunkShouldDespawn>,
     mut to_despawn: Local<Vec<CheckIfChunkShouldDespawn>>,
@@ -63,7 +63,7 @@ pub fn on_message_signal_despawn_all_chunks(
 }
 
 #[allow(unused_parens)]
-pub fn check_unreferenced_chunks(
+pub fn make_checked_chunks_despawn_if_unreferenced(
     mut reader: MessageReader<CheckIfChunkShouldDespawn>,
     activator_query: Query<(&DimensionRef, &ActivatingChunks), >,
     loaded_chunks: Res<LoadedChunks>,

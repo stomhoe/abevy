@@ -100,6 +100,10 @@ pub struct ReassignDimensionToEntity (pub Entity);
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct WhitelistedStructureGenTags(pub TagSet);
 
+common::impl_tag_wrapper_deref!(WhitelistedStructureGenTags, TagSet);
+
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, )]
 pub struct BlacklistedStructureGenTags(pub TagSet);
+
+common::impl_tag_wrapper_deref!(BlacklistedStructureGenTags, TagSet);

@@ -11,7 +11,7 @@ pub struct PendingOpMatrixSpec {
 
 #[derive(Debug, Clone, Copy)]
 pub struct PendingOpInput {
-    pub dimension_ref: DimensionRef,
+    pub dim: DimensionRef,
     pub gpos: GlobalTilePos,
 }
 
@@ -39,7 +39,7 @@ pub struct MacroChunkBiomeSampled {
 pub enum PendingOpPurpose {
     ChunkTerrainGen { chunk_pos: ChunkPos },
     ValueProbe(PendingOpValueProbe),
-    MacroChunkBiomeSampling { macro_chunk_ent: Entity },
+    BiomeSampling { macro_chunk_ent: Entity },
 }
 
 #[derive(Message, Debug, Clone)]
@@ -51,7 +51,7 @@ pub struct PendingOp {
 
 impl PendingOp {
     pub fn dimension_ref(&self) -> DimensionRef {
-        self.input.dimension_ref
+        self.input.dim
     }
 
     pub fn gpos(&self) -> GlobalTilePos {

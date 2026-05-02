@@ -143,6 +143,7 @@ pub struct MappedAnimations(pub HashMap<AnimType, HashId>);
 pub struct AnimType {
     pub direction: CardinalDirection,
     pub moving: MoveAnimActive,
+    //sprinting:bool? o hacer moveanimactive que tenga un sprinting state?
     pub grounding: Grounding,
     pub state_id: Option<AnimExtraState>,
 }

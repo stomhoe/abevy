@@ -233,8 +233,9 @@ pub fn claim_chunks_for_river_structures(
             offer_i,
         );
         if emitted_claim {
-            cmd.entity(region_ent).try_insert(plan);
-            cmd.entity(region_ent).try_remove::<RiverPendingOffer>();
+            cmd.entity(region_ent)
+                .try_insert(plan)
+                .try_remove::<RiverPendingOffer>();
             claims_emitted = claims_emitted.saturating_add(1);
         } else {
             error!(target: RIVER_SYSTEM, "River plan for region {:?} offer {} generated tiles but no claim chunks could be emitted", region_ent, offer_i);
@@ -398,9 +399,8 @@ pub fn river_structure_building_system(
             i: order.i,
             structure_gen_cfg_ent: order.structured_gen_cfg_ent,
             dimension_ref: order.dimension_ref,
-            chunks: Vec::new(),
+            chunk_tiles: Vec::new(),
             terrgen_disabled_gpos_for_chunks: TerrGenDisabledGposForChunks::default(),
-            terrgen_disabled_for_chunks: Vec::new(),
             forced_chunk_biomes: Vec::new(),
         };
 
@@ -465,7 +465,7 @@ pub fn river_structure_building_system(
         } else {
             info!(target: RIVER_SYSTEM, "Order {}: emitted {} chunks and {} river tiles (generated before clip={}, outside_claimed_tiles={})", order.i, emitted_chunk_count, emitted_tile_count, generated_count, tiles_outside_claimed);
         }
-        compliance.chunks = chunks;
+        compliance.chunk_tiles = chunks.into_iter().flat_map(|(_, tiles)| tiles).collect();
         compliance.terrgen_disabled_gpos_for_chunks = terrgen_disabled_gpos_for_chunks;
 
         compliances_to_emit.push(compliance);

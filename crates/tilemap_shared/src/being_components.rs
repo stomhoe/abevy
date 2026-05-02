@@ -15,6 +15,8 @@ impl WhitelistedSpawnTileTags {
     }
 }
 
+common::impl_tag_wrapper_deref!(WhitelistedSpawnTileTags, WhitelistedTags);
+
 #[derive(Debug, Clone, Copy)]
 pub struct WhitelistedSpawnTileTagsRef<'a>(pub &'a WhitelistedTags);
 
@@ -29,6 +31,8 @@ impl BlacklistedSpawnTileTags {
         BlacklistedSpawnTileTagsRef(&self.0)
     }
 }
+
+common::impl_tag_wrapper_deref!(BlacklistedSpawnTileTags, BlacklistedTags);
 
 #[derive(Debug, Clone, Copy)]
 pub struct BlacklistedSpawnTileTagsRef<'a>(pub &'a BlacklistedTags);

@@ -57,7 +57,7 @@ impl TerrGenOpTaskResult {
             PendingOpPurpose::ChunkTerrainGen { chunk_pos } => {
                 self.completed_chunk_gpos.push(((source_ev.dimension_ref(), *chunk_pos), source_ev.gpos()));
             }
-            PendingOpPurpose::MacroChunkBiomeSampling { macro_chunk_ent } => {
+            PendingOpPurpose::BiomeSampling { macro_chunk_ent } => {
                 self.completed_macro_chunk_biome_samples.push(*macro_chunk_ent);
             }
             PendingOpPurpose::ValueProbe(_) => {}

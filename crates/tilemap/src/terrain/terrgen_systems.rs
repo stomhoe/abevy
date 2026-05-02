@@ -24,41 +24,7 @@ use crate::{
 
 pub use crate::terrain::terrprobe::terrprobe_systems::search_suitable_positions;
 
-#[derive(bevy::ecs::system::SystemParam)]
-pub struct TerrgenQueries<'w, 's> {
-	pub camera_query: Query<'w, 's, (&'static DimensionRef, &'static GlobalTransform), With<CameraTarget>>,
-	pub macro_chunk_biome_distributions: Query<'w, 's, &'static mut BiomeDistribution>,
-	pub macro_chunk_biome_sampling_states: Query<'w, 's, &'static mut MacrochunkPendingBiomeSamples>,
-	pub tile_hash_query: Query<'w, 's, (Entity, &'static HashId), Or<(With<Tile>, With<TileWeightedSampler>)>>,
-}
 
-#[derive(bevy::ecs::system::SystemParam)]
-pub struct TerrgenResources<'w> {
-    pub collected: ResMut<'w, MassCollectedTiles>,
-    pub(crate) shared_task_data: Option<Res<'w, TerrGenSharedTaskData>>,
-    pub debug_grid: ResMut<'w, TerrGenDebugGrid>,
-    pub terrgen_tasks: ResMut<'w, TerrAsyncTasks>,
-    pub chunk_terrgen_queue: ResMut<'w, ChunksTerrgenQueue>,
-}
-
-#[derive(bevy::ecs::system::SystemParam)]
-pub struct TerrgenMessageWriters<'w> {
-    pub chunk_built_writer: MessageWriter<'w, ChunkTerrainBuilt>,
-    pub sampled_value_writer: MessageWriter<'w, SuitablePosFound>,
-    pub sampled_value_matrix_writer: MessageWriter<'w, SampledValuesCollected>,
-}
-
-#[derive(bevy::ecs::system::SystemParam)]
-pub struct TerrgenLocalBuffers<'s> {
-    pub pending_ops_batch: Local<'s, Vec<PendingOp>>,
-    pub tile_requests: Local<'s, Vec<TerrGenTileRequest>>,
-    pub expected_root_gpos_by_chunk: Local<'s, HashMap<(DimensionRef, ChunkPos), usize>>,
-    pub completed_root_gpos_by_chunk: Local<'s, HashMap<(DimensionRef, ChunkPos), ChunkGposMask>>,
-    pub chunk_built_msgs: Local<'s, Vec<ChunkTerrainBuilt>>,
-    pub sampled_value_events: Local<'s, Vec<SuitablePosFound>>,
-    pub sampled_value_matrix_events: Local<'s, Vec<SampledValuesCollected>>,
-    pub finished_macro_chunk_biome_samples: Local<'s, Vec<(Vec<TerrGenBiomeTagSample>, Vec<Entity>)>>,
-}
 
 #[allow(unused_parens, )]
 pub fn enqueue_chunk_terrgen_jobs(
@@ -104,16 +70,54 @@ pub fn enqueue_chunk_terrgen_jobs(
         *terrgen_state = TerrGenState::OpsLaunched;
     }
 }
+#[derive(bevy::ecs::system::SystemParam)]
+#[allow(non_camel_case_types, )]
+pub struct process_pending_ops_and_collect_tiles_Queries<'w, 's> {
+	pub camera_query: Query<'w, 's, (&'static DimensionRef, &'static GlobalTransform), With<CameraTarget>>,
+	pub macro_chunk_biome_distributions: Query<'w, 's, &'static mut BiomeDistribution>,
+	pub macro_chunk_biome_sampling_states: Query<'w, 's, &'static mut MacrochunkPendingBiomeSamples>,
+	pub tile_hash_query: Query<'w, 's, (Entity, &'static HashId), Or<(With<Tile>, With<TileWeightedSampler>)>>,
+}
 
+#[derive(bevy::ecs::system::SystemParam)]
+#[allow(non_camel_case_types, )]
+pub struct process_pending_ops_and_collect_tiles_Resources<'w> {
+    pub collected: ResMut<'w, MassCollectedTiles>,
+    pub(crate) shared_task_data: Option<Res<'w, TerrGenSharedTaskData>>,
+    pub debug_grid: ResMut<'w, TerrGenDebugGrid>,
+    pub terrgen_tasks: ResMut<'w, TerrAsyncTasks>,
+    pub chunk_terrgen_queue: ResMut<'w, ChunksTerrgenQueue>,
+}
+
+#[derive(bevy::ecs::system::SystemParam)]
+#[allow(non_camel_case_types, )]
+pub struct process_pending_ops_and_collect_tiles_MessageWriters<'w> {
+    pub chunk_built_writer: MessageWriter<'w, ChunkTerrainBuilt>,
+    pub sampled_value_writer: MessageWriter<'w, SuitablePosFound>,
+    pub sampled_value_matrix_writer: MessageWriter<'w, SampledValuesCollected>,
+}
+
+#[derive(bevy::ecs::system::SystemParam)]
+#[allow(non_camel_case_types, )]
+pub struct process_pending_ops_and_collect_tiles_Locals<'s> {
+    pub pending_ops_batch: Local<'s, Vec<PendingOp>>,
+    pub tile_requests: Local<'s, Vec<TerrGenTileRequest>>,
+    pub expected_root_gpos_by_chunk: Local<'s, HashMap<(DimensionRef, ChunkPos), usize>>,
+    pub completed_root_gpos_by_chunk: Local<'s, HashMap<(DimensionRef, ChunkPos), ChunkGposMask>>,
+    pub chunk_built_msgs: Local<'s, Vec<ChunkTerrainBuilt>>,
+    pub sampled_value_events: Local<'s, Vec<SuitablePosFound>>,
+    pub sampled_value_matrix_events: Local<'s, Vec<SampledValuesCollected>>,
+    pub finished_macro_chunk_biome_samples: Local<'s, Vec<(Vec<TerrGenBiomeTagSample>, Vec<Entity>)>>,
+}
 #[allow(unused_parens, )]
 pub fn process_pending_ops_and_collect_tiles(
     mut cmd: Commands,
-    mut queries: TerrgenQueries,
-    mut resources: TerrgenResources,
+    mut queries: process_pending_ops_and_collect_tiles_Queries,
+    mut resources: process_pending_ops_and_collect_tiles_Resources,
     loaded_chunks: Res<LoadedChunks>,
     param_set: CloneSpawnParamSet,
-    mut msg_buffers: TerrgenMessageWriters,
-    mut local_buffers: TerrgenLocalBuffers,
+    mut msg_buffers: process_pending_ops_and_collect_tiles_MessageWriters,
+    mut local_buffers: process_pending_ops_and_collect_tiles_Locals,
     mut pending_ops_reader: MessageReader<PendingOp>,
 ) {
     let camera_query = &queries.camera_query;

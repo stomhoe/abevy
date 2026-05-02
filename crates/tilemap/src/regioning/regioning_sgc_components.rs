@@ -3,7 +3,7 @@ use game_common::game_common_components::ArgsDict;
 
 use bevy::{ecs::entity::MapEntities, };
 
-use common::{common_components::*, common_tag_components::TagSet};
+use common::{common_components::*, common_tag_components::{passes_tag_filters, TagSet}};
 use serde::{Deserialize, Serialize};
 use super::regioning_sgc_seris::SgcArgsDict;
 
@@ -41,13 +41,11 @@ impl StructuredGenConfig {
         self.structure_hash_id
     }
     pub fn tolerates_tags(&self, other_tags: &TagSet) -> bool {
-        if !self.whitelisted_tags.is_empty() {
-            return self.whitelisted_tags.intersects(other_tags);
-        }
-        if !self.blacklisted_tags.is_empty() {
-            return !self.blacklisted_tags.intersects(other_tags);
-        }
-        true
+        passes_tag_filters(
+            Some(other_tags),
+            Some(&self.whitelisted_tags),
+            Some(&self.blacklisted_tags),
+        )
     }
 }
 

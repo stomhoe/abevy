@@ -9,7 +9,7 @@ let desert_tect = +(fnl.tect2, 0.0)
 
 
 let shared_continentness_min = 0.295
-let shared_continentness_max = 0.55
+let shared_continentness_max = 1.3
 
 
 //reajustar estos para cambiar separacion de ISLAS a los bordes de SU PLACA TECTONICA

@@ -22,59 +22,55 @@ pub fn request_macrochunk_biome_sampling(
     dimension_map: Res<DimensionEntityMap>,
     dimension_query: Query<&DimensionRootOplist>,
     oplist_map: Res<OperationListEntityMap>,
-    oplists: Query<&OplistSize, With<OperationList>>,
     mut pending_ops_writer: MessageWriter<PendingOp>,
     mut pending_ops: Local<Vec<PendingOp>>,
     mut sample_positions: Local<Vec<GlobalTilePos>>,
 ) {
     pending_ops.clear();
-    for (macro_chunk_ent, &dim_ref, &macro_chunk_pos, mut biome_state) in macro_chunk_query.iter_mut() {
-        if biome_state.0 != 0 {
+    for (macro_chunk_ent, &dim, &macro_chunk_pos, mut pending_samples) in macro_chunk_query.iter_mut() {
+        if pending_samples.0 != 0 {
             continue;
         }
-        let Some(dim_ent) = dimension_map.0.get_opt(dim_ref.0).copied() else {
-            error!(target: WILDLIFE_SYSTEM, "No dimension entity for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
+        let Some(dim_ent) = dimension_map.0.get_opt(dim.0).copied() else {
+            error!(target: WILDLIFE_SYSTEM, "No dimension entity for macrochunk {} in {:?}", macro_chunk_pos, dim);
             continue;
         };
         let Ok(root_oplist) = dimension_query.get(dim_ent) else {
-            error!(target: WILDLIFE_SYSTEM, "No root operation list for macrochunk {} in {:?}", macro_chunk_pos, dim_ref);
+            error!(target: WILDLIFE_SYSTEM, "No root operation list for macrochunk {} in {:?}", macro_chunk_pos, dim);
             continue;
         };
-        let Ok(root_oplist_ent) = oplist_map.0.get_cloned(root_oplist.0) else {
+        let Ok(_root_oplist_ent) = oplist_map.0.get_cloned(root_oplist.0) else {
             error!(target: WILDLIFE_SYSTEM, "No root operation list entity mapped for hash {:?}", root_oplist.0);
             continue;
         };
-        let Ok(_) = oplists.get(root_oplist_ent) else {
-            error!(target: WILDLIFE_SYSTEM, "No oplist size for root operation list {:?}", root_oplist);
-            continue;
-        };
         sample_positions.clear();
-        let sample_positions = macro_chunk_pos.sample_macro_chunk_positions(3, &mut sample_positions);
+        let sample_positions = macro_chunk_pos.gather_gpos_to_sample(&mut sample_positions, 3);
         let expected_samples = sample_positions.len() as u32;
         if expected_samples == 0 {
             cmd.entity(macro_chunk_ent).try_remove::<MacrochunkPendingBiomeSamples>();
             continue;
         }
-        biome_state.0 = expected_samples;
+        pending_samples.0 = expected_samples;
         for &gpos in sample_positions {
             pending_ops.push(PendingOp {
                 oplist: *root_oplist,
                 input: PendingOpInput {
-                    dimension_ref: dim_ref,
+                    dim,
                     gpos,
                 },
-                purpose: PendingOpPurpose::MacroChunkBiomeSampling {
+                purpose: PendingOpPurpose::BiomeSampling {
                     macro_chunk_ent,
                 },
             });
         }
-        trace!(target: WILDLIFE_SYSTEM, "Queued {} biome samples for macrochunk {} in {:?}", expected_samples, macro_chunk_pos, dim_ref);
+        trace!(target: WILDLIFE_SYSTEM, "Queued {} biome samples for macrochunk {} in {:?}", expected_samples, macro_chunk_pos, dim);
     }
     pending_ops_writer.write_batch(pending_ops.drain(..));
 }
 
 #[derive(SystemParam)]
-pub struct SeedQueries<'w, 's> {
+#[allow(non_camel_case_types, )]
+pub struct init_natural_Queries<'w, 's> {
     macro_chunk_query: Query<'w, 's, (&'static DimensionRef, &'static MacrochunkPos, &'static BiomeDistribution)>,
     biome_pack_samplers: Query<'w, 's, &'static CreatureSampler>,
     pack_min_sep_query: Query<'w, 's, &'static PackMinSepToPacksOrRaces>,
@@ -96,7 +92,7 @@ pub struct init_naturalLocals<'s> {
 pub fn init_natural_wildlife_for_biomesampled_macrochunks(
     mut macrochunk_finished_biomesampling: RemovedComponents<MacrochunkPendingBiomeSamples>,
     mut instance_pack_writer: MessageWriter<InstantiateTemplPackEntity>,
-    queries: SeedQueries,
+    queries: init_natural_Queries,
     mut locs: init_naturalLocals,
     mut pending_instance_pack_messages: Local<Vec<InstantiateTemplPackEntity>>,
 ) {

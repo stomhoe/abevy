@@ -58,7 +58,7 @@ pub fn process_region_pattern(
             new_pending_ops.push(PendingOp {
                 oplist: root_oplist,
                 input: PendingOpInput {
-                    dimension_ref: pos_search.dimension_ref,
+                    dim: pos_search.dimension_ref,
                     gpos: GlobalTilePos(IVec2::new(x, y)),
                 },
                 purpose: PendingOpPurpose::ValueProbe(PendingOpValueProbe {

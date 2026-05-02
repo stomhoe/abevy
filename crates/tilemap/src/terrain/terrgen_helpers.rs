@@ -186,7 +186,7 @@ pub(crate) fn collect_branch_outputs(
                 pending: PendingOp {
                     oplist: DimensionRootOplist(source_oplist),
                     input: PendingOpInput {
-                        dimension_ref: source_ev.dimension_ref(),
+                        dim: source_ev.dimension_ref(),
                         gpos,
                     },
                     purpose: source_ev.purpose.clone(),
@@ -195,7 +195,7 @@ pub(crate) fn collect_branch_outputs(
                 dimension_hash,
             });
         }
-        PendingOpPurpose::MacroChunkBiomeSampling { macro_chunk_ent } => {
+        PendingOpPurpose::BiomeSampling { macro_chunk_ent } => {
             if biome_tags.is_empty() {
                 return;
             }

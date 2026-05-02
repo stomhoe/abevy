@@ -10,6 +10,27 @@ const SUBROOM_MIN_LEAF_DIM: i32 = 4;
 const SUBROOM_AREA_PER_LEAF: f32 = 100.0;
 const SUBROOM_MIN_TARGETS: usize = 3;
 const SUBROOM_MAX_TARGETS: usize = 10;
+const RECTANGLE_CIRCUMFERENCE_CHANCE: f32 = 0.25;
+
+#[derive(Clone, Copy, Debug)]
+enum RectangularRoomDecoration {
+    Subrooms,
+    Circumference,
+    Pillars,
+}
+
+impl RectangularRoomDecoration {
+    fn pick(rng: &mut impl Rng) -> Self {
+        let roll = rng.random_range(0.0..1.0);
+        if roll < RECTANGLE_CIRCUMFERENCE_CHANCE {
+            RectangularRoomDecoration::Circumference
+        } else if rng.random_bool(0.6) {
+            RectangularRoomDecoration::Subrooms
+        } else {
+            RectangularRoomDecoration::Pillars
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct RoomDraft {
@@ -166,7 +187,7 @@ pub fn maybe_add_rectangular_subrooms(
     let target_subrooms = rng.random_range(SUBROOM_MIN_TARGETS..=max_subrooms);
     let mut regions = VecDeque::from([RectRegion { x: room_x, y: room_y, w: room_w, h: room_h }]);
     let mut finalized_regions = 0_usize;
-    let prefer_center_gap = rng.random_bool(0.8);
+    let prefer_center_gap = true;
 
     while finalized_regions + regions.len() < target_subrooms {
         let Some(region) = regions.pop_front() else {
@@ -406,7 +427,7 @@ pub fn maybe_add_room_interior(
     room_y: i32,
     room_w: i32,
     room_h: i32,
-    clear_tile: impl FnMut(usize, usize),
+    mut clear_tile: impl FnMut(usize, usize),
 ) {
     if room_w < 7 || room_h < 7 {
         return;
@@ -417,8 +438,18 @@ pub fn maybe_add_room_interior(
 
     match room_shape {
         RoomShape::Rectangle => {
-            if room_w >= 10 && room_h >= 10 && rng.random_bool(0.7) {
-                maybe_add_rectangular_subrooms(rng, room_x, room_y, room_w, room_h, clear_tile);
+            if room_w >= 10 && room_h >= 10 {
+                match RectangularRoomDecoration::pick(rng) {
+                    RectangularRoomDecoration::Subrooms => {
+                        maybe_add_rectangular_subrooms(rng, room_x, room_y, room_w, room_h, clear_tile);
+                    }
+                    RectangularRoomDecoration::Circumference => {
+                        maybe_add_room_circumference(rng, room_x, room_y, room_w, room_h, &mut clear_tile);
+                    }
+                    RectangularRoomDecoration::Pillars => {
+                        maybe_add_room_pillars(rng, room_x, room_y, room_w, room_h, clear_tile);
+                    }
+                }
             } else {
                 maybe_add_room_pillars(rng, room_x, room_y, room_w, room_h, clear_tile);
             }
@@ -442,7 +473,7 @@ fn maybe_add_room_pillars(
 ) {
     match rng.random_range(0..2) {
         0 => add_circumference_pillars(room_x, room_y, room_w, room_h, &mut clear_tile),
-        _ => add_inner_rectangle_pillars(room_x, room_y, room_w, room_h, &mut clear_tile),
+        _ => add_inset_grid_pillars(room_x, room_y, room_w, room_h, &mut clear_tile),
     }
 }
 
@@ -469,7 +500,54 @@ fn add_circumference_pillars(
     }
 }
 
-fn add_inner_rectangle_pillars(
+fn maybe_add_room_circumference(
+    rng: &mut impl Rng,
+    room_x: i32,
+    room_y: i32,
+    room_w: i32,
+    room_h: i32,
+    clear_tile: &mut impl FnMut(usize, usize),
+) {
+    let min_dimension = room_w.min(room_h);
+    if min_dimension < 9 {
+        return;
+    }
+
+    let inset = rng.random_range(2..=((min_dimension / 3).max(2)));
+    let inner_x = room_x + inset;
+    let inner_y = room_y + inset;
+    let inner_w = room_w - inset * 2;
+    let inner_h = room_h - inset * 2;
+    if inner_w < 4 || inner_h < 4 {
+        return;
+    }
+
+    let opening_side = rng.random_range(0..4);
+    let opening_pos = match opening_side {
+        0 | 1 => inner_x + inner_w / 2,
+        _ => inner_y + inner_h / 2,
+    };
+
+    for x in inner_x..inner_x + inner_w {
+        if opening_side != 0 || x != opening_pos {
+            clear_tile(x as usize, inner_y as usize);
+        }
+        if opening_side != 1 || x != opening_pos {
+            clear_tile(x as usize, (inner_y + inner_h - 1) as usize);
+        }
+    }
+
+    for y in inner_y..inner_y + inner_h {
+        if opening_side != 2 || y != opening_pos {
+            clear_tile(inner_x as usize, y as usize);
+        }
+        if opening_side != 3 || y != opening_pos {
+            clear_tile((inner_x + inner_w - 1) as usize, y as usize);
+        }
+    }
+}
+
+fn add_inset_grid_pillars(
     room_x: i32,
     room_y: i32,
     room_w: i32,
@@ -486,7 +564,7 @@ fn add_inner_rectangle_pillars(
         return;
     }
 
-    let step = if room_w.min(room_h) >= 18 { 4 } else { 3 };
+    let step = if room_w.min(room_h) >= 18 { 7 } else { 7 };
     let mut y = start_y;
     while y <= end_y {
         let mut x = start_x;

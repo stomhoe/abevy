@@ -47,8 +47,6 @@ pub struct SgcPrepareTilesOrder {
 }
 
 
-pub type StructureTilesForChunk = Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)>;
-
 #[derive(Debug, Default, Clone)]
 pub struct TerrGenDisabledGposForChunks(pub HashMap<ChunkPos, TerrGenBlockedGposMask>);
 
@@ -82,9 +80,8 @@ pub struct StructureBuildCompliance {
     pub i: u64,
     pub structure_gen_cfg_ent: Entity,
     pub dimension_ref: DimensionRef,
-    pub chunks: Vec<(ChunkPos, StructureTilesForChunk)>,
+    pub chunk_tiles: Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)>,
     pub terrgen_disabled_gpos_for_chunks: TerrGenDisabledGposForChunks,
-    pub terrgen_disabled_for_chunks: Vec<ChunkPos>,
     pub forced_chunk_biomes: Vec<ForcedChunkBiomeConfig>,
 }
 

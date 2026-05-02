@@ -17,6 +17,7 @@ use crate::terrain::biome::biome_resources::BiomeEntityMap;
 use crate::tile::tile_resources::*;
 use crate::tile::tile_sampler_components::TileWeightedSampler;
 use crate::tile::tile_sampler_resources::TileWeightedSamplerEntityMap;
+use super::corridor_forming::build_orthogonal_corridor_route;
 use super::super::dungeoning_carve_helpers::{
     carve_corridor_horizontal_floor, carve_corridor_vertical_floor,
 };
@@ -312,86 +313,91 @@ pub fn drunkwalk_dungeon_building_system(
 
                     let detour_x = rng.random_range(min_x..=max_x);
                     let detour_y = rng.random_range(min_y..=max_y);
+                    let route = build_orthogonal_corridor_route(
+                        (from_x, from_y),
+                        (to_x, to_y),
+                        tile_width,
+                        tile_height,
+                        true,
+                        Some((detour_x, detour_y)),
+                    );
 
-                    carve_corridor_horizontal_floor(
-                        &mut rng,
-                        &mut floor_map,
-                        tile_width,
-                        tile_height,
-                        Some(carve_margin),
-                        Some(corridor_width),
-                        Some(corridor_wiggle_chance),
-                        Some(corridor_wiggle_step_max),
-                        from_y,
-                        from_x,
-                        detour_x,
-                    );
-                    carve_corridor_vertical_floor(
-                        &mut rng,
-                        &mut floor_map,
-                        tile_width,
-                        tile_height,
-                        Some(carve_margin),
-                        Some(corridor_width),
-                        Some(corridor_wiggle_chance),
-                        Some(corridor_wiggle_step_max),
-                        detour_x,
-                        from_y,
-                        detour_y,
-                    );
-                    carve_corridor_horizontal_floor(
-                        &mut rng,
-                        &mut floor_map,
-                        tile_width,
-                        tile_height,
-                        Some(carve_margin),
-                        Some(corridor_width),
-                        Some(corridor_wiggle_chance),
-                        Some(corridor_wiggle_step_max),
-                        detour_y,
-                        detour_x,
-                        to_x,
-                    );
-                    carve_corridor_vertical_floor(
-                        &mut rng,
-                        &mut floor_map,
-                        tile_width,
-                        tile_height,
-                        Some(carve_margin),
-                        Some(corridor_width),
-                        Some(corridor_wiggle_chance),
-                        Some(corridor_wiggle_step_max),
-                        to_x,
-                        detour_y,
-                        to_y,
-                    );
+                    for segment in route.windows(2) {
+                        let (segment_start_x, segment_start_y) = segment[0];
+                        let (segment_end_x, segment_end_y) = segment[1];
+                        if segment_start_x == segment_end_x {
+                            carve_corridor_vertical_floor(
+                                &mut rng,
+                                &mut floor_map,
+                                tile_width,
+                                tile_height,
+                                Some(carve_margin),
+                                Some(corridor_width),
+                                Some(corridor_wiggle_chance),
+                                Some(corridor_wiggle_step_max),
+                                segment_start_x,
+                                segment_start_y,
+                                segment_end_y,
+                            );
+                        } else {
+                            carve_corridor_horizontal_floor(
+                                &mut rng,
+                                &mut floor_map,
+                                tile_width,
+                                tile_height,
+                                Some(carve_margin),
+                                Some(corridor_width),
+                                Some(corridor_wiggle_chance),
+                                Some(corridor_wiggle_step_max),
+                                segment_start_y,
+                                segment_start_x,
+                                segment_end_x,
+                            );
+                        }
+                    }
                 } else {
-                    carve_corridor_horizontal_floor(
-                        &mut rng,
-                        &mut floor_map,
+                    let route = build_orthogonal_corridor_route(
+                        (from_x, from_y),
+                        (to_x, to_y),
                         tile_width,
                         tile_height,
-                        Some(carve_margin),
-                        Some(corridor_width),
-                        Some(corridor_wiggle_chance),
-                        Some(corridor_wiggle_step_max),
-                        from_y,
-                        from_x,
-                        to_x,
+                        true,
+                        None,
                     );
-                    carve_corridor_vertical_floor(
-                        &mut rng,
-                        &mut floor_map,
-                        tile_width,
-                        tile_height,
-                        Some(carve_margin),
-                        Some(corridor_width),
-                        Some(corridor_wiggle_chance),
-                        Some(corridor_wiggle_step_max),
-                        to_x,
-                        from_y,
-                        to_y,
-                    );
+
+                    for segment in route.windows(2) {
+                        let (segment_start_x, segment_start_y) = segment[0];
+                        let (segment_end_x, segment_end_y) = segment[1];
+                        if segment_start_x == segment_end_x {
+                            carve_corridor_vertical_floor(
+                                &mut rng,
+                                &mut floor_map,
+                                tile_width,
+                                tile_height,
+                                Some(carve_margin),
+                                Some(corridor_width),
+                                Some(corridor_wiggle_chance),
+                                Some(corridor_wiggle_step_max),
+                                segment_start_x,
+                                segment_start_y,
+                                segment_end_y,
+                            );
+                        } else {
+                            carve_corridor_horizontal_floor(
+                                &mut rng,
+                                &mut floor_map,
+                                tile_width,
+                                tile_height,
+                                Some(carve_margin),
+                                Some(corridor_width),
+                                Some(corridor_wiggle_chance),
+                                Some(corridor_wiggle_step_max),
+                                segment_start_y,
+                                segment_start_x,
+                                segment_end_x,
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -617,7 +623,7 @@ pub fn drunkwalk_dungeon_building_system(
         let disable_lava_terrgen = terrgen_disable_by_tile_id.should_disable_for("lava_tile_id");
         let forced_chunk_biomes = super::super::dungeoning_utils::forced_chunk_biomes_from_args(&structured_gen_cfg.typed_args, &biome_map);
 
-        let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
+        let mut chunk_tiles: Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)> = Vec::with_capacity(chunk_positions.len());
         let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
         for &chunk_pos in chunk_positions {
             tiles4chunk.clear();
@@ -658,7 +664,7 @@ pub fn drunkwalk_dungeon_building_system(
                     tiles4chunk.push((tile_pos, wall_entity, None));
                 }
             }
-            chunk_tiles.push((chunk_pos, std::mem::take(&mut tiles4chunk)));
+            chunk_tiles.extend(tiles4chunk.drain(..));
             terrgen_disabled_gpos_for_chunks.insert_for_chunk(chunk_pos, blocked_gpos);
         }
         info!(target: DUNGEONING_SYSTEM, "structure={} pushing compliance blocked_terrgen_gpos={}", structured_gen_cfg.structure_id(), terrgen_disabled_gpos_for_chunks.count_blocked());
@@ -666,9 +672,8 @@ pub fn drunkwalk_dungeon_building_system(
             i: build_order.i,
             structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
             dimension_ref: build_order.dimension_ref,
-            chunks: chunk_tiles,
+            chunk_tiles,
             terrgen_disabled_gpos_for_chunks,
-            terrgen_disabled_for_chunks: Vec::new(),
             forced_chunk_biomes,
         });
     }

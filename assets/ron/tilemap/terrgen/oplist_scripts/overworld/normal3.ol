@@ -10,6 +10,6 @@ let lakeness = *(lakeness, inlandness, 0.3)
 
 out = idxmax(continent_min, lakeness, )
 
-[tempgrass] biomes: [temp=1.(16, 2.)] normal4
+[tempgrass] normal4 biomes: [temp=1.(16, 2.)]
 [lake] ""
 [orange] ""

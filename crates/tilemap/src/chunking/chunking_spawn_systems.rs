@@ -12,28 +12,22 @@ use crate::{chunking::MacroChunkU16IndexMatrix, regioning::{regioning_components
 #[allow(unused_parens, )]
 pub fn add_activating_chunks_to_activate_chunks_around(
     mut cmd: Commands,
-    load_chunks_around_query: Query<(Entity, &LoadChunksAround), (Changed<LoadChunksAround>, )>,
-    activator_query: Query<(&DimensionRef, &ActivatingChunks), >,
+    load_chunks_around_query: Query<(Entity, &LoadChunksAround), (Added<LoadChunksAround>, )>,
+    mut activator_query: Query<(&DimensionRef, &mut ActivatingChunks), >,
     loaded_chunks: Res<LoadedChunks>,
     mut removed_load_chunks_around: RemovedComponents<LoadChunksAround>,
     mut ewriter: MessageWriter<CheckIfChunkShouldDespawn>,
     mut to_despawn: Local<Vec<CheckIfChunkShouldDespawn>>,
 ) {
     for (ent, chunk_range) in load_chunks_around_query.iter() {
-        let Ok((dimension_ref, activates_chunks)) = activator_query.get(ent) else {
-            cmd.entity(ent).insert(ActivatingChunks::with_capacity(chunk_range));
+        let Ok((_, mut activates_chunks)) = activator_query.get_mut(ent) else {
+            error!(target: CHUNK_ACTIVATION, "LoadChunksAround was added without ActivatingChunks on {:?}", ent);
             continue;
         };
-        for &chunk_pos in activates_chunks.0.iter() {
-            let Some(&chunk_ent) = loaded_chunks.0.get(&(*dimension_ref, chunk_pos)) else {
-                continue;
-            };
-            to_despawn.push(CheckIfChunkShouldDespawn(chunk_ent));
-        }
-        cmd.entity(ent).insert(ActivatingChunks::with_capacity(chunk_range));
+        *activates_chunks = ActivatingChunks::with_capacity(chunk_range);
     }
     for ent in removed_load_chunks_around.read() {
-        let Ok((dimension_ref, activates_chunks)) = activator_query.get(ent) else {
+        let Ok((dimension_ref, activates_chunks)) = activator_query.get_mut(ent) else {
             cmd.entity(ent).try_remove::<ActivatingChunks>();
             continue;
         };

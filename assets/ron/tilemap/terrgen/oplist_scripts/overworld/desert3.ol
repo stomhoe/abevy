@@ -1,12 +1,12 @@
 id: desert3
 tags: [portal, land, desert]
 size: (1, 1)
-debug: [oasis_feature]
+debug: [oasisness]
 
-let oasisness = *(fnl.lakesmol, 0.08)
-let oasisness = lerp(oasisness, inlandness, 0.3)
+let oasisness = *(fnl.lakesmol, 0.02)
+let oasisness = lerp(oasisness, inlandness, 0.1)
 
 out = idxmax(continent_min, oasisness, )
 
-[sand] biomes: [desert=1.0(9.0,0.)] desert4
+[sand] desert4 biomes: [desert=1.0(9.0,0.)]
 [lake] ""

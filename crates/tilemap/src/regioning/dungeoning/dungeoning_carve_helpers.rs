@@ -75,14 +75,14 @@ pub fn carve_corridor_horizontal(
     corridor_map: &mut [bool],
     tile_width: usize,
     tile_height: usize,
-    corridor_radius: Option<i32>,
+    corridor_radius: i32,
     corridor_wiggle_chance: Option<f32>,
     corridor_wiggle_step_max: Option<i32>,
     y_base: i32,
     x_start: i32,
     x_end: i32,
 ) {
-    let corridor_radius = corridor_radius.unwrap_or(1).clamp(1, 8);
+    let corridor_radius = corridor_radius.clamp(1, 8);
     let corridor_wiggle_step_max = corridor_wiggle_step_max.unwrap_or(1).clamp(1, 4);
     let corridor_wiggle_chance = corridor_wiggle_chance.unwrap_or(0.).clamp(0.0, 1.0);
 
@@ -108,14 +108,14 @@ pub fn carve_corridor_vertical(
     corridor_map: &mut [bool],
     tile_width: usize,
     tile_height: usize,
-    corridor_radius: Option<i32>,
+    corridor_radius: i32,
     corridor_wiggle_chance: Option<f32>,
     corridor_wiggle_step_max: Option<i32>,
     x_base: i32,
     y_start: i32,
     y_end: i32,
 ) {
-    let corridor_radius = corridor_radius.unwrap_or(1).clamp(1, 8);
+    let corridor_radius = corridor_radius.clamp(1, 8);
     let corridor_wiggle_step_max = corridor_wiggle_step_max.unwrap_or(1).clamp(1, 4);
     let corridor_wiggle_chance = corridor_wiggle_chance.unwrap_or(0.).clamp(0.0, 1.0);
 
@@ -176,11 +176,11 @@ pub fn carve_corridor_polyline_typed(
     tile_width: usize,
     tile_height: usize,
     corridor_map: &mut [bool],
-    corridor_radius: Option<i32>,
+    corridor_radius: i32,
     path: &[(i32, i32)],
     floor_kind: u8,
 ) {
-    let corridor_radius = corridor_radius.unwrap_or(1).clamp(1, 8);
+    let corridor_radius = corridor_radius.clamp(1, 8);
     let Some(_) = path.get(1) else {
         return;
     };
@@ -456,14 +456,14 @@ pub fn carve_corridor_horizontal_typed(
     corridor_map: &mut [bool],
     tile_width: usize,
     tile_height: usize,
-    corridor_radius: Option<i32>,
+    corridor_radius: i32,
     corridor_wiggle_chance: Option<f32>,
     corridor_wiggle_step_max: Option<i32>,
     y_base: i32,
     x_start: i32,
     x_end: i32,
 ) {
-    let corridor_radius = corridor_radius.unwrap_or(1).clamp(1, 8);
+    let corridor_radius = corridor_radius.clamp(1, 8);
     let corridor_wiggle_step_max = corridor_wiggle_step_max.unwrap_or(1).clamp(1, 4);
     let corridor_wiggle_chance = corridor_wiggle_chance.unwrap_or(0.).clamp(0.0, 1.0);
 
@@ -490,14 +490,14 @@ pub fn carve_corridor_vertical_typed(
     corridor_map: &mut [bool],
     tile_width: usize,
     tile_height: usize,
-    corridor_radius: Option<i32>,
+    corridor_radius: i32,
     corridor_wiggle_chance: Option<f32>,
     corridor_wiggle_step_max: Option<i32>,
     x_base: i32,
     y_start: i32,
     y_end: i32,
 ) {
-    let corridor_radius = corridor_radius.unwrap_or(1).clamp(1, 8);
+    let corridor_radius = corridor_radius.clamp(1, 8);
     let corridor_wiggle_step_max = corridor_wiggle_step_max.unwrap_or(1).clamp(1, 4);
     let corridor_wiggle_chance = corridor_wiggle_chance.unwrap_or(0.).clamp(0.0, 1.0);
 

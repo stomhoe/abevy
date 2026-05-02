@@ -7,6 +7,6 @@ let lakeness = *(lakeness, continentness)
 
 out = idxmax(0.8, lakeness)
 
-[tempgrass] biomes: [elf=1.(16, 0)] elf4
+[tempgrass] elf4 biomes: [elf=1.(16, 0)]
 [lake] ""
 [] ""

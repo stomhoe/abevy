@@ -3,7 +3,7 @@ use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use common::{
     common_components::{HashId, Prefix, StrId},
-    common_tag_components::TagSet,
+    common_tag_components::{passes_tag_filters, TagSet},
     expect_single_query,
     log_targets::SGC_CHUNK_CLAIM,
 };
@@ -20,13 +20,8 @@ use crate::terrain::terrgen_resources::TerrGenDisabledGposByChunk;
 use crate::{
     regioning::{
         regioning_components::*,
-        regioning_messages::{
-            ChunksClaim, OfferChunk, RecheckRegion, SgcPrepareTilesOrder, StructureBuildCompliance,
-        },
-        regioning_resources::{
-            LoadedRegions, PrioritizedPerRegion, PrioritizedSgs, StructureGenerationSettings,
-            StructuredGenConfigEntityMap,
-        },
+        regioning_messages::*,
+        regioning_resources::*,
         regioning_sgc_components::*,
     },
     tilemap_resources::MassCollectedTiles,
@@ -34,29 +29,6 @@ use crate::{
 };
 
 use bitvec::prelude::*;
-
-#[inline]
-fn passes_dimension_tag_filters(
-    strgen_tags: Option<&TagSet>,
-    dim_wlist_tags: Option<&WhitelistedStructureGenTags>,
-    dim_blist_tags: Option<&BlacklistedStructureGenTags>,
-) -> bool {
-    if let Some(dim_blist_tags) = dim_blist_tags {
-        if let Some(strgen_tags) = strgen_tags {
-            if strgen_tags.intersects(&dim_blist_tags.0) {
-                return false;
-            }
-        }
-    }
-    if let Some(dim_wlist_tags) = dim_wlist_tags {
-        if let Some(strgen_tags) = strgen_tags {
-            return strgen_tags.intersects(&dim_wlist_tags.0);
-        } else {
-            return false;
-        }
-    }
-    true
-}
 
 #[allow(unused_parens)]
 pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
@@ -191,7 +163,11 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
                         trace!(target: "sgc_chunk_offer", "Dimension {:?} is not in exclusive dimension list for structure '{}', skipping", dim_ref, structured_gen_label);
                         continue 'next_sgc_attempt;
                     }
-                } else if !passes_dimension_tag_filters(strgen_tags, dim_wlist_tags, dim_blist_tags)
+                } else if !passes_tag_filters(
+                    strgen_tags,
+                    dim_wlist_tags.map(|tags| &**tags),
+                    dim_blist_tags.map(|tags| &**tags),
+                )
                 {
                     reattempt_count += 1;
                     trace!(target: "sgc_chunk_offer", "Dimension {:?} fails tag filter checks for structure '{}', skipping", dim_ref, structured_gen_label);
@@ -540,10 +516,9 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
 
 #[allow(unused_parens)]
 pub fn add_planned_tiles_to_region(
-    mut cmd: Commands,
     mut reader: MessageMutator<StructureBuildCompliance>,
     loaded_regions: Res<LoadedRegions>,
-    mut region_query: Query<(&mut RegionPlannedTiles, &RegionState), ()>,
+    mut region_query: Query<(&mut RegionPlannedTiles, &mut RegionState), ()>,
     macro_chunk_key_query: Query<(Entity, &DimensionRef, &MacrochunkPos), (With<MacroChunk>,)>,
     mut macro_chunk_biome_distributions: Query<(&mut BiomeDistribution,), ()>,
 ) {
@@ -554,9 +529,9 @@ pub fn add_planned_tiles_to_region(
     for build in reader.read() {
         let order_i = build.i;
         let region_pos = build
-            .chunks
+            .chunk_tiles
             .first()
-            .map(|(chunk_pos, _)| chunk_pos.to_region_pos())
+            .map(|(tile_pos, _, _)| tile_pos.to_chunkpos().to_region_pos())
             .or_else(|| {
                 build
                     .terrgen_disabled_gpos_for_chunks
@@ -569,7 +544,7 @@ pub fn add_planned_tiles_to_region(
                     .first()
                     .map(|forced| forced.chunk_pos.to_region_pos())
             });
-        let chunks = take(&mut build.chunks);
+            let tiles = take(&mut build.chunk_tiles);
         let terrgen_disabled_gpos_for_chunks = take(&mut build.terrgen_disabled_gpos_for_chunks);
         let forced_chunk_biomes = take(&mut build.forced_chunk_biomes);
         let Some(region_pos) = region_pos else {
@@ -581,7 +556,7 @@ pub fn add_planned_tiles_to_region(
             continue;
         };
 
-        let Ok((mut planned_tiles, state)) = region_query.get_mut(region_ent) else {
+        let Ok((mut planned_tiles, mut state)) = region_query.get_mut(region_ent) else {
             continue;
         };
         if *state == RegionState::AllTilesPrepared {
@@ -592,7 +567,7 @@ pub fn add_planned_tiles_to_region(
 
         let Ok(finished) = planned_tiles.add_planned_tiles_and_remove_from_pending(
             order_i,
-            chunks,
+            tiles,
             terrgen_disabled_gpos_for_chunks,
         ) else {
             error!(target: "structure_spawn", "Failed to add planned tiles for structure build compliance in region at {:?} in dimension {:?} for build order {}, skipping", region_pos, build.dimension_ref, order_i);
@@ -618,8 +593,7 @@ pub fn add_planned_tiles_to_region(
 
         if finished {
             debug!(target: "structure_spawn", "Region at {:?} in dimension {:?} has finished planning all structure tiles, marking as RegionPlanningFinished", region_pos, build.dimension_ref);
-            cmd.entity(region_ent)
-                .try_insert(RegionState::AllTilesPrepared);
+            *state = RegionState::AllTilesPrepared;
         }
     }
 }
@@ -636,12 +610,11 @@ pub fn clonespawn_tiles_on_chunk_spawn(
             )>,
         ),
     >,
-    chunk_query: Query<(Entity, &ChunkPos, &DimensionRef, &TerrGenState), With<Chunk>>,
+    mut chunk_query: Query<(Entity, &ChunkPos, &DimensionRef, &mut TerrGenState), With<Chunk>>,
     mut collected: ResMut<MassCollectedTiles>,
     tile_map: Res<TileEntityMap>,
     mut blocked_terrgen_gpos: ResMut<TerrGenDisabledGposByChunk>,
 ) {
-    let mut ready = Vec::new();
     let mut to_insert_delete_others = Vec::new();
     region_query.iter_mut().for_each(|(chunks_active_in_region, mut reg_planned, state)| {
         if *state != RegionState::BuildingStarted
@@ -650,31 +623,30 @@ pub fn clonespawn_tiles_on_chunk_spawn(
         {
             return;
         }
-        chunk_query.iter_many(chunks_active_in_region.iter()).for_each(|(chunk_ent, &chunk_pos, &dimension_ref, chunk_terrgen_state)| {
-            if *chunk_terrgen_state != TerrGenState::Pending {
-                return;
-            }
-            if reg_planned.is_chunk_pending_build(chunk_pos) {
-                return;
-            }
+        
+        for chunk_ent in chunks_active_in_region.iter() {
+            if let Ok((_chunk_ent, &chunk_pos, &dimension_ref, mut chunk_terrgen_state)) = chunk_query.get_mut(chunk_ent) {
+                if *chunk_terrgen_state != TerrGenState::Pending {
+                    continue;
+                }
+                if reg_planned.is_chunk_pending_build(chunk_pos) {
+                    continue;
+                }
 
-            if let Some(tiles_to_spawn) = reg_planned.get(&chunk_pos) {
-                debug!(target: "structure_spawn", "Spawning {} structure tiles in chunk at {:?}", tiles_to_spawn.len(), chunk_pos);
-                for (tile_gpos, templ_ref, delete_others) in tiles_to_spawn {
-                    let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *templ_ref, *tile_gpos, dimension_ref, &tile_map);
-                    if let Some(delete_others) = delete_others {
-                        to_insert_delete_others.push((tile_ent, (delete_others.clone())));
+                if let Some(tiles_to_spawn) = reg_planned.get(&chunk_pos) {
+                    for (tile_gpos, templ_ref, delete_others) in tiles_to_spawn {
+                        let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *templ_ref, *tile_gpos, dimension_ref, &tile_map);
+                        if let Some(delete_others) = delete_others {
+                            to_insert_delete_others.push((tile_ent, (delete_others.clone())));
+                        }
                     }
                 }
-            } else {
-                trace!(target: "structure_spawn", "No structure tiles to spawn in chunk at {:?}", chunk_pos);
+                let blocked_gpos = reg_planned.take_terrgen_disabled_gpos(chunk_pos);
+                blocked_terrgen_gpos.insert_for_chunk(dimension_ref, chunk_pos, blocked_gpos);
+                *chunk_terrgen_state = TerrGenState::Ready;
             }
-            let blocked_gpos = reg_planned.take_terrgen_disabled_gpos(chunk_pos);
-            blocked_terrgen_gpos.insert_for_chunk(dimension_ref, chunk_pos, blocked_gpos);
-            ready.push((chunk_ent, TerrGenState::Ready));
-        });
+        }
     });
-    cmd.try_insert_batch(ready);
     cmd.try_insert_batch(to_insert_delete_others);
 }
 
@@ -724,9 +696,6 @@ pub fn on_region_despawn_remove_from_loaded_regions(
 
     river_debug_data.remove_region(dimension_ref, region_pos);
 
-    // Region-planned terrgen disable masks are persisted in a global chunk map.
-    // Remove the region's chunk entries on region despawn to avoid stale blocking
-    // when the region is later recreated and regenerated.
     let (min_chunk, max_chunk_excl) = region_pos.chunk_bounds();
     for y in min_chunk.y()..max_chunk_excl.y() {
         for x in min_chunk.x()..max_chunk_excl.x() {

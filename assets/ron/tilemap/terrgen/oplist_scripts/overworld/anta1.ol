@@ -10,4 +10,4 @@ out = idxmax(continent_min, continentness)
 
 
 [] ocean
-[] biomes: [anta=3.5(5.0,0.35)] anta2
+[] anta2 biomes: [anta=3.5(5.0,0.35)]

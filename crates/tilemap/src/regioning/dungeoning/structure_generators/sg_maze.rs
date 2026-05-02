@@ -661,7 +661,7 @@ pub fn maze_dungeon_building_system(
         let disable_floor_terrgen = terrgen_disable_by_tile_id.should_disable_for("floor_tile_id");
         let disable_lava_terrgen = terrgen_disable_by_tile_id.should_disable_for("lava_tile_id");
         let forced_chunk_biomes = super::super::dungeoning_utils::forced_chunk_biomes_from_args(&structured_gen_cfg.typed_args, &biome_map);
-        let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(chunk_positions.len());
+        let mut chunk_tiles: Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)> = Vec::with_capacity(chunk_positions.len());
         let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
         for &chunk_pos in chunk_positions {
             tiles4chunk.clear();
@@ -691,7 +691,7 @@ pub fn maze_dungeon_building_system(
                 }
             }
 
-            chunk_tiles.push((chunk_pos, std::mem::take(&mut tiles4chunk)));
+            chunk_tiles.extend(tiles4chunk.drain(..));
             terrgen_disabled_gpos_for_chunks.insert_for_chunk(chunk_pos, blocked_gpos);
         }
         info!(target: DUNGEONING_SYSTEM, "structure={} pushing compliance blocked_terrgen_gpos={}", structured_gen_cfg.structure_id(), terrgen_disabled_gpos_for_chunks.count_blocked());
@@ -699,9 +699,8 @@ pub fn maze_dungeon_building_system(
             i: build_order.i,
             structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
             dimension_ref: build_order.dimension_ref,
-            chunks: chunk_tiles,
+            chunk_tiles,
             terrgen_disabled_gpos_for_chunks,
-            terrgen_disabled_for_chunks: Vec::new(),
             forced_chunk_biomes,
         });
     }

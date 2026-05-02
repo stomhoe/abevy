@@ -73,10 +73,10 @@ impl Being {
             return false;
         }
         if let Some(source_whitelist) = source_whitelist {
-            whitelisted_tags.0.extend_from(&source_whitelist.0);
+            whitelisted_tags.extend_from(source_whitelist);
         }
         if let Some(source_blacklist) = source_blacklist {
-            blacklisted_tags.0.extend_from(&source_blacklist.0);
+            blacklisted_tags.extend_from(source_blacklist);
         }
         true
     }
@@ -92,8 +92,8 @@ impl Being {
         whitelisted_tags: &mut WhitelistedSpawnTileTags,
         blacklisted_tags: &mut BlacklistedSpawnTileTags,
     ) {
-        whitelisted_tags.0.clear();
-        blacklisted_tags.0.clear();
+        whitelisted_tags.clear();
+        blacklisted_tags.clear();
 
         let Some(source_ent) = Self::resolve_spawn_tile_tag_source(
             being_ent,
@@ -134,7 +134,7 @@ impl Being {
         } else if bit_ent.is_some_and(|bit_ent| source_ent == bit_ent) && !dont_extend_race_spawn_tags && let Some(race_ent) = resolved_race_ent {
             let _ = Self::apply_spawn_tile_tags(race_ent, spawn_tile_tags_query, whitelisted_tags, blacklisted_tags);
         }
-        blacklisted_tags.0.retain(|tag| !whitelisted_tags.0.contains_ref(tag));
+        blacklisted_tags.retain(|tag| !whitelisted_tags.contains(tag.clone()));
     }
 }
 pub type AliveBeing = (With<Being>, Without<Dead>);

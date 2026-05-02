@@ -31,7 +31,7 @@ pub(crate) fn build_pending_ops_for_launch(work_items: Vec<ChunkTerrGenWork>) ->
             batch.push(PendingOp {
                 oplist: work.root_oplist,
                 input: PendingOpInput {
-                    dimension_ref: work.dim_ref,
+                    dim: work.dim_ref,
                     gpos,
                 },
                 purpose: PendingOpPurpose::ChunkTerrainGen {

@@ -5,7 +5,7 @@ tags: [anta, ]
 let inlandness = remap(continentness, shared_continentness_min, shared_continentness_max, 0.0, 1.0)
 
 
-out = idxmax(inlandness, 0.2)
+out = idxmax(inlandness, 0.02)
 
 [] anta3
 [] beach_anta

@@ -16,7 +16,6 @@ use tilemap::tile::tile_components::*;
 use tilemap::tile::tile_shader::tile_shader_components::TileShaderRef;
 use tilemap::tile::tile_shader::tile_shader_resources::TileShaderEntityMap;
 
-// Color palette for unique tile types - readable and distinct colors
 const TILE_COLORS: &[egui::Color32] = &[
     egui::Color32::from_rgb(100, 200, 100),  // Green
     egui::Color32::from_rgb(100, 150, 255),  // Light Blue
@@ -62,255 +61,6 @@ fn dimension_name_for_ref(
 }
 
 #[allow(unused_parens)]
-fn render_tilemap_grid(
-    ui: &mut egui::Ui,
-    tile_storage: &TileStorage,
-    tile_query: &Query<(Entity, &TemplEntiRef, Option<&InitialPos>), With<Tile>>,
-    templ_query: &Query<&TileStrId, With<Templ>>,
-    selected_tile: &mut Option<Entity>,
-    camera_tile_pos: Option<GlobalTilePos>,
-) -> Option<Entity> {
-    let size = tile_storage.size;
-
-    // Only render if not too large (avoid performance issues)
-    if size.x > 50 || size.y > 50 {
-        ui.label(format!("Grid too large to display: {}x{}", size.x, size.y));
-        return None;
-    }
-
-    let cell_w = 22.0f32;
-    let cell_h = 18.0f32;
-    let grid_size = egui::vec2(size.x as f32 * cell_w, size.y as f32 * cell_h);
-    let (rect, _) = ui.allocate_exact_size(grid_size, egui::Sense::hover());
-    let painter = ui.painter_at(rect);
-
-    let mut clicked_tile = None;
-    for y in (0..size.y).rev() {
-        for x in 0..size.x {
-            let row = (size.y - 1 - y) as f32;
-            let col = x as f32;
-            let cell_rect = egui::Rect::from_min_size(
-                egui::pos2(rect.left() + col * cell_w, rect.top() + row * cell_h),
-                egui::vec2(cell_w, cell_h),
-            );
-            let tile_pos = TilePos { x, y };
-            let id = ui.make_persistent_id(("tilemap_grid_cell", x, y));
-            let response = ui.interact(cell_rect, id, egui::Sense::click());
-
-            if let Some(tile_entity) = tile_storage.checked_get(&tile_pos) {
-                let is_selected = selected_tile.map_or(false, |s| s == tile_entity);
-                let mut is_camera_tile = false;
-                if let Ok((_, templ_ref, initial_pos)) = tile_query.get(tile_entity) {
-                    is_camera_tile = camera_tile_pos
-                        .zip(initial_pos.map(|p| p.pos))
-                        .map_or(false, |(cam_pos, tile_pos)| cam_pos == tile_pos);
-                    if let Ok(str_id) = templ_query.get(templ_ref.0) {
-                        let str_id_str = str_id.as_str();
-                        let label = short_tile_label(str_id_str);
-                        let fill = get_color_for_str_id(str_id_str).gamma_multiply(0.25);
-                        painter.rect_filled(cell_rect, 0.0, fill);
-                        painter.text(
-                            cell_rect.center(),
-                            egui::Align2::CENTER_CENTER,
-                            label,
-                            egui::FontId::proportional(10.0),
-                            get_color_for_str_id(str_id_str),
-                        );
-                    } else {
-                        painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(30, 30, 30));
-                        painter.text(
-                            cell_rect.center(),
-                            egui::Align2::CENTER_CENTER,
-                            "??",
-                            egui::FontId::proportional(10.0),
-                            egui::Color32::GRAY,
-                        );
-                    }
-                } else {
-                    painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(28, 28, 28));
-                    painter.text(
-                        cell_rect.center(),
-                        egui::Align2::CENTER_CENTER,
-                        "..",
-                        egui::FontId::proportional(10.0),
-                        egui::Color32::LIGHT_GRAY,
-                    );
-                }
-
-                if is_camera_tile {
-                    painter.rect_stroke(
-                        cell_rect,
-                        0.0,
-                        egui::Stroke::new(2.0, egui::Color32::YELLOW),
-                        egui::StrokeKind::Outside,
-                    );
-                } else if is_selected {
-                    painter.rect_stroke(
-                        cell_rect,
-                        0.0,
-                        egui::Stroke::new(1.5, egui::Color32::WHITE),
-                        egui::StrokeKind::Outside,
-                    );
-                } else {
-                    painter.rect_stroke(
-                        cell_rect,
-                        0.0,
-                        egui::Stroke::new(0.5, egui::Color32::from_gray(50)),
-                        egui::StrokeKind::Inside,
-                    );
-                }
-
-                if response.clicked() {
-                    clicked_tile = Some(tile_entity);
-                }
-            } else {
-                painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(16, 16, 16));
-                painter.rect_stroke(
-                    cell_rect,
-                    0.0,
-                    egui::Stroke::new(0.5, egui::Color32::from_gray(35)),
-                    egui::StrokeKind::Inside,
-                );
-            }
-        }
-    }
-
-    clicked_tile
-}
-
-#[allow(unused_parens)]
-fn render_spritetiles_grid(
-    ui: &mut egui::Ui,
-    chunk_pos: ChunkPos,
-    child_entities: &[Entity],
-    tile_storage_query: &Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
-    spritetile_gpos_query: &Query<(Entity, &GlobalTilePos, Option<&TemplEntiRef>)>,
-    id_query: &Query<&StrId>,
-    selected_sprite: &mut Option<Entity>,
-    camera_tile_pos: Option<GlobalTilePos>,
-) -> Option<Entity> {
-    let size = ChunkPos::CHUNK_SIZE;
-    let chunk_origin = chunk_pos.to_tilepos();
-    let mut by_local_pos: HashMap<(u32, u32), Vec<(Entity, String)>> = HashMap::new();
-
-    for &child_entity in child_entities {
-        if tile_storage_query.get(child_entity).is_ok() {
-            continue;
-        }
-        let Ok((ent, gpos, templ_ref)) = spritetile_gpos_query.get(child_entity) else {
-            continue;
-        };
-        if ChunkPos::from(*gpos) != chunk_pos {
-            continue;
-        }
-        let local = gpos.0 - chunk_origin.0;
-        if local.x < 0 || local.y < 0 || local.x >= size.x as i32 || local.y >= size.y as i32 {
-            continue;
-        }
-        let display_str = if let Some(templ_ref) = templ_ref
-            && let Ok(str_id) = id_query.get(templ_ref.0)
-        {
-            str_id.as_str().to_string()
-        } else {
-            format!("{}", ent.index())
-        };
-        by_local_pos
-            .entry((local.x as u32, local.y as u32))
-            .or_default()
-            .push((ent, display_str));
-    }
-
-    let cell_w = 22.0f32;
-    let cell_h = 18.0f32;
-    let grid_size = egui::vec2(size.x as f32 * cell_w, size.y as f32 * cell_h);
-    let (rect, _) = ui.allocate_exact_size(grid_size, egui::Sense::hover());
-    let painter = ui.painter_at(rect);
-
-    let mut clicked_spritetile = None;
-    let camera_local = camera_tile_pos.map(|cam_pos| cam_pos.0 - chunk_origin.0);
-    for y in (0..size.y).rev() {
-        for x in 0..size.x {
-            let row = (size.y - 1 - y) as f32;
-            let col = x as f32;
-            let cell_rect = egui::Rect::from_min_size(
-                egui::pos2(rect.left() + col * cell_w, rect.top() + row * cell_h),
-                egui::vec2(cell_w, cell_h),
-            );
-            let id = ui.make_persistent_id(("spritetiles_grid_cell", chunk_pos.0.x, chunk_pos.0.y, x, y));
-            let response = ui.interact(cell_rect, id, egui::Sense::click());
-            let is_camera_tile = camera_local.map_or(false, |local| local.x == x as i32 && local.y == y as i32);
-
-            if let Some(sprite_stack) = by_local_pos.get(&(x, y)) {
-                let (sprite_entity, sprite_id) = &sprite_stack[0];
-                let is_selected = selected_sprite.map_or(false, |s| s == *sprite_entity);
-
-                let label = short_tile_label(sprite_id);
-                let fill = get_color_for_str_id(sprite_id).gamma_multiply(0.25);
-                painter.rect_filled(cell_rect, 0.0, fill);
-                painter.text(
-                    cell_rect.center(),
-                    egui::Align2::CENTER_CENTER,
-                    label,
-                    egui::FontId::proportional(10.0),
-                    get_color_for_str_id(sprite_id),
-                );
-                if sprite_stack.len() > 1 {
-                    painter.rect_stroke(
-                        cell_rect.shrink(1.0),
-                        0.0,
-                        egui::Stroke::new(1.0, egui::Color32::LIGHT_BLUE),
-                        egui::StrokeKind::Inside,
-                    );
-                }
-                if is_camera_tile {
-                    painter.rect_stroke(
-                        cell_rect,
-                        0.0,
-                        egui::Stroke::new(2.0, egui::Color32::YELLOW),
-                        egui::StrokeKind::Outside,
-                    );
-                } else if is_selected {
-                    painter.rect_stroke(
-                        cell_rect,
-                        0.0,
-                        egui::Stroke::new(1.5, egui::Color32::WHITE),
-                        egui::StrokeKind::Outside,
-                    );
-                } else {
-                    painter.rect_stroke(
-                        cell_rect,
-                        0.0,
-                        egui::Stroke::new(0.5, egui::Color32::from_gray(50)),
-                        egui::StrokeKind::Inside,
-                    );
-                }
-                if response.clicked() {
-                    clicked_spritetile = Some(*sprite_entity);
-                }
-            } else {
-                painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(16, 16, 16));
-                painter.rect_stroke(
-                    cell_rect,
-                    0.0,
-                    egui::Stroke::new(0.5, egui::Color32::from_gray(35)),
-                    egui::StrokeKind::Inside,
-                );
-                if is_camera_tile {
-                    painter.rect_stroke(
-                        cell_rect,
-                        0.0,
-                        egui::Stroke::new(2.0, egui::Color32::YELLOW),
-                        egui::StrokeKind::Outside,
-                    );
-                }
-            }
-        }
-    }
-
-    clicked_spritetile
-}
-
-#[allow(unused_parens)]
 pub fn debug_chunking_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
@@ -328,7 +78,7 @@ pub fn debug_chunking_window(
         Option<&ActivatingChunks>,
     ), With<Chunk>>,
 
-    camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    cam_pos: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
     mut camera_chunk_settings: Query<&mut LoadChunksAround, With<CameraTarget>>,
     dimension_map: Res<DimensionEntityMap>,
     loaded_chunks: Res<LoadedChunks>,
@@ -354,8 +104,7 @@ pub fn debug_chunking_window(
     let default_y = screen_rect.top() + 10.0;
     let mut open = window_visible.chunks_list;
 
-    // Get camera target dimension and position
-    let (camera_dim_ref, camera_chunk_pos, camera_tile_pos) = camera_dimension
+    let (camera_dim_ref, camera_chunk_pos, camera_tile_pos) = cam_pos
         .iter()
         .next()
         .map(|(dim_ref, transform)| {
@@ -437,22 +186,29 @@ pub fn debug_chunking_window(
 
             // Chunk Range Settings
             ui.heading("Range Settings");
-            if let Some(chunk_settings) = camera_chunk_settings.as_deref_mut() {
+            if let Some(chunk_settings) = camera_chunk_settings_snapshot {
+                let mut edited_settings = chunk_settings;
+                let mut changed = false;
                 ui.horizontal(|ui| {
                     ui.label("Visibility Distance:");
-                    ui.add(egui::DragValue::new(&mut chunk_settings.chunk_visib_max_dist).speed(10.0));
+                    changed |= ui.add(egui::DragValue::new(&mut edited_settings.chunk_visib_max_dist).speed(10.0)).changed();
                 });
                 ui.horizontal(|ui| {
                     ui.label("Active Distance:");
-                    ui.add(egui::DragValue::new(&mut chunk_settings.chunk_active_max_dist).speed(10.0));
+                    changed |= ui.add(egui::DragValue::new(&mut edited_settings.chunk_active_max_dist).speed(10.0)).changed();
                 });
                 ui.horizontal(|ui| {
                     ui.label("Discovery Range:");
-                    ui.add(egui::DragValue::new(&mut chunk_settings.discovery_range).speed(1.0));
+                    changed |= ui.add(egui::DragValue::new(&mut edited_settings.discovery_range).speed(1.0)).changed();
                 });
-                chunk_settings.chunk_visib_max_dist = chunk_settings.chunk_visib_max_dist.max(0.0);
-                chunk_settings.chunk_active_max_dist = chunk_settings.chunk_active_max_dist.max(0.0);
-                chunk_settings.discovery_range = chunk_settings.discovery_range.max(1);
+                if changed {
+                    edited_settings.chunk_visib_max_dist = edited_settings.chunk_visib_max_dist.max(0.0);
+                    edited_settings.chunk_active_max_dist = edited_settings.chunk_active_max_dist.max(0.0);
+                    edited_settings.discovery_range = edited_settings.discovery_range.max(1);
+                    if let Some(chunk_settings) = camera_chunk_settings.as_deref_mut() {
+                        *chunk_settings = edited_settings;
+                    }
+                }
             } else {
                 ui.separator();
                 ui.label("Camera target has no ActivateChunksAround");
@@ -712,7 +468,7 @@ pub fn debug_chunking_window(
                 .default_open(false)
                 .show(ui, |ui| {
                 // Get camera position and current chunk
-                let camera_chunk_pos = camera_dimension.iter().next()
+                let camera_chunk_pos = cam_pos.iter().next()
                     .map(|(_, transform)| ChunkPos::from(transform.translation()));
 
                 // Group chunks by dimension
@@ -729,7 +485,6 @@ pub fn debug_chunking_window(
 
                 ui.label(format!("Total entries: {}", loaded_chunks.0.len()));
 
-                // Display each dimension's chunks in a grid
                 for (dim_name, chunks) in chunks_by_dim.into_iter() {
                     let is_camera_dim = camera_dim_name.as_ref().is_some_and(|camera_dim_name| camera_dim_name == &dim_name);
                     let header_label = format!("{} - {} chunks", dim_name, chunks.len());
@@ -752,7 +507,6 @@ pub fn debug_chunking_window(
                             let grid_width = (max_x - min_x + 1) as usize;
                             let grid_height = (max_y - min_y + 1) as usize;
 
-                            // Only render if grid is not too large
                             if grid_width > 100 || grid_height > 100 {
                                 ui.label(format!("Grid too large to display: {}x{}", grid_width, grid_height));
                             } else {
@@ -815,4 +569,254 @@ pub fn debug_chunking_window(
             });
         });
     window_visible.chunks_list = open;
+}
+
+
+#[allow(unused_parens)]
+fn render_tilemap_grid(
+    ui: &mut egui::Ui,
+    tile_storage: &TileStorage,
+    tile_query: &Query<(Entity, &TemplEntiRef, Option<&InitialPos>), With<Tile>>,
+    templ_query: &Query<&TileStrId, With<Templ>>,
+    selected_tile: &mut Option<Entity>,
+    camera_tile_pos: Option<GlobalTilePos>,
+) -> Option<Entity> {
+    let size = tile_storage.size;
+
+    // Only render if not too large (avoid performance issues)
+    if size.x > 50 || size.y > 50 {
+        ui.label(format!("Grid too large to display: {}x{}", size.x, size.y));
+        return None;
+    }
+
+    let cell_w = 22.0f32;
+    let cell_h = 18.0f32;
+    let grid_size = egui::vec2(size.x as f32 * cell_w, size.y as f32 * cell_h);
+    let (rect, _) = ui.allocate_exact_size(grid_size, egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+
+    let mut clicked_tile = None;
+    for y in (0..size.y).rev() {
+        for x in 0..size.x {
+            let row = (size.y - 1 - y) as f32;
+            let col = x as f32;
+            let cell_rect = egui::Rect::from_min_size(
+                egui::pos2(rect.left() + col * cell_w, rect.top() + row * cell_h),
+                egui::vec2(cell_w, cell_h),
+            );
+            let tile_pos = TilePos { x, y };
+            let id = ui.make_persistent_id(("tilemap_grid_cell", x, y));
+            let response = ui.interact(cell_rect, id, egui::Sense::click());
+
+            if let Some(tile_entity) = tile_storage.checked_get(&tile_pos) {
+                let is_selected = selected_tile.map_or(false, |s| s == tile_entity);
+                let mut is_camera_tile = false;
+                if let Ok((_, templ_ref, initial_pos)) = tile_query.get(tile_entity) {
+                    is_camera_tile = camera_tile_pos
+                        .zip(initial_pos.map(|p| p.pos))
+                        .map_or(false, |(cam_pos, tile_pos)| cam_pos == tile_pos);
+                    if let Ok(str_id) = templ_query.get(templ_ref.0) {
+                        let str_id_str = str_id.as_str();
+                        let label = short_tile_label(str_id_str);
+                        let fill = get_color_for_str_id(str_id_str).gamma_multiply(0.25);
+                        painter.rect_filled(cell_rect, 0.0, fill);
+                        painter.text(
+                            cell_rect.center(),
+                            egui::Align2::CENTER_CENTER,
+                            label,
+                            egui::FontId::proportional(10.0),
+                            get_color_for_str_id(str_id_str),
+                        );
+                    } else {
+                        painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(30, 30, 30));
+                        painter.text(
+                            cell_rect.center(),
+                            egui::Align2::CENTER_CENTER,
+                            "??",
+                            egui::FontId::proportional(10.0),
+                            egui::Color32::GRAY,
+                        );
+                    }
+                } else {
+                    painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(28, 28, 28));
+                    painter.text(
+                        cell_rect.center(),
+                        egui::Align2::CENTER_CENTER,
+                        "..",
+                        egui::FontId::proportional(10.0),
+                        egui::Color32::LIGHT_GRAY,
+                    );
+                }
+
+                if is_camera_tile {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(2.0, egui::Color32::YELLOW),
+                        egui::StrokeKind::Outside,
+                    );
+                } else if is_selected {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(1.5, egui::Color32::WHITE),
+                        egui::StrokeKind::Outside,
+                    );
+                } else {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(0.5, egui::Color32::from_gray(50)),
+                        egui::StrokeKind::Inside,
+                    );
+                }
+
+                if response.clicked() {
+                    clicked_tile = Some(tile_entity);
+                }
+            } else {
+                painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(16, 16, 16));
+                painter.rect_stroke(
+                    cell_rect,
+                    0.0,
+                    egui::Stroke::new(0.5, egui::Color32::from_gray(35)),
+                    egui::StrokeKind::Inside,
+                );
+            }
+        }
+    }
+
+    clicked_tile
+}
+
+#[allow(unused_parens)]
+fn render_spritetiles_grid(
+    ui: &mut egui::Ui,
+    chunk_pos: ChunkPos,
+    child_entities: &[Entity],
+    tile_storage_query: &Query<(Entity, &TileStorage, Option<&AcZ>, Option<&TileShaderRef>), With<TileStorage>>,
+    spritetile_gpos_query: &Query<(Entity, &GlobalTilePos, Option<&TemplEntiRef>)>,
+    id_query: &Query<&StrId>,
+    selected_sprite: &mut Option<Entity>,
+    camera_tile_pos: Option<GlobalTilePos>,
+) -> Option<Entity> {
+    let size = ChunkPos::CHUNK_SIZE;
+    let chunk_origin = chunk_pos.to_tilepos();
+    let mut by_local_pos: HashMap<(u32, u32), Vec<(Entity, String)>> = HashMap::new();
+
+    for &child_entity in child_entities {
+        if tile_storage_query.get(child_entity).is_ok() {
+            continue;
+        }
+        let Ok((ent, gpos, templ_ref)) = spritetile_gpos_query.get(child_entity) else {
+            continue;
+        };
+        if ChunkPos::from(*gpos) != chunk_pos {
+            continue;
+        }
+        let local = gpos.0 - chunk_origin.0;
+        if local.x < 0 || local.y < 0 || local.x >= size.x as i32 || local.y >= size.y as i32 {
+            continue;
+        }
+        let display_str = if let Some(templ_ref) = templ_ref
+            && let Ok(str_id) = id_query.get(templ_ref.0)
+        {
+            str_id.as_str().to_string()
+        } else {
+            format!("{}", ent.index())
+        };
+        by_local_pos
+            .entry((local.x as u32, local.y as u32))
+            .or_default()
+            .push((ent, display_str));
+    }
+
+    let cell_w = 22.0f32;
+    let cell_h = 18.0f32;
+    let grid_size = egui::vec2(size.x as f32 * cell_w, size.y as f32 * cell_h);
+    let (rect, _) = ui.allocate_exact_size(grid_size, egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+
+    let mut clicked_spritetile = None;
+    let camera_local = camera_tile_pos.map(|cam_pos| cam_pos.0 - chunk_origin.0);
+    for y in (0..size.y).rev() {
+        for x in 0..size.x {
+            let row = (size.y - 1 - y) as f32;
+            let col = x as f32;
+            let cell_rect = egui::Rect::from_min_size(
+                egui::pos2(rect.left() + col * cell_w, rect.top() + row * cell_h),
+                egui::vec2(cell_w, cell_h),
+            );
+            let id = ui.make_persistent_id(("spritetiles_grid_cell", chunk_pos.0.x, chunk_pos.0.y, x, y));
+            let response = ui.interact(cell_rect, id, egui::Sense::click());
+            let is_camera_tile = camera_local.map_or(false, |local| local.x == x as i32 && local.y == y as i32);
+
+            if let Some(sprite_stack) = by_local_pos.get(&(x, y)) {
+                let (sprite_entity, sprite_id) = &sprite_stack[0];
+                let is_selected = selected_sprite.map_or(false, |s| s == *sprite_entity);
+
+                let label = short_tile_label(sprite_id);
+                let fill = get_color_for_str_id(sprite_id).gamma_multiply(0.25);
+                painter.rect_filled(cell_rect, 0.0, fill);
+                painter.text(
+                    cell_rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    label,
+                    egui::FontId::proportional(10.0),
+                    get_color_for_str_id(sprite_id),
+                );
+                if sprite_stack.len() > 1 {
+                    painter.rect_stroke(
+                        cell_rect.shrink(1.0),
+                        0.0,
+                        egui::Stroke::new(1.0, egui::Color32::LIGHT_BLUE),
+                        egui::StrokeKind::Inside,
+                    );
+                }
+                if is_camera_tile {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(2.0, egui::Color32::YELLOW),
+                        egui::StrokeKind::Outside,
+                    );
+                } else if is_selected {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(1.5, egui::Color32::WHITE),
+                        egui::StrokeKind::Outside,
+                    );
+                } else {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(0.5, egui::Color32::from_gray(50)),
+                        egui::StrokeKind::Inside,
+                    );
+                }
+                if response.clicked() {
+                    clicked_spritetile = Some(*sprite_entity);
+                }
+            } else {
+                painter.rect_filled(cell_rect, 0.0, egui::Color32::from_rgb(16, 16, 16));
+                painter.rect_stroke(
+                    cell_rect,
+                    0.0,
+                    egui::Stroke::new(0.5, egui::Color32::from_gray(35)),
+                    egui::StrokeKind::Inside,
+                );
+                if is_camera_tile {
+                    painter.rect_stroke(
+                        cell_rect,
+                        0.0,
+                        egui::Stroke::new(2.0, egui::Color32::YELLOW),
+                        egui::StrokeKind::Outside,
+                    );
+                }
+            }
+        }
+    }
+
+    clicked_spritetile
 }

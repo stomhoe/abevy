@@ -7,8 +7,8 @@ use bevy::platform::collections::HashSet;
 use std::hash::{Hash, };
 use crate::common_components::{HashId, Tag};
 use std::fmt::{Debug, };
+use std::ops::{Deref, DerefMut, };
 use serde::{Deserialize, Serialize};
-use delegate::delegate;
 
 macro_rules! impl_tags_common_methods {
     ($collection_type_name:ty, $tag_type:ty, $collection_kind:ident) => {
@@ -57,6 +57,12 @@ macro_rules! impl_tags_common_methods {
             pub fn clear(&mut self) {
                 self.0.clear();
             }
+            pub fn retain<F>(&mut self, f: F)
+            where
+                F: FnMut(&$tag_type) -> bool,
+            {
+                self.0.retain(f);
+            }
             pub fn extend_from(&mut self, other: &Self)
             where
                 $tag_type: Clone,
@@ -66,6 +72,23 @@ macro_rules! impl_tags_common_methods {
                     self.insert(tag.clone());
                 }
             }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! impl_tag_wrapper_deref {
+    ($name:ty, $target:ty) => {
+        #[allow(clippy::needless_lifetimes)]
+        impl ::std::ops::Deref for $name {
+            type Target = $target;
+            #[inline]
+            fn deref(&self) -> &Self::Target { &self.0 }
+        }
+        #[allow(clippy::needless_lifetimes)]
+        impl ::std::ops::DerefMut for $name {
+            #[inline]
+            fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
         }
     };
 }
@@ -127,6 +150,24 @@ macro_rules! define_tag_vec_and_impl_methods {
     };
 }
 
+macro_rules! impl_tag_wrapper_deref {
+    ($name:ty, $target:ty) => {
+        #[allow(clippy::needless_lifetimes)]
+        impl Deref for $name {
+            type Target = $target;
+
+            #[inline]
+            fn deref(&self) -> &Self::Target { &self.0 }
+        }
+
+        #[allow(clippy::needless_lifetimes)]
+        impl DerefMut for $name {
+            #[inline]
+            fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
+        }
+    };
+}
+
 define_tag_hashset_and_impl_methods!(TagSet, Tag);
 
 impl IntoIterator for TagSet {
@@ -145,6 +186,26 @@ impl<'a> IntoIterator for &'a TagSet {
     fn into_iter(self) -> Self::IntoIter {
         (&self.0).into_iter()
     }
+}
+
+pub fn passes_tag_filters(
+    subject_tags: Option<&TagSet>,
+    whitelisted_tags: Option<&TagSet>,
+    blacklisted_tags: Option<&TagSet>,
+) -> bool {
+    if let Some(blacklisted_tags) = blacklisted_tags
+        && let Some(subject_tags) = subject_tags
+        && subject_tags.intersects(blacklisted_tags)
+    {
+        return false;
+    }
+    if let Some(whitelisted_tags) = whitelisted_tags {
+        if let Some(subject_tags) = subject_tags {
+            return subject_tags.intersects(whitelisted_tags);
+        }
+        return false;
+    }
+    true
 }
 
 #[derive(Component, Debug, Default, Copy, Clone)]
@@ -186,32 +247,9 @@ impl WhitelistedTags {
     pub fn new<S: AsRef<str>>(tags: impl IntoIterator<Item = S>) -> Self {
         Self(TagSet::new(tags))
     }
-    delegate! {
-        to self.0 {
-            pub fn is_empty(&self) -> bool;
-            pub fn len(&self) -> usize;
-            pub fn clear(&mut self);
-        }
-    }
-
-    pub fn contains(&self, tag: impl Into<Tag>) -> bool {
-        self.0.contains(tag)
-    }
-
-    pub fn contains_ref(&self, tag: &Tag) -> bool {
-        self.0.contains(tag.clone())
-    }
-
-    pub fn intersects(&self, other: &WhitelistedTags) -> bool {
-        self.0.intersects(&other.0)
-    }
-
-    pub fn extend_from(&mut self, other: &WhitelistedTags) {
-        for tag in other.0.iter() {
-            self.0.0.insert(tag.clone());
-        }
-    }
 }
+
+impl_tag_wrapper_deref!(WhitelistedTags, TagSet);
 //impl into tagset
 impl From<&WhitelistedTags> for TagSet {
     fn from(tags: &WhitelistedTags) -> Self {
@@ -241,42 +279,12 @@ impl<'a> IntoIterator for &'a WhitelistedTags {
 pub struct BlacklistedTags(pub TagSet);
 
 impl BlacklistedTags {
-    delegate! {
-        to self.0 {
-            pub fn is_empty(&self) -> bool;
-            pub fn len(&self) -> usize;
-            pub fn clear(&mut self);
-        }
-    }
     pub fn new<S: AsRef<str>>(tags: impl IntoIterator<Item = S>) -> Self {
         Self(TagSet::new(tags))
     }
-
-    pub fn contains(&self, tag: impl Into<Tag>) -> bool {
-        self.0.contains(tag)
-    }
-
-    pub fn contains_ref(&self, tag: &Tag) -> bool {
-        self.0.contains(tag.clone())
-    }
-
-    pub fn intersects(&self, other: &BlacklistedTags) -> bool {
-        self.0.intersects(&other.0)
-    }
-
-    pub fn extend_from(&mut self, other: &BlacklistedTags) {
-        for tag in other.0.iter() {
-            self.0.0.insert(tag.clone());
-        }
-    }
-
-    pub fn retain<F>(&mut self, f: F)
-    where
-        F: FnMut(&Tag) -> bool,
-    {
-        self.0.0.retain(f);
-    }
 }
+
+impl_tag_wrapper_deref!(BlacklistedTags, TagSet);
 
 impl From<&BlacklistedTags> for TagSet {
     fn from(tags: &BlacklistedTags) -> Self {

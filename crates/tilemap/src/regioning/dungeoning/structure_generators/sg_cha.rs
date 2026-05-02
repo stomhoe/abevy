@@ -12,6 +12,7 @@ use crate::regioning::{    regioning_components::*,
 };
 use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
 use crate::tile::tile_resources::*;
+use super::corridor_forming::*;
 use super::super::dungeoning_carve_helpers::{
     carve_corridor_polyline_typed as carve_corridor_path,
     carve_room_ellipse_typed as carve_room_ellipse,
@@ -21,8 +22,8 @@ use super::super::dungeoning_carve_helpers::{
     carve_room_regular_polygon_typed as carve_room_regular_polygon,
 };
 use super::super::dungeoning_ids::CHAMBERS_CORRIDORS;
-use super::super::dungeoning_utils::{carve_external_wall_doorways, extend_occupied_gpos, queue_room_spawn_instance_message, ExternalDoorwayConfig, DeleteOtherTilesConfigMap, TerrGenDisableConfigMap};
-use super::sg_cha_room_forming::{maybe_add_room_interior, pick_nearest_room_index, pick_weighted_open_parent_index, room_center, sample_corridor_child_slots, sample_room_spec_for_leaf_with_limit, sample_trapezoid_vertices_for_room, split_room_draft_horizontally, split_room_draft_vertically, RoomDraft};
+use super::super::dungeoning_utils::*;
+use super::sg_cha_room_forming::*;
 use super::sg_cha_types::*;
 
 const FLOOR_NONE: u8 = 0;
@@ -55,416 +56,6 @@ fn seal_structure_border_band_typed(
                 hazard_map[idx] = false;
             }
         }
-    }
-}
-
-fn clamp_to_map(point: (i32, i32), map_width: usize, map_height: usize) -> (i32, i32) {
-    (
-        point.0.clamp(0, map_width.saturating_sub(1) as i32),
-        point.1.clamp(0, map_height.saturating_sub(1) as i32),
-    )
-}
-
-fn push_unique_point(points: &mut Vec<(i32, i32)>, point: (i32, i32)) {
-    if points.last().copied() != Some(point) {
-        points.push(point);
-    }
-}
-
-fn build_straight_corridor_route(
-    start: (i32, i32),
-    end: (i32, i32),
-    map_width: usize,
-    map_height: usize,
-    rng: &mut impl Rng,
-) -> Vec<(i32, i32)> {
-    let mut points = Vec::with_capacity(3);
-    push_unique_point(&mut points, clamp_to_map(start, map_width, map_height));
-
-    if start.0 == end.0 || start.1 == end.1 {
-        push_unique_point(&mut points, clamp_to_map(end, map_width, map_height));
-        return points;
-    }
-
-    if rng.random_bool(0.5) {
-        push_unique_point(&mut points, clamp_to_map((end.0, start.1), map_width, map_height));
-    } else {
-        push_unique_point(&mut points, clamp_to_map((start.0, end.1), map_width, map_height));
-    }
-    push_unique_point(&mut points, clamp_to_map(end, map_width, map_height));
-    points
-}
-
-fn build_square_turn_corridor_route(
-    start: (i32, i32),
-    end: (i32, i32),
-    map_width: usize,
-    map_height: usize,
-    turns: usize,
-    turn_offset: i32,
-    rng: &mut impl Rng,
-) -> Vec<(i32, i32)> {
-    let turns = turns.max(1);
-    let turn_offset = turn_offset.max(1);
-    let offset = rng.random_range((turn_offset / 2).max(1)..=turn_offset);
-    let horizontal_major = (end.0 - start.0).abs() >= (end.1 - start.1).abs();
-    let mut points = Vec::with_capacity(turns * 2 + 3);
-    push_unique_point(&mut points, clamp_to_map(start, map_width, map_height));
-
-    let mut current = start;
-    let mut sign = if rng.random_bool(0.5) { 1 } else { -1 };
-    for step_index in 0..turns {
-        let fraction = (step_index + 1) as f32 / (turns + 1) as f32;
-        if horizontal_major {
-            let major_x = (start.0 as f32 + (end.0 - start.0) as f32 * fraction).round() as i32;
-            let major_x = major_x.clamp(0, map_width.saturating_sub(1) as i32);
-            push_unique_point(&mut points, clamp_to_map((major_x, current.1), map_width, map_height));
-            current.0 = major_x;
-            current.1 = (current.1 + sign * offset).clamp(0, map_height.saturating_sub(1) as i32);
-            push_unique_point(&mut points, clamp_to_map((current.0, current.1), map_width, map_height));
-        } else {
-            let major_y = (start.1 as f32 + (end.1 - start.1) as f32 * fraction).round() as i32;
-            let major_y = major_y.clamp(0, map_height.saturating_sub(1) as i32);
-            push_unique_point(&mut points, clamp_to_map((current.0, major_y), map_width, map_height));
-            current.1 = major_y;
-            current.0 = (current.0 + sign * offset).clamp(0, map_width.saturating_sub(1) as i32);
-            push_unique_point(&mut points, clamp_to_map((current.0, current.1), map_width, map_height));
-        }
-        sign *= -1;
-    }
-
-    if horizontal_major {
-        push_unique_point(&mut points, clamp_to_map((end.0, current.1), map_width, map_height));
-    } else {
-        push_unique_point(&mut points, clamp_to_map((current.0, end.1), map_width, map_height));
-    }
-    push_unique_point(&mut points, clamp_to_map(end, map_width, map_height));
-    points
-}
-
-fn build_s_wiggle_corridor_route(
-    start: (i32, i32),
-    end: (i32, i32),
-    map_width: usize,
-    map_height: usize,
-    turns: usize,
-    wiggle_offset: i32,
-    rng: &mut impl Rng,
-) -> Vec<(i32, i32)> {
-    let turns = turns.max(1);
-    let wiggle_offset = wiggle_offset.max(1);
-    let dx = end.0 - start.0;
-    let dy = end.1 - start.1;
-    let distance = dx.abs().max(dy.abs()).max(1);
-    let sample_count = (distance / 4).clamp(8, 24) as usize * turns;
-    let amplitude = rng.random_range((wiggle_offset / 2).max(1)..=wiggle_offset) as f32;
-    let phase = if rng.random_bool(0.5) { 0.0 } else { std::f32::consts::FRAC_PI_2 };
-    let horizontal_major = dx.abs() >= dy.abs();
-
-    let mut points = Vec::with_capacity(sample_count + 1);
-    for sample_index in 0..=sample_count {
-        let t = sample_index as f32 / sample_count as f32;
-        let wave = (t * std::f32::consts::TAU * turns as f32 + phase).sin() * amplitude;
-        let base_x = start.0 as f32 + (end.0 - start.0) as f32 * t;
-        let base_y = start.1 as f32 + (end.1 - start.1) as f32 * t;
-        let point = if horizontal_major {
-            clamp_to_map((base_x.round() as i32, (base_y + wave).round() as i32), map_width, map_height)
-        } else {
-            clamp_to_map(((base_x + wave).round() as i32, base_y.round() as i32), map_width, map_height)
-        };
-        push_unique_point(&mut points, point);
-    }
-
-    if points.len() < 2 {
-        points.push(clamp_to_map(end, map_width, map_height));
-    }
-
-    points
-}
-
-fn build_macro_detour_corridor_route(
-    start: (i32, i32),
-    end: (i32, i32),
-    map_width: usize,
-    map_height: usize,
-    detour_offset_min: i32,
-    detour_offset_max: i32,
-    detour_stack_min: i32,
-    detour_stack_max: i32,
-    rng: &mut impl Rng,
-) -> Vec<(i32, i32)> {
-    let detour_offset_min = detour_offset_min.max(1);
-    let detour_offset_max = detour_offset_max.max(detour_offset_min);
-    let detour_stack_min = detour_stack_min.max(1);
-    let detour_stack_max = detour_stack_max.max(detour_stack_min);
-    let dx = end.0 - start.0;
-    let dy = end.1 - start.1;
-    let horizontal_major = dx.abs() >= dy.abs();
-    let detour_sign = if rng.random_bool(0.5) { 1 } else { -1 };
-    let detour_layers = rng.random_range(detour_stack_min..=detour_stack_max).max(1) as usize;
-    let mut points = Vec::with_capacity(detour_layers.saturating_mul(4).saturating_add(2));
-    push_unique_point(&mut points, clamp_to_map(start, map_width, map_height));
-
-    let route_start_t = 0.18_f32;
-    let route_end_t = 0.82_f32;
-    let layer_span = (route_end_t - route_start_t) / detour_layers as f32;
-    let detour_pattern = rng.random_range(0..4);
-
-    for layer_index in 0..detour_layers {
-        let detour_height = rng.random_range(detour_offset_min..=detour_offset_max);
-        let detour_apex = detour_height.saturating_add(rng.random_range((detour_height / 2).max(1)..=detour_height));
-        let layer_start_t = route_start_t + layer_span * layer_index as f32;
-        let layer_sign = match detour_pattern {
-            0 => detour_sign,
-            1 => {
-                if layer_index % 2 == 0 { detour_sign } else { -detour_sign }
-            }
-            2 => {
-                if layer_index + 1 == detour_layers { -detour_sign } else { detour_sign }
-            }
-            _ => {
-                if rng.random_bool(0.5) { detour_sign } else { -detour_sign }
-            }
-        };
-        let layer_t0 = match detour_pattern {
-            0 => layer_start_t,
-            1 => (layer_start_t + (layer_index as f32 * 0.03)).min(route_end_t - 0.08),
-            2 => (layer_start_t + if layer_index + 1 == detour_layers { 0.12 } else { -0.02 }).clamp(route_start_t, route_end_t - 0.10),
-            _ => (layer_start_t + rng.random_range(-0.04_f32..0.04_f32)).clamp(route_start_t, route_end_t - 0.12),
-        };
-        let layer_t1 = match detour_pattern {
-            0 => (layer_t0 + layer_span * 0.42).min(route_end_t - 0.04),
-            1 => (layer_t0 + layer_span * rng.random_range(0.30_f32..0.52_f32)).min(route_end_t - 0.03),
-            2 => (layer_t0 + layer_span * 0.58).min(route_end_t - 0.03),
-            _ => (layer_t0 + layer_span * rng.random_range(0.22_f32..0.60_f32)).min(route_end_t - 0.03),
-        };
-        let layer_t2 = match detour_pattern {
-            0 => (layer_t0 + layer_span * 0.82).min(route_end_t),
-            1 => (layer_t1 + layer_span * 0.30).min(route_end_t),
-            2 => (layer_t1 + layer_span * 0.18).min(route_end_t),
-            _ => (layer_t1 + layer_span * rng.random_range(0.24_f32..0.58_f32)).min(route_end_t),
-        };
-
-        if horizontal_major {
-            let entry_x = (start.0 as f32 + dx as f32 * layer_t0).round() as i32;
-            let apex_x = (start.0 as f32 + dx as f32 * layer_t1).round() as i32;
-            let exit_x = (start.0 as f32 + dx as f32 * layer_t2).round() as i32;
-            let base_entry_y = (start.1 as f32 + dy as f32 * layer_t0).round() as i32;
-            let base_apex_y = (start.1 as f32 + dy as f32 * layer_t1).round() as i32;
-            let base_exit_y = (start.1 as f32 + dy as f32 * layer_t2).round() as i32;
-            push_unique_point(&mut points, clamp_to_map((entry_x, base_entry_y + detour_sign * detour_height), map_width, map_height));
-            push_unique_point(&mut points, clamp_to_map((apex_x, base_apex_y + detour_sign * detour_apex), map_width, map_height));
-            push_unique_point(&mut points, clamp_to_map((exit_x, base_exit_y + detour_sign * detour_height), map_width, map_height));
-        } else {
-            let entry_y = (start.1 as f32 + dy as f32 * layer_t0).round() as i32;
-            let apex_y = (start.1 as f32 + dy as f32 * layer_t1).round() as i32;
-            let exit_y = (start.1 as f32 + dy as f32 * layer_t2).round() as i32;
-            let base_entry_x = (start.0 as f32 + dx as f32 * layer_t0).round() as i32;
-            let base_apex_x = (start.0 as f32 + dx as f32 * layer_t1).round() as i32;
-            let base_exit_x = (start.0 as f32 + dx as f32 * layer_t2).round() as i32;
-            push_unique_point(&mut points, clamp_to_map((base_entry_x + layer_sign * detour_height, entry_y), map_width, map_height));
-            push_unique_point(&mut points, clamp_to_map((base_apex_x + layer_sign * detour_apex, apex_y), map_width, map_height));
-            push_unique_point(&mut points, clamp_to_map((base_exit_x + layer_sign * detour_height, exit_y), map_width, map_height));
-        }
-    }
-
-    push_unique_point(&mut points, clamp_to_map(end, map_width, map_height));
-    points
-}
-
-fn point_inside_room(point: (i32, i32), room: &Room) -> bool {
-    point.0 >= room.x && point.0 < room.x + room.w && point.1 >= room.y && point.1 < room.y + room.h
-}
-
-fn route_crosses_other_rooms(route: &[(i32, i32)], actual_rooms: &[Room], start_room_idx: usize, end_room_idx: usize) -> bool {
-    if route.len() < 3 {
-        return false;
-    }
-
-    for (point_index, &point) in route.iter().enumerate() {
-        if point_index == 0 || point_index + 1 == route.len() {
-            continue;
-        }
-
-        for (room_idx, room) in actual_rooms.iter().enumerate() {
-            if room_idx == start_room_idx || room_idx == end_room_idx {
-                continue;
-            }
-
-            if point_inside_room(point, room) {
-                return true;
-            }
-        }
-    }
-
-    false
-}
-
-fn pick_room_aware_corridor_route(
-    c1: (i32, i32),
-    c2: (i32, i32),
-    actual_rooms: &[Room],
-    start_room_idx: usize,
-    end_room_idx: usize,
-    map_width: usize,
-    map_height: usize,
-    corridor_zigzag_chance: f32,
-    corridor_zigzag_curve_chance: f32,
-    corridor_zigzag_strength_min: i32,
-    corridor_zigzag_strength_max: i32,
-    corridor_zigzag_offset: i32,
-    corridor_macro_detour_chance: f32,
-    corridor_macro_detour_offset_min: i32,
-    corridor_macro_detour_offset_max: i32,
-    corridor_macro_detour_stack_min: i32,
-    corridor_macro_detour_stack_max: i32,
-    rng: &mut impl Rng,
-) -> (Vec<(i32, i32)>, bool) {
-    let corridor_dx = (c2.0 - c1.0).abs() as usize;
-    let corridor_dy = (c2.1 - c1.1).abs() as usize;
-    let corridor_span = corridor_dx.max(corridor_dy).max(1);
-    let long_corridor_bonus = (((corridor_span.saturating_sub(12)) as f32) / 36.0).clamp(0.0, 0.45);
-    let zigzag_chance = (corridor_zigzag_chance + long_corridor_bonus).clamp(0.0, 1.0);
-    let zigzag_strength_min = corridor_zigzag_strength_min.max(1) as usize;
-    let zigzag_strength_max = corridor_zigzag_strength_max.max(corridor_zigzag_strength_min).max(1) as usize;
-    let fallback_turns = (corridor_span / 14).clamp(2, 5);
-
-    for _ in 0..6 {
-        let route = if rng.random_range(0.0..1.0) < zigzag_chance {
-            let sampled_zigzag_strength = rng.random_range(zigzag_strength_min..=zigzag_strength_max);
-            let span_biased_zigzag_strength = (corridor_span / 6).clamp(zigzag_strength_min, zigzag_strength_max);
-            let zigzag_strength = sampled_zigzag_strength.max(span_biased_zigzag_strength);
-            let zigzag_turns = zigzag_strength.max(2);
-            let zigzag_offset = corridor_zigzag_offset.saturating_add((zigzag_strength / 2) as i32);
-            if rng.random_range(0.0..1.0) < corridor_zigzag_curve_chance {
-                build_s_wiggle_corridor_route(c1, c2, map_width, map_height, zigzag_turns, zigzag_offset, rng)
-            } else {
-                build_square_turn_corridor_route(c1, c2, map_width, map_height, zigzag_turns, zigzag_offset, rng)
-            }
-        } else if c1.0 == c2.0 || c1.1 == c2.1 {
-            build_straight_corridor_route(c1, c2, map_width, map_height, rng)
-        } else if rng.random_range(0.0..1.0) < corridor_macro_detour_chance {
-            build_macro_detour_corridor_route(
-                c1,
-                c2,
-                map_width,
-                map_height,
-                corridor_macro_detour_offset_min,
-                corridor_macro_detour_offset_max,
-                corridor_macro_detour_stack_min,
-                corridor_macro_detour_stack_max,
-                rng,
-            )
-        } else {
-            let fallback_roll = rng.random_range(0.0..1.0);
-            if fallback_roll < 0.15 {
-                build_straight_corridor_route(c1, c2, map_width, map_height, rng)
-            } else if fallback_roll < 0.78 {
-                build_square_turn_corridor_route(c1, c2, map_width, map_height, fallback_turns, corridor_zigzag_offset, rng)
-            } else {
-                build_s_wiggle_corridor_route(c1, c2, map_width, map_height, fallback_turns, corridor_zigzag_offset, rng)
-            }
-        };
-
-        if !route_crosses_other_rooms(&route, actual_rooms, start_room_idx, end_room_idx) {
-            return (route, false);
-        }
-    }
-
-    let fallback_route = build_straight_corridor_route(c1, c2, map_width, map_height, rng);
-    (fallback_route, false)
-}
-
-fn stamp_corridor_wall_ribs_typed(
-    floor_map_bool: &mut [bool],
-    wall_map: &mut [bool],
-    tile_width: usize,
-    tile_height: usize,
-    corridor_radius: i32,
-    path: &[(i32, i32)],
-    rib_spacing_min: usize,
-    rib_spacing_max: usize,
-    rib_depth_min: usize,
-    rib_depth_max: usize,
-    rng: &mut impl Rng,
-) {
-    if path.len() < 3 {
-        return;
-    }
-
-    let corridor_radius = corridor_radius.max(1);
-    let rib_spacing_min = rib_spacing_min.max(1);
-    let rib_spacing_max = rib_spacing_max.max(rib_spacing_min);
-    let rib_depth_min = rib_depth_min.max(1);
-    let rib_depth_max = rib_depth_max.max(rib_depth_min);
-
-    let mut next_index = rng.random_range(rib_spacing_min..=rib_spacing_max);
-    let mut side_bias = if rng.random_bool(0.5) { 1 } else { -1 };
-
-    while next_index + 1 < path.len() {
-        let current_index = next_index;
-        let prev = path[current_index - 1];
-        let current = path[current_index];
-        let next = path[current_index + 1];
-
-        let dir_x = (next.0 - prev.0).signum();
-        let dir_y = (next.1 - prev.1).signum();
-        if dir_x == 0 && dir_y == 0 {
-            side_bias *= -1;
-            next_index += rng.random_range(rib_spacing_min..=rib_spacing_max);
-            continue;
-        }
-
-        let rib_depth = rng.random_range(rib_depth_min..=rib_depth_max).max(corridor_radius as usize + 2);
-        let rib_width = (rib_depth / 2).clamp(2, 5);
-        let side_depths = [rib_depth, rib_depth];
-        let side_widths = [rib_width, rib_width];
-
-        for (side_idx, side_sign) in [side_bias, -side_bias].into_iter().enumerate() {
-            let normal_x = -dir_y * side_sign;
-            let normal_y = dir_x * side_sign;
-            let base_x = current.0 + normal_x * corridor_radius;
-            let base_y = current.1 + normal_y * corridor_radius;
-            if base_x < 0 || base_y < 0 {
-                continue;
-            }
-
-            let base_ux = base_x as usize;
-            let base_uy = base_y as usize;
-            if base_ux >= tile_width || base_uy >= tile_height {
-                continue;
-            }
-
-            let rib_depth = side_depths[side_idx];
-            let rib_width = side_widths[side_idx];
-            for depth_step in 0..=rib_depth {
-                let inward_step = depth_step as i32;
-                let step_back_x = base_x - normal_x * inward_step;
-                let step_back_y = base_y - normal_y * inward_step;
-                let taper = (rib_width.saturating_sub(depth_step / 3)).max(2) as i32;
-
-                for lateral in -taper..=taper {
-                    let x = step_back_x + dir_x * lateral;
-                    let y = step_back_y + dir_y * lateral;
-                    if x < 0 || y < 0 {
-                        continue;
-                    }
-
-                    let ux = x as usize;
-                    let uy = y as usize;
-                    if ux >= tile_width || uy >= tile_height {
-                        continue;
-                    }
-
-                    let idx = uy * tile_width + ux;
-                    floor_map_bool[idx] = false;
-                    wall_map[idx] = true;
-                }
-            }
-        }
-
-        side_bias *= -1;
-        next_index += rng.random_range(rib_spacing_min..=rib_spacing_max);
     }
 }
 
@@ -646,7 +237,8 @@ pub fn corridor_dungeon_building_system(
         let mut corridor_zigzag_rib_spacing_max = 6_i32;
         let mut corridor_zigzag_rib_depth_min = 4_i32;
         let mut corridor_zigzag_rib_depth_max = 8_i32;
-        let mut corridor_radius: i32 = 1;
+        let mut corridor_radius_min: i32 = 1;
+        let mut corridor_radius_max: i32 = 1;
         let mut regular_polygon_divider_chance = 0.5_f32;
         let mut regular_polygon_divider_gap_half_width: i32 = 1;
         let mut regular_polygon_sides_min: i32 = 5;
@@ -755,8 +347,23 @@ pub fn corridor_dungeon_building_system(
         }
         if let Some(v) = structured_gen_cfg.args.get("corridor_radius") {
             if let Some(s) = v.first() {
-                corridor_radius = s.parse::<i32>().unwrap_or(1).max(1);
+                let parsed = s.parse::<i32>().unwrap_or(1).max(1);
+                corridor_radius_min = parsed;
+                corridor_radius_max = parsed;
             }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_radius_min") {
+            if let Some(s) = v.first() {
+                corridor_radius_min = s.parse::<i32>().unwrap_or(corridor_radius_min).max(1);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_radius_max") {
+            if let Some(s) = v.first() {
+                corridor_radius_max = s.parse::<i32>().unwrap_or(corridor_radius_max).max(1);
+            }
+        }
+        if corridor_radius_max < corridor_radius_min {
+            corridor_radius_max = corridor_radius_min;
         }
         if let Some(v) = structured_gen_cfg.args.get("regular_polygon_divider_chance") {
             if let Some(s) = v.first() {
@@ -863,7 +470,7 @@ pub fn corridor_dungeon_building_system(
 
         let mut actual_rooms = Vec::new();
         let mut used_room_area = 0_i32;
-        let mut curved_zigzag_routes: Vec<Vec<(i32, i32)>> = Vec::with_capacity(max_rooms as usize);
+        let mut curved_zigzag_routes: Vec<(Vec<(i32, i32)>, i32)> = Vec::with_capacity(max_rooms as usize);
         while actual_rooms.len() < max_rooms as usize && !room_drafts.is_empty() && used_room_area < room_area_budget {
             let remaining_area_budget = room_area_budget.saturating_sub(used_room_area);
             let total_area_weight: usize = room_drafts.iter().map(|room| room.area().max(1) as usize).sum();
@@ -984,10 +591,10 @@ pub fn corridor_dungeon_building_system(
 
                 let c1 = room_center(&actual_rooms[parent_idx]);
                 let c2 = room_center(&actual_rooms[child_idx]);
-                let rad = Some(corridor_radius);
+                let corridor_radius = rng.random_range(corridor_radius_min..=corridor_radius_max).max(1);
                 if corridors_are_non_curved {
                     let route = build_straight_corridor_route(c1, c2, map_width, map_height, &mut rng);
-                    carve_corridor_path(&mut floor_map, map_width, map_height, &mut corridor_map, rad, &route, FLOOR_MAIN);
+                    carve_corridor_path(&mut floor_map, map_width, map_height, &mut corridor_map, corridor_radius, &route, FLOOR_MAIN);
 
                     let parent_slots = &mut open_parents[parent_slot_idx].1;
                     *parent_slots = parent_slots.saturating_sub(1);
@@ -1025,10 +632,10 @@ pub fn corridor_dungeon_building_system(
                 );
 
                 if _route_is_curved_zigzag {
-                    curved_zigzag_routes.push(route.clone());
+                    curved_zigzag_routes.push((route.clone(), corridor_radius));
                 }
 
-                carve_corridor_path(&mut floor_map, map_width, map_height, &mut corridor_map, rad, &route, FLOOR_MAIN);
+                carve_corridor_path(&mut floor_map, map_width, map_height, &mut corridor_map, corridor_radius, &route, FLOOR_MAIN);
 
                 let parent_slots = &mut open_parents[parent_slot_idx].1;
                 *parent_slots = parent_slots.saturating_sub(1);
@@ -1077,13 +684,13 @@ pub fn corridor_dungeon_building_system(
         let rib_spacing_max = corridor_zigzag_rib_spacing_max.max(corridor_zigzag_rib_spacing_min).max(1) as usize;
         let rib_depth_min = corridor_zigzag_rib_depth_min.max(1) as usize;
         let rib_depth_max = corridor_zigzag_rib_depth_max.max(corridor_zigzag_rib_depth_min).max(1) as usize;
-        for path in curved_zigzag_routes.iter() {
+        for (path, radius) in curved_zigzag_routes.iter() {
             stamp_corridor_wall_ribs_typed(
                 &mut floor_map_bool,
                 &mut wall_map,
                 map_width,
                 map_height,
-                corridor_radius,
+                *radius,
                 path,
                 rib_spacing_min,
                 rib_spacing_max,
@@ -1130,7 +737,7 @@ pub fn corridor_dungeon_building_system(
         let disable_floor_terrgen = terrgen_disable_by_tile_id.should_disable_for("floor_tile_id");
         let floor_template_size = templ_size_query.get(floor_entity_ent).copied().unwrap_or_default().inner();
 
-        let mut chunk_tiles: Vec<(ChunkPos, TilesFromBuilder)> = Vec::with_capacity(build_order.chunks_pos.len());
+        let mut chunk_tiles: Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)> = Vec::with_capacity(build_order.chunks_pos.len());
         let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
         let mut tiles4chunk: TilesFromBuilder = Vec::new();
         for &chunk_pos in &build_order.chunks_pos {
@@ -1152,7 +759,7 @@ pub fn corridor_dungeon_building_system(
                     tiles4chunk.push((tile_pos, wall_entity, wall_delete_other_tiles.clone()));
                 }
             }
-            chunk_tiles.push((chunk_pos, std::mem::take(&mut tiles4chunk)));
+            chunk_tiles.extend(std::mem::take(&mut tiles4chunk));
             terrgen_disabled_gpos_for_chunks.insert_for_chunk(chunk_pos, blocked_gpos);
         }
 
@@ -1179,9 +786,8 @@ pub fn corridor_dungeon_building_system(
             i: build_order.i,
             structure_gen_cfg_ent: build_order.structured_gen_cfg_ent,
             dimension_ref: build_order.dimension_ref,
-            chunks: chunk_tiles,
+            chunk_tiles,
             terrgen_disabled_gpos_for_chunks,
-            terrgen_disabled_for_chunks: Vec::new(),
             forced_chunk_biomes: Vec::new(),
         });
     }
