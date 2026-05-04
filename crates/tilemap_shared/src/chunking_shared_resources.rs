@@ -75,7 +75,6 @@ impl BeingsInCpos {
 pub type EntiSmallVec = SmallVec<[Entity; 4]>;
 
 #[derive(Resource, Component, Clone, Copy, Debug, )]
-#[require(ActivatingChunks)]
 pub struct LoadChunksAround {
     pub chunk_visib_max_dist: f32,
     /// range in which already generated chunks are kept active

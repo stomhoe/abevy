@@ -22,7 +22,6 @@ sgc {
         external_doorway_wall_axis_preference = vertical
         room_spawn.center_circle = [
             { source_id = dragon, override_being_count = 1, pack_spawn_radius = 0, weight = 2.0 },
-            { source_id = dragon_yellow, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
             { source_id = golem_infernal, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
         ]
         room_spawn.arm_inner = [

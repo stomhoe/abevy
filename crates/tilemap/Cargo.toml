@@ -23,6 +23,7 @@ serde = { workspace = true }
 #tracing = { workspace = true }
 #tracing-subscriber = { workspace = true }
 bevy_replicon = { workspace = true }
+bevy_firefly = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }
 #strum = { workspace = true }

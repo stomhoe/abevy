@@ -1,5 +1,5 @@
 (
     id: "game_init_settings",
-    players_spawn_probe_id: "temp",
+    players_spawn_probe_id: "elf",
     players_initial_bit_ref_strid: "player_warrior",
 )

@@ -1,5 +1,4 @@
-#[allow(unused_imports)] use bevy::prelude::*;
-use std::ops::*;
+use std::ops::{Add, AddAssign, Div, DivAssign, Sub, SubAssign};
 use strum_macros::{IntoStaticStr, VariantNames};
 
 

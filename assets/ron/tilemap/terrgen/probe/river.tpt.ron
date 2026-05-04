@@ -1,4 +1,4 @@
 id: river_region_probe
 extends: region_base
-opfilter_id: reland_all
+opfilter_id: region_inland
 step_size: 8

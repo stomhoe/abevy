@@ -210,6 +210,15 @@ fn build_river_sample_preview(
             }
         }
     }
+    if let Some(river_info) = river_info {
+        for failed in &river_info.failed_probe_points {
+            let cell_x = ((failed.0.x - min_tile.0.x) / step_x).max(0) as usize;
+            let cell_y = image_height
+                .saturating_sub(1)
+                .saturating_sub(((failed.0.y - min_tile.0.y) / step_y).max(0) as usize);
+            set_cell(&mut image, cell_x, cell_y, egui::Color32::from_rgb(255, 120, 64));
+        }
+    }
 
     RiverSamplePreviewBuild {
         image,

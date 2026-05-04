@@ -8,7 +8,7 @@ let anta_tect = +(fnl.tect.s3, 0.0)
 let desert_tect = +(fnl.tect2, 0.0)
 
 
-let shared_continentness_min = 0.295
+let shared_continentness_min = 0.305
 let shared_continentness_max = 1.3
 
 

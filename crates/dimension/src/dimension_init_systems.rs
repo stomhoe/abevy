@@ -32,6 +32,7 @@ pub fn init_dimensions(
     }
 
     let mut common_components = Vec::new();
+    let mut daylight_to_insert = Vec::new();
     let mut tagsets_to_insert = Vec::new();
     let mut whitelisted_structure_gen_tags_to_insert = Vec::new();
     let mut blacklisted_structure_gen_tags_to_insert = Vec::new();
@@ -61,6 +62,8 @@ pub fn init_dimensions(
             blacklisted_structure_gen_tags_to_insert.push((dim_ent, tag_set));
         }
 
+        daylight_to_insert.push((dim_ent, seri.daylight));
+
         common_components.push((dim_ent, (
             HashId::from(str_id.as_ref()),
             str_id,
@@ -72,6 +75,7 @@ pub fn init_dimensions(
         )))
     }
     cmd.insert_batch(common_components);
+    cmd.insert_batch(daylight_to_insert);
     cmd.insert_batch(tagsets_to_insert);
     cmd.insert_batch(whitelisted_structure_gen_tags_to_insert);
     cmd.insert_batch(blacklisted_structure_gen_tags_to_insert);

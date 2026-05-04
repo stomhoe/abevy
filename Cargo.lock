@@ -356,6 +356,7 @@ dependencies = [
  "sprite_systems",
  "tilemap",
  "tilemap_shared",
+ "time",
  "tracing",
  "ui_shared",
  "wildlife",
@@ -1584,6 +1585,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.114",
+]
+
+[[package]]
+name = "bevy_firefly"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8624efe835e50eeb13ddcb228fd9cd5e716abd244864917758a63c40ddb257ec"
+dependencies = [
+ "bevy 0.18.0",
+ "bitflags 2.10.0",
+ "bytemuck",
+ "fixedbitset 0.5.7",
 ]
 
 [[package]]
@@ -3790,8 +3803,11 @@ dependencies = [
  "ac_input",
  "bevy 0.18.0",
  "bevy_enhanced_input",
+ "bevy_firefly",
  "bevy_kira_audio",
+ "common",
  "game_common",
+ "serde",
  "tilemap_shared",
 ]
 
@@ -6106,7 +6122,7 @@ dependencies = [
  "pp-rs",
  "rustc-hash 1.1.0",
  "spirv",
- "strum",
+ "strum 0.26.3",
  "termcolor",
  "thiserror 2.0.18",
  "unicode-xid",
@@ -8134,6 +8150,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "strum"
+version = "0.27.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af23d6f6c1a224baef9d3f61e287d2761385a5b88fdab4eb4c6f11aeb54c4bcf"
+
+[[package]]
 name = "strum_macros"
 version = "0.26.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8466,6 +8488,7 @@ dependencies = [
  "bevy_asset_loader",
  "bevy_common_assets",
  "bevy_ecs_tilemap",
+ "bevy_firefly",
  "bevy_replicon",
  "bitvec",
  "camera",
@@ -8514,6 +8537,14 @@ dependencies = [
 [[package]]
 name = "time"
 version = "0.1.0"
+dependencies = [
+ "bevy 0.18.0",
+ "bevy_replicon",
+ "common",
+ "game_common",
+ "strum 0.27.2",
+ "strum_macros 0.27.2",
+]
 
 [[package]]
 name = "tiny-keccak"

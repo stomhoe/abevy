@@ -15,6 +15,7 @@ use common::common_states::AssetLoading;
 use item_systems::ItemSystems;
 use tilemap::tile::TilingSystems;
 use tilemap_shared::GlobalTilePos;
+use time::ClockPlugin;
 
 
 #[derive(Resource, Default)]
@@ -41,6 +42,7 @@ fn build_filter() -> String {
         (log_targets::OFFSET_ALLOCATOR, warn),
         (log_targets::BEVY_ASSET_LOADER, warn),
         (log_targets::BEVY_ECS_RELATIONSHIP, error),
+        (log_targets::BEVY_ERROR_HANDLER, error),
         (log_targets::CALLOOP_LOOP_LOGIC, error),
         (log_targets::BEVY_W_INIT, warn),
 
@@ -81,6 +83,7 @@ fn build_filter() -> String {
         (log_targets::BODY_ENERGY_SYSTEM, debug),
         (log_targets::GAME_COMMON_SYSTEM, info),
         (log_targets::GAME_INIT, debug),
+        (log_targets::LIGHTING_INIT, debug),
 
         (log_targets::SPRITE_ANIMATION_INIT, debug),
         (log_targets::SPRITE_ANIMATION_SYSTEM, debug),
@@ -115,7 +118,7 @@ fn build_filter() -> String {
 /*TRACING
 cargo run -r --features bevy/trace_tracy,bevy/debug
 
-/usr/local/bin/tracy-profiler
+tracy-profiler
 */
 
 fn main() {
@@ -169,6 +172,7 @@ fn main() {
             pregame_screen::plugin,
             color_sampler::plugin,
         ))
+        .add_plugins((ClockPlugin, ))
         .configure_sets(
             OnEnter(AssetLoading::SpawnReplicatedEntities),(
             ItemSystems

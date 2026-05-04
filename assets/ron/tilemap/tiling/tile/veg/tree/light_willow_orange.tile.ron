@@ -1,0 +1,32 @@
+(
+    id: "light_willow_orange",
+    name: "Light Willow Orange",
+    tags: ["tree", "veg", "light"],
+    z: 1000,
+    y_sort: 0.0,
+    img_paths: [
+        ("", "texture/world/white.png"),
+    ],
+    color: Some((255, 0, 0, 255)),
+
+    is_spritetile: true,
+    randflipx: true,
+    offset: (0.0, 0.0),
+    colmask: [
+        "1",
+    ],
+
+    point_light: (
+        kind: "point",
+        color: (255, 255, 255, 255),
+        intensity: 1.,
+        radius: 1200.0,
+        cast_shadows: true,
+        offset: (24.0, 0.0),
+        height: 0.0,
+    ),
+
+
+    hp: 100.0,
+
+)

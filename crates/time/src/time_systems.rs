@@ -1,6 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
-use crate::game::time::{time_components::*, time_resources::*, time_types::*};
+use crate::{time_components::*, time_resources::*, time_types::*};
 
 
 

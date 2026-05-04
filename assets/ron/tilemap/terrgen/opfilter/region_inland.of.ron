@@ -1,5 +1,5 @@
 (
-    id: "reland_all",
+    id: "region_inland",
     tags: ["river_candidate"],
     var_name: "inlandness",
     min_val: -inf,

@@ -27,7 +27,6 @@ sgc {
         arch_spiral_ring_pack_angle_jitter = 0.35
         room_spawn.center_spiral = [
             { radius_min_pct = 0, radius_max_pct = 8, source_id = dragon, override_being_count = 1, pack_spawn_radius = 0, weight = 3.0 },
-            { radius_min_pct = 0, radius_max_pct = 8, source_id = dragon_yellow, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
             { radius_min_pct = 14, radius_max_pct = 22, source_id = golem_infernal, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
             { radius_min_pct = 14, radius_max_pct = 22, source_id = golem_gold, override_being_count = 1, pack_spawn_radius = 0, weight = 1.25 },
             { radius_min_pct = 14, radius_max_pct = 22, source_id = golem_bronze, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },

@@ -88,7 +88,7 @@ pub fn add_spritechildren_and_comps(
             }
             let sprite = cmd.spawn((
                 TemplEntiRef(spritecfg_ent),
-                Visibility::default(),
+                Visibility::Inherited,
                 Transform::default(),
                 AcAnimationProgresses::default(),
 

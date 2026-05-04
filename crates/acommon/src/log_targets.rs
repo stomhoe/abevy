@@ -16,6 +16,7 @@ pub const WGPU_CORE: &str = "wgpu_core";
 pub const BEVY_ECS_TILEMAP: &str = "bevy_ecs_tilemap";
 pub const BEVY_ECS_RELATIONSHIP: &str = "bevy_ecs_relationship";
 pub const BEVY_W_INIT: &str = "bevy_winit::system";
+pub const BEVY_ERROR_HANDLER: &str = "bevy_ecs::error::handler";
 
 pub const BEVY_EGUI: &str = "bevy_egui";
 pub const BEVY_REPLICON: &str = "bevy_replicon";
@@ -52,6 +53,7 @@ pub const COLOR_SAMPLER_INIT: &str = "color_sampler_init";
 pub const CHILDRENSPRITE_INIT: &str = "childrensprite_init";
 pub const TILE_SHADER_INIT: &str = "tile_shader_init";
 pub const GAME_INIT: &str = "game_init";
+pub const LIGHTING_INIT: &str = "lighting_init";
 
 // ============================================================================
 // BUILD & CONFIGURATION SYSTEMS (format: <name>_build)

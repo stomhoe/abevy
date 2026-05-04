@@ -216,6 +216,7 @@ pub fn main_menu_window(
                 window_visible.terrgen_values = false;
                 window_visible.terrain_visualizer = false;
                 window_visible.settings_editor = false;
+                window_visible.daylight = false;
                 window_visible.tile_details = false;
                 window_visible.chunk_details = false;
                 window_visible.region_details = false;
@@ -346,6 +347,9 @@ pub fn main_menu_window(
             }
             if ui.button(egui::RichText::new("🌐 Global generation settings").size(16.0)).clicked() {
                 window_visible.settings_editor = !window_visible.settings_editor;
+            }
+            if ui.button(egui::RichText::new("☀ Daylight").size(16.0)).clicked() {
+                window_visible.daylight = !window_visible.daylight;
             }
             if ui.button(egui::RichText::new("📍 Important Tile Positions").size(16.0)).clicked() {
                 window_visible.registered_positions = !window_visible.registered_positions;

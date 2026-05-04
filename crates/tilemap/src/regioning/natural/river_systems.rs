@@ -159,6 +159,8 @@ pub fn claim_chunks_for_river_structures(
         for (sample_pos, sample_val_opt) in matrix.iter() {
             if let Some(sample_val) = sample_val_opt {
                 info.sampled_points.insert(sample_pos, sample_val);
+            } else {
+                info.failed_probe_points.insert(sample_pos);
             }
         }
         sampled_points_total = sampled_points_total.saturating_add(matrix.values.iter().filter(|value| value.is_some()).count() as u32);
@@ -183,17 +185,14 @@ pub fn claim_chunks_for_river_structures(
             continue;
         };
 
-        let river_mouth_max_inlandness: f32 = cfg.args.parse_arg("river_mouth_max_inlandness", 0.05);
         let mut inland_map = HashMap::default();
-        let mut below_max_inlandness_points = HashSet::default();
+        let mut coast_points = HashSet::default();
         for (pos, val_opt) in matrix.iter() {
             let Some(val) = val_opt else {
+                coast_points.insert(pos);
                 continue;
             };
             inland_map.insert(pos, val);
-            if val <= river_mouth_max_inlandness {
-                below_max_inlandness_points.insert(pos);
-            }
         }
         if inland_map.is_empty() {
             error!(target: RIVER_SYSTEM, "River probe for region {:?} offer {} produced inland samples but no usable inland_map entries", region_ent, offer_i);
@@ -208,7 +207,7 @@ pub fn claim_chunks_for_river_structures(
         let mut plan = RiverRegionPlan::default();
         let generated_ok = generate_river_region_plan(
             &inland_map,
-            &below_max_inlandness_points,
+            &coast_points,
             cfg,
             settings,
             *dimension_ref,

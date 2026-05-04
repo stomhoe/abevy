@@ -16,4 +16,12 @@
         "111",
         "111",
     ],
+    light_occluder: (
+        opacity: 0.85,
+        color: (0, 0, 0, 255),
+        z_sorting: true,
+        offset: (0.0, 0.0),
+        shape_size: (96.0, 96.0),
+        shape: "rectangle",
+    ),
 )

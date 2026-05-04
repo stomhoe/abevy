@@ -21,7 +21,7 @@ pub fn add_activating_chunks_to_activate_chunks_around(
 ) {
     for (ent, chunk_range) in load_chunks_around_query.iter() {
         let Ok((_, mut activates_chunks)) = activator_query.get_mut(ent) else {
-            error!(target: CHUNK_ACTIVATION, "LoadChunksAround was added without ActivatingChunks on {:?}", ent);
+            cmd.entity(ent).try_insert(ActivatingChunks::with_capacity(chunk_range));
             continue;
         };
         *activates_chunks = ActivatingChunks::with_capacity(chunk_range);

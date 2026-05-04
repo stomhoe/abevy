@@ -200,47 +200,6 @@ pub(super) fn maybe_add_river_delta(
     }
 }
 
-pub(super) fn extend_river_mouth(
-    main_path: &[GlobalTilePos],
-    half_width_end: i32,
-    ocean_target: Option<GlobalTilePos>,
-    source_region_pos: RegionPos,
-    plan: &mut RiverRegionPlan,
-) {
-    let Some(&mouth) = main_path.last() else {
-        return;
-    };
-    let Some(&prev) = main_path.get(main_path.len().saturating_sub(2)) else {
-        return;
-    };
-
-    let flow = mouth.0 - prev.0;
-    let forward = IVec2::new(flow.x.signum(), flow.y.signum());
-    if forward == IVec2::ZERO {
-        return;
-    }
-
-    let flank = IVec2::new(-forward.y, forward.x);
-    let mouth_extension_steps = 4_i32;
-    let flare_width = half_width_end.saturating_add(1).max(half_width_end);
-    let ocean_target = ocean_target.unwrap_or(GlobalTilePos(mouth.0 + forward * mouth_extension_steps));
-    let targets = [
-        (GlobalTilePos(ocean_target.0), flare_width),
-        (GlobalTilePos(mouth.0 + forward * (mouth_extension_steps - 1) + flank), half_width_end),
-        (GlobalTilePos(mouth.0 + forward * (mouth_extension_steps - 1) - flank), half_width_end),
-        (GlobalTilePos(mouth.0 + forward * (mouth_extension_steps - 2) + flank), half_width_end.saturating_sub(1).max(1)),
-        (GlobalTilePos(mouth.0 + forward * (mouth_extension_steps - 2) - flank), half_width_end.saturating_sub(1).max(1)),
-    ];
-
-    for (target, target_half_width_end) in targets {
-        let flare_path = bresenham_line(mouth, target);
-        if path_touches_forbidden_border_chunks(flare_path.as_slice(), half_width_end.max(1), target_half_width_end, source_region_pos) {
-            continue;
-        }
-        plan_river_path_tiles(flare_path.as_slice(), half_width_end.max(1), target_half_width_end, source_region_pos, plan);
-    }
-}
-
 pub(super) fn closest_point_on_path(source: GlobalTilePos, path: &[GlobalTilePos]) -> Option<GlobalTilePos> {
     path.iter().copied().min_by_key(|point| source.distance_squared(point))
 }

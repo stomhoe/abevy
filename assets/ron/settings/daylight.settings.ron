@@ -1,0 +1,13 @@
+(
+    id: "daylight_settings",
+    day_length_minutes: 30.0,
+    time_of_day_minutes: 12.0,
+    ambient_color_rgb: [1.0, 1.0, 1.0],
+    ambient_brightness: 1.1,
+    night_color_rgb: [0.14, 0.16, 0.26],
+    dawn_dusk_color_rgb: [1.0, 0.66, 0.36],
+    day_curve_exponent: 0.3,
+    dawn_dusk_curve_exponent: 1.4,
+    ambient_min_brightness_factor: 0.7,
+    ambient_max_brightness_factor: 1.0,
+)

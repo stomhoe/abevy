@@ -42,6 +42,8 @@ pub fn maze_dungeon_building_system(
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
     mut room_spawn_anchors: Local<Vec<(GlobalTilePos, &'static str)>>,
     mut island_seeds: Local<Vec<(usize, usize, ShapeType)>>,
+    mut accepted_island_seeds: Local<Vec<(usize, usize, ShapeType)>>,
+    mut accepted_island_bounds: Local<Vec<(usize, usize, usize, usize)>>,
     mut stack: Local<Vec<(usize, usize)>>,
     mut room_positions: Local<Vec<(usize, usize)>>,
     mut tiles4chunk: Local<TilesFromBuilder>,
@@ -53,6 +55,8 @@ pub fn maze_dungeon_building_system(
     room_spawn_anchors.clear();
     room_pack_spawn.begin_pass();
     island_seeds.clear();
+    accepted_island_seeds.clear();
+    accepted_island_bounds.clear();
     stack.clear();
     room_positions.clear();
     tiles4chunk.clear();
@@ -182,6 +186,32 @@ pub fn maze_dungeon_building_system(
             }
         };
 
+        let rects_overlap = |ax: usize, ay: usize, aw: usize, ah: usize, bx: usize, by: usize, bw: usize, bh: usize, padding: usize| -> bool {
+            let ax0 = ax.saturating_sub(padding);
+            let ay0 = ay.saturating_sub(padding);
+            let ax1 = ax.saturating_add(aw).saturating_add(padding);
+            let ay1 = ay.saturating_add(ah).saturating_add(padding);
+            let bx0 = bx.saturating_sub(padding);
+            let by0 = by.saturating_sub(padding);
+            let bx1 = bx.saturating_add(bw).saturating_add(padding);
+            let by1 = by.saturating_add(bh).saturating_add(padding);
+
+            ax0 < bx1 && ax1 > bx0 && ay0 < by1 && ay1 > by0
+        };
+
+        let mark_maze_rect = |maze_walkable: &mut [bool], maze_width: usize, maze_height: usize, x: i32, y: i32, w: i32, h: i32| {
+            let min_x = x.max(0).min(maze_width as i32);
+            let min_y = y.max(0).min(maze_height as i32);
+            let max_x = (x + w).max(0).min(maze_width as i32);
+            let max_y = (y + h).max(0).min(maze_height as i32);
+
+            for yy in min_y..max_y {
+                for xx in min_x..max_x {
+                    maze_walkable[yy as usize * maze_width + xx as usize] = true;
+                }
+            }
+        };
+
         let num_islands = if tile_width > 300 && tile_height > 300 {
             rng.random_range(4..=6)
         } else if tile_width > 200 && tile_height > 200 {
@@ -235,6 +265,49 @@ pub fn maze_dungeon_building_system(
         }
 
         for &(island_cx, island_cy, shape) in &island_seeds {
+            let max_available_width = (tile_width as i32 - 8).max(10) as usize;
+            let max_available_height = (tile_height as i32 - 8).max(10) as usize;
+            let island_size_multiplier = if island_seeds.len() == 1 { 0.95 } else { 0.75 };
+            let max_island_size = ((max_available_width.min(max_available_height) as f32 * island_size_multiplier) as usize).max(50);
+            let min_island_size = (max_island_size / 3).max(30);
+
+            let island_size = rng.random_range(min_island_size..=max_island_size);
+            let maze_path_width = rng.random_range(1..=3) as usize;
+            let maze_step = maze_path_width + 1;
+            let maze_width = island_size | 1;
+            let maze_height = island_size | 1;
+            let island_radius = island_size / 2;
+
+            let island_x_start = (island_cx as i32 - maze_width as i32 / 2).max(0) as usize;
+            let island_y_start = (island_cy as i32 - maze_height as i32 / 2).max(0) as usize;
+            let island_x_end = (island_x_start + maze_width).min(tile_width - 1);
+            let island_y_end = (island_y_start + maze_height).min(tile_height - 1);
+            let actual_maze_width = island_x_end - island_x_start;
+            let actual_maze_height = island_y_end - island_y_start;
+
+            if actual_maze_width < maze_path_width || actual_maze_height < maze_path_width { continue; }
+
+            let island_padding = maze_path_width.saturating_add(1);
+            let overlaps_previous = accepted_island_bounds.iter().any(|&(other_x, other_y, other_w, other_h)| {
+                rects_overlap(
+                    island_x_start,
+                    island_y_start,
+                    actual_maze_width,
+                    actual_maze_height,
+                    other_x,
+                    other_y,
+                    other_w,
+                    other_h,
+                    island_padding,
+                )
+            });
+            if overlaps_previous {
+                continue;
+            }
+
+            accepted_island_seeds.push((island_cx, island_cy, shape));
+            accepted_island_bounds.push((island_x_start, island_y_start, actual_maze_width, actual_maze_height));
+
             let island_shape_key = match shape {
                 ShapeType::Circle => "island_circle",
                 ShapeType::Triangle => "island_triangle",
@@ -248,76 +321,156 @@ pub fn maze_dungeon_building_system(
                 ),
                 island_shape_key,
             ));
-            let max_available_width = (tile_width as i32 - 8).max(10) as usize;
-            let max_available_height = (tile_height as i32 - 8).max(10) as usize;
-            let island_size_multiplier = if island_seeds.len() == 1 { 0.95 } else { 0.75 };
-            let max_island_size = ((max_available_width.min(max_available_height) as f32 * island_size_multiplier) as usize).max(50);
-            let min_island_size = (max_island_size / 3).max(30);
 
-            let island_size = rng.random_range(min_island_size..=max_island_size);
-            let maze_width = island_size | 1;
-            let maze_height = island_size | 1;
-            let island_radius = island_size / 2;
+            room_positions.clear();
 
-            let island_x_start = (island_cx as i32 - maze_width as i32 / 2).max(0) as usize;
-            let island_y_start = (island_cy as i32 - maze_height as i32 / 2).max(0) as usize;
-            let island_x_end = (island_x_start + maze_width).min(tile_width - 1);
-            let island_y_end = (island_y_start + maze_height).min(tile_height - 1);
-            let actual_maze_width = island_x_end - island_x_start;
-            let actual_maze_height = island_y_end - island_y_start;
-
-            if actual_maze_width < 3 || actual_maze_height < 3 { continue; }
+            let cells_x = ((actual_maze_width + 1) / maze_step).max(1);
+            let cells_y = ((actual_maze_height + 1) / maze_step).max(1);
+            let maze_render_width = cells_x * maze_step - 1;
+            let maze_render_height = cells_y * maze_step - 1;
+            let maze_offset_x = island_x_start + (actual_maze_width - maze_render_width) / 2;
+            let maze_offset_y = island_y_start + (actual_maze_height - maze_render_height) / 2;
 
             let Some(maze_map_size) = actual_maze_width.checked_mul(actual_maze_height) else {
                 continue;
             };
-            let mut maze = vec![1; maze_map_size];
-            let start_range_x = ((actual_maze_width.saturating_sub(2)) / 2).max(1);
-            let start_range_y = ((actual_maze_height.saturating_sub(2)) / 2).max(1);
-            let start_x = (rng.random_range(0..start_range_x) * 2 + 1).min(actual_maze_width - 2);
-            let start_y = (rng.random_range(0..start_range_y) * 2 + 1).min(actual_maze_height - 2);
+            let mut maze_walkable = vec![false; maze_map_size];
+            let mut cell_origins = Vec::with_capacity(cells_x * cells_y);
+            for cell_y in 0..cells_y {
+                for cell_x in 0..cells_x {
+                    let origin_x = maze_offset_x + cell_x * maze_step;
+                    let origin_y = maze_offset_y + cell_y * maze_step;
+                    cell_origins.push((origin_x, origin_y));
+                }
+            }
 
-            if start_x < actual_maze_width && start_y < actual_maze_height {
-                maze[start_y * actual_maze_width + start_x] = 0;
-                stack.push((start_x, start_y));
+            let mut visited_cells = vec![false; cells_x * cells_y];
+            let start_cell_x = rng.random_range(0..cells_x);
+            let start_cell_y = rng.random_range(0..cells_y);
+            visited_cells[start_cell_y * cells_x + start_cell_x] = true;
+            stack.push((start_cell_x, start_cell_y));
 
-                while let Some((cx, cy)) = stack.last().copied() {
-                    let mut directions: [usize; 4] = [0, 1, 2, 3];
-                    for i in 0..4 {
-                        let j = rng.random_range(0..4);
-                        directions.swap(i, j);
+            let start_idx = start_cell_y * cells_x + start_cell_x;
+            let (start_origin_x, start_origin_y) = cell_origins[start_idx];
+            mark_maze_rect(
+                &mut maze_walkable,
+                actual_maze_width,
+                actual_maze_height,
+                (start_origin_x - island_x_start) as i32,
+                (start_origin_y - island_y_start) as i32,
+                maze_path_width as i32,
+                maze_path_width as i32,
+            );
+
+            while let Some((cx, cy)) = stack.last().copied() {
+                let mut directions: [usize; 4] = [0, 1, 2, 3];
+                for i in 0..4 {
+                    let j = rng.random_range(0..4);
+                    directions.swap(i, j);
+                }
+
+                let mut found = false;
+                for dir in directions {
+                    let next_cell = match dir {
+                        0 if cx + 1 < cells_x => Some((cx + 1, cy)),
+                        1 if cx > 0 => Some((cx - 1, cy)),
+                        2 if cy + 1 < cells_y => Some((cx, cy + 1)),
+                        3 if cy > 0 => Some((cx, cy - 1)),
+                        _ => None,
+                    };
+
+                    let Some((nx, ny)) = next_cell else {
+                        continue;
+                    };
+
+                    let neighbor_idx = ny * cells_x + nx;
+                    if visited_cells[neighbor_idx] {
+                        continue;
                     }
 
-                    let mut found = false;
-                    for dir in directions {
-                        let (dx, dy) = match dir {
-                            0 => (2, 0),
-                            1 => (-2, 0),
-                            2 => (0, 2),
-                            _ => (0, -2),
-                        };
+                    let current_idx = cy * cells_x + cx;
+                    let (current_origin_x, current_origin_y) = cell_origins[current_idx];
+                    let (neighbor_origin_x, neighbor_origin_y) = cell_origins[neighbor_idx];
+                    let current_local_x = (current_origin_x - island_x_start) as i32;
+                    let current_local_y = (current_origin_y - island_y_start) as i32;
+                    let neighbor_local_x = (neighbor_origin_x - island_x_start) as i32;
+                    let neighbor_local_y = (neighbor_origin_y - island_y_start) as i32;
 
-                        let nx = (cx as i32 + dx) as usize;
-                        let ny = (cy as i32 + dy) as usize;
+                    mark_maze_rect(
+                        &mut maze_walkable,
+                        actual_maze_width,
+                        actual_maze_height,
+                        current_local_x,
+                        current_local_y,
+                        maze_path_width as i32,
+                        maze_path_width as i32,
+                    );
 
-                        if nx > 0 && nx < actual_maze_width && ny > 0 && ny < actual_maze_height {
-                            let idx = ny * actual_maze_width + nx;
-                            if maze[idx] == 1 {
-                                let wall_x = (cx as i32 + dx / 2) as usize;
-                                let wall_y = (cy as i32 + dy / 2) as usize;
-                                let wall_idx = wall_y * actual_maze_width + wall_x;
-                                maze[wall_idx] = 0;
-                                maze[idx] = 0;
-                                stack.push((nx, ny));
-                                found = true;
-                                break;
-                            }
+                    match dir {
+                        0 => {
+                            mark_maze_rect(
+                                &mut maze_walkable,
+                                actual_maze_width,
+                                actual_maze_height,
+                                current_local_x + maze_path_width as i32,
+                                current_local_y,
+                                1,
+                                maze_path_width as i32,
+                            );
                         }
+                        1 => {
+                            mark_maze_rect(
+                                &mut maze_walkable,
+                                actual_maze_width,
+                                actual_maze_height,
+                                current_local_x - 1,
+                                current_local_y,
+                                1,
+                                maze_path_width as i32,
+                            );
+                        }
+                        2 => {
+                            mark_maze_rect(
+                                &mut maze_walkable,
+                                actual_maze_width,
+                                actual_maze_height,
+                                current_local_x,
+                                current_local_y + maze_path_width as i32,
+                                maze_path_width as i32,
+                                1,
+                            );
+                        }
+                        3 => {
+                            mark_maze_rect(
+                                &mut maze_walkable,
+                                actual_maze_width,
+                                actual_maze_height,
+                                current_local_x,
+                                current_local_y - 1,
+                                maze_path_width as i32,
+                                1,
+                            );
+                        }
+                        _ => {}
                     }
 
-                    if !found {
-                        stack.pop();
-                    }
+                    visited_cells[neighbor_idx] = true;
+                    mark_maze_rect(
+                        &mut maze_walkable,
+                        actual_maze_width,
+                        actual_maze_height,
+                        neighbor_local_x,
+                        neighbor_local_y,
+                        maze_path_width as i32,
+                        maze_path_width as i32,
+                    );
+                    stack.push((nx, ny));
+                    found = true;
+                    break;
+                }
+
+                if !found {
+                    stack.pop();
                 }
             }
 
@@ -330,11 +483,9 @@ pub fn maze_dungeon_building_system(
                         let py = ty as i32;
                         let cx = island_cx as i32;
                         let cy = island_cy as i32;
-                        if point_in_shape(px, py, cx, cy, island_radius as i32, shape) {
+                        if point_in_shape(px, py, cx, cy, island_radius as i32, shape) && maze_walkable[my * actual_maze_width + mx] {
                             let map_idx = ty * tile_width + tx;
-                            if maze[my * actual_maze_width + mx] == 0 {
-                                floor_map[map_idx] = true;
-                            }
+                            floor_map[map_idx] = true;
                         }
                     }
                 }
@@ -449,6 +600,7 @@ pub fn maze_dungeon_building_system(
             for &(room_x, room_y) in &room_positions {
                 let search_radius = 8;
                 let mut found_connection = false;
+                let corridor_width = rng.random_range(1..=3);
 
                 for dy in -search_radius..=search_radius {
                     if found_connection { break; }
@@ -469,8 +621,14 @@ pub fn maze_dungeon_building_system(
                                 if rng.random_range(0.0..1.0) < corridor_wiggle_chance {
                                     yy += rng.random_range(-1..=1);
                                 }
-                                if x >= 0 && (x as usize) < tile_width && yy >= 0 && (yy as usize) < tile_height {
-                                    floor_map[(yy as usize * tile_width) + (x as usize)] = true;
+                                if x >= 0 && (x as usize) < tile_width {
+                                    let band_start = yy - ((corridor_width as i32 - 1) / 2);
+                                    for band_offset in 0..corridor_width {
+                                        let ty = band_start + band_offset as i32;
+                                        if ty >= 0 && (ty as usize) < tile_height {
+                                            floor_map[(ty as usize * tile_width) + (x as usize)] = true;
+                                        }
+                                    }
                                 }
                             }
 
@@ -479,8 +637,14 @@ pub fn maze_dungeon_building_system(
                                 if rng.random_range(0.0..1.0) < corridor_wiggle_chance {
                                     xx += rng.random_range(-1..=1);
                                 }
-                                if xx >= 0 && (xx as usize) < tile_width && y >= 0 && (y as usize) < tile_height {
-                                    floor_map[(y as usize * tile_width) + (xx as usize)] = true;
+                                if y >= 0 && (y as usize) < tile_height {
+                                    let band_start = xx - ((corridor_width as i32 - 1) / 2);
+                                    for band_offset in 0..corridor_width {
+                                        let tx = band_start + band_offset as i32;
+                                        if tx >= 0 && (tx as usize) < tile_width {
+                                            floor_map[(y as usize * tile_width) + (tx as usize)] = true;
+                                        }
+                                    }
                                 }
                             }
 
@@ -515,43 +679,14 @@ pub fn maze_dungeon_building_system(
             );
         }
 
-        if island_seeds.len() > 1 {
-            let scan_size = 24;
-            for start_y in (0..tile_height).step_by(scan_size) {
-                for start_x in (0..tile_width).step_by(scan_size) {
-                    let end_x = (start_x + scan_size).min(tile_width);
-                    let end_y = (start_y + scan_size).min(tile_height);
-
-                    let mut wall_count = 0;
-                    let region_size = (end_x - start_x) * (end_y - start_y);
-
-                    for y in start_y..end_y {
-                        for x in start_x..end_x {
-                            if !floor_map[y * tile_width + x] {
-                                wall_count += 1;
-                            }
-                        }
-                    }
-
-                    let wall_density = (wall_count as f32) / (region_size as f32);
-                    if wall_density > 0.02 && wall_density < 0.20 {
-                        for y in start_y..end_y {
-                            for x in start_x..end_x {
-                                floor_map[y * tile_width + x] = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if island_seeds.len() > 1 {
-            let mut sorted_islands = island_seeds.clone();
+        if accepted_island_seeds.len() > 1 {
+            let mut sorted_islands = accepted_island_seeds.clone();
             sorted_islands.sort_by_key(|c| (c.0, c.1));
 
             for i in 1..sorted_islands.len() {
                 let from = sorted_islands[i - 1];
                 let to = sorted_islands[i];
+                let corridor_width = rng.random_range(1..=3);
 
                 let (sx, ex) = if from.0 <= to.0 {
                     (from.0, to.0)
@@ -565,7 +700,13 @@ pub fn maze_dungeon_building_system(
                         y += rng.random_range(-1..=1);
                     }
                     if y >= 0 && (y as usize) < tile_height && x < tile_width {
-                        floor_map[(y as usize) * tile_width + x] = true;
+                        let band_start = y - ((corridor_width as i32 - 1) / 2);
+                        for band_offset in 0..corridor_width {
+                            let ty = band_start + band_offset as i32;
+                            if ty >= 0 && (ty as usize) < tile_height {
+                                floor_map[(ty as usize) * tile_width + x] = true;
+                            }
+                        }
                     }
                 }
 
@@ -581,7 +722,13 @@ pub fn maze_dungeon_building_system(
                         x += rng.random_range(-1..=1);
                     }
                     if x >= 0 && (x as usize) < tile_width && y < tile_height {
-                        floor_map[y * tile_width + (x as usize)] = true;
+                        let band_start = x - ((corridor_width as i32 - 1) / 2);
+                        for band_offset in 0..corridor_width {
+                            let tx = band_start + band_offset as i32;
+                            if tx >= 0 && (tx as usize) < tile_width {
+                                floor_map[y * tile_width + (tx as usize)] = true;
+                            }
+                        }
                     }
                 }
             }

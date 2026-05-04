@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+bevy = { workspace = true }
+bevy_replicon = { workspace = true }
+common = { path = "../acommon" }
+game_common = { path = "../agame_common" }
+strum = { workspace = true }
+strum_macros = { workspace = true }

@@ -199,12 +199,12 @@ pub fn debug_chunking_window(
                 });
                 ui.horizontal(|ui| {
                     ui.label("Discovery Range:");
-                    changed |= ui.add(egui::DragValue::new(&mut edited_settings.discovery_range).speed(1.0)).changed();
+                    changed |= ui.add(egui::DragValue::new(&mut edited_settings.discovery_range).speed(1.0).range(1..=12)).changed();
                 });
                 if changed {
                     edited_settings.chunk_visib_max_dist = edited_settings.chunk_visib_max_dist.max(0.0);
                     edited_settings.chunk_active_max_dist = edited_settings.chunk_active_max_dist.max(0.0);
-                    edited_settings.discovery_range = edited_settings.discovery_range.max(1);
+                    edited_settings.discovery_range = edited_settings.discovery_range.clamp(1, 12);
                     if let Some(chunk_settings) = camera_chunk_settings.as_deref_mut() {
                         *chunk_settings = edited_settings;
                     }

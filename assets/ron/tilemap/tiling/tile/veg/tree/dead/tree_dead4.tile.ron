@@ -21,5 +21,13 @@
         ],
     ),
     hp: 100.0,
+    light_occluder: (
+        opacity: 0.85,
+        color: (0, 0, 0, 255),
+        z_sorting: true,
+        offset: (0.0, 0.0),
+        shape_size: (12.0, 48.0),
+        shape: "capsule",
+    ),
 
 )

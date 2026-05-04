@@ -1,7 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
-use crate::game::time::time_types::Days;
-use serde::{Deserialize, Serialize};
+use crate::time_types::Days;
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct RemainingDays(pub Days);

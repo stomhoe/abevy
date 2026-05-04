@@ -1,7 +1,7 @@
 sgc {
     id = cha_catas
     structure_id = chamberscorridors
-    weight = 9999999991.0
+    weight = 999991.0
     tags = [dungeon]
     whitelisted_tags = [dungeon, river]
     max_being_count = 40
@@ -15,6 +15,7 @@ sgc {
         trapezoid_weight = 1.0
         regular_polygon_weight = 1.0
         pentacle_weight = 0.5
+        random_chamber_weight = 2.0
         room_same_shape_weight_rectangle = 1.0
         room_same_shape_weight_ellipse = 1.0
         room_same_shape_weight_trapezoid = 1.0
@@ -30,6 +31,7 @@ sgc {
         corridor_wiggle_step_max = 1
         corridor_detour_chance = 0.0
         corridor_detour_max_offset = 0
+        corridor_dead_end_chance = 0.10
         external_doorway_frequency = 0.02
         external_doorway_width_min = 1
         external_doorway_width_max = 2
@@ -61,6 +63,15 @@ sgc {
             { source_id = cyclops, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
             { source_id = golem_gold, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
             { source_id = golem_infernal, pack_spawn_radius = 0, weight = 0.75 },
+        ]
+        room_spawn.random_chamber = [
+            { source_id = goblin, pack_spawn_radius = 0, weight = 3.0 },
+            { source_id = skeleton, pack_spawn_radius = 0, weight = 3.0 },
+            { source_id = ogre, pack_spawn_radius = 0, weight = 2.0 },
+            { source_id = medusa, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
+            { source_id = ghost, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+            { source_id = beholder, override_being_count = 1, pack_spawn_radius = 0, weight = 0.5 },
+            { source_id = golem_infernal, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
         ]
         disable_terrgen.floor_tile_id = true
     }

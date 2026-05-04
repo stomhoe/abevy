@@ -15,12 +15,16 @@ let tree_feature = max(fnl.forest_lf, lucky_tree)
 let tree_feature = lerp(tree_feature, inlandness, 0.2)
 let tree_feature = *(tree_feature, shared_pd, 0.9)
 
+
+let lucky_light = idxmax(hp83, 0.005)
+
 let cave_portal_feature = idxmax(hp82, 0.005)
 let cave_portal_feature = lerp(cave_portal_feature, inlandness, 0.3)
 
-out = idxmax(0.5, bush_feature, tree_feature, cave_portal_feature)
+out = idxmax(0.5, bush_feature, tree_feature, cave_portal_feature, lucky_light)
 
 [] normal5
 [tempveg_sampler, ] ""
 [temptree_sampler, ] ""
 [portal_cave, ] ""
+[light_willow_orange, ] ""

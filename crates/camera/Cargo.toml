@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 #common = { path = "../acommon" }
+common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 tilemap_shared = { path = "../tilemap_shared" }
 ac_input = { path = "../ac_input" }
@@ -13,3 +14,5 @@ ac_input = { path = "../ac_input" }
 bevy = { workspace = true }
 bevy_enhanced_input = { workspace = true }
 bevy_kira_audio = { workspace = true }
+bevy_firefly = { workspace = true }
+serde = { workspace = true }

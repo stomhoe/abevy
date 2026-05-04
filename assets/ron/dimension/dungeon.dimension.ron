@@ -4,4 +4,10 @@
     description: "The dungeon dimension",
     tags: [ "dungeon", ],
     whitelisted_structure_gen_tags: [ "dungeon", ],
+    daylight: (
+    day_length_minutes: 30.0,
+    time_of_day_minutes: 50.0,
+    ambient_color_rgb: (1.0, 1.0, 1.0),
+    ambient_brightness: 1.1,
+    ),
 )

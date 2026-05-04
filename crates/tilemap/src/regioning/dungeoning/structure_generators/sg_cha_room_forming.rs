@@ -11,11 +11,13 @@ const SUBROOM_AREA_PER_LEAF: f32 = 100.0;
 const SUBROOM_MIN_TARGETS: usize = 3;
 const SUBROOM_MAX_TARGETS: usize = 10;
 const RECTANGLE_CIRCUMFERENCE_CHANCE: f32 = 0.25;
+const RECTANGLE_MAZE_CHANCE: f32 = 0.2;
 
 #[derive(Clone, Copy, Debug)]
 enum RectangularRoomDecoration {
     Subrooms,
     Circumference,
+    Maze,
     Pillars,
 }
 
@@ -24,6 +26,8 @@ impl RectangularRoomDecoration {
         let roll = rng.random_range(0.0..1.0);
         if roll < RECTANGLE_CIRCUMFERENCE_CHANCE {
             RectangularRoomDecoration::Circumference
+        } else if roll < RECTANGLE_CIRCUMFERENCE_CHANCE + RECTANGLE_MAZE_CHANCE {
+            RectangularRoomDecoration::Maze
         } else if rng.random_bool(0.6) {
             RectangularRoomDecoration::Subrooms
         } else {
@@ -80,13 +84,14 @@ pub fn sample_room_spec_for_leaf_with_limit(
     let mut all_candidates: Vec<(RoomSpec, f32)> = Vec::with_capacity(5);
     let room_as_room = room.as_room();
 
-    for shape in [RoomShape::Rectangle, RoomShape::Ellipse, RoomShape::Trapezoid, RoomShape::RegularPolygon, RoomShape::Pentacle] {
+    for shape in [RoomShape::Rectangle, RoomShape::Ellipse, RoomShape::Trapezoid, RoomShape::RegularPolygon, RoomShape::Pentacle, RoomShape::RandomChamber] {
         let legacy_weight_key = match shape {
             RoomShape::Rectangle => "room_shape_weight_rectangle",
             RoomShape::Ellipse => "room_shape_weight_circle",
             RoomShape::Trapezoid => "room_shape_weight_triangle",
             RoomShape::RegularPolygon => "room_shape_weight_polygon",
             RoomShape::Pentacle => "room_shape_weight_pentacle",
+            RoomShape::RandomChamber => "room_shape_weight_random_chamber",
         };
         let weight = args
             .get(&format!("{}_weight", shape.as_str()))
@@ -446,6 +451,9 @@ pub fn maybe_add_room_interior(
                     RectangularRoomDecoration::Circumference => {
                         maybe_add_room_circumference(rng, room_x, room_y, room_w, room_h, &mut clear_tile);
                     }
+                    RectangularRoomDecoration::Maze => {
+                        maybe_add_room_maze(rng, room_x, room_y, room_w, room_h, clear_tile);
+                    }
                     RectangularRoomDecoration::Pillars => {
                         maybe_add_room_pillars(rng, room_x, room_y, room_w, room_h, clear_tile);
                     }
@@ -543,6 +551,209 @@ fn maybe_add_room_circumference(
         }
         if opening_side != 3 || y != opening_pos {
             clear_tile((inner_x + inner_w - 1) as usize, y as usize);
+        }
+    }
+}
+
+fn mark_walkable_rect(
+    walkable: &mut [bool],
+    room_x: i32,
+    room_y: i32,
+    room_w: usize,
+    room_h: usize,
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+) {
+    let max_x = (x + w).min(room_x + room_w as i32);
+    let max_y = (y + h).min(room_y + room_h as i32);
+    let min_x = x.max(room_x);
+    let min_y = y.max(room_y);
+
+    for yy in min_y..max_y {
+        for xx in min_x..max_x {
+            let local_x = (xx - room_x) as usize;
+            let local_y = (yy - room_y) as usize;
+            walkable[local_y * room_w + local_x] = true;
+        }
+    }
+}
+
+fn maybe_add_room_maze(
+    rng: &mut impl Rng,
+    room_x: i32,
+    room_y: i32,
+    room_w: i32,
+    room_h: i32,
+    mut clear_tile: impl FnMut(usize, usize),
+) {
+    let corridor_width = rng.random_range(1..=3) as i32;
+    let wall_width = rng.random_range(1..=2) as i32;
+    let border = 1;
+    let inner_w = room_w - border * 2;
+    let inner_h = room_h - border * 2;
+    if inner_w < corridor_width || inner_h < corridor_width {
+        maybe_add_room_pillars(rng, room_x, room_y, room_w, room_h, clear_tile);
+        return;
+    }
+
+    let step = corridor_width + wall_width;
+    let cells_x = (((inner_w + wall_width) / step).max(1)) as usize;
+    let cells_y = (((inner_h + wall_width) / step).max(1)) as usize;
+    let maze_w = cells_x as i32 * corridor_width + (cells_x.saturating_sub(1)) as i32 * wall_width;
+    let maze_h = cells_y as i32 * corridor_width + (cells_y.saturating_sub(1)) as i32 * wall_width;
+    let offset_x = room_x + border + ((inner_w - maze_w) / 2).max(0);
+    let offset_y = room_y + border + ((inner_h - maze_h) / 2).max(0);
+
+    let mut walkable = vec![false; (room_w * room_h) as usize];
+
+    let mut cell_origins = Vec::with_capacity(cells_x * cells_y);
+    for cell_y in 0..cells_y {
+        for cell_x in 0..cells_x {
+            let origin_x = offset_x + cell_x as i32 * step;
+            let origin_y = offset_y + cell_y as i32 * step;
+            cell_origins.push((origin_x, origin_y));
+        }
+    }
+
+    let mut visited = vec![false; cells_x * cells_y];
+    let mut stack = Vec::with_capacity(cells_x * cells_y);
+    let start_idx = rng.random_range(0..visited.len());
+    visited[start_idx] = true;
+    stack.push(start_idx);
+
+    let (start_x, start_y) = cell_origins[start_idx];
+    mark_walkable_rect(
+        &mut walkable,
+        room_x,
+        room_y,
+        room_w as usize,
+        room_h as usize,
+        start_x,
+        start_y,
+        corridor_width,
+        corridor_width,
+    );
+
+    while let Some(&current_idx) = stack.last() {
+        let current_x = current_idx % cells_x;
+        let current_y = current_idx / cells_x;
+        let current_origin = cell_origins[current_idx];
+
+        let mut directions = [0_usize, 1, 2, 3];
+        for i in 0..directions.len() {
+            let j = rng.random_range(0..directions.len());
+            directions.swap(i, j);
+        }
+
+        let mut advanced = false;
+        for direction in directions {
+            let neighbor = match direction {
+                0 if current_x + 1 < cells_x => Some(current_idx + 1),
+                1 if current_x > 0 => Some(current_idx - 1),
+                2 if current_y + 1 < cells_y => Some(current_idx + cells_x),
+                3 if current_y > 0 => Some(current_idx - cells_x),
+                _ => None,
+            };
+
+            let Some(neighbor_idx) = neighbor else {
+                continue;
+            };
+            if visited[neighbor_idx] {
+                continue;
+            }
+
+            let neighbor_origin = cell_origins[neighbor_idx];
+            match direction {
+                0 => {
+                    let bridge_width = wall_width + 2;
+                    mark_walkable_rect(
+                        &mut walkable,
+                        room_x,
+                        room_y,
+                        room_w as usize,
+                        room_h as usize,
+                        current_origin.0 + corridor_width - 1,
+                        current_origin.1,
+                        bridge_width,
+                        corridor_width,
+                    );
+                }
+                1 => {
+                    let bridge_width = wall_width + 2;
+                    mark_walkable_rect(
+                        &mut walkable,
+                        room_x,
+                        room_y,
+                        room_w as usize,
+                        room_h as usize,
+                        neighbor_origin.0 + corridor_width - 1,
+                        current_origin.1,
+                        bridge_width,
+                        corridor_width,
+                    );
+                }
+                2 => {
+                    let bridge_height = wall_width + 2;
+                    mark_walkable_rect(
+                        &mut walkable,
+                        room_x,
+                        room_y,
+                        room_w as usize,
+                        room_h as usize,
+                        current_origin.0,
+                        current_origin.1 + corridor_width - 1,
+                        corridor_width,
+                        bridge_height,
+                    );
+                }
+                3 => {
+                    let bridge_height = wall_width + 2;
+                    mark_walkable_rect(
+                        &mut walkable,
+                        room_x,
+                        room_y,
+                        room_w as usize,
+                        room_h as usize,
+                        current_origin.0,
+                        neighbor_origin.1 + corridor_width - 1,
+                        corridor_width,
+                        bridge_height,
+                    );
+                }
+                _ => {}
+            }
+
+            visited[neighbor_idx] = true;
+            mark_walkable_rect(
+                &mut walkable,
+                room_x,
+                room_y,
+                room_w as usize,
+                room_h as usize,
+                neighbor_origin.0,
+                neighbor_origin.1,
+                corridor_width,
+                corridor_width,
+            );
+            stack.push(neighbor_idx);
+            advanced = true;
+            break;
+        }
+
+        if !advanced {
+            stack.pop();
+        }
+    }
+
+    for local_y in 0..room_h {
+        for local_x in 0..room_w {
+            let idx = local_y as usize * room_w as usize + local_x as usize;
+            if walkable[idx] {
+                continue;
+            }
+            clear_tile((room_x + local_x) as usize, (room_y + local_y) as usize);
         }
     }
 }

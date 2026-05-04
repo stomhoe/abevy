@@ -1,12 +1,84 @@
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
+use bevy_firefly::prelude::*;
 use bevy_kira_audio::SpatialAudioReceiver;
+use common::log_targets::LIGHTING_INIT;
 use ac_input::ac_input_actions::CameraZoomAction;
+use tilemap_shared::GlobalTilePos;
 
+use crate::camera_daylight::*;
 use crate::camera_components::*;
 
+#[allow(unused_parens, )]
 pub fn spawn_camera(mut commands: Commands, ) {
-    commands.spawn((Camera2d::default(), SpatialAudioReceiver, GlobalTilePos::default()));
+    debug!(target: LIGHTING_INIT, "Spawning 2D camera without lighting so UI can keep rendering outside ActiveGame");
+
+    commands.spawn((Camera2d::default(), SpatialAudioReceiver, GlobalTilePos::default(), Transform::default()));
+}
+
+#[allow(unused_parens, )]
+pub fn enable_firefly_lighting(
+    mut commands: Commands,
+    camera: Query<Entity, (With<Camera>, Without<FireflyConfig>)>,
+    camera_dimension: Query<&DimensionRef, With<CameraTarget>>,
+    dimension_map: Res<DimensionEntityMap>,
+    daylight_query: Query<&DimensionDaylightSeri>,
+) {
+    let mut cameras = camera.iter();
+    let Some(camera) = cameras.next() else {
+        return;
+    };
+    if cameras.next().is_some() {
+        error_once!(target: LIGHTING_INIT, "Unable to enable firefly lighting: more than one camera exists without FireflyConfig");
+        return;
+    }
+
+    let mut camera_dimensions = camera_dimension.iter();
+    let Some(camera_dimension) = camera_dimensions.next() else {
+        return;
+    };
+    if camera_dimensions.next().is_some() {
+        error_once!(target: LIGHTING_INIT, "Unable to enable firefly lighting: the camera target is duplicated");
+        return;
+    }
+
+    let Some(daylight) = resolve_daylight_settings_for_dimension(camera_dimension, &dimension_map, &daylight_query) else {
+        return;
+    };
+
+    debug!(target: LIGHTING_INIT, "Enabling ambient daylight brightness={:.3} color={:?}", daylight.ambient_brightness_for_time(), daylight.ambient_color_for_time());
+    commands.entity(camera).insert(daylight.firefly_config());
+}
+
+#[allow(unused_parens, )]
+pub fn sync_firefly_lighting(
+    mut camera_query: Query<&mut FireflyConfig, (With<Camera>)>,
+    camera_dimension: Query<&DimensionRef, With<CameraTarget>>,
+    dimension_map: Res<DimensionEntityMap>,
+    daylight_query: Query<&DimensionDaylightSeri>,
+) {
+    let mut camera_configs = camera_query.iter_mut();
+    let Some(mut firefly_config) = camera_configs.next() else {
+        return;
+    };
+    if camera_configs.next().is_some() {
+        error_once!(target: LIGHTING_INIT, "Unable to sync firefly lighting: more than one camera has a FireflyConfig");
+        return;
+    }
+
+    let Some(daylight) = resolve_daylight_settings_for_camera_target(&camera_dimension, &dimension_map, &daylight_query) else {
+        return;
+    };
+
+    *firefly_config = daylight.firefly_config();
+    trace!(target: LIGHTING_INIT, "Updated ambient daylight brightness={:.3} color={:?}", firefly_config.ambient_brightness, firefly_config.ambient_color);
+}
+
+#[allow(unused_parens, )]
+pub fn disable_firefly_lighting(mut commands: Commands, camera: Single<Entity, With<Camera>>, ) {
+    debug!(target: LIGHTING_INIT, "Disabling Firefly lighting outside ActiveGame");
+
+    commands.entity(*camera).remove::<FireflyConfig>();
 }
 
 pub fn delete_prev_camera_target(
@@ -62,7 +134,7 @@ pub fn camera_zoom_system(
     }
 }
 
-use tilemap_shared::{Dimension, DimensionEntityMap, DimensionRef, GlobalTilePos };
+use tilemap_shared::{Dimension, DimensionDaylightSeri, DimensionEntityMap, DimensionRef};
 
 #[allow(unused_parens, )]
 pub fn hide_nonvisualized_dimension(

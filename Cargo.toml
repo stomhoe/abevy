@@ -64,6 +64,7 @@ avian2d = "0.5.0"
 bevy_northstar = "0.6.1"
 big-brain = "0.22.0"
 superstate = { path = "crates/Superstate" }
+bevy_firefly = { version = "0.18.1" }
 
 #cargo upgrade --incompatible
 
@@ -94,6 +95,7 @@ faction = { path = "crates/faction" }
 player = { path = "crates/player" }
 ac_input = { path = "crates/ac_input" }
 ac_audio = { path = "crates/ac_audio" }
+time = { path = "crates/time" }
 color_sampler = { path = "crates/color_sampler" }
 shader = { path = "crates/shader" }
 ui_shared = { path = "crates/ui_shared" }

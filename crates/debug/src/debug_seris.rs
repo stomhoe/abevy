@@ -49,6 +49,8 @@ pub struct DebugWindowsOpenOnStartSeri {
     #[serde(default)]
     pub settings_editor: bool,
     #[serde(default)]
+    pub daylight: bool,
+    #[serde(default)]
     pub nav_maps: bool,
 }
 

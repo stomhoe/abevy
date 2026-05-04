@@ -5,11 +5,11 @@ use std::collections::VecDeque;
 use tilemap_shared::{ChunkPos, DimensionRef, GlobalGenSettings, GlobalTilePos, HashablePosVec, RegionPos};
 
 use super::river_components::{RiverDebugData, RiverMouthRejectReason, RiverRegionDebugInfo, RiverRegionPlan};
-use super::river_sculpting_helpers::{closest_point_on_path, extend_river_mouth, maybe_add_river_delta, path_has_nonconsecutive_overlap, path_touches_forbidden_border_chunks, plan_river_path_tiles, river_noise_signed, segment_reenters_visited_path, smooth_river_path};
+use super::river_sculpting_helpers::{closest_point_on_path, maybe_add_river_delta, path_has_nonconsecutive_overlap, path_touches_forbidden_border_chunks, plan_river_path_tiles, river_noise_signed, segment_reenters_visited_path, smooth_river_path};
 
 pub(super) fn generate_river_region_plan(
     inland_map: &HashMap<GlobalTilePos, f32>,
-    below_max_inlandness_points: &HashSet<GlobalTilePos>,
+    coast_points: &HashSet<GlobalTilePos>,
     cfg: &crate::regioning::regioning_sgc_components::StructuredGenConfig,
     settings: &GlobalGenSettings,
     dimension_ref: DimensionRef,
@@ -32,7 +32,6 @@ pub(super) fn generate_river_region_plan(
 
     let land_threshold: f32 = cfg.args.parse_arg("river_land_threshold", -0.05);
     let source_min_inlandness: f32 = cfg.args.parse_arg("river_source_min_inlandness", (land_threshold + 0.2).max(land_threshold));
-    let mouth_max_inlandness: f32 = cfg.args.parse_arg("river_mouth_max_inlandness", 0.05);
     let delta_chance: f32 = cfg.args.parse_arg("river_delta_chance", 0.18_f32).clamp(0.0, 1.0);
     let delta_spread: i32 = cfg.args.parse_arg("river_delta_spread", 1_i32).max(1);
     let max_sources: usize = cfg.args.parse_arg("river_max_sources", 2_usize).max(1);
@@ -48,7 +47,7 @@ pub(super) fn generate_river_region_plan(
 
     let land_points: HashMap<GlobalTilePos, f32> = inland_map
         .iter()
-        .filter(|(pos, _)| !below_max_inlandness_points.contains(*pos) && source_region_pos.contains_chunkpos(pos.to_chunkpos()))
+        .filter(|(pos, _)| !coast_points.contains(*pos) && source_region_pos.contains_chunkpos(pos.to_chunkpos()))
         .map(|(pos, val)| (*pos, *val))
         .collect();
     if land_points.is_empty() {
@@ -83,8 +82,6 @@ pub(super) fn generate_river_region_plan(
 
     let trace_params = RiverTraceParams {
         neighbor_radius: cfg.args.parse_arg("river_trace_neighbor_radius", 2_i32).clamp(1, 4),
-        mouth_max_inlandness,
-        min_steps_before_mouth: source_mouth_min_distance,
         directional_inertia: cfg.args.parse_arg("river_directional_inertia", 0.75_f32).clamp(0.0, 2.0),
         downhill_weight: cfg.args.parse_arg("river_downhill_weight", 3.0_f32).max(0.1),
         uphill_penalty: cfg.args.parse_arg("river_uphill_penalty", 2.5_f32).max(0.0),
@@ -97,15 +94,16 @@ pub(super) fn generate_river_region_plan(
         let Some(&main_component_i) = component_of.get(&main_source) else {
             continue;
         };
-        let Some(mouth_target) = pick_river_mouth(
+        let Some((mouth_target, _mouth_ocean_target)) = pick_river_mouth(
             main_source,
             &land_points,
+            coast_points,
             &component_of,
             main_component_i,
             source_mouth_min_distance,
-            mouth_max_inlandness,
             region_debug,
             source_region_pos,
+            spacing,
         ) else {
             continue;
         };
@@ -129,6 +127,10 @@ pub(super) fn generate_river_region_plan(
         }
 
         let smoothed_main_path = smooth_river_path(&candidate_main_path, curve_iterations, curve_jitter_tiles, settings, dimension_ref.0, main_source);
+        if path_has_nonconsecutive_overlap(&smoothed_main_path) {
+            error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: source {:?} and mouth {:?} would make the main river intersect itself", source_region_pos, dimension_ref, main_source, mouth_target);
+            continue;
+        }
         if path_touches_forbidden_border_chunks(
             &smoothed_main_path,
             half_width_start,
@@ -139,9 +141,7 @@ pub(super) fn generate_river_region_plan(
             continue;
         }
 
-        let mouth_ocean_target = find_adjacent_point_in_set(mouth_target, below_max_inlandness_points, spacing, Some(source_region_pos));
         plan_river_path_tiles(smoothed_main_path.as_slice(), half_width_start, half_width_end, source_region_pos, plan);
-        extend_river_mouth(&smoothed_main_path, half_width_end, mouth_ocean_target, source_region_pos, plan);
         maybe_add_river_delta(mouth_target, &smoothed_main_path, half_width_end, delta_chance, delta_spread, source_region_pos, plan, settings, dimension_ref.0);
         region_debug.river_source_points.insert(main_source);
         region_debug.river_mouth_points.insert(mouth_target);
@@ -326,8 +326,6 @@ fn pick_river_sources(
 #[derive(Clone, Copy)]
 struct RiverTraceParams {
     neighbor_radius: i32,
-    mouth_max_inlandness: f32,
-    min_steps_before_mouth: usize,
     directional_inertia: f32,
     downhill_weight: f32,
     uphill_penalty: f32,
@@ -366,7 +364,8 @@ fn trace_downhill_path(
     visited.insert(source);
     let mut reroute_retry_count = 0_usize;
     let mut reroute_steps_used = 0_i32;
-    let target_reach_dist_sq = (spacing * spacing) as i64;
+    let target_reach_tiles = spacing.saturating_mul(5) as i64;
+    let target_reach_dist_sq = target_reach_tiles * target_reach_tiles;
 
     for step in 0..max_steps {
         let curr = *path.last().unwrap_or(&source);
@@ -380,9 +379,6 @@ fn trace_downhill_path(
             }
         }
         let curr_val = sampled_points.get(&curr).copied().unwrap_or(0.0);
-        if step >= trace_params.min_steps_before_mouth && curr_val <= trace_params.mouth_max_inlandness {
-            break;
-        }
         let prev_dir = if path.len() >= 2 {
             let prev = path[path.len() - 2];
             (curr.0 - prev.0).as_vec2().normalize_or_zero()
@@ -409,9 +405,6 @@ fn trace_downhill_path(
                 let Some(&next_val) = sampled_points.get(&next) else {
                     continue;
                 };
-                if step < trace_params.min_steps_before_mouth && next_val <= trace_params.mouth_max_inlandness {
-                    continue;
-                }
 
                 let delta = curr_val - next_val;
                 let move_dir = IVec2::new(ox, oy).as_vec2().normalize_or_zero();
@@ -476,22 +469,24 @@ fn path_reaches_target(path: &[GlobalTilePos], target: GlobalTilePos, spacing: i
     let Some(last) = path.last().copied() else {
         return false;
     };
-    let reach_dist_sq = (spacing * spacing) as u64;
+    let reach_tiles = spacing.saturating_mul(5) as u64;
+    let reach_dist_sq = reach_tiles * reach_tiles;
     last == target || last.distance_squared(&target) <= reach_dist_sq
 }
 
 fn pick_river_mouth(
     source: GlobalTilePos,
     sampled_points: &HashMap<GlobalTilePos, f32>,
+    coast_points: &HashSet<GlobalTilePos>,
     component_of: &HashMap<GlobalTilePos, usize>,
     source_component_i: usize,
     min_distance_tiles: usize,
-    mouth_max_inlandness: f32,
     region_debug: &mut RiverRegionDebugInfo,
     local_region_pos: RegionPos,
-) -> Option<GlobalTilePos> {
+    spacing: i32,
+) -> Option<(GlobalTilePos, GlobalTilePos)> {
     let min_distance_tiles = min_distance_tiles as i32;
-    let mut candidates: Vec<(GlobalTilePos, f32, i32)> = Vec::new();
+    let mut candidates: Vec<(GlobalTilePos, GlobalTilePos, f32, i32)> = Vec::new();
     let mut lowest_val: Option<f32> = None;
 
     let mut record_reject = |reason: RiverMouthRejectReason| {
@@ -519,28 +514,33 @@ fn pick_river_mouth(
             record_reject(RiverMouthRejectReason::WrongLandComponent);
             continue;
         }
+        let Some(ocean_target) = find_adjacent_point_in_set(pos, coast_points, spacing, Some(local_region_pos)) else {
+            record_reject(RiverMouthRejectReason::TooInland);
+            continue;
+        };
         let dist = source.euclidean_tile_distance(pos);
         if dist < min_distance_tiles as f32 {
             record_reject(RiverMouthRejectReason::TooCloseToSource);
             continue;
         }
         let dist = dist as i32;
-        candidates.push((pos, val, dist));
+        candidates.push((pos, ocean_target, val, dist));
     }
     candidates.sort_by(|a, b| {
-        a.1.partial_cmp(&b.1)
+        a.2.partial_cmp(&b.2)
             .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| a.2.cmp(&b.2))
+            .then_with(|| a.3.cmp(&b.3))
             .then_with(|| a.0.0.y.cmp(&b.0.0.y))
             .then_with(|| a.0.0.x.cmp(&b.0.0.x))
     });
-    let result = candidates.first().copied().map(|(pos, val, _)| {
-
-        info!(target: RIVER_SYSTEM, "pick_river_mouth mouth_max_inlandness={:.3} winner_val={:.3}", mouth_max_inlandness, val);
-        pos
+    let result = candidates.first().copied().map(|(pos, ocean_target, val, _)| {
+        info!(target: RIVER_SYSTEM, "pick_river_mouth winner_val={:.3}", val);
+        let mouth_offset = (ocean_target.0 - pos.0).signum() * (spacing / 2).max(1);
+        let mouth_target = GlobalTilePos(ocean_target.0 + mouth_offset);
+        (mouth_target, ocean_target)
     });
     if result.is_none() {
-        error!(target: RIVER_SYSTEM, "river mouth selection produced no valid mouth candidates after applying the strict filters; source={:?} region={:?}; lowest_val={:?}; top causes: {}", source, local_region_pos, lowest_val, format_top_mouth_reject_causes(&region_debug.mouth_reject_stats));
+        error!(target: RIVER_SYSTEM, "river mouth selection produced no valid mouth candidates after applying the coast-adjacency and region filters; source={:?} region={:?}; lowest_val={:?}; top causes: {}", source, local_region_pos, lowest_val, format_top_mouth_reject_causes(&region_debug.mouth_reject_stats));
     }
     result
 }
@@ -582,9 +582,10 @@ fn find_adjacent_point_in_set(
             {
                 continue;
             }
-            if points.contains(&next) {
-                return Some(next);
+            if !points.contains(&next) {
+                continue;
             }
+            return Some(next);
         }
     }
     None

@@ -260,6 +260,11 @@ pub fn init_tiles(
             let sprite_tile_y_sort_origin = seri.sprite_tile_y_sort_origin();
             let mut sprite_cfgs = Vec::new();
             let mut processing_as_sprite_cfgs = None;
+            let point_light = seri.point_light.clone();
+            let occluder = seri.light_occluder();
+            if let Some(occluder) = occluder.clone() {
+                cmd.entity(tile_enti).insert(occluder);
+            }
 
             let len = seri.img_paths.len();
             for (key, path) in seri.img_paths.iter_mut() {
@@ -293,6 +298,12 @@ pub fn init_tiles(
                     }
                     if let Some(y_sort_origin) = sprite_tile_y_sort_origin {
                         cmd.entity(child_sprite).insert(YSortOrigin(y_sort_origin));
+                    }
+                    cmd.entity(child_sprite).insert(Visibility::Hidden);
+                    
+                    if !point_light.is_sentinel() {
+                        let (point_light, light_height) = point_light.to_light();
+                        cmd.entity(child_sprite).insert((point_light, light_height));
                     }
                     processing_as_sprite_cfgs = Some(false);
                 }
@@ -381,10 +392,11 @@ pub fn init_childrensprite(
             trace!(target: CHILDRENSPRITE_INIT, "Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
             to_insert.push((
                 entity,
-                Sprite {
+                (Sprite {
                     image: aserver.load(img_path_holder.path()),
                     ..Default::default()
                 },
+                Visibility::Inherited,)
             ));
         } else if let Some(templ_ref) = templ_ref {
             let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
@@ -407,10 +419,11 @@ pub fn init_childrensprite(
             trace!(target: CHILDRENSPRITE_INIT, "Inserting Sprite for entity {:?} via TileRef {:?}, path: {:?}", entity, templ_ref.0, img_path_holder.path());
             to_insert.push((
                 entity,
-                Sprite {
+                (Sprite {
                     image: aserver.load(img_path_holder.path()),
                     ..Default::default()
                 },
+                Visibility::Inherited,)
             ));
         } else {
             error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has neither ImagePathHolder nor TileRef", entity);

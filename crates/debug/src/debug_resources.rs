@@ -24,6 +24,7 @@ pub struct DubugWindowsVisibility{
     pub terrgen_values: bool,
     pub terrain_visualizer: bool,
     pub settings_editor: bool,
+    pub daylight: bool,
     pub tile_details: bool,
     pub chunk_details: bool,
     pub region_details: bool,
@@ -63,6 +64,7 @@ impl Default for DubugWindowsVisibility {
             terrgen_values: false,
             terrain_visualizer: false,
             settings_editor: false,
+            daylight: false,
             tile_details: false,
             chunk_details: false,
             region_details: false,
@@ -352,6 +354,7 @@ impl DebugUiConfigSeri {
                 v.terrgen_editor = self.windows_open_on_start.terrgen_editor;
                 v.terrgen_values = self.windows_open_on_start.terrgen_values;
                 v.settings_editor = self.windows_open_on_start.settings_editor;
+                v.daylight = self.windows_open_on_start.daylight;
                 v.nav_maps = self.windows_open_on_start.nav_maps;
                 v
             },

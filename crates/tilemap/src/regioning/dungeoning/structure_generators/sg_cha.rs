@@ -132,6 +132,154 @@ fn carve_regular_polygon_wall_dividers_typed(
     }
 }
 
+fn point_inside_room(point: (i32, i32), room: &Room) -> bool {
+    point.0 >= room.x && point.0 < room.x + room.w && point.1 >= room.y && point.1 < room.y + room.h
+}
+
+fn point_inside_room_interior(point: (i32, i32), room: &Room, border_margin: i32) -> bool {
+    let border_margin = border_margin.max(0);
+    point.0 >= room.x + border_margin
+        && point.0 < room.x + room.w - border_margin
+        && point.1 >= room.y + border_margin
+        && point.1 < room.y + room.h - border_margin
+}
+
+fn collect_rooms_to_skip_for_route(
+    route: &[(i32, i32)],
+    actual_rooms: &[Room],
+    start_room_idx: usize,
+    end_room_idx: usize,
+    room_carve_skip_chance: f32,
+    rng: &mut impl Rng,
+) -> Vec<Room> {
+    if route.len() < 2 {
+        return Vec::new();
+    }
+
+    let mut crossed_room_indices: Vec<usize> = Vec::new();
+    for window in route.windows(2) {
+        let (x0, y0) = window[0];
+        let (x1, y1) = window[1];
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+        let steps = (dx.max(dy) * 2).max(1) as usize;
+
+        for i in 0..=steps {
+            let t = i as f32 / steps as f32;
+            let point = (
+                (x0 as f32 + (x1 - x0) as f32 * t).round() as i32,
+                (y0 as f32 + (y1 - y0) as f32 * t).round() as i32,
+            );
+
+            for (room_idx, room) in actual_rooms.iter().enumerate() {
+                if room_idx == start_room_idx || room_idx == end_room_idx {
+                    continue;
+                }
+
+                if point_inside_room(point, room) && !crossed_room_indices.contains(&room_idx) {
+                    crossed_room_indices.push(room_idx);
+                }
+            }
+        }
+    }
+
+    crossed_room_indices
+        .into_iter()
+        .filter_map(|room_idx| {
+            if rng.random_range(0.0..1.0) < room_carve_skip_chance {
+                Some(actual_rooms[room_idx])
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn route_crosses_other_rooms(route: &[(i32, i32)], actual_rooms: &[Room], source_room_idx: usize) -> bool {
+    if route.len() < 3 {
+        return false;
+    }
+
+    for (point_index, &point) in route.iter().enumerate() {
+        if point_index == 0 || point_index + 1 == route.len() {
+            continue;
+        }
+
+        for (room_idx, room) in actual_rooms.iter().enumerate() {
+            if room_idx == source_room_idx {
+                continue;
+            }
+
+            if point_inside_room(point, room) {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+fn sample_dead_end_corridor_route(
+    source_center: (i32, i32),
+    source_room_idx: usize,
+    actual_rooms: &[Room],
+    map_width: usize,
+    map_height: usize,
+    rng: &mut impl Rng,
+) -> Option<Vec<(i32, i32)>> {
+    for _ in 0..8 {
+        let distance = rng.random_range(10..=28);
+        let offset_x = rng.random_range(-distance..=distance);
+        let offset_y = rng.random_range(-distance..=distance);
+        if offset_x == 0 && offset_y == 0 {
+            continue;
+        }
+
+        let end = (
+            source_center.0 + offset_x,
+            source_center.1 + offset_y,
+        );
+        let horizontal_first = rng.random_bool(0.5);
+        let route = build_orthogonal_corridor_route(
+            source_center,
+            end,
+            map_width,
+            map_height,
+            horizontal_first,
+            None,
+        );
+
+        if !route_crosses_other_rooms(&route, actual_rooms, source_room_idx) {
+            return Some(route);
+        }
+    }
+
+    None
+}
+
+fn carve_corridor_route_typed_with_room_skips(
+    floor_map: &mut [u8],
+    tile_width: usize,
+    tile_height: usize,
+    corridor_map: &mut [bool],
+    corridor_radius: i32,
+    route: &[(i32, i32)],
+    floor_kind: u8,
+    rooms_to_skip: &[Room],
+) {
+    let mut should_carve_tile = |x: i32, y: i32| rooms_to_skip.iter().all(|room| !point_inside_room_interior((x, y), room, 1));
+    carve_corridor_path(
+        floor_map,
+        tile_width,
+        tile_height,
+        corridor_map,
+        corridor_radius,
+        route,
+        floor_kind,
+        &mut should_carve_tile,
+    );
+}
+
 inventory::submit! {
     crate::regioning::dungeoning::dungeoning_ids::StructureGeneratorDescriptor {
         structure_hash_id: CHAMBERS_CORRIDORS,
@@ -239,6 +387,8 @@ pub fn corridor_dungeon_building_system(
         let mut corridor_zigzag_rib_depth_max = 8_i32;
         let mut corridor_radius_min: i32 = 1;
         let mut corridor_radius_max: i32 = 1;
+        let mut corridor_room_carve_skip_chance: f32 = 0.8;
+        let mut corridor_dead_end_chance: f32 = 0.0;
         let mut regular_polygon_divider_chance = 0.5_f32;
         let mut regular_polygon_divider_gap_half_width: i32 = 1;
         let mut regular_polygon_sides_min: i32 = 5;
@@ -362,6 +512,16 @@ pub fn corridor_dungeon_building_system(
                 corridor_radius_max = s.parse::<i32>().unwrap_or(corridor_radius_max).max(1);
             }
         }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_dead_end_chance") {
+            if let Some(s) = v.first() {
+                corridor_dead_end_chance = s.parse::<f32>().unwrap_or(corridor_dead_end_chance).clamp(0.0, 1.0);
+            }
+        }
+        if let Some(v) = structured_gen_cfg.args.get("corridor_room_carve_skip_chance") {
+            if let Some(s) = v.first() {
+                corridor_room_carve_skip_chance = s.parse::<f32>().unwrap_or(corridor_room_carve_skip_chance).clamp(0.0, 1.0);
+            }
+        }
         if corridor_radius_max < corridor_radius_min {
             corridor_radius_max = corridor_radius_min;
         }
@@ -427,7 +587,7 @@ pub fn corridor_dungeon_building_system(
             }
         }
 
-        for shape in [RoomShape::Rectangle, RoomShape::Ellipse, RoomShape::Trapezoid, RoomShape::RegularPolygon, RoomShape::Pentacle] {
+        for shape in [RoomShape::Rectangle, RoomShape::Ellipse, RoomShape::Trapezoid, RoomShape::RegularPolygon, RoomShape::Pentacle, RoomShape::RandomChamber] {
             let shape_str = shape.as_str();
             let mut cfg = global_size_config;
             let width_min_key = format!("room_size.{}.width.min", shape_str);
@@ -558,6 +718,10 @@ pub fn corridor_dungeon_building_system(
                     regular_polygon_sides_by_room.push(0);
                     carve_room_pentacle(&mut floor_map, map_width, map_height, rx, ry, room.w, room.h, FLOOR_MAIN, FLOOR_B);
                 }
+                RoomShape::RandomChamber => {
+                    regular_polygon_sides_by_room.push(0);
+                    carve_room_ellipse(&mut floor_map, map_width, map_height, rx, ry, room.w, room.h, FLOOR_MAIN);
+                }
             }
 
             maybe_add_room_interior(&mut rng, room.shape, rx, ry, room.w, room.h, |x, y| {
@@ -594,7 +758,24 @@ pub fn corridor_dungeon_building_system(
                 let corridor_radius = rng.random_range(corridor_radius_min..=corridor_radius_max).max(1);
                 if corridors_are_non_curved {
                     let route = build_straight_corridor_route(c1, c2, map_width, map_height, &mut rng);
-                    carve_corridor_path(&mut floor_map, map_width, map_height, &mut corridor_map, corridor_radius, &route, FLOOR_MAIN);
+                    let rooms_to_skip = collect_rooms_to_skip_for_route(
+                        &route,
+                        &actual_rooms,
+                        parent_idx,
+                        child_idx,
+                        corridor_room_carve_skip_chance,
+                        &mut rng,
+                    );
+                    carve_corridor_route_typed_with_room_skips(
+                        &mut floor_map,
+                        map_width,
+                        map_height,
+                        &mut corridor_map,
+                        corridor_radius,
+                        &route,
+                        FLOOR_MAIN,
+                        &rooms_to_skip,
+                    );
 
                     let parent_slots = &mut open_parents[parent_slot_idx].1;
                     *parent_slots = parent_slots.saturating_sub(1);
@@ -606,6 +787,28 @@ pub fn corridor_dungeon_building_system(
                     let child_slots = if remaining_rooms.is_empty() { 0 } else { sample_corridor_child_slots(&mut rng) };
                     if child_slots > 0 {
                         open_parents.push((child_idx, child_slots));
+                    }
+
+                    if rng.random_range(0.0..1.0) < corridor_dead_end_chance {
+                        let dead_end_open = rng.random_bool(0.5);
+                        if let Some(mut dead_end_route) = sample_dead_end_corridor_route(c2, child_idx, &actual_rooms, map_width, map_height, &mut rng) {
+                            if !dead_end_open && dead_end_route.len() > 1 {
+                                dead_end_route.pop();
+                            }
+
+                            if dead_end_route.len() > 1 {
+                                carve_corridor_route_typed_with_room_skips(
+                                    &mut floor_map,
+                                    map_width,
+                                    map_height,
+                                    &mut corridor_map,
+                                    corridor_radius,
+                                    &dead_end_route,
+                                    FLOOR_MAIN,
+                                    &[],
+                                );
+                            }
+                        }
                     }
                     continue;
                 }
@@ -631,11 +834,29 @@ pub fn corridor_dungeon_building_system(
                     &mut rng,
                 );
 
+                let rooms_to_skip = collect_rooms_to_skip_for_route(
+                    &route,
+                    &actual_rooms,
+                    parent_idx,
+                    child_idx,
+                    corridor_room_carve_skip_chance,
+                    &mut rng,
+                );
+
                 if _route_is_curved_zigzag {
                     curved_zigzag_routes.push((route.clone(), corridor_radius));
                 }
 
-                carve_corridor_path(&mut floor_map, map_width, map_height, &mut corridor_map, corridor_radius, &route, FLOOR_MAIN);
+                carve_corridor_route_typed_with_room_skips(
+                    &mut floor_map,
+                    map_width,
+                    map_height,
+                    &mut corridor_map,
+                    corridor_radius,
+                    &route,
+                    FLOOR_MAIN,
+                    &rooms_to_skip,
+                );
 
                 let parent_slots = &mut open_parents[parent_slot_idx].1;
                 *parent_slots = parent_slots.saturating_sub(1);
@@ -647,6 +868,28 @@ pub fn corridor_dungeon_building_system(
                 let child_slots = if remaining_rooms.is_empty() { 0 } else { sample_corridor_child_slots(&mut rng) };
                 if child_slots > 0 {
                     open_parents.push((child_idx, child_slots));
+                }
+
+                if rng.random_range(0.0..1.0) < corridor_dead_end_chance {
+                    let dead_end_open = rng.random_bool(0.5);
+                    if let Some(mut dead_end_route) = sample_dead_end_corridor_route(c2, child_idx, &actual_rooms, map_width, map_height, &mut rng) {
+                        if !dead_end_open && dead_end_route.len() > 1 {
+                            dead_end_route.pop();
+                        }
+
+                        if dead_end_route.len() > 1 {
+                            carve_corridor_route_typed_with_room_skips(
+                                &mut floor_map,
+                                map_width,
+                                map_height,
+                                &mut corridor_map,
+                                corridor_radius,
+                                &dead_end_route,
+                                FLOOR_MAIN,
+                                &[],
+                            );
+                        }
+                    }
                 }
             }
         }

@@ -27,6 +27,7 @@
         terrgen_editor: false,
         terrgen_values: false,
         settings_editor: false,
+        daylight: false,
         nav_maps: false,
     ),
 )

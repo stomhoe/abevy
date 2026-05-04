@@ -396,11 +396,6 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                         break 'nextpos;
                     };
                     if !occupiers.is_empty() {
-                        if claim_i == 0 {
-                            undo_claims = true;
-                            trace!(target: "sgc_chunk_claim", "Chunk at {:?} in region {:?} already occupied at initial position, undoing all claims for this structure", chunk_pos, region_pos);
-                            break 'nextpos;
-                        }
                         let claim_sgc_tags = claim_sgc_tags_opt.cloned().unwrap_or_default();
                         let mut is_mutually_tolerated = true;
                         for &occupier_ent in occupiers {
@@ -462,6 +457,11 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                         grid_of_sgc.0.free(chunk_pos, region_pos, claim.sgc_ent);
                     }
                 } else {
+                    if claim.chunks_pos.is_empty() {
+                        trace!(target: "sgc_chunk_claim", "Claim at region {:?} for structure '{}' had no claimable chunks after filtering, skipping", region_pos, structured_gen_cfg.structure_id());
+                        claimlist.advance_processed_upto_i();
+                        continue;
+                    }
                     counts_of_sgcs
                         .0
                         .entry(claim.sgc_ent)

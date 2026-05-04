@@ -31,6 +31,7 @@ pub enum RiverMouthRejectReason {
     WrongLandComponent,
     TooCloseToSource,
     TooInland,
+    ClosedWaterBodyTooSmall,
 }
 
 #[derive(Debug, Clone, Default)]

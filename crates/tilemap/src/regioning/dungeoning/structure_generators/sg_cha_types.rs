@@ -9,6 +9,7 @@ pub enum RoomShape {
     Trapezoid,
     RegularPolygon,
     Pentacle,
+    RandomChamber,
 }
 
 impl Default for RoomShape {
@@ -25,6 +26,7 @@ impl RoomShape {
             RoomShape::Trapezoid => "trapezoid",
             RoomShape::RegularPolygon => "regular_polygon",
             RoomShape::Pentacle => "pentacle",
+            RoomShape::RandomChamber => "random_chamber",
         }
     }
 
@@ -39,6 +41,11 @@ impl RoomShape {
                 let available_w = (room.w - 2).max(0);
                 let available_h = (room.h - 2).max(0);
                 available_w >= size_config.width.min && available_h >= size_config.height.min
+            }
+            RoomShape::RandomChamber => {
+                let available_diameter = (room.w.min(room.h) - 2).max(0);
+                let min_diameter = size_config.width.min.max(size_config.height.min);
+                available_diameter >= min_diameter
             }
         }
     }
@@ -55,6 +62,23 @@ impl RoomShape {
             RoomShape::Pentacle => {
                 let available_diameter = (room.w.min(room.h) - 2).max(0);
                 let diameter = size_config.width.sample(rng, available_diameter)?;
+                Some((diameter, diameter))
+            }
+            RoomShape::RandomChamber => {
+                let available_diameter = (room.w.min(room.h) - 2).max(0);
+                let min_diameter = size_config.width.min.max(size_config.height.min);
+                let max_diameter = size_config
+                    .width
+                    .max
+                    .unwrap_or(available_diameter)
+                    .min(size_config.height.max.unwrap_or(available_diameter))
+                    .min(available_diameter);
+
+                if available_diameter < min_diameter || max_diameter < min_diameter {
+                    return None;
+                }
+
+                let diameter = rng.random_range(min_diameter..=max_diameter);
                 Some((diameter, diameter))
             }
         }

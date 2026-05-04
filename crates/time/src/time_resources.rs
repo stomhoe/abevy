@@ -1,6 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
-use crate::game::time::time_types::*;
+use crate::time_types::*;
 
 #[derive(Resource, PartialEq, PartialOrd, Copy, Clone, Debug)]
 //NO OLVIDARSE DE MULTIPLICAR DELTA POR ESTO AL USAR TIMERS.TICKK

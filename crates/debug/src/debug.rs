@@ -14,6 +14,7 @@ use ::being_shared::WallPhaserOnSpawn;
         being_tile_click_picker::*,
         being_click_remover::*,
         being_nav_log_window::*,
+        daylight_window::*,
         debug_chunking_window::*, debug_fonts::*, debug_resources::*,
         debug_systems::*, debug_window_systems::*,
         gpos_maps_window::*,
@@ -85,6 +86,7 @@ pub fn plugin(app: &mut App) {
             EguiPrimaryContextPass,
             (
                 terrain_visualizer_window,
+                daylight_window,
                 terrgen_settings_editor_window,
                 hot_reload_window,
                 registered_positions_window,

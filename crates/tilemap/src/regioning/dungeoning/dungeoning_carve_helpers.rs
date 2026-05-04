@@ -144,6 +144,7 @@ fn stamp_corridor_disk_u8(
     y: i32,
     corridor_radius: i32,
     floor_kind: u8,
+    should_carve_tile: &mut impl FnMut(i32, i32) -> bool,
 ) {
     let radius_sq = corridor_radius * corridor_radius;
     for dy in -corridor_radius..=corridor_radius {
@@ -164,6 +165,10 @@ fn stamp_corridor_disk_u8(
                 continue;
             }
 
+            if !should_carve_tile(xx as i32, yy as i32) {
+                continue;
+            }
+
             let idx = yy * tile_width + xx;
             floor_map[idx] = floor_kind;
             corridor_map[idx] = true;
@@ -179,6 +184,7 @@ pub fn carve_corridor_polyline_typed(
     corridor_radius: i32,
     path: &[(i32, i32)],
     floor_kind: u8,
+    mut should_carve_tile: impl FnMut(i32, i32) -> bool,
 ) {
     let corridor_radius = corridor_radius.clamp(1, 8);
     let Some(_) = path.get(1) else {
@@ -205,6 +211,7 @@ pub fn carve_corridor_polyline_typed(
                 y,
                 corridor_radius,
                 floor_kind,
+                &mut should_carve_tile,
             );
         }
     }

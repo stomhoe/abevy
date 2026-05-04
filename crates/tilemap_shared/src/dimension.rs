@@ -24,6 +24,60 @@ impl Gravity {
     }
 }
 
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Copy, )]
+#[serde(default)]
+pub struct DimensionDaylightSeri {
+    pub day_length_minutes: f32,
+    pub time_of_day_minutes: f32,
+    pub ambient_color_rgb: [f32; 3],
+    pub ambient_brightness: f32,
+    pub night_color_rgb: [f32; 3],
+    pub dawn_dusk_color_rgb: [f32; 3],
+    pub day_curve_exponent: f32,
+    pub dawn_dusk_curve_exponent: f32,
+    pub ambient_min_brightness_factor: f32,
+    pub ambient_max_brightness_factor: f32,
+}
+
+impl Default for DimensionDaylightSeri {
+    fn default() -> Self {
+        Self {
+            day_length_minutes: 30.0,
+            time_of_day_minutes: 12.0,
+            ambient_color_rgb: [1.0, 1.0, 1.0],
+            ambient_brightness: 0.,
+            night_color_rgb: [0.14, 0.16, 0.26],
+            dawn_dusk_color_rgb: [1.0, 0.66, 0.36],
+            day_curve_exponent: 0.3,
+            dawn_dusk_curve_exponent: 1.4,
+            ambient_min_brightness_factor: 0.7,
+            ambient_max_brightness_factor: 1.0,
+        }
+    }
+}
+
+impl DimensionDaylightSeri {
+    pub fn normalize(&mut self) {
+        self.day_length_minutes = self.day_length_minutes.max(1.0);
+        self.time_of_day_minutes = self.time_of_day_minutes.rem_euclid(self.day_length_minutes);
+        self.ambient_brightness = self.ambient_brightness.max(0.0);
+        self.day_curve_exponent = self.day_curve_exponent.max(0.01);
+        self.dawn_dusk_curve_exponent = self.dawn_dusk_curve_exponent.max(0.01);
+        self.ambient_min_brightness_factor = self.ambient_min_brightness_factor.clamp(0.0, 10.0);
+        self.ambient_max_brightness_factor = self.ambient_max_brightness_factor.max(self.ambient_min_brightness_factor);
+
+        for value in &mut self.ambient_color_rgb {
+            *value = value.clamp(0.0, 1.0);
+        }
+        for value in &mut self.night_color_rgb {
+            *value = value.clamp(0.0, 1.0);
+        }
+        for value in &mut self.dawn_dusk_color_rgb {
+            *value = value.clamp(0.0, 1.0);
+        }
+    }
+}
+
 
 common::define_entity_map_systems!(
     main_component: Dimension,
@@ -48,6 +102,8 @@ pub struct DimensionSeri {
     pub description: String,
     #[serde(default = "default_dimension_gravity")]
     pub gravity: f32,
+    #[serde(default)]
+    pub daylight: DimensionDaylightSeri,
     /// this dimension's tags, used for whoever needs it
     #[serde(default)]
     pub tags: HashSet<String>,
