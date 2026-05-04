@@ -11,6 +11,7 @@ use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_timers::*;
 use rand::SeedableRng;
 use std::mem::take;
+use std::time::Duration;
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use tilemap_shared::*;
 
@@ -34,6 +35,7 @@ use bitvec::prelude::*;
 pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
     mut cmd: Commands,
     settings: Query<&GlobalGenSettings>,
+    structure_settings: Query<&StructureGenerationSettings>,
     weight_map: Query<&HashIdWeightedSampler, With<SgcsWeightedSampler>>,
     mut region_query: Query<
         (Entity, &mut ClaimList, &DimensionRef, &RegionPos),
@@ -76,6 +78,13 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
         &weight_map,
         "Missing SgcsWeightedSampler while offering chunks for new regions",
         "Multiple SgcsWeightedSampler components found while offering chunks for new regions",
+    ) else {
+        return;
+    };
+    let Some(structure_settings) = expect_single_query(
+        &structure_settings,
+        "Missing StructureGenerationSettings while offering chunks for new regions",
+        "Multiple StructureGenerationSettings components found while offering chunks for new regions",
     ) else {
         return;
     };
@@ -202,7 +211,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
             cmd.entity(region_ent)
                 .try_insert(RegionState::BuildingStarted);
         } else {
-            cmd.entity(region_ent).try_insert(TimeoutTimer::secs(2.));
+            cmd.entity(region_ent).try_insert(TimeoutTimer::secs(structure_settings.region_offer_timeout_secs));
             writer.write_batch(take(&mut offers));
         }
     }
@@ -211,6 +220,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
 #[allow(unused_parens)]
 pub fn advance_i_on_claimlist_timeout(
     mut cmd: Commands,
+    structure_settings: Query<&StructureGenerationSettings>,
     mut query: Query<
         (
             Entity,
@@ -222,6 +232,13 @@ pub fn advance_i_on_claimlist_timeout(
     time: Res<Time>,
     mut recheck_writer: MessageWriter<RecheckRegion>,
 ) {
+    let Some(structure_settings) = expect_single_query(
+        &structure_settings,
+        "Missing StructureGenerationSettings while advancing claimlist timeout",
+        "Multiple StructureGenerationSettings components found while advancing claimlist timeout",
+    ) else {
+        return;
+    };
     let mut recheck = Vec::new();
 
     query.iter_mut().for_each(
@@ -229,6 +246,9 @@ pub fn advance_i_on_claimlist_timeout(
             if *state != RegionState::OfferingChunks {
                 return;
             }
+            claimlist
+                .advance_timer
+                .set_duration(Duration::from_secs_f32(structure_settings.claimlist_advance_timeout_secs));
             if claimlist.waiting_for_current_i() {
                 claimlist.advance_timer.reset();
                 return;

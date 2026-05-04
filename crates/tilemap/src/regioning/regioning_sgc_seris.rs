@@ -842,6 +842,10 @@ pub fn load_sgc_seri_defs() -> Vec<SgcSeri> {
 pub struct StructureGenerationSettingsSeri {
     #[serde(default = "default_structure_build_timeout_secs")]
     pub structure_build_timeout_secs: f64,
+    #[serde(default = "default_claimlist_advance_timeout_secs")]
+    pub claimlist_advance_timeout_secs: f32,
+    #[serde(default = "default_region_offer_timeout_secs")]
+    pub region_offer_timeout_secs: f32,
     #[serde(default = "default_max_used_chunks_per_region_ratio")]
     pub max_used_chunks_per_region_ratio: f32,
 }
@@ -850,6 +854,8 @@ impl StructureGenerationSettingsSeri {
     pub fn to_structure_generation_settings(&self) -> super::regioning_resources::StructureGenerationSettings {
         super::regioning_resources::StructureGenerationSettings {
             structure_build_timeout_secs: self.structure_build_timeout_secs,
+            claimlist_advance_timeout_secs: self.claimlist_advance_timeout_secs,
+            region_offer_timeout_secs: self.region_offer_timeout_secs,
             max_used_chunks_per_region_ratio: self.max_used_chunks_per_region_ratio,
         }
     }
@@ -857,6 +863,14 @@ impl StructureGenerationSettingsSeri {
 
 fn default_structure_build_timeout_secs() -> f64 {
     4.0
+}
+
+fn default_claimlist_advance_timeout_secs() -> f32 {
+    0.1
+}
+
+fn default_region_offer_timeout_secs() -> f32 {
+    2.0
 }
 
 fn default_max_used_chunks_per_region_ratio() -> f32 {

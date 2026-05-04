@@ -17,6 +17,12 @@ sgc {
         river_source_min_separation_steps = 24
         river_main_half_width_start = 2
         river_main_half_width_end = 4
+        river_main_half_width_normal_dist = {
+            min = 3
+            max = 22
+            mean = 8
+            std_dev = 4.5
+        }
         river_mouth_exempt_chunk_radius = 6
         river_worm_length = 760
         river_max_sources = 2

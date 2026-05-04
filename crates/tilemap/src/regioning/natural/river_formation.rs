@@ -1,9 +1,12 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use common::common_components::HashId;
 use common::log_targets::RIVER_SYSTEM;
+use rand::SeedableRng;
+use rand_pcg::Pcg64Mcg;
 use std::collections::VecDeque;
-use tilemap_shared::{ChunkPos, DimensionRef, GlobalGenSettings, GlobalTilePos, HashablePosVec, RegionPos};
+use tilemap_shared::{ChunkPos, CappedNormalDist, DimensionRef, GlobalGenSettings, GlobalTilePos, HashablePosVec, RegionPos};
 
+use crate::regioning::regioning_sgc_seris::{SgcArgValue, SgcArgsDict};
 use super::river_components::{RiverDebugData, RiverMouthRejectReason, RiverRegionDebugInfo, RiverRegionPlan};
 use super::river_sculpting_helpers::{closest_point_on_path, maybe_add_river_delta, path_has_nonconsecutive_overlap, path_touches_forbidden_border_chunks, plan_river_path_tiles, river_noise_signed, segment_reenters_visited_path, smooth_river_path};
 
@@ -41,8 +44,9 @@ pub(super) fn generate_river_region_plan(
     let max_steps: usize = cfg.args.parse_arg("river_worm_length", 240_usize).max(8);
     let source_stride: u64 = cfg.args.parse_arg("river_source_hash_stride", 19_u64).max(1);
     let source_mouth_min_distance: usize = cfg.args.parse_arg("river_source_mouth_min_distance", 8_usize).max(1);
-    let half_width_start: i32 = cfg.args.parse_arg("river_main_half_width_start", 2_i32).max(1);
-    let half_width_end: i32 = cfg.args.parse_arg("river_main_half_width_end", 4_i32).max(half_width_start);
+    let default_half_width_start: i32 = cfg.args.parse_arg("river_main_half_width_start", 2_i32).max(1);
+    let default_half_width_end: i32 = cfg.args.parse_arg("river_main_half_width_end", 4_i32).max(default_half_width_start);
+    let main_width_dist = parse_capped_normal_dist_arg(&cfg.typed_args, "river_main_half_width_normal_dist");
     let min_island_area_chunks: f32 = cfg.args.parse_arg("river_min_island_area_chunks", 225.0_f32).max(1.0);
 
     let land_points: HashMap<GlobalTilePos, f32> = inland_map
@@ -93,6 +97,14 @@ pub(super) fn generate_river_region_plan(
     'source_loop: for main_source in sources.iter().copied() {
         let Some(&main_component_i) = component_of.get(&main_source) else {
             continue;
+        };
+        let (half_width_start, half_width_end) = if let Some(dist) = &main_width_dist {
+            let seed = main_source.hash_value(settings, dimension_ref.0, 1_643);
+            let mut rng = Pcg64Mcg::seed_from_u64(seed);
+            let sampled_half_width = dist.sample(&mut rng).round().clamp(3.0, 8.0) as i32;
+            (sampled_half_width.max(1), sampled_half_width.max(1))
+        } else {
+            (default_half_width_start, default_half_width_end)
         };
         let Some((mouth_target, _mouth_ocean_target)) = pick_river_mouth(
             main_source,
@@ -535,14 +547,79 @@ fn pick_river_mouth(
     });
     let result = candidates.first().copied().map(|(pos, ocean_target, val, _)| {
         info!(target: RIVER_SYSTEM, "pick_river_mouth winner_val={:.3}", val);
-        let mouth_offset = (ocean_target.0 - pos.0).signum() * (spacing / 2).max(1);
-        let mouth_target = GlobalTilePos(ocean_target.0 + mouth_offset);
+        let mouth_target = aim_river_mouth_towards_water_body(pos, ocean_target, coast_points, spacing);
         (mouth_target, ocean_target)
     });
     if result.is_none() {
         error!(target: RIVER_SYSTEM, "river mouth selection produced no valid mouth candidates after applying the coast-adjacency and region filters; source={:?} region={:?}; lowest_val={:?}; top causes: {}", source, local_region_pos, lowest_val, format_top_mouth_reject_causes(&region_debug.mouth_reject_stats));
     }
     result
+}
+
+fn aim_river_mouth_towards_water_body(
+    land_mouth: GlobalTilePos,
+    ocean_target: GlobalTilePos,
+    coast_points: &HashSet<GlobalTilePos>,
+    spacing: i32,
+) -> GlobalTilePos {
+    let Some((water_body_point, sampled_count)) = find_water_body_center_target(ocean_target, coast_points, spacing) else {
+        let mouth_offset = (ocean_target.0 - land_mouth.0).signum() * spacing.max(1);
+        return GlobalTilePos(ocean_target.0 + mouth_offset);
+    };
+    let _ = sampled_count;
+    let extra_push_tiles = 8_i32;
+    let mouth_direction = (water_body_point.0 - land_mouth.0).signum();
+    GlobalTilePos(water_body_point.0 + mouth_direction * extra_push_tiles)
+}
+
+fn find_water_body_center_target(
+    start: GlobalTilePos,
+    points: &HashSet<GlobalTilePos>,
+    spacing: i32,
+) -> Option<(GlobalTilePos, usize)> {
+    if !points.contains(&start) {
+        return None;
+    }
+
+    let mut visited: HashSet<GlobalTilePos> = HashSet::default();
+    let mut queue = VecDeque::new();
+    let mut component_points: Vec<GlobalTilePos> = Vec::new();
+    let mut sum = IVec2::ZERO;
+
+    visited.insert(start);
+    queue.push_back(start);
+
+    while let Some(curr) = queue.pop_front() {
+        component_points.push(curr);
+        sum += curr.0;
+
+        for oy in -1..=1 {
+            for ox in -1..=1 {
+                if ox == 0 && oy == 0 {
+                    continue;
+                }
+                let next = GlobalTilePos(curr.0 + IVec2::new(ox * spacing, oy * spacing));
+                if visited.contains(&next) || !points.contains(&next) {
+                    continue;
+                }
+                visited.insert(next);
+                queue.push_back(next);
+            }
+        }
+    }
+
+    if component_points.is_empty() {
+        return None;
+    }
+
+    let count = component_points.len();
+    let centroid = Vec2::new(sum.x as f32 / count as f32, sum.y as f32 / count as f32);
+    let target = component_points
+        .into_iter()
+        .min_by_key(|point| point.distance_squared(&GlobalTilePos(centroid.round().as_ivec2())))
+        .unwrap_or(start);
+
+    Some((target, count))
 }
 
 fn format_top_mouth_reject_causes(stats: &super::river_components::RiverMouthRejectStats) -> String {
@@ -589,6 +666,32 @@ fn find_adjacent_point_in_set(
         }
     }
     None
+}
+
+fn parse_capped_normal_dist_arg(args: &SgcArgsDict, key: &str) -> Option<CappedNormalDist> {
+    let map = args.get_map(key)?;
+    let std_dev = map_get_f32(map, "std_dev")?.max(0.0);
+    let mean = map_get_f32(map, "mean")?;
+
+    if let (Some(min), Some(max)) = (map_get_f32(map, "min"), map_get_f32(map, "max")) {
+        let min_dev = (mean - min).max(0.0);
+        let max_dev = (max - mean).max(0.0);
+        return Some(CappedNormalDist::new(min_dev, max_dev, mean, std_dev));
+    }
+
+    let min_dev = map_get_f32(map, "min_dev")?;
+    let max_dev = map_get_f32(map, "max_dev")?;
+    Some(CappedNormalDist::new(min_dev, max_dev, mean, std_dev))
+}
+
+fn map_get_f32(map: &HashMap<String, SgcArgValue>, key: &str) -> Option<f32> {
+    let value = map.get(key)?;
+    match value {
+        SgcArgValue::Float(raw) => Some(*raw as f32),
+        SgcArgValue::Int(raw) => Some(*raw as f32),
+        SgcArgValue::Str(raw) => raw.parse::<f32>().ok(),
+        _ => None,
+    }
 }
 
 fn find_fallback_flow_target(

@@ -12,6 +12,10 @@ pub use crate::regioning::regioning_sgc_seris::*;
 pub struct StructureGenerationSettings {
     /// Timeout in seconds to wait for StructureBuildCompliance before giving up
     pub structure_build_timeout_secs: f64,
+    /// Timeout in seconds to wait before advancing claim processing when the current claim is still pending
+    pub claimlist_advance_timeout_secs: f32,
+    /// Timeout in seconds to wait for new region structure offers before building immediately
+    pub region_offer_timeout_secs: f32,
     /// Fraction of region chunks allowed to be occupied by generated structures
     pub max_used_chunks_per_region_ratio: f32,
 }
@@ -20,6 +24,8 @@ impl Default for StructureGenerationSettings {
     fn default() -> Self {
         Self {
             structure_build_timeout_secs: 4.0,
+            claimlist_advance_timeout_secs: 0.1,
+            region_offer_timeout_secs: 2.0,
             max_used_chunks_per_region_ratio: 0.07,
         }
     }
