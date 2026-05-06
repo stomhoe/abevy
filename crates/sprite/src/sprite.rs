@@ -1,5 +1,6 @@
 use ::sprite_shared::*;
 use bevy::prelude::*;
+use bevy::transform::TransformSystems;
 use bevy_replicon::prelude::*;
 use common::{
     common_states::{AssetLoading}
@@ -7,6 +8,7 @@ use common::{
 use game_common::{
     StatefulSessionSystems, game_common::GameplaySystems,
 };
+use tilemap_shared::ZSettings;
 
 #[allow(unused_imports, )]
 use crate::{
@@ -16,8 +18,10 @@ use crate::{
     sprite_sampler::{SpriteSamplerSystems, sprite_sampler_systems::*},
     sprite_systems::*,
     sprite_scale_systems::*,
+    sprite_rotation_systems::*,
     sprite_offset_systems::*,
-    z_sort_system::*,
+    y_sort_settings::load_y_sort_settings,
+    y_sort_system::*,
 };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -35,17 +39,23 @@ pub fn plugin(app: &mut App) {
         FixedUpdate,
         (
             sprite_change_detection,
-            disable_children_sprites_of_disabled,
+            disable_held_sprites_of_disabled,
             (
                 apply_offsets,
+                apply_rotations,
                 apply_scales,
             ).after(sprite_change_detection)
             .run_if(on_message::<SpriteChangedScaleOrOffsetOrParent>),
             become_child_of_sprite_with_tag,
             add_spritechildren_and_comps,
-            z_sort_system,
         )
             .in_set(AcSpriteSystems),
+    )
+    .add_systems(
+        PostUpdate,
+        y_sort_system
+            .after(TransformSystems::Propagate)
+            .in_set(StatefulSessionSystems),
     )
     .add_systems(Update, replace_sampler_string_ids_by_entities)
     .configure_sets(
@@ -54,7 +64,7 @@ pub fn plugin(app: &mut App) {
     )
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
-        ((init_sprite_configs, map_sprite_config_id_to_entity).chain())
+        ((init_sprite_configs, map_sprite_config_id_to_entity, load_y_sort_settings).chain())
             .in_set(AcSpriteSystems),
     )
     .configure_sets(
@@ -64,13 +74,17 @@ pub fn plugin(app: &mut App) {
             SpriteSamplerSystems.before(GameplaySystems),
         ),
     )
+    .init_resource::<ZSettings>()
     .replicate::<AcZ>()
     .replicate::<MappedAnimations>()
     .replicate::<SpriteLoopSfx>()
     .replicate::<SpriteTimedSfx>()
     .replicate::<OffsetForChildren>()
+    .replicate::<Rotation>()
     .replicate::<ScsToBuild>()
     .replicate::<BecomeChildOfSpriteWithTag>()
+    .replicate::<CardinalDirectionAffectsRotation>()
+
 
     .replicate::<YSortOrigin>()
     .replicate_once::<AddUpAnimAndScAcZ>()

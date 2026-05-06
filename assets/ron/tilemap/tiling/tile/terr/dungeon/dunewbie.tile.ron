@@ -2,7 +2,6 @@
     id: "dunewbie",
     name: "Dungeon newbie terrain",
     tags: ["dungeon_floor", "floor", "dungeon"],
-    z: -1000,
     img_paths: [
         ("", "texture/world/white.png"),
     ],

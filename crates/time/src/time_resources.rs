@@ -5,30 +5,29 @@ use crate::time_types::*;
 #[derive(Resource, PartialEq, PartialOrd, Copy, Clone, Debug)]
 //NO OLVIDARSE DE MULTIPLICAR DELTA POR ESTO AL USAR TIMERS.TICKK
 pub struct SimTimeScale(pub f32);
-impl Default for SimTimeScale {fn default() -> Self {Self (100.0)}}
+impl Default for SimTimeScale {fn default() -> Self {Self (1.0)}}
 
 #[derive(Resource, PartialEq, PartialOrd, Debug, Clone, Copy)]
 pub struct InGameTiming {
-    time_scale_rela2irl: f32,
+    day_length_minutes: f32,
     days_per_year: Days,
 }
 impl InGameTiming {
-    pub fn adjust_time_scale_rela_to_rl(&mut self, new_time_scale: f32) {
-        self.time_scale_rela2irl = new_time_scale;
+    pub fn adjust_day_length_minutes(&mut self, new_day_length_minutes: f32) {
+        self.day_length_minutes = new_day_length_minutes;
     }
     pub fn adjust_days_per_year(&mut self, new_days_per_year: Days) {
         self.days_per_year = new_days_per_year;
     }
 
-    pub fn time_scale_rela2irl(&self) -> f32 {self.time_scale_rela2irl }
+    pub fn day_length_minutes(&self) -> f32 { self.day_length_minutes }
     pub fn days_per_year(&self) -> Days {self.days_per_year }
     pub fn days_per_season(&self) -> Days { self.days_per_year/4 }
 }
 
 impl Default for InGameTiming {
     fn default() -> Self {
-        //48: media hora real por día de juego
-        Self { time_scale_rela2irl: 48.0, days_per_year: Days(200) }
+        Self { day_length_minutes: 30.0, days_per_year: Days(200) }
     }
 }
 

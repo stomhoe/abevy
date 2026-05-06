@@ -8,6 +8,7 @@ common = { path = "../acommon" }
 bitvec = { workspace = true }
 
 bevy = { workspace = true }
+bevy_lit = { workspace = true }
 serde = { workspace = true }
 bevy_replicon = { workspace = true }
 bevy-inspector-egui = { workspace = true }

@@ -178,7 +178,7 @@ pub fn parse_tg_script_to_expr_tree(
 
         if line.starts_with("bif ") {
             return Err(format!(
-                "{}:{} old bif syntax is no longer supported; use '[tiles] target biomes: [tag=weight(mean,std)]'",
+                "{}:{} old bif syntax is no longer supported; use '[tiles] biomes: [tag=weight(mean,std)] target'",
                 path.display(),
                 line_no
             ));
@@ -670,22 +670,28 @@ fn parse_bif_branch_tail(
     line_no: usize,
 ) -> Result<(String, Vec<OpListBifBiomeTagSeri>), String> {
     let mut input = input.trim_start();
-    let branch = if !input.is_empty() && !input.starts_with("biome") {
+    let mut branch = String::new();
+
+    // If there is an oplist target before the biome suffix, capture it.
+    if !input.is_empty() && !input.starts_with("biome") {
         let (branch_raw, trailing) = split_first_token(input).unwrap_or((input, ""));
+        branch = trim_token(branch_raw.trim()).to_string();
         input = trailing.trim_start();
-        trim_token(branch_raw.trim()).to_string()
-    } else {
-        String::new()
-    };
+    }
 
     let (biome_tags, leftover) = parse_bif_suffix(input, path, line_no)?;
     let leftover = leftover.trim();
     if !leftover.is_empty() {
-        return Err(format!(
-            "{}:{} branch target must come before 'biomes'; use '[tiles] target biomes: [...]'",
-            path.display(),
-            line_no
-        ));
+        let (branch_raw, rest) = split_first_token(leftover).unwrap_or((leftover, ""));
+        branch = trim_token(branch_raw.trim()).to_string();
+        if !rest.trim().is_empty() {
+            return Err(format!(
+                "{}:{} unexpected text after oplist target '{}'",
+                path.display(),
+                line_no,
+                rest.trim()
+            ));
+        }
     }
     Ok((branch, biome_tags))
 }
@@ -728,8 +734,8 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn parse_bif_branch_tail_with_prefix_target() {
-        let line = "anta2 biomes: [anta=3.5(5.0,0.35)]";
+    fn parse_bif_branch_tail_with_postfix_target() {
+        let line = "biomes: [anta=3.5(5.0,0.35)] anta2";
         let (branch, tags) = parse_bif_branch_tail(line, Path::new("test"), 1).unwrap();
         assert_eq!(branch, "anta2");
         assert_eq!(tags.len(), 1);
@@ -738,19 +744,12 @@ mod tests {
     }
 
     #[test]
-    fn parse_bif_branch_tail_with_prefix_empty_target() {
-        let line = "\"\" biomes: [ocean=0.5(2.7,0.45)]";
+    fn parse_bif_branch_tail_with_empty_target() {
+        let line = "biomes: [ocean=0.5(2.7,0.45)] \"\"";
         let (branch, tags) = parse_bif_branch_tail(line, Path::new("test"), 1).unwrap();
         assert_eq!(branch, "");
         assert_eq!(tags.len(), 1);
         assert_eq!(tags[0].tag, "ocean");
-    }
-
-    #[test]
-    fn parse_bif_branch_tail_rejects_postfix_target() {
-        let line = "biomes: [anta=3.5(5.0,0.35)] anta2";
-        let err = parse_bif_branch_tail(line, Path::new("test"), 1).unwrap_err();
-        assert!(err.contains("branch target must come before 'biomes'"));
     }
 }
 

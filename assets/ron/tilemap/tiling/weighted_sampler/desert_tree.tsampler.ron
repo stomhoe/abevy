@@ -1,0 +1,10 @@
+(
+    id: "desert_tree_sampler",
+    weights: [
+        ("palm", 5.0),
+        ("cactus", 10.0),
+
+    ],
+)
+
+

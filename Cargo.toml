@@ -64,7 +64,7 @@ avian2d = "0.5.0"
 bevy_northstar = "0.6.1"
 big-brain = "0.22.0"
 superstate = { path = "crates/Superstate" }
-bevy_firefly = { version = "0.18.1" }
+bevy_lit = {  path = "aother/bevy_lit" }
 
 #cargo upgrade --incompatible
 

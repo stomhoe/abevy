@@ -3,13 +3,14 @@ tags: [portal, land, desert, river_candidate]
 size: (3, 3)
 debug: [tree_feature, cave_portal_feature]
 
-let shared_pd = pd299
+let shared_pd = pd399
 //todo poner noises para las rocas
 
-let tree_feature = idxmax(hp82, 1.2)
-let tree_feature = *(tree_feature, pd32)
-let tree_feature = *(tree_feature, shared_pd, )
-let tree_feature = +(tree_feature, -0.0)
+let lucky_tree = idxmax(hp81, 0.02)
+let tree_feature = max(fnl.forest_lf, lucky_tree)
+
+let tree_feature = lerp(tree_feature, inlandness, 0.1)
+let tree_feature = *(tree_feature, shared_pd, 0.8)
 
 let cave_portal_feature = idxmax(hp82, 0.007)
 let cave_portal_feature = *(inlandness, cave_portal_feature)
@@ -17,5 +18,5 @@ let cave_portal_feature = *(inlandness, cave_portal_feature)
 out = idxmax(0.5, tree_feature, cave_portal_feature)
 
 [] ""
-[sand] ""
+[desert_tree_sampler, ] ""
 [portal_cave, ] ""

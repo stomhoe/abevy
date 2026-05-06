@@ -26,6 +26,9 @@ pub type TileStrId = StrId;
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct TileChildSprite;
 
+#[derive(Component, Debug, Clone, Copy)]
+pub struct TileChildSpriteOccluder;
+
 define_weightedsampler!(TileStepSfx, Vec<String>, "TileStepSfx");
 impl_weighted_sampler_serialization!(TileStepSfx, Vec<String>);
 

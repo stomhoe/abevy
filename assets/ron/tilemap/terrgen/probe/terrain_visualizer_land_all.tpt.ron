@@ -1,4 +1,4 @@
-id: terrain_visualizer_probe
+id: inlandness_visualizer_probe
 extends: region_base
 opfilter_id: region_inland
 step_size: 64

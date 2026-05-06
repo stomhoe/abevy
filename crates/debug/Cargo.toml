@@ -20,6 +20,7 @@ tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 sprite_shared = { path = "../sprite_shared" }
 wildlife = { path = "../wildlife" }
+time = { path = "../time" }
 
 fnl = { path = "../fnl" }
 param_sets = { path = "../param_sets" }

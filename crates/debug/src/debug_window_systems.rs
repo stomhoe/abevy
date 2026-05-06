@@ -206,6 +206,7 @@ pub fn main_menu_window(
             if ui.add_sized([ui.available_width(), 28.0], close_all).clicked() {
                 window_visible.states = false;
                 window_visible.all_states = false;
+                window_visible.dimension_changer = false;
                 window_visible.chunks_list = false;
                 window_visible.macrochunks_grid = false;
                 window_visible.regions_list = false;
@@ -214,7 +215,7 @@ pub fn main_menu_window(
                 window_visible.portals_list = false;
                 window_visible.terrgen_editor = false;
                 window_visible.terrgen_values = false;
-                window_visible.terrain_visualizer = false;
+                window_visible.inlandness_visualizer = false;
                 window_visible.settings_editor = false;
                 window_visible.daylight = false;
                 window_visible.tile_details = false;
@@ -330,6 +331,9 @@ pub fn main_menu_window(
             if ui.button(egui::RichText::new("🧑 Players list").size(16.0)).clicked() {
                 window_visible.players_list = !window_visible.players_list;
             }
+            if ui.button(egui::RichText::new("DimensionChanger").size(16.0)).clicked() {
+                window_visible.dimension_changer = !window_visible.dimension_changer;
+            }
             if ui.button(egui::RichText::new("🌀 Portals").size(16.0)).clicked() {
                 window_visible.portals_list = !window_visible.portals_list;
             }
@@ -342,8 +346,8 @@ pub fn main_menu_window(
             if ui.button(egui::RichText::new("▦ Terrain noise values map").size(16.0)).clicked() {
                 window_visible.terrgen_values = !window_visible.terrgen_values;
             }
-            if ui.button(egui::RichText::new("⛰ Terrain visualizer").size(16.0)).clicked() {
-                window_visible.terrain_visualizer = !window_visible.terrain_visualizer;
+            if ui.button(egui::RichText::new("⛰ Long range inlandness visualizer").size(16.0)).clicked() {
+                window_visible.inlandness_visualizer = !window_visible.inlandness_visualizer;
             }
             if ui.button(egui::RichText::new("🌐 Global generation settings").size(16.0)).clicked() {
                 window_visible.settings_editor = !window_visible.settings_editor;

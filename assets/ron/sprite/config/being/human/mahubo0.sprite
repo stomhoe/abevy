@@ -1,6 +1,5 @@
 sprite mahubo0 {
 name "Human male body 0"
-z 1000
 mapped_anims {
     south idle g _ = mahubo0_s_idle
     west idle g _ = mahubo0_w_idle

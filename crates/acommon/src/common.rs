@@ -46,6 +46,7 @@ pub fn plugin(app: &mut App) {
         .init_state::<GamePhase>()
 
         .init_resource::<ImageSizeMap>()
+        .init_resource::<RegisteredImageSizeUpdateObservers>()
         .init_resource::<GlobalEntityMap>()
         .init_resource::<crate::def_db::DefValidationConfig>()
 
@@ -63,6 +64,7 @@ pub fn plugin(app: &mut App) {
         .replicate::<VisibilityGameState>()
         .replicate::<RemoveReplicatedAfterClone>()
         .add_mapped_client_message::<RemoveReplicated>(Channel::Unordered)
+        .add_message::<ImageSizeReady>()
 
 
 

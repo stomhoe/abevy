@@ -8,7 +8,7 @@ use tilemap_shared::{ChunkPos, CappedNormalDist, DimensionRef, GlobalGenSettings
 
 use crate::regioning::regioning_sgc_seris::{SgcArgValue, SgcArgsDict};
 use super::river_components::{RiverDebugData, RiverMouthRejectReason, RiverRegionDebugInfo, RiverRegionPlan};
-use super::river_sculpting_helpers::{closest_point_on_path, maybe_add_river_delta, path_has_nonconsecutive_overlap, path_touches_forbidden_border_chunks, plan_river_path_tiles, river_noise_signed, segment_reenters_visited_path, smooth_river_path};
+use super::river_sculpting_helpers::{closest_point_on_path, maybe_add_river_delta, maybe_add_river_gravel_deposits, maybe_add_river_island_gap, path_has_nonconsecutive_overlap, path_touches_forbidden_border_chunks, plan_river_path_tiles, rebuild_claimed_chunks_from_masks, river_noise_signed, segment_reenters_visited_path, smooth_river_path};
 
 pub(super) fn generate_river_region_plan(
     inland_map: &HashMap<GlobalTilePos, f32>,
@@ -22,6 +22,7 @@ pub(super) fn generate_river_region_plan(
 ) -> bool {
     plan.claimed_chunks.clear();
     plan.river_tiles.clear();
+    plan.gravel_tiles.clear();
 
     let region_debug = river_debug.region_mut(dimension_ref, source_region_pos);
     region_debug.river_source_points.clear();
@@ -189,6 +190,10 @@ pub(super) fn generate_river_region_plan(
             region_debug.river_mouth_points.insert(*path.last().unwrap_or(&merge_target));
             plan_river_path_tiles(smoothed_path.as_slice(), tributary_half_start, tributary_half_end, source_region_pos, plan);
         }
+
+        maybe_add_river_island_gap(&smoothed_main_path, half_width_start, half_width_end, source_region_pos, plan, settings, dimension_ref.0, main_source);
+        maybe_add_river_gravel_deposits(&smoothed_main_path, half_width_end, source_region_pos, plan, settings, dimension_ref.0, main_source);
+        rebuild_claimed_chunks_from_masks(plan);
 
         built_river = true;
         break 'source_loop;

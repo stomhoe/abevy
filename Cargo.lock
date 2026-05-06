@@ -1588,18 +1588,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_firefly"
-version = "0.18.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8624efe835e50eeb13ddcb228fd9cd5e716abd244864917758a63c40ddb257ec"
-dependencies = [
- "bevy 0.18.0",
- "bitflags 2.10.0",
- "bytemuck",
- "fixedbitset 0.5.7",
-]
-
-[[package]]
 name = "bevy_gilrs"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2120,6 +2108,16 @@ dependencies = [
  "bevy_transform 0.18.0",
  "bevy_utils 0.18.0",
  "tracing",
+]
+
+[[package]]
+name = "bevy_lit"
+version = "0.10.0"
+dependencies = [
+ "bevy 0.18.0",
+ "bytemuck",
+ "fixedbitset 0.5.7",
+ "rand 0.9.2",
 ]
 
 [[package]]
@@ -3731,9 +3729,9 @@ checksum = "5dd9dc738b7a8311c7ade152424974d8115f2cdad61e8dab8dac9f2362298510"
 
 [[package]]
 name = "bytemuck"
-version = "1.24.0"
+version = "1.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fbdf580320f38b612e485521afda1ee26d10cc9884efaaa750d383e13e3c5f4"
+checksum = "c8efb64bd706a16a1bdde310ae86b351e4d21550d98d056f22f8a7f7a2183fec"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -3803,8 +3801,8 @@ dependencies = [
  "ac_input",
  "bevy 0.18.0",
  "bevy_enhanced_input",
- "bevy_firefly",
  "bevy_kira_audio",
+ "bevy_lit",
  "common",
  "game_common",
  "serde",
@@ -4392,6 +4390,7 @@ dependencies = [
  "sprite_shared",
  "tilemap",
  "tilemap_shared",
+ "time",
  "wildlife",
 ]
 
@@ -4485,6 +4484,7 @@ dependencies = [
  "game_common",
  "tilemap",
  "tilemap_shared",
+ "time",
 ]
 
 [[package]]
@@ -8100,6 +8100,7 @@ dependencies = [
  "bevy_asset_loader",
  "bevy_common_assets",
  "bevy_ecs_tilemap",
+ "bevy_lit",
  "bevy_replicon",
  "camera",
  "common",
@@ -8488,7 +8489,7 @@ dependencies = [
  "bevy_asset_loader",
  "bevy_common_assets",
  "bevy_ecs_tilemap",
- "bevy_firefly",
+ "bevy_lit",
  "bevy_replicon",
  "bitvec",
  "camera",
@@ -8523,6 +8524,7 @@ dependencies = [
  "bevy_asset_loader",
  "bevy_common_assets",
  "bevy_ecs_tilemap",
+ "bevy_lit",
  "bevy_replicon",
  "bitvec",
  "common",
@@ -8544,6 +8546,7 @@ dependencies = [
  "game_common",
  "strum 0.27.2",
  "strum_macros 0.27.2",
+ "tilemap_shared",
 ]
 
 [[package]]

@@ -2,7 +2,7 @@
     id: "blue",
     name: "Blue",
     tags: ["liquid"],
-    z: -900,
+    
     img_paths: [
         ("", "texture/world/white.png"),
     ],

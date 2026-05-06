@@ -21,10 +21,10 @@ let lucky_light = idxmax(hp83, 0.005)
 let cave_portal_feature = idxmax(hp82, 0.005)
 let cave_portal_feature = lerp(cave_portal_feature, inlandness, 0.3)
 
-out = idxmax(0.5, bush_feature, tree_feature, cave_portal_feature, lucky_light)
+out = idxmax(0.5, bush_feature, tree_feature, cave_portal_feature, )
 
 [] normal5
-[tempveg_sampler, ] ""
-[temptree_sampler, ] ""
+[temp_bush_sampler, ] ""
+[temp_tree_sampler, ] ""
 [portal_cave, ] ""
-[light_willow_orange, ] ""
+//[lamp, ] ""

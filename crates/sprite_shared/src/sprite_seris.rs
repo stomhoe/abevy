@@ -77,6 +77,8 @@ pub struct SpriteConfigSeri {
     pub exclude_from_normal_size_modifier: bool,
     #[serde(default)]
     pub offset: (f32, f32),
+    #[serde(default = "default_fallback_scalar")]
+    pub rotation: f32,
     #[serde(default = "default_scale_2d")]
     pub scale: (f32, f32),
     #[serde(default = "default_scale_2d")]
@@ -122,6 +124,7 @@ impl Default for SpriteConfigSeri {
             baseline_move_speed: default_baseline_move_speed(),
             exclude_from_normal_size_modifier: false,
             offset: (0.0, 0.0),
+            rotation: default_fallback_scalar(),
             scale: default_scale_2d(),
             scale_up_down: default_scale_2d(),
             scale_sideways: default_scale_2d(),

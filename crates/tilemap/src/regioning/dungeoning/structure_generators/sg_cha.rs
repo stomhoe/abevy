@@ -1,5 +1,6 @@
 #[allow(unused_imports)] use bevy::{platform::collections::*, prelude::*};
 use rand_pcg::Pcg64Mcg;
+use std::collections::VecDeque;
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
@@ -147,10 +148,10 @@ fn point_inside_room_interior(point: (i32, i32), room: &Room, border_margin: i32
 fn collect_rooms_to_skip_for_route(
     route: &[(i32, i32)],
     actual_rooms: &[Room],
-    start_room_idx: usize,
-    end_room_idx: usize,
-    room_carve_skip_chance: f32,
-    rng: &mut impl Rng,
+    _start_room_idx: usize,
+    _end_room_idx: usize,
+    _room_carve_skip_chance: f32,
+    _rng: &mut impl Rng,
 ) -> Vec<Room> {
     if route.len() < 2 {
         return Vec::new();
@@ -172,10 +173,6 @@ fn collect_rooms_to_skip_for_route(
             );
 
             for (room_idx, room) in actual_rooms.iter().enumerate() {
-                if room_idx == start_room_idx || room_idx == end_room_idx {
-                    continue;
-                }
-
                 if point_inside_room(point, room) && !crossed_room_indices.contains(&room_idx) {
                     crossed_room_indices.push(room_idx);
                 }
@@ -183,16 +180,7 @@ fn collect_rooms_to_skip_for_route(
         }
     }
 
-    crossed_room_indices
-        .into_iter()
-        .filter_map(|room_idx| {
-            if rng.random_range(0.0..1.0) < room_carve_skip_chance {
-                Some(actual_rooms[room_idx])
-            } else {
-                None
-            }
-        })
-        .collect()
+    crossed_room_indices.into_iter().map(|room_idx| actual_rooms[room_idx]).collect()
 }
 
 fn route_crosses_other_rooms(route: &[(i32, i32)], actual_rooms: &[Room], source_room_idx: usize) -> bool {
@@ -267,7 +255,26 @@ fn carve_corridor_route_typed_with_room_skips(
     floor_kind: u8,
     rooms_to_skip: &[Room],
 ) {
-    let mut should_carve_tile = |x: i32, y: i32| rooms_to_skip.iter().all(|room| !point_inside_room_interior((x, y), room, 1));
+    let protected_pentacle_tiles = floor_map.iter().map(|&floor| floor == FLOOR_B).collect::<Vec<_>>();
+    let mut should_carve_tile = |x: i32, y: i32| {
+        if x < 0 || y < 0 {
+            return false;
+        }
+
+        let x = x as usize;
+        let y = y as usize;
+        if x >= tile_width || y >= tile_height {
+            return false;
+        }
+
+        let map_idx = y * tile_width + x;
+        if protected_pentacle_tiles[map_idx] {
+            return false;
+        }
+
+        rooms_to_skip.iter().all(|room| !point_inside_room_interior((x as i32, y as i32), room, 1))
+    };
+
     carve_corridor_path(
         floor_map,
         tile_width,
@@ -278,6 +285,215 @@ fn carve_corridor_route_typed_with_room_skips(
         floor_kind,
         &mut should_carve_tile,
     );
+}
+
+fn bresenham_line_typed(from: (i32, i32), to: (i32, i32)) -> Vec<(i32, i32)> {
+    let mut points = Vec::new();
+    let (mut x0, mut y0) = from;
+    let (x1, y1) = to;
+    let dx = (x1 - x0).abs();
+    let sx = if x0 < x1 { 1 } else { -1 };
+    let dy = -(y1 - y0).abs();
+    let sy = if y0 < y1 { 1 } else { -1 };
+    let mut err = dx + dy;
+
+    loop {
+        points.push((x0, y0));
+        if x0 == x1 && y0 == y1 {
+            break;
+        }
+
+        let e2 = 2 * err;
+        if e2 >= dy {
+            err += dy;
+            x0 += sx;
+        }
+        if e2 <= dx {
+            err += dx;
+            y0 += sy;
+        }
+    }
+
+    points
+}
+
+fn bridge_floor_components_typed(
+    floor_map: &mut [u8],
+    hazard_map: &mut [bool],
+    corridor_map: &mut [bool],
+    tile_width: usize,
+    tile_height: usize,
+) {
+    if tile_width == 0 || tile_height == 0 {
+        return;
+    }
+
+    let tile_count = tile_width * tile_height;
+    let floor_snapshot = floor_map.to_vec();
+    let mut component_ids = vec![usize::MAX; tile_count];
+    let mut components: Vec<Vec<usize>> = Vec::new();
+    let mut queue = VecDeque::new();
+
+    for start_idx in 0..tile_count {
+        if component_ids[start_idx] != usize::MAX || floor_map[start_idx] == FLOOR_NONE {
+            continue;
+        }
+
+        let component_id = components.len();
+        let mut component = Vec::new();
+        component_ids[start_idx] = component_id;
+        queue.push_back(start_idx);
+
+        while let Some(idx) = queue.pop_front() {
+            component.push(idx);
+            let x = idx % tile_width;
+            let y = idx / tile_width;
+            let neighbors = [
+                (x as i32 - 1, y as i32),
+                (x as i32 + 1, y as i32),
+                (x as i32, y as i32 - 1),
+                (x as i32, y as i32 + 1),
+            ];
+
+            for (nx, ny) in neighbors {
+                if nx < 0 || ny < 0 || nx >= tile_width as i32 || ny >= tile_height as i32 {
+                    continue;
+                }
+                let nidx = ny as usize * tile_width + nx as usize;
+                if component_ids[nidx] != usize::MAX || floor_map[nidx] == FLOOR_NONE {
+                    continue;
+                }
+                component_ids[nidx] = component_id;
+                queue.push_back(nidx);
+            }
+        }
+
+        components.push(component);
+    }
+
+    if components.len() <= 1 {
+        return;
+    }
+
+    let mut connected_boundary: Vec<usize> = Vec::new();
+    let mut main_component_idx = 0usize;
+    for idx in 1..components.len() {
+        if components[idx].len() > components[main_component_idx].len() {
+            main_component_idx = idx;
+        }
+    }
+
+    let build_boundary = |component_idx: usize| -> Vec<usize> {
+        let mut boundary = Vec::new();
+        for &idx in &components[component_idx] {
+            if floor_snapshot[idx] != FLOOR_MAIN {
+                continue;
+            }
+
+            let x = idx % tile_width;
+            let y = idx / tile_width;
+            let neighbors = [
+                (x as i32 - 1, y as i32),
+                (x as i32 + 1, y as i32),
+                (x as i32, y as i32 - 1),
+                (x as i32, y as i32 + 1),
+            ];
+
+            let mut is_boundary = false;
+            for (nx, ny) in neighbors {
+                if nx < 0 || ny < 0 || nx >= tile_width as i32 || ny >= tile_height as i32 {
+                    is_boundary = true;
+                    break;
+                }
+                let nidx = ny as usize * tile_width + nx as usize;
+                if component_ids[nidx] != component_idx {
+                    is_boundary = true;
+                    break;
+                }
+            }
+
+            if is_boundary {
+                boundary.push(idx);
+            }
+        }
+        boundary
+    };
+
+    connected_boundary.extend(build_boundary(main_component_idx));
+
+    let mut remaining_components: Vec<usize> = (0..components.len())
+        .filter(|component_idx| *component_idx != main_component_idx)
+        .collect();
+    remaining_components.sort_by(|left, right| components[*right].len().cmp(&components[*left].len()));
+
+    for component_idx in remaining_components {
+        let source_boundary = build_boundary(component_idx);
+        if source_boundary.is_empty() || connected_boundary.is_empty() {
+            continue;
+        }
+
+        let mut best_pair: Option<((i32, i32), (i32, i32), i32)> = None;
+        for &source_idx in &source_boundary {
+            let source_x = (source_idx % tile_width) as i32;
+            let source_y = (source_idx / tile_width) as i32;
+            for &target_idx in &connected_boundary {
+                let target_x = (target_idx % tile_width) as i32;
+                let target_y = (target_idx / tile_width) as i32;
+                let distance = (source_x - target_x).abs() + (source_y - target_y).abs();
+                if distance < 2 || distance > 6 {
+                    continue;
+                }
+
+                let line = bresenham_line_typed((source_x, source_y), (target_x, target_y));
+                if line.len() < 3 {
+                    continue;
+                }
+
+                if line[1..line.len() - 1].iter().any(|&(x, y)| {
+                    let idx = y as usize * tile_width + x as usize;
+                    floor_snapshot[idx] != FLOOR_NONE
+                }) {
+                    continue;
+                }
+
+                if best_pair.map_or(true, |(_, _, best_distance)| distance < best_distance) {
+                    best_pair = Some(((source_x, source_y), (target_x, target_y), distance));
+                }
+            }
+        }
+
+        let Some((from, to, _)) = best_pair else {
+            continue;
+        };
+
+        let bridge = bresenham_line_typed(from, to);
+        if bridge.len() < 3 {
+            continue;
+        }
+
+        let mut carved_any = false;
+        for &(x, y) in bridge.iter().skip(1).take(bridge.len().saturating_sub(2)) {
+            if x < 0 || y < 0 || x >= tile_width as i32 || y >= tile_height as i32 {
+                carved_any = false;
+                break;
+            }
+
+            let idx = y as usize * tile_width + x as usize;
+            if floor_map[idx] != FLOOR_NONE {
+                carved_any = false;
+                break;
+            }
+
+            floor_map[idx] = FLOOR_MAIN;
+            corridor_map[idx] = true;
+            hazard_map[idx] = false;
+            carved_any = true;
+        }
+
+        if carved_any {
+            connected_boundary.extend(source_boundary.into_iter().filter(|idx| floor_map[*idx] == FLOOR_MAIN));
+        }
+    }
 }
 
 inventory::submit! {
@@ -326,6 +542,12 @@ pub fn corridor_dungeon_building_system(
             .map(|s| HashId::hash(s.as_str()))
             .unwrap_or_else(|| HashId::hash("dunewbie"));
 
+        let floor_b_tile_id = structured_gen_cfg.args
+            .get("floor_b_tile_id")
+            .and_then(|v| v.first())
+            .map(|s| HashId::hash(s.as_str()))
+            .unwrap_or_else(|| HashId::hash("dublack"));
+
         let wall_tile_id = structured_gen_cfg.args
             .get("wall_tile_id")
             .and_then(|v| v.first())
@@ -339,12 +561,17 @@ pub fn corridor_dungeon_building_system(
             error!(target: DUNGEONING_SYSTEM, "TileTempl with id '{:?}' not found in TileEntityMap when making ChambersCorridorsDungeon, skipping structure spawn", floor_tile_id);
             continue;
         };
+        let Ok(floor_b_entity_ent) = templs_map.0.get_cloned(floor_b_tile_id) else {
+            error!(target: DUNGEONING_SYSTEM, "TileTempl with id '{:?}' not found in TileEntityMap when making ChambersCorridorsDungeon, skipping structure spawn", floor_b_tile_id);
+            continue;
+        };
         let Ok(_wall_entity_ent) = templs_map.0.get_cloned(wall_tile_id) else {
             error!(target: DUNGEONING_SYSTEM, "TileTempl with id '{:?}' not found in TileEntityMap when making ChambersCorridorsDungeon, skipping structure spawn", wall_tile_id);
             continue;
         };
 
         let floor_entity = TileRef(floor_tile_id);
+        let floor_b_entity = TileRef(floor_b_tile_id);
         let wall_entity = TileRef(wall_tile_id);
 
         let chunk_positions = &build_order.chunks_pos;
@@ -612,8 +839,8 @@ pub fn corridor_dungeon_building_system(
                 if let Some(s) = v.first() { cfg.height.max = s.parse().ok(); }
             }
             if let RoomShape::Pentacle = shape {
-                cfg.width.min = cfg.width.min.max(15);
-                cfg.height.min = cfg.height.min.max(15);
+                cfg.width.min = cfg.width.min.max(12);
+                cfg.height.min = cfg.height.min.max(12);
             }
             size_configs.insert(shape, cfg);
         }
@@ -792,6 +1019,14 @@ pub fn corridor_dungeon_building_system(
                     if rng.random_range(0.0..1.0) < corridor_dead_end_chance {
                         let dead_end_open = rng.random_bool(0.5);
                         if let Some(mut dead_end_route) = sample_dead_end_corridor_route(c2, child_idx, &actual_rooms, map_width, map_height, &mut rng) {
+                            let dead_end_rooms_to_skip = collect_rooms_to_skip_for_route(
+                                &dead_end_route,
+                                &actual_rooms,
+                                child_idx,
+                                child_idx,
+                                corridor_room_carve_skip_chance,
+                                &mut rng,
+                            );
                             if !dead_end_open && dead_end_route.len() > 1 {
                                 dead_end_route.pop();
                             }
@@ -805,7 +1040,7 @@ pub fn corridor_dungeon_building_system(
                                     corridor_radius,
                                     &dead_end_route,
                                     FLOOR_MAIN,
-                                    &[],
+                                    &dead_end_rooms_to_skip,
                                 );
                             }
                         }
@@ -873,6 +1108,14 @@ pub fn corridor_dungeon_building_system(
                 if rng.random_range(0.0..1.0) < corridor_dead_end_chance {
                     let dead_end_open = rng.random_bool(0.5);
                     if let Some(mut dead_end_route) = sample_dead_end_corridor_route(c2, child_idx, &actual_rooms, map_width, map_height, &mut rng) {
+                        let dead_end_rooms_to_skip = collect_rooms_to_skip_for_route(
+                            &dead_end_route,
+                            &actual_rooms,
+                            child_idx,
+                            child_idx,
+                            corridor_room_carve_skip_chance,
+                            &mut rng,
+                        );
                         if !dead_end_open && dead_end_route.len() > 1 {
                             dead_end_route.pop();
                         }
@@ -886,7 +1129,7 @@ pub fn corridor_dungeon_building_system(
                                 corridor_radius,
                                 &dead_end_route,
                                 FLOOR_MAIN,
-                                &[],
+                                &dead_end_rooms_to_skip,
                             );
                         }
                     }
@@ -894,6 +1137,7 @@ pub fn corridor_dungeon_building_system(
             }
         }
 
+        bridge_floor_components_typed(&mut floor_map, &mut hazard_map, &mut corridor_map, map_width, map_height);
         seal_structure_border_band_typed(&mut floor_map, &mut hazard_map, map_width, map_height, border_band);
 
         let mut floor_map_bool = floor_map.iter().map(|&floor| floor != FLOOR_NONE).collect::<Vec<_>>();
@@ -979,6 +1223,7 @@ pub fn corridor_dungeon_building_system(
         let wall_delete_other_tiles = delete_other_tiles_by_tile_id.get("wall_tile_id");
         let disable_floor_terrgen = terrgen_disable_by_tile_id.should_disable_for("floor_tile_id");
         let floor_template_size = templ_size_query.get(floor_entity_ent).copied().unwrap_or_default().inner();
+        let floor_b_template_size = templ_size_query.get(floor_b_entity_ent).copied().unwrap_or_default().inner();
 
         let mut chunk_tiles: Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)> = Vec::with_capacity(build_order.chunks_pos.len());
         let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
@@ -994,9 +1239,14 @@ pub fn corridor_dungeon_building_system(
                 if idx_x >= map_width || idx_y >= map_height { continue; }
                 let map_idx = idx_y * map_width + idx_x;
                 if floor_map_bool[map_idx] {
-                    tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
+                    let (tile_ref, template_size) = if floor_map[map_idx] == FLOOR_B {
+                        (floor_b_entity, floor_b_template_size)
+                    } else {
+                        (floor_entity, floor_template_size)
+                    };
+                    tiles4chunk.push((tile_pos, tile_ref, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
-                        extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, floor_template_size);
+                        extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, template_size);
                     }
                 } else if wall_map[map_idx] {
                     tiles4chunk.push((tile_pos, wall_entity, wall_delete_other_tiles.clone()));

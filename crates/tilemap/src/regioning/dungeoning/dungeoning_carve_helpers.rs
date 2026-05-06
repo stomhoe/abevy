@@ -246,15 +246,29 @@ fn carve_line_u8(
     y1: i32,
     floor_kind: u8,
 ) {
+    let mut x = x0;
+    let mut y = y0;
     let dx = (x1 - x0).abs();
     let dy = (y1 - y0).abs();
-    let steps = (dx.max(dy) * 2).max(1) as usize;
+    let sx = if x0 < x1 { 1 } else { -1 };
+    let sy = if y0 < y1 { 1 } else { -1 };
+    let mut err = dx - dy;
 
-    for i in 0..=steps {
-        let t = i as f32 / steps as f32;
-        let x = (x0 as f32 + (x1 - x0) as f32 * t).round() as i32;
-        let y = (y0 as f32 + (y1 - y0) as f32 * t).round() as i32;
+    loop {
         set_floor_tile_u8(floor_map, tile_width, tile_height, x, y, floor_kind);
+        if x == x1 && y == y1 {
+            break;
+        }
+
+        let err2 = err * 2;
+        if err2 > -dy {
+            err -= dy;
+            x += sx;
+        }
+        if err2 < dx {
+            err += dx;
+            y += sy;
+        }
     }
 }
 
@@ -435,16 +449,14 @@ pub fn carve_room_pentacle(
 
     let cx = x + w / 2;
     let cy = y + h / 2;
-    let outer_radius = (w.min(h) / 2).max(1) as f32;
-    let star_radius = (outer_radius * 0.9).max(1.0);
-    let rotation_rad = -std::f32::consts::FRAC_PI_2;
-    let step = std::f32::consts::TAU / 5.0;
+    let radius = (w.min(h).saturating_sub(2) / 2).max(2) as f32;
+    let angles = [90.0_f32, 162.0, 234.0, 306.0, 18.0];
 
     let mut vertices = [(0, 0); 5];
-    for i in 0..5 {
-        let angle = rotation_rad + step * i as f32;
-        let vx = cx as f32 + star_radius * angle.cos();
-        let vy = cy as f32 + star_radius * angle.sin();
+    for (i, angle_deg) in angles.iter().copied().enumerate() {
+        let angle = angle_deg.to_radians();
+        let vx = cx as f32 + radius * angle.cos();
+        let vy = cy as f32 + radius * angle.sin();
         vertices[i] = (vx.round() as i32, vy.round() as i32);
     }
 
@@ -452,7 +464,16 @@ pub fn carve_room_pentacle(
     for i in 0..star_order.len() {
         let (sx, sy) = vertices[star_order[i]];
         let (ex, ey) = vertices[star_order[(i + 1) % star_order.len()]];
-        carve_line_u8(floor_map, tile_width, tile_height, sx, sy, ex, ey, pentagram_floor_kind);
+        carve_line_u8(
+            floor_map,
+            tile_width,
+            tile_height,
+            sx,
+            sy,
+            ex,
+            ey,
+            pentagram_floor_kind,
+        );
     }
 }
 

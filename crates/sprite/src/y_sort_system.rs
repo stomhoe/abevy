@@ -2,29 +2,32 @@ use bevy::ecs::entity::EntityHashSet;
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)]
 use bevy::prelude::*;
+use bevy_lit::prelude::LightOccluder2d;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use game_common::game_common_components::TemplEntiRef;
 use ::sprite_shared::*;
-use tilemap_shared::{GlobalTilePos};
+use tilemap_shared::{GlobalTilePos, ZSettings};
 
-pub type Zsortable = (Or<(With<Sprite>, With<TilemapAnchor>, With<Mesh2d>)>, With<InheritedVisibility>, Without<HeldSprites>);
+pub type Ysortable = (Or<(With<Sprite>, With<TilemapAnchor>, With<Mesh2d>/*Or-END*/)>, With<Visibility>, Without<HeldSprites>, 
+//Without<LightOccluder2d>, 
+);
 
 #[allow(unused_parens, )]
-pub fn z_sort_system(
+pub fn y_sort_system(
+    y_sort_settings: Res<ZSettings>,
     sprite_holders: Query<&HeldSprites, Changed<GlobalTilePos>, >,
     changed_query: Query<Entity,
         (Or<(Changed<TemplEntiRef>, Changed<GlobalTilePos>, Changed<YSortOrigin>, Changed<AcZ>,
-            Changed<ChildOf>, Added<Sprite>, Added<Mesh2d>,)>,/*Or-END*/
-        Zsortable)>,
+            Changed<ChildOf>, Added<Sprite>, Added<Mesh2d>,)/*Or-END*/>,
+        Ysortable)>,
     mut process_query: Query<(Entity, &mut Transform, &GlobalTransform, Option<&TemplEntiRef>, Has<TilemapAnchor>, &ChildOf, ),>,
     acz_query: Query<&AcZ, ()>,
-    add_up_anim_and_sc_acz_query: Query<Has<AddUpAnimAndScAcZ>, ()>,
     y_sort_query: Query<&YSortOrigin, ()>,
 
     parent_sprite_query: Query<&Sprite, (common::AnyDisabling,)>,
     camera_query: Query<Ref<GlobalTilePos>, With<Camera>>,
-    all_spriteable_query: Query<Entity, (Zsortable)>,
+    all_ysortable_query: Query<Entity, (Ysortable)>,
 
     mut mw_draw_tmap: MessageWriter<DrawTilemap>,
     mut draw_tmaps: Local<Vec<DrawTilemap>>,
@@ -35,7 +38,9 @@ pub fn z_sort_system(
     for held_sprites in sprite_holders.iter() {
         ents_to_process.reserve(held_sprites.len());
         for held in held_sprites.iter() {
-            ents_to_process.insert(held);
+            if all_ysortable_query.get(held).is_ok() {
+                ents_to_process.insert(held);
+            }
         }
     }
 
@@ -44,7 +49,7 @@ pub fn z_sort_system(
         .unwrap_or((0.0, false));
 
     if camera_moved {
-        ents_to_process.extend(all_spriteable_query.iter());
+        ents_to_process.extend(all_ysortable_query.iter());
     }
     let mut iter = process_query.iter_many_mut(ents_to_process.drain());
     while let Some((ent, mut transform, global_transform, templ_ref, is_tilemap, child_of)) = iter.fetch_next() {
@@ -56,19 +61,18 @@ pub fn z_sort_system(
         {
             let templ_ac_z = acz_query.get(templ_ref.0).ok();
             let templ_ysort_origin = y_sort_query.get(templ_ref.0).ok();
-            let base_z = if add_up_anim_and_sc_acz_query.get(templ_ref.0).unwrap_or(false) {
-                anim_ac_z.copied().unwrap_or_default().used_float()
-                    + templ_ac_z.copied().unwrap_or_default().used_float()
+            let base_z = if let Some(anim_ac_z) = anim_ac_z.copied() {
+                if anim_ac_z.0.is_finite() {
+                    anim_ac_z.used_float(&y_sort_settings)
+                } else {
+                    templ_ac_z.copied().unwrap_or_default().used_float(&y_sort_settings)
+                }
             } else {
-                anim_ac_z
-                    .copied()
-                    .or(templ_ac_z.copied())
-                    .unwrap_or_default()
-                    .used_float()
+                templ_ac_z.copied().unwrap_or_default().used_float(&y_sort_settings)
             };
             (base_z, ent_ysort_origin.copied().or(templ_ysort_origin.copied()))
         } else {
-            (anim_ac_z.cloned().unwrap_or_default().used_float(), ent_ysort_origin.copied())
+            (anim_ac_z.cloned().unwrap_or_default().used_float(&y_sort_settings), ent_ysort_origin.copied())
         };
 
         let y = global_transform.translation().y;
@@ -80,7 +84,7 @@ pub fn z_sort_system(
         let y_pos = y - origin_y;
         let use_y_sort = (maybe_ysort_origin.is_some() && !has_parent_sprite) as i32 as f32;
         let y_distance_to_camera = camera_y - y_pos;
-        let target_z = base_z + use_y_sort * y_distance_to_camera * AcZ::Z_SORT_MULT;
+        let target_z = base_z + use_y_sort * y_distance_to_camera * y_sort_settings.y_sort_mult;
 
         if (transform.translation.z - target_z).abs() <= 1e-9 {//NO TOCAR
             continue;

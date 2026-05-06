@@ -27,6 +27,7 @@ common::define_entity_map_systems!(
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 //hacer singleton entity pa replicar. esto se guardaría en la save.
+
 pub struct TileU16IndexHashIdMapping  {
     map: HashMap<U16TileIndex, common::HashId>,
     #[serde(skip)]

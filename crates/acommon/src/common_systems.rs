@@ -5,7 +5,7 @@ use bevy::ecs::entity::EntityHashSet;
 use bevy_replicon::prelude::*;
 use crate::log_targets::ENTITY_MAP_SYSTEM;
 use crate::{
-    common_components::*, common_resources::{ImageSizeMap, },
+    common_components::*, common_resources::*,
 //    common_resources::*,
 //    common_constants::*,
 //    common_layout::*,
@@ -68,18 +68,27 @@ pub fn add_signature_from_hash_id(
 
 
 pub fn update_img_sizes_on_load(mut messages: MessageReader<AssetEvent<Image>>, assets: Res<Assets<Image>>,
-    mut map: ResMut<ImageSizeMap>,) {
+    mut map: ResMut<ImageSizeMap>,
+    mut pending_updates: ResMut<RegisteredImageSizeUpdateObservers>,
+    mut ready_messages: Local<Vec<ImageSizeReady>>,
+    mut ready_writer: MessageWriter<ImageSizeReady>,) {
     for msg in messages.read() {
         match msg {
             AssetEvent::Added { id } => {
                 if let Some(img) = assets.get(*id) {
                     let img_size = UVec2::new(img.texture_descriptor.size.width, img.texture_descriptor.size.height);
                     map.0.insert(id.clone(), img_size.as_u16vec2());
+                    let entities = pending_updates.take_entities(*id);
+                    ready_messages.reserve(entities.len());
+                    for entity in entities {
+                        ready_messages.push(ImageSizeReady { entity, image_id: *id });
+                    }
                 }
             },
             _ => {}
         }
     }
+    ready_writer.write_batch(ready_messages.drain(..));
 }
 
 

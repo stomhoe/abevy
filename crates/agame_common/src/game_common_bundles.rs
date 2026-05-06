@@ -29,6 +29,7 @@ pub struct DenyForTemplClonedChildren(
     PathHolder,
     AcZ,
     YSortOrigin,
-    AllScalesAndOffsets,
+    AllScalesAndOffsetsAndRotation,
     StrId,
+    Children
 );

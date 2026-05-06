@@ -23,18 +23,35 @@ pub use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)]
 pub use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 
+#[derive(Resource, Debug, Clone, Copy, Deserialize, Serialize, Reflect)]
+#[serde(default)]
+pub struct ZSettings {
+    pub y_mult: f32,
+    pub y_sort_mult: f32,
+    pub sprite_z: f32,
+    pub tile_z_unset: f32,
+}
+
+impl Default for ZSettings {
+    fn default() -> Self {
+        Self {
+            y_mult: 1e-2,
+            y_sort_mult: 1e-6,
+            sprite_z: 1000.0,
+            tile_z_unset: -10.0,
+        }
+    }
+}
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
 pub struct AcZ(pub f32);
 impl AcZ {
     pub fn new(z: f32) -> Self {
         Self(z)
     }
-    pub fn used_float(&self) -> f32 {
-        self.0 * Self::Z_MULT
+    pub fn used_float(&self, y_sort_settings: &ZSettings) -> f32 {
+        self.0 * y_sort_settings.y_mult
     }
-    const Z_MULT: f32 = 1e-5;
-
-    pub const Z_SORT_MULT: f32 = 1e-6;
 }
 impl PartialEq for AcZ {
     fn eq(&self, other: &Self) -> bool {
@@ -90,11 +107,22 @@ impl ChunkGposMask {
         self.0.as_mut_bitslice().set(bit_idx, true);
     }
 
+    pub fn clear_bit(&mut self, bit_idx: usize) {
+        self.0.as_mut_bitslice().set(bit_idx, false);
+    }
+
     pub fn set_gpos(&mut self, chunk_pos: ChunkPos, gpos: GlobalTilePos) {
         let Some(bit_idx) = chunk_pos.bit_index_in_chunk(gpos) else {
             return;
         };
         self.set_bit(bit_idx);
+    }
+
+    pub fn clear_gpos(&mut self, chunk_pos: ChunkPos, gpos: GlobalTilePos) {
+        let Some(bit_idx) = chunk_pos.bit_index_in_chunk(gpos) else {
+            return;
+        };
+        self.clear_bit(bit_idx);
     }
 }
 

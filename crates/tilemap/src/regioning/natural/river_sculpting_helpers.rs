@@ -1,6 +1,6 @@
 use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use common::common_components::HashId;
-use tilemap_shared::{GlobalGenSettings, GlobalTilePos, RegionPos};
+use tilemap_shared::{ChunkGposMask, ChunkPos, GlobalGenSettings, GlobalTilePos, RegionPos};
 use tilemap_shared::HashablePosVec;
 
 use super::river_components::RiverRegionPlan;
@@ -200,6 +200,134 @@ pub(super) fn maybe_add_river_delta(
     }
 }
 
+pub(super) fn maybe_add_river_island_gap(
+    path: &[GlobalTilePos],
+    half_width_start: i32,
+    half_width_end: i32,
+    source_region_pos: RegionPos,
+    plan: &mut RiverRegionPlan,
+    settings: &GlobalGenSettings,
+    dimension_hash: HashId,
+    source: GlobalTilePos,
+) {
+    if path.len() < 12 {
+        return;
+    }
+
+    let center_i = path.len() / 2;
+    let center_roll = river_noise_signed(
+        source,
+        path[center_i.saturating_sub(1)],
+        path[center_i],
+        center_i,
+        settings,
+        dimension_hash,
+    );
+    if center_roll < -0.25 {
+        return;
+    }
+
+    let (split_flow, split_normal) = path_frame_dirs(path, center_i);
+    if split_flow == IVec2::ZERO {
+        return;
+    }
+
+    let split_half_width = 13 + (source.hash_value(settings, dimension_hash, 881) % 5) as i32;
+    let split_span = 9 + (source.hash_value(settings, dimension_hash, 883) % 5) as usize;
+    let start_i = center_i.saturating_sub(split_span);
+    let end_i = (center_i + split_span).min(path.len() - 1);
+    let route_start_i = start_i.saturating_sub(1);
+    let route_end_i = (end_i + 1).min(path.len() - 1);
+
+    clear_river_path_segment(
+        path,
+        route_start_i,
+        route_end_i,
+        half_width_start.max(1),
+        half_width_end.max(1),
+        source_region_pos,
+        &mut plan.river_tiles,
+        &mut plan.gravel_tiles,
+    );
+
+    let island_offset = split_half_width + half_width_end.max(1) + 15;
+    let left_route = build_offset_detour_route(
+        path,
+        route_start_i,
+        route_end_i,
+        -1,
+        island_offset,
+        split_normal,
+        settings,
+        dimension_hash,
+        source,
+        1301,
+    );
+    let right_route = build_offset_detour_route(
+        path,
+        route_start_i,
+        route_end_i,
+        1,
+        island_offset,
+        split_normal,
+        settings,
+        dimension_hash,
+        source,
+        1701,
+    );
+
+    if left_route.len() >= 2 && !path_touches_forbidden_border_chunks(&left_route, half_width_start, half_width_end, source_region_pos) {
+        plan_river_path_tiles(&left_route, half_width_start, half_width_end, source_region_pos, plan);
+    }
+    if right_route.len() >= 2 && !path_touches_forbidden_border_chunks(&right_route, half_width_start, half_width_end, source_region_pos) {
+        plan_river_path_tiles(&right_route, half_width_start, half_width_end, source_region_pos, plan);
+    }
+}
+
+pub(super) fn maybe_add_river_gravel_deposits(
+    path: &[GlobalTilePos],
+    half_width_end: i32,
+    source_region_pos: RegionPos,
+    plan: &mut RiverRegionPlan,
+    settings: &GlobalGenSettings,
+    dimension_hash: HashId,
+    source: GlobalTilePos,
+) {
+    if path.len() < 2 || half_width_end < 1 {
+        return;
+    }
+
+    let gravel_segment_limit = (((path.len() - 1) as f32) * 0.9).floor().max(1.0) as usize;
+    let mut deposits_added = 0usize;
+
+    for (step_i, segment) in path.windows(2).enumerate().take(gravel_segment_limit) {
+        if deposits_added >= 4 {
+            break;
+        }
+        let from = segment[0];
+        let (flow, normal) = path_frame_dirs(path, step_i);
+        if flow == IVec2::ZERO {
+            continue;
+        }
+        let bank_side = if source.hash_value(settings, dimension_hash, 997 + step_i as u64) & 1 == 0 { 1 } else { -1 };
+        let anchor = GlobalTilePos(from.0 + normal * bank_side * (half_width_end.max(1) + 1));
+        let deposit_phase = source.hash_value(settings, dimension_hash, 1091 + step_i as u64) % 3;
+        if deposit_phase != 0 {
+            continue;
+        }
+
+        let base_radius = 2 + (source.hash_value(settings, dimension_hash, 991 + step_i as u64) % 3) as i32;
+        for offset_i in -1..=1 {
+            let along = flow * offset_i;
+            let side_bias = normal * bank_side * (1 + (source.hash_value(settings, dimension_hash, 1601 + step_i as u64 + offset_i.unsigned_abs() as u64) % 2) as i32);
+            let center = GlobalTilePos(anchor.0 + along + side_bias);
+            let radius = base_radius + (source.hash_value(settings, dimension_hash, 1701 + step_i as u64 + offset_i.unsigned_abs() as u64) % 2) as i32;
+            stamp_blob_disk(&mut plan.gravel_tiles, &mut plan.claimed_chunks, center, radius, source_region_pos);
+        }
+        deposits_added = deposits_added.saturating_add(1);
+    }
+}
+
 pub(super) fn closest_point_on_path(source: GlobalTilePos, path: &[GlobalTilePos]) -> Option<GlobalTilePos> {
     path.iter().copied().min_by_key(|point| source.distance_squared(point))
 }
@@ -253,4 +381,128 @@ pub(super) fn bresenham_line(from: GlobalTilePos, to: GlobalTilePos) -> Vec<Glob
 
 pub(super) fn lerp_i32(a: i32, b: i32, t: f32) -> i32 {
     ((a as f32) + ((b - a) as f32) * t).round() as i32
+}
+
+fn path_frame_dirs(path: &[GlobalTilePos], i: usize) -> (IVec2, IVec2) {
+    let prev = path[i.saturating_sub(1)];
+    let next = path[(i + 1).min(path.len() - 1)];
+    let flow = (next.0 - prev.0).signum();
+    let normal = IVec2::new(-flow.y, flow.x);
+    (flow, normal)
+}
+
+fn build_offset_detour_route(
+    path: &[GlobalTilePos],
+    start_i: usize,
+    end_i: usize,
+    side_sign: i32,
+    offset_peak: i32,
+    normal: IVec2,
+    settings: &GlobalGenSettings,
+    dimension_hash: HashId,
+    source: GlobalTilePos,
+    salt: u64,
+) -> Vec<GlobalTilePos> {
+    if end_i <= start_i || end_i >= path.len() {
+        return Vec::new();
+    }
+
+    if normal == IVec2::ZERO {
+        return Vec::new();
+    }
+
+    let span = (end_i - start_i).max(1) as f32;
+    let mut route = Vec::with_capacity(end_i - start_i + 1);
+    for i in start_i..=end_i {
+        let t = (i - start_i) as f32 / span;
+        let arch = (std::f32::consts::PI * t).sin().powf(4.0);
+        let jitter = (source.hash_value(settings, dimension_hash, salt + i as u64) % 3) as i32 - 1;
+        let offset = ((offset_peak as f32 * arch) + (jitter as f32 * arch * 0.35)).round() as i32;
+        route.push(GlobalTilePos(path[i].0 + normal * side_sign * offset));
+    }
+    route
+}
+
+fn clear_river_path_segment(
+    path: &[GlobalTilePos],
+    start_i: usize,
+    end_i: usize,
+    half_width_start: i32,
+    half_width_end: i32,
+    source_region_pos: RegionPos,
+    river_mask_map: &mut HashMap<ChunkPos, ChunkGposMask>,
+    gravel_mask_map: &mut HashMap<ChunkPos, ChunkGposMask>,
+) {
+    if path.len() < 2 || end_i <= start_i || end_i >= path.len() {
+        return;
+    }
+
+    let seg_count = (end_i - start_i) as f32;
+    for i in start_i..end_i {
+        let t = (i - start_i) as f32 / seg_count;
+        let base_half_width = lerp_i32(half_width_start, half_width_end, t).max(1);
+        let neck = (std::f32::consts::PI * t).sin().powf(1.65);
+        let edge_distance = t.min(1.0 - t);
+        let endpoint_bonus = (((0.18 - edge_distance) / 0.18).clamp(0.0, 1.0).powf(1.4) * 2.0).round() as i32;
+        let half_width = ((base_half_width as f32) * (0.78 + 0.22 * neck)).round().max(1.0) as i32 + endpoint_bonus;
+        for point in bresenham_line(path[i], path[i + 1]) {
+            for oy in -half_width..=half_width {
+                for ox in -half_width..=half_width {
+                    if ox * ox + oy * oy > half_width * half_width + 1 {
+                        continue;
+                    }
+                    let tile = GlobalTilePos(point.0 + IVec2::new(ox, oy));
+                    if !source_region_pos.contains_chunkpos(tile.to_chunkpos()) {
+                        continue;
+                    }
+                    clear_mask_tile(river_mask_map, tile);
+                    clear_mask_tile(gravel_mask_map, tile);
+                }
+            }
+        }
+    }
+}
+
+fn stamp_blob_disk(
+    mask_map: &mut HashMap<ChunkPos, ChunkGposMask>,
+    claimed_chunks: &mut HashSet<ChunkPos>,
+    center: GlobalTilePos,
+    radius: i32,
+    source_region_pos: RegionPos,
+) {
+    for oy in -radius..=radius {
+        for ox in -radius..=radius {
+            if ox * ox + oy * oy > radius * radius {
+                continue;
+            }
+            let tile = GlobalTilePos(center.0 + IVec2::new(ox, oy));
+            if !source_region_pos.contains_chunkpos(tile.to_chunkpos()) {
+                continue;
+            }
+            insert_mask_tile(mask_map, tile);
+            claimed_chunks.insert(tile.to_chunkpos());
+        }
+    }
+}
+
+fn insert_mask_tile(mask_map: &mut HashMap<ChunkPos, ChunkGposMask>, tile: GlobalTilePos) {
+    let chunk_pos = tile.to_chunkpos();
+    mask_map.entry(chunk_pos).or_default().set_gpos(chunk_pos, tile);
+}
+
+fn clear_mask_tile(mask_map: &mut HashMap<ChunkPos, ChunkGposMask>, tile: GlobalTilePos) {
+    let chunk_pos = tile.to_chunkpos();
+    let Some(mask) = mask_map.get_mut(&chunk_pos) else {
+        return;
+    };
+    mask.clear_gpos(chunk_pos, tile);
+    if mask.is_empty() {
+        mask_map.remove(&chunk_pos);
+    }
+}
+
+pub(super) fn rebuild_claimed_chunks_from_masks(plan: &mut RiverRegionPlan) {
+    plan.claimed_chunks.clear();
+    plan.claimed_chunks.extend(plan.river_tiles.keys().copied());
+    plan.claimed_chunks.extend(plan.gravel_tiles.keys().copied());
 }

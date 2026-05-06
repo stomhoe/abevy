@@ -8,9 +8,9 @@ use ::tilemap_shared::*;
 
 use crate::debug_resources::*;
 
-const TERRAIN_VISUALIZER_PROBE_ID: &str = "terrain_visualizer_probe";
-const TERRAIN_VISUALIZER_DEFAULT_STEP_SIZE: u16 = 64;
-const TERRAIN_VISUALIZER_DEFAULT_REGION_MULTIPLIER: f32 = 6.0;
+const INLANDNESS_VISUALIZER_PROBE_ID: &str = "inlandness_visualizer_probe";
+const INLANDNESS_VISUALIZER_DEFAULT_STEP_SIZE: u16 = 160;
+const INLANDNESS_VISUALIZER_DEFAULT_REGION_MULTIPLIER: f32 = 15.0;
 
 #[derive(Clone, Copy)]
 pub struct ActiveTerrainProbe {
@@ -21,7 +21,7 @@ pub struct ActiveTerrainProbe {
 }
 
 #[derive(Default)]
-pub struct TerrainVisualizerPreview {
+pub struct InlandnessVisualizerPreview {
     texture: Option<egui::TextureHandle>,
     image_size: [usize; 2],
     min_tile: IVec2,
@@ -34,21 +34,21 @@ pub struct TerrainVisualizerPreview {
 }
 
 #[derive(Clone, Copy)]
-pub struct TerrainVisualizerControls {
+pub struct InlandnessVisualizerControls {
     step_size: u16,
     region_multiplier: f32,
 }
 
-impl Default for TerrainVisualizerControls {
+impl Default for InlandnessVisualizerControls {
     fn default() -> Self {
         Self {
-            step_size: TERRAIN_VISUALIZER_DEFAULT_STEP_SIZE,
-            region_multiplier: TERRAIN_VISUALIZER_DEFAULT_REGION_MULTIPLIER,
+            step_size: INLANDNESS_VISUALIZER_DEFAULT_STEP_SIZE,
+            region_multiplier: INLANDNESS_VISUALIZER_DEFAULT_REGION_MULTIPLIER,
         }
     }
 }
 
-impl TerrainVisualizerPreview {
+impl InlandnessVisualizerPreview {
     fn clear(&mut self) {
         self.texture = None;
         self.sampled_region = None;
@@ -67,7 +67,7 @@ struct TerrainPreviewBuild {
 }
 
 #[allow(unused_parens, )]
-pub fn terrain_visualizer_window(
+pub fn inlandness_visualizer_window(
     mut cmd: Commands,
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
@@ -79,16 +79,16 @@ pub fn terrain_visualizer_window(
     mut search_failed_reader: MessageReader<SearchFailed>,
     mut was_open: Local<bool>,
     mut active_probe: Local<Option<ActiveTerrainProbe>>,
-    mut preview: Local<TerrainVisualizerPreview>,
-    mut controls: Local<TerrainVisualizerControls>,
+    mut preview: Local<InlandnessVisualizerPreview>,
+    mut controls: Local<InlandnessVisualizerControls>,
     mut pending_probes: Local<Vec<TerrProbeJob>>,
     mut camera_region_prev: Local<Option<(DimensionRef, RegionPos)>>,
 ) {
-    if !window_visible.terrain_visualizer {
+    if !window_visible.inlandness_visualizer {
         if *was_open {
             if let Some(active) = active_probe.take() {
-                cmd.entity(active.requester).despawn();
-                cmd.entity(active.templ_ent).despawn();
+                cmd.entity(active.requester).try_despawn();
+                cmd.entity(active.templ_ent).try_despawn();
             }
             preview.clear();
         }
@@ -120,10 +120,10 @@ pub fn terrain_visualizer_window(
         let Some(active) = active_probe.take() else {
             continue;
         };
-        cmd.entity(active.requester).despawn();
-        cmd.entity(active.templ_ent).despawn();
+        cmd.entity(active.requester).try_despawn();
+        cmd.entity(active.templ_ent).try_despawn();
         if let Some(built) = build_terrain_preview(&sampled_values.matrix) {
-            let texture_name = format!("terrain_visualizer_{:?}_{:?}", active.dimension_ref.0, active.region_pos);
+            let texture_name = format!("inlandness_visualizer_{:?}_{:?}", active.dimension_ref.0, active.region_pos);
             preview.texture = Some(ctx.load_texture(
                 texture_name,
                 built.image,
@@ -137,10 +137,10 @@ pub fn terrain_visualizer_window(
             preview.raw_min = built.raw_min;
             preview.raw_max = built.raw_max;
             preview.sampled_region = Some((active.dimension_ref, active.region_pos));
-            debug!(target: DEBUG, "Terrain visualizer sampled dim={:?} region={:?} points={}", active.dimension_ref.0, active.region_pos, sampled_values.matrix.values.len());
+            debug!(target: DEBUG, "Inlandness visualizer sampled dim={:?} region={:?} points={}", active.dimension_ref.0, active.region_pos, sampled_values.matrix.values.len());
         } else {
             preview.clear();
-            warn!(target: DEBUG, "Terrain visualizer received empty sampled matrix for dim={:?} region={:?}", active.dimension_ref.0, active.region_pos);
+            warn!(target: DEBUG, "Inlandness visualizer received empty sampled matrix for dim={:?} region={:?}", active.dimension_ref.0, active.region_pos);
         }
     }
 
@@ -149,17 +149,17 @@ pub fn terrain_visualizer_window(
             continue;
         }
         if let Some(active) = active_probe.take() {
-            cmd.entity(active.requester).despawn();
-            cmd.entity(active.templ_ent).despawn();
-            warn!(target: DEBUG, "Terrain visualizer probe failed for dim={:?} region={:?}", active.dimension_ref.0, active.region_pos);
+            cmd.entity(active.requester).try_despawn();
+            cmd.entity(active.templ_ent).try_despawn();
+            warn!(target: DEBUG, "Inlandness visualizer probe failed for dim={:?} region={:?}", active.dimension_ref.0, active.region_pos);
         }
     }
 
     let mut needs_resample = opening_now || region_changed;
 
-    let mut open = window_visible.terrain_visualizer;
+    let mut open = window_visible.inlandness_visualizer;
     let screen_rect = ctx.content_rect();
-    egui::Window::new("Terrain Visualizer")
+    egui::Window::new("Inlandness Visualizer")
         .default_pos([screen_rect.left() + 420.0, screen_rect.top() + 120.0])
         .resizable(true)
         .movable(true)
@@ -255,14 +255,14 @@ pub fn terrain_visualizer_window(
         );
     }
     terrprobe_writer.write_batch(pending_probes.drain(..));
-    window_visible.terrain_visualizer = open;
-    *was_open = window_visible.terrain_visualizer;
+    window_visible.inlandness_visualizer = open;
+    *was_open = window_visible.inlandness_visualizer;
 }
 
 fn render_region_bounds_and_camera_marker(
     painter: &egui::Painter,
     rect: egui::Rect,
-    preview: &TerrainVisualizerPreview,
+    preview: &InlandnessVisualizerPreview,
     region_pos: RegionPos,
     camera_tile_pos: GlobalTilePos,
 ) {
@@ -309,8 +309,8 @@ fn queue_terrain_probe(
     step_size: u16,
     region_multiplier: f32,
 ) {
-    let Ok(probe_templ_ent) = terrprobe_entity_map.0.get_cloned(TERRAIN_VISUALIZER_PROBE_ID) else {
-        error!(target: DEBUG, "Terrain visualizer missing terrprobe template '{}'", TERRAIN_VISUALIZER_PROBE_ID);
+    let Ok(probe_templ_ent) = terrprobe_entity_map.0.get_cloned(INLANDNESS_VISUALIZER_PROBE_ID) else {
+        error!(target: DEBUG, "Terrain visualizer missing terrprobe template '{}'", INLANDNESS_VISUALIZER_PROBE_ID);
         return;
     };
     let Ok(probe_templ) = terrprobe_query.get(probe_templ_ent) else {

@@ -1,14 +1,21 @@
 use bevy_replicon::prelude::*;
 use color_sampler::ColorSampleSystems;
 use common::{common_states::AssetLoading };
+use common::common_resources::ImageSizeReady;
 use bevy_ecs_tilemap::prelude::*;
-use bevy::ecs::schedule::common_conditions::any_with_component;
+use bevy::ecs::schedule::common_conditions::{any_with_component, on_message};
 use sprite_systems::AcSpriteSystems;
 use bevy::prelude::*;
 use crate::terrain::terrprobe::{search_suitable_positions, terrprobe_components::AwaitingStartSearch, terrprobe_messages::{SearchFailed, SuitablePosFound}};
 use crate::tile::tile_systems::*;
 use crate::tile::portal_init_systems::*;
-use crate::tile::tile_init_systems::*;
+use crate::tile::tile_init_systems::{
+    add_handles,
+    init_tiles,
+    map_min_dist_tiles,
+    on_templ_tile_despawn,
+};
+use crate::tile::tile_childrensprite_init_systems::*;
 use crate::tile::tile_sampler_init_systems::*;
 
 use tile_despawn_systems::*;
@@ -21,8 +28,10 @@ pub mod tile_delete_others_systems;
 pub mod tile_despawn_systems;
 mod tile_flip_rotate_systems;
 mod tile_init_systems;
+mod tile_childrensprite_init_systems;
 mod portal_init_systems;
 mod tile_sampler_init_systems;
+mod tile_init_helpers;
 pub mod tile_seris;
 pub mod tile_components;
 pub mod tile_resources;
@@ -52,29 +61,34 @@ pub fn plugin(app: &mut App) {
             .run_if(in_state(ClientState::Disconnected))
             .run_if(any_with_component::<AwaitingStartSearch>)
             .before(search_suitable_positions),
-        resolve_portal_search_results
-            .run_if(in_state(ClientState::Disconnected))
-            .run_if(on_message::<SuitablePosFound>.or(on_message::<SearchFailed>))
-            .after(search_suitable_positions),
         flip_tile_based_on_initial_pos_hash,
         rotate_tile_based_on_initial_pos_hash,
         track_non_default_tile_cardinal_direction_changes,
-        sync_cardinal_dir_at_gpos_on_gpos_change
-            .after(emit_global_tile_pos_change)
-            .run_if(on_message::<GlobalTilePosChanged>),
         sync_sprite_flips_with_tileflip,
         despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_tiles.in_set(PreChunkDespawnSystems),
         despawn_other_tiles_in_same_pos_if_not_excepted.in_set(PreChunkDespawnSystems),//DON'T TOUCH
-        add_spawned_tiles_to_gpos_map
-            .after(emit_global_tile_pos_change)
-            .run_if(on_message::<GlobalTilePosChanged>),
         add_projectile_colliders_to_tiles,
         (snap_transform_to_gpos).chain(),
         add_handles,
         sync_tile_instance_templ_enti_ref_from_map,
         init_childrensprite,
+        init_templ_childrensprite_light_occluders,
         emit_global_tile_pos_change,
         validate_portal_recipes,
+
+    ))
+    .add_systems(Update, (
+        resolve_portal_search_results
+            .run_if(in_state(ClientState::Disconnected))
+            .run_if(on_message::<SuitablePosFound>.or(on_message::<SearchFailed>))
+            .after(search_suitable_positions),
+        sync_cardinal_dir_at_gpos_on_gpos_change
+            .after(emit_global_tile_pos_change)
+            .run_if(on_message::<GlobalTilePosChanged>),
+        add_spawned_tiles_to_gpos_map
+            .after(emit_global_tile_pos_change)
+            .run_if(on_message::<GlobalTilePosChanged>),
+        fix_childrensprite_spritemask_occluders_img_size.run_if(on_message::<ImageSizeReady>),
         safe_despawn_tile_at
             .run_if(on_message::<SafeDespawn>),
         reckeck_adjacency_for
@@ -84,7 +98,6 @@ pub fn plugin(app: &mut App) {
             .after(reckeck_adjacency_for)
             .after(safe_despawn_tile_at)
             .run_if(on_message::<RecheckTileAdjacency>),//.in_set(PreChunkDespawnSystems),
-
     ))
     .add_observer(on_spritetile_despawn)
     .add_observer(on_templ_tile_despawn)

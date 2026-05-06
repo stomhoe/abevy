@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
-use bevy_firefly::prelude::*;
+use bevy_lit::prelude::*;
 use bevy_kira_audio::SpatialAudioReceiver;
 use common::log_targets::LIGHTING_INIT;
 use ac_input::ac_input_actions::CameraZoomAction;
@@ -8,77 +8,134 @@ use tilemap_shared::GlobalTilePos;
 
 use crate::camera_daylight::*;
 use crate::camera_components::*;
+use tilemap_shared::{DimensionDaylightRuntime, DimensionDaylightSeri, DirectionalLight2dOverride};
 
 #[allow(unused_parens, )]
 pub fn spawn_camera(mut commands: Commands, ) {
     debug!(target: LIGHTING_INIT, "Spawning 2D camera without lighting so UI can keep rendering outside ActiveGame");
 
-    commands.spawn((Camera2d::default(), SpatialAudioReceiver, GlobalTilePos::default(), Transform::default()));
+    commands.spawn((
+        Camera2d::default(),
+        SpatialAudioReceiver,
+        GlobalTilePos::default(),
+        Transform::default(),
+    ));
+    let directional_light_entity = commands.spawn((
+        DirectionalLight2d {
+            tile_size: 32.0,
+            ..default()
+        },
+        Name::new("Daylight"),
+    )).id();
+    commands.insert_resource(DaylightDirectionalLightEntity(directional_light_entity));
 }
 
 #[allow(unused_parens, )]
-pub fn enable_firefly_lighting(
+pub fn enable_lighting(
     mut commands: Commands,
-    camera: Query<Entity, (With<Camera>, Without<FireflyConfig>)>,
+    camera: Query<Entity, (With<Camera>, Without<Lighting2dSettings>, )>,
     camera_dimension: Query<&DimensionRef, With<CameraTarget>>,
     dimension_map: Res<DimensionEntityMap>,
-    daylight_query: Query<&DimensionDaylightSeri>,
+    daylight_query: Query<(&DimensionDaylightSeri, &DimensionDaylightRuntime)>,
+    directional_light_override: Option<Res<DirectionalLight2dOverride>>,
+    directional_light_entity: Res<DaylightDirectionalLightEntity>,
 ) {
     let mut cameras = camera.iter();
     let Some(camera) = cameras.next() else {
         return;
     };
     if cameras.next().is_some() {
-        error_once!(target: LIGHTING_INIT, "Unable to enable firefly lighting: more than one camera exists without FireflyConfig");
+        error_once!(target: LIGHTING_INIT, "Unable to enable 2D lighting: more than one camera exists without Lighting2dSettings");
         return;
     }
 
     let mut camera_dimensions = camera_dimension.iter();
-    let Some(camera_dimension) = camera_dimensions.next() else {
+    if camera_dimensions.next().is_none() {
         return;
-    };
+    }
     if camera_dimensions.next().is_some() {
-        error_once!(target: LIGHTING_INIT, "Unable to enable firefly lighting: the camera target is duplicated");
+        error_once!(target: LIGHTING_INIT, "Unable to enable 2D lighting: the camera target is duplicated");
         return;
     }
 
-    let Some(daylight) = resolve_daylight_settings_for_dimension(camera_dimension, &dimension_map, &daylight_query) else {
+    let Some(dimension_ent) = resolve_daylight_dimension_for_camera_target(&camera_dimension, &dimension_map) else {
         return;
     };
 
-    debug!(target: LIGHTING_INIT, "Enabling ambient daylight brightness={:.3} color={:?}", daylight.ambient_brightness_for_time(), daylight.ambient_color_for_time());
-    commands.entity(camera).insert(daylight.firefly_config());
+    let Ok((daylight, daylight_runtime)) = daylight_query.get(dimension_ent) else {
+        error_once!(target: LIGHTING_INIT, "Unable to resolve daylight settings: dimension has no daylight runtime/config components");
+        return;
+    };
+
+    let ambient_light = daylight.ambient_light(daylight_runtime);
+    debug!(target: LIGHTING_INIT, "Enabling 2D lighting ambient_intensity={:.3} ambient_color={:?}", ambient_light.intensity, ambient_light.color);
+    commands.entity(camera).insert((daylight.lighting_settings(), ambient_light));
+
+    let light_entity = directional_light_entity.0;
+    if daylight.disable_directional_light {
+        commands.entity(light_entity).remove::<DirectionalLight2d>();
+        return;
+    }
+
+    let directional_light_next = directional_light_override
+        .as_ref()
+        .map_or_else(|| daylight.directional_light(daylight_runtime), |override_settings| override_settings.apply_to(&daylight.directional_light(daylight_runtime)));
+    commands.entity(light_entity).insert(directional_light_next);
 }
 
 #[allow(unused_parens, )]
-pub fn sync_firefly_lighting(
-    mut camera_query: Query<&mut FireflyConfig, (With<Camera>)>,
+pub fn sync_lighting(
+    mut commands: Commands,
+    mut camera_query: Query<(&mut Lighting2dSettings, &mut AmbientLight2d), (With<Camera>, )>,
     camera_dimension: Query<&DimensionRef, With<CameraTarget>>,
     dimension_map: Res<DimensionEntityMap>,
-    daylight_query: Query<&DimensionDaylightSeri>,
+    daylight_query: Query<(&DimensionDaylightSeri, &DimensionDaylightRuntime)>,
+    directional_light_override: Option<Res<DirectionalLight2dOverride>>,
+    directional_light_entity: Res<DaylightDirectionalLightEntity>,
 ) {
     let mut camera_configs = camera_query.iter_mut();
-    let Some(mut firefly_config) = camera_configs.next() else {
+    let Some((mut lighting_settings, mut ambient_light)) = camera_configs.next() else {
         return;
     };
     if camera_configs.next().is_some() {
-        error_once!(target: LIGHTING_INIT, "Unable to sync firefly lighting: more than one camera has a FireflyConfig");
+        error_once!(target: LIGHTING_INIT, "Unable to sync 2D lighting: more than one camera has Lighting2dSettings");
         return;
     }
 
-    let Some(daylight) = resolve_daylight_settings_for_camera_target(&camera_dimension, &dimension_map, &daylight_query) else {
+    let Some(dimension_ent) = resolve_daylight_dimension_for_camera_target(&camera_dimension, &dimension_map) else {
         return;
     };
 
-    *firefly_config = daylight.firefly_config();
-    trace!(target: LIGHTING_INIT, "Updated ambient daylight brightness={:.3} color={:?}", firefly_config.ambient_brightness, firefly_config.ambient_color);
+    let Ok((daylight, daylight_runtime)) = daylight_query.get(dimension_ent) else {
+        error_once!(target: LIGHTING_INIT, "Unable to resolve daylight settings: dimension has no daylight runtime/config components");
+        return;
+    };
+
+    let ambient_light_next = daylight.ambient_light(daylight_runtime);
+    *lighting_settings = daylight.lighting_settings();
+    *ambient_light = ambient_light_next;
+
+    let light_entity = directional_light_entity.0;
+    if daylight.disable_directional_light {
+        commands.entity(light_entity).remove::<DirectionalLight2d>();
+        trace!(target: LIGHTING_INIT, "Directional light disabled for active dimension");
+        return;
+    }
+
+    let directional_light_next = directional_light_override
+        .as_ref()
+        .map_or_else(|| daylight.directional_light(daylight_runtime), |override_settings| override_settings.apply_to(&daylight.directional_light(daylight_runtime)));
+    commands.entity(light_entity).insert(directional_light_next);
+    trace!(target: LIGHTING_INIT, "Updated ambient daylight intensity={:.3} color={:?}", ambient_light.intensity, ambient_light.color);
 }
 
 #[allow(unused_parens, )]
-pub fn disable_firefly_lighting(mut commands: Commands, camera: Single<Entity, With<Camera>>, ) {
-    debug!(target: LIGHTING_INIT, "Disabling Firefly lighting outside ActiveGame");
+pub fn disable_lighting(mut commands: Commands, camera: Single<Entity, With<Camera>>, directional_light_entity: Res<DaylightDirectionalLightEntity>, ) {
+    debug!(target: LIGHTING_INIT, "Disabling 2D lighting outside ActiveGame");
 
-    commands.entity(*camera).remove::<FireflyConfig>();
+    commands.entity(*camera).remove::<Lighting2dSettings>();
+    commands.entity(*camera).remove::<AmbientLight2d>();
+    commands.entity(directional_light_entity.0).remove::<DirectionalLight2d>();
 }
 
 pub fn delete_prev_camera_target(
@@ -119,22 +176,25 @@ pub fn camera_follow_target(
 
 pub fn camera_zoom_system(
     zoom: Single<&Action<CameraZoomAction>>,
-    mut camera_query: Query<&mut Transform, With<Camera>>,
+    mut camera_query: Query<&mut Projection, With<Camera>>,
 ) {
     let zoom_speed = 0.1; let min_zoom = 0.0001; let max_zoom = 100.0;
 
     let zoom_delta = ***zoom;
 
     if zoom_delta.abs() > f32::EPSILON {
-        for mut transform in camera_query.iter_mut() {
-            let new_scale = (transform.scale.x - zoom_delta * zoom_speed)
+        for mut projection in camera_query.iter_mut() {
+            let Projection::Orthographic(orthographic) = &mut *projection else {
+                continue;
+            };
+
+            orthographic.scale = (orthographic.scale - zoom_delta * zoom_speed)
                 .clamp(min_zoom, max_zoom);
-            transform.scale = Vec3::splat(new_scale);
         }
     }
 }
 
-use tilemap_shared::{Dimension, DimensionDaylightSeri, DimensionEntityMap, DimensionRef};
+use tilemap_shared::{Dimension, DimensionEntityMap, DimensionRef};
 
 #[allow(unused_parens, )]
 pub fn hide_nonvisualized_dimension(

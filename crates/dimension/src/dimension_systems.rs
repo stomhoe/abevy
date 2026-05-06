@@ -5,6 +5,7 @@ use common::common_components::*;
 use tilemap::tile::{tile_components::{TileStrId}, tile_resources::PortalSeri};
 use tilemap::terrain::terrprobe::terrprobe_resources::TerrProbeTemplEntityMap;
 use ::tilemap_shared::*;
+use time::SimTimeScale;
 
 
 #[allow(unused_parens)]
@@ -120,5 +121,18 @@ pub fn add_childof_for_enti_with_dimension_rer(
         if dimension_query.get(child_of.parent()).is_ok() {
             cmd.entity(ent).try_insert(ChildOf(dimension_ent));
         }
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn advance_daylight(
+    time: Res<Time>,
+    sim_timescale: Res<SimTimeScale>,
+    mut daylight_query: Query<(&DimensionDaylightSeri, &mut DimensionDaylightRuntime)>,
+) {
+    let daylight_delta_minutes = time.delta_secs() * sim_timescale.0 / 60.0;
+
+    for (daylight, mut daylight_runtime) in daylight_query.iter_mut() {
+        daylight.advance_runtime(&mut daylight_runtime, daylight_delta_minutes);
     }
 }

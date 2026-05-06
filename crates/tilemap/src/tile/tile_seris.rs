@@ -1,5 +1,9 @@
-use bevy::prelude::*;
-use bevy_firefly::prelude::*;
+use bevy::{
+    asset::RenderAssetUsages,
+    prelude::*,
+    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
+};
+use bevy_lit::prelude::*;
 use serde::Deserialize;
 
 use item_shared::GeneratedItemsSeri;
@@ -40,28 +44,30 @@ impl PointLightSeri {
         self.kind.trim().is_empty() || self.kind.trim() == "unset"
     }
 
-    pub fn to_light(&self) -> (PointLight2d, LightHeight) {
+    pub fn to_light(&self) -> (PointLight2d, Transform) {
         (
             PointLight2d {
                 color: Color::srgba_u8(self.color[0], self.color[1], self.color[2], self.color[3]),
                 intensity: self.intensity,
-                radius: self.radius,
+                inner_radius: 0.0,
+                outer_radius: self.radius,
+                falloff: 1.0,
                 cast_shadows: self.cast_shadows,
-                offset: Vec3::new(self.offset.0, self.offset.1, 0.0),
                 ..Default::default()
             },
-            LightHeight(self.height),
+            Transform::from_xyz(self.offset.0, self.offset.1, self.height),
         )
     }
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Component, Deserialize, Clone, Debug)]
 #[serde(default)]
 pub struct LightOccluderSeri {
-    pub opacity: f32,
+    pub enabled: bool,
     pub color: [u8; 4],
-    pub z_sorting: bool,
     pub offset: (f32, f32),
+    pub rotation: f32,
+    pub use_sprite: bool,
     pub shape_size: (f32, f32),
     pub shape: String,
 }
@@ -69,10 +75,11 @@ pub struct LightOccluderSeri {
 impl Default for LightOccluderSeri {
     fn default() -> Self {
         Self {
-            opacity: 1.0,
+            enabled: false,
             color: [0, 0, 0, 255],
-            z_sorting: true,
             offset: (0.0, 0.0),
+            rotation: f32::NAN,
+            use_sprite: false,
             shape_size: (32.0, 32.0),
             shape: String::new(),
         }
@@ -85,34 +92,94 @@ impl LightOccluderSeri {
     }
 
     pub fn is_sentinel(&self) -> bool {
-        self.shape.trim().is_empty() || self.shape.trim() == "unset"
+        !self.enabled
     }
 
-    pub fn to_occluder(&self) -> Occluder2d {
-        let (width, height) = self.shape_size;
-        let occluder = match self.shape.trim().to_ascii_lowercase().as_str() {
-            "rectangle" | "" | "unset" => Occluder2d::rectangle(width, height),
-            "circle" => {
-                let radius = width.min(height) * 0.5;
-                Occluder2d::circle(radius)
-            }
-            "capsule" => {
-                let length = height;
-                let radius = (width * 0.5).min(height * 0.25);
-                Occluder2d::vertical_capsule(length, radius)
-            }
-            other => {
-                warn!("Unknown light occluder shape '{}' on tile '{}', falling back to rectangle", other, self.shape);
-                Occluder2d::rectangle(width, height)
-            }
-        };
-
-        occluder
-            .with_opacity(self.opacity)
-            .with_color(Color::srgba_u8(self.color[0], self.color[1], self.color[2], self.color[3]))
-            .with_z_sorting(self.z_sorting)
-            .with_offset(Vec3::new(self.offset.0, self.offset.1, 0.0))
+    pub fn shape_height(&self) -> f32 {
+        self.shape_size.1.max(1.0)
     }
+
+    pub fn to_shape_mask_image(&self) -> Image {
+        let width = self.shape_size.0.max(1.0).ceil() as u32;
+        let height = self.shape_size.1.max(1.0).ceil() as u32;
+        let mut data = vec![0_u8; width as usize * height as usize * 4];
+
+        match self.shape.trim().to_ascii_lowercase().as_str() {
+            "circle" => paint_circle_mask(&mut data, width, height),
+            "capsule" => paint_capsule_mask(&mut data, width, height),
+            _ => paint_rectangle_mask(&mut data),
+        }
+
+        Image::new(
+            Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            TextureDimension::D2,
+            data,
+            TextureFormat::Rgba8Unorm,
+            RenderAssetUsages::default(),
+        )
+    }
+}
+
+fn paint_rectangle_mask(data: &mut [u8]) {
+    for pixel in data.chunks_exact_mut(4) {
+        pixel.fill(255);
+    }
+}
+
+fn paint_circle_mask(data: &mut [u8], width: u32, height: u32) {
+    let center_x = width as f32 * 0.5;
+    let center_y = height as f32 * 0.5;
+    let radius = width.min(height) as f32 * 0.5;
+    let radius_squared = radius * radius;
+
+    for y in 0..height {
+        for x in 0..width {
+            let dx = x as f32 + 0.5 - center_x;
+            let dy = y as f32 + 0.5 - center_y;
+            if dx * dx + dy * dy <= radius_squared {
+                paint_opaque_pixel(data, width, x, y);
+            }
+        }
+    }
+}
+
+fn paint_capsule_mask(data: &mut [u8], width: u32, height: u32) {
+    let center_x = width as f32 * 0.5;
+    let center_y = height as f32 * 0.5;
+    let radius = width.min(height) as f32 * 0.5;
+    let straight_half = (height as f32 * 0.5 - radius).max(0.0);
+    let radius_squared = radius * radius;
+
+    for y in 0..height {
+        for x in 0..width {
+            let dx = (x as f32 + 0.5 - center_x).abs();
+            let dy = (y as f32 + 0.5 - center_y).abs();
+
+            let should_paint = if dy <= straight_half {
+                dx <= radius
+            } else {
+                let circle_dy = dy - straight_half;
+                let circle_dx = (dx - radius).max(0.0);
+                circle_dx * circle_dx + circle_dy * circle_dy <= radius_squared
+            };
+
+            if should_paint {
+                paint_opaque_pixel(data, width, x, y);
+            }
+        }
+    }
+}
+
+fn paint_opaque_pixel(data: &mut [u8], width: u32, x: u32, y: u32) {
+    let index = ((y * width + x) * 4) as usize;
+    data[index] = 255;
+    data[index + 1] = 255;
+    data[index + 2] = 255;
+    data[index + 3] = 255;
 }
 
 #[derive(Deserialize, Asset, TypePath)]
@@ -120,6 +187,7 @@ impl LightOccluderSeri {
 pub struct TileSeri {
     pub id: String,
     pub name: String,
+    #[serde(default = "tile_z_default")]
     pub z: f32,
     pub img_paths: Vec<(String, String)>,
     pub tags: HashSet<String>,
@@ -168,12 +236,16 @@ pub struct TileSeri {
     pub hp: f32,
 }
 
+fn tile_z_default() -> f32 {
+    f32::NAN
+}
+
 impl Default for TileSeri {
     fn default() -> Self {
         Self {
             id: String::new(),
             name: String::new(),
-            z: 0.0,
+            z: tile_z_default(),
             img_paths: Vec::new(),
             tags: HashSet::default(),
             y_sort: 0.0,
@@ -219,15 +291,7 @@ impl TileSeri {
         }
     }
 
-    pub fn light_occluder(&self) -> Option<Occluder2d> {
-        if self.light_occluder.is_sentinel() {
-            return None;
-        }
-
-        Some(self.light_occluder.to_occluder())
-    }
-
-    pub fn point_light(&self) -> Option<(PointLight2d, LightHeight)> {
+    pub fn point_light(&self) -> Option<(PointLight2d, Transform)> {
         if self.point_light.is_sentinel() {
             return None;
         }

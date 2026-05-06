@@ -8,6 +8,7 @@ pub mod game_common_components;
 pub mod entity_zero_components;
 pub mod game_common_string_components;
 pub mod game_common_bundles;
+pub mod clone_children_systems;
 mod game_common_systems;
 
 
@@ -20,4 +21,5 @@ pub use crate::{
     entity_zero_components::*,
     game_common_string_components::*,
     game_common_bundles::*,
+    clone_children_systems::*,
 };

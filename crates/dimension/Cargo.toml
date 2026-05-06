@@ -8,6 +8,7 @@ common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
+time = { path = "../time" }
 
 bevy = { workspace = true }
 #debug_unwraps = { workspace = true }

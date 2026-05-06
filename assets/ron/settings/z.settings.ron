@@ -1,0 +1,6 @@
+(
+    y_mult: 0.01,
+    y_sort_mult: 0.000001,
+    sprite_z: 1000.0,
+    tile_z_unset: -10.0,
+)

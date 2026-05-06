@@ -8,5 +8,6 @@ bevy = { workspace = true }
 bevy_replicon = { workspace = true }
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
+tilemap_shared = { path = "../tilemap_shared" }
 strum = { workspace = true }
 strum_macros = { workspace = true }

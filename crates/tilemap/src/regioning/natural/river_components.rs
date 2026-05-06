@@ -2,12 +2,7 @@ use bevy::{
     platform::collections::{HashMap, HashSet},
     prelude::*,
 };
-use tilemap_shared::{ChunkGposMask, ChunkPos, DimensionRef, GlobalTilePos, RegionPos};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum RiverProbeKind {
-    Inlandness,
-}
+use ::tilemap_shared::*;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct RiverProbeRequest {
@@ -15,13 +10,13 @@ pub struct RiverProbeRequest {
     pub sgc_ent: Entity,
     pub offer_i: u64,
     pub start_chunk: ChunkPos,
-    pub probe_kind: RiverProbeKind,
 }
 
 #[derive(Component, Debug, Clone, Default)]
 pub struct RiverRegionPlan {
     pub claimed_chunks: HashSet<ChunkPos>,
     pub river_tiles: HashMap<ChunkPos, ChunkGposMask>,
+    pub gravel_tiles: HashMap<ChunkPos, ChunkGposMask>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -46,11 +41,28 @@ impl RiverRegionPlan {
     }
 
     pub fn iter_river_tiles_sorted(&self) -> Vec<GlobalTilePos> {
-        let mut tiles = Vec::with_capacity(self.river_tile_count());
-        let mut chunk_positions = self.river_tiles.keys().copied().collect::<Vec<_>>();
+        self.iter_tiles_from_mask(&self.river_tiles)
+    }
+
+    pub fn iter_gravel_tiles_sorted(&self) -> Vec<GlobalTilePos> {
+        self.iter_tiles_from_mask(&self.gravel_tiles)
+    }
+
+    pub fn sorted_claimed_chunks(&self) -> Option<Vec<ChunkPos>> {
+        if self.claimed_chunks.is_empty() {
+            return None;
+        }
+        let mut chunks_pos = self.claimed_chunks.iter().copied().collect::<Vec<_>>();
+        chunks_pos.sort_unstable_by_key(|chunk| (chunk.y(), chunk.x()));
+        Some(chunks_pos)
+    }
+
+    fn iter_tiles_from_mask(&self, mask_map: &HashMap<ChunkPos, ChunkGposMask>) -> Vec<GlobalTilePos> {
+        let mut tiles = Vec::with_capacity(mask_map.values().map(ChunkGposMask::count_set).sum());
+        let mut chunk_positions = mask_map.keys().copied().collect::<Vec<_>>();
         chunk_positions.sort_unstable_by_key(|chunk| (chunk.0.y, chunk.0.x));
         for chunk_pos in chunk_positions {
-            let Some(mask) = self.river_tiles.get(&chunk_pos) else {
+            let Some(mask) = mask_map.get(&chunk_pos) else {
                 continue;
             };
             let chunk_tile_origin = chunk_pos.to_tilepos();

@@ -11,6 +11,8 @@ pub fn plugin(app: &mut App) {
         .register_type::<OffsetDown>()
         .register_type::<OffsetUp>()
         .register_type::<OffsetSideways>()
+        .register_type::<NegativizeRotationOnTileFlip>()
+        .register_type::<Rotation>()
         .register_type::<Scale2D>()
         .register_type::<ScaleLookUp>()
         .register_type::<ScaleLookDown>()
@@ -22,6 +24,8 @@ pub fn plugin(app: &mut App) {
         .replicate::<OffsetDown>()
         .replicate::<OffsetUp>()
         .replicate::<OffsetSideways>()
+        .replicate::<NegativizeRotationOnTileFlip>()
+        .replicate::<Rotation>()
         .replicate::<Scale2D>()
         .replicate::<ScaleLookUp>()
         .replicate::<ScaleLookDown>()
@@ -115,6 +119,63 @@ macro_rules! define_offset2d_type {
 define_offset2d_type!(Offset2D); define_offset2d_type!(OffsetUpDown); define_offset2d_type!(OffsetDown); define_offset2d_type!(OffsetUp); define_offset2d_type!(OffsetSideways);
 define_offset2d_type!(OffsetAsChild);
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
+pub struct NegativizeRotationOnTileFlip;
+
+macro_rules! define_rotation_type {
+    ($name:ident) => {
+        #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
+        pub struct $name(pub f32);
+
+        impl $name {
+            pub fn new(rotation: f32) -> Self {
+                if !rotation.is_finite() {
+                    warn!("Non-finite rotation component detected in {}::new({:?}), set to 0.0", stringify!($name), rotation);
+                    return Self::default();
+                }
+                Self(rotation)
+            }
+
+            pub fn set(&mut self, rotation: f32) {
+                *self = Self::new(rotation);
+            }
+
+            pub fn as_f32(&self) -> f32 {
+                self.0
+            }
+
+            pub fn as_radians(&self) -> f32 {
+                self.0.to_radians()
+            }
+        }
+
+        impl From<f32> for $name {
+            fn from(rotation: f32) -> Self {
+                Self::new(rotation)
+            }
+        }
+
+        impl std::ops::Add for $name {
+            type Output = Self;
+
+            fn add(self, rhs: Self) -> Self {
+                Self::new(self.0 + rhs.0)
+            }
+        }
+
+        impl std::ops::AddAssign for $name {
+            fn add_assign(&mut self, rhs: Self) {
+                self.0 += rhs.0;
+            }
+        }
+    };
+}
+
+define_rotation_type!(Rotation);
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
+pub struct CardinalDirectionAffectsRotation;
+
 macro_rules! impl_cross_sum {
     ($A:ty, $B:ty) => {
         impl std::ops::Add<$B> for $A {
@@ -165,7 +226,8 @@ pub struct AllScales(
 );
 
 #[derive(Bundle, Debug, Default, )]
-pub struct AllScalesAndOffsets(
+pub struct AllScalesAndOffsetsAndRotation(
     pub AllOffsets,
     pub AllScales,
+    pub Rotation,
 );

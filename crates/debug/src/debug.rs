@@ -8,6 +8,7 @@ use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
 use ::being_shared::{BeingNavDebugLine, DebuggingBeingNav};
 use ::being_shared::WallPhaserOnSpawn;
+use tilemap_shared::DirectionalLight2dOverride;
 
     use crate::{
         being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
@@ -17,6 +18,7 @@ use ::being_shared::WallPhaserOnSpawn;
         daylight_window::*,
         debug_chunking_window::*, debug_fonts::*, debug_resources::*,
         debug_systems::*, debug_window_systems::*,
+        dimension_changer_window::*,
         gpos_maps_window::*,
         faction_details_inspector::*,
         nav_maps_window::*,
@@ -24,7 +26,7 @@ use ::being_shared::WallPhaserOnSpawn;
         player_details_inspector::*, players_list_window::*, portals_list_window::*, region_details_inspector::*,
         regions_list_window::*, registered_positions_window::*, sprite_cfgs_details_inspector::*,
         sprite_cfgs_list_window::*, terrgen_editor_window::*, terrgen_values_window::*,
-        terrain_visualizer_window::*,
+        inlandness_visualizer_window::*,
         tile_indices_map_window::*,
         world_tile_click_picker_window::*,
         tile_click_remover::*,
@@ -85,8 +87,9 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             EguiPrimaryContextPass,
             (
-                terrain_visualizer_window,
+                inlandness_visualizer_window,
                 daylight_window,
+                dimension_changer_window,
                 terrgen_settings_editor_window,
                 hot_reload_window,
                 registered_positions_window,
@@ -120,6 +123,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DebugNoiseWorkshopState>()
         .init_resource::<DebugFontsInitialized>()
         .init_resource::<DebugUiConfig>()
+        .init_resource::<DirectionalLight2dOverride>()
         .init_resource::<WallPhaserOnSpawn>()
         .init_resource::<WorldTileClickInspectorState>()
         .init_resource::<TileClickRemoverState>()

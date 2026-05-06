@@ -9,11 +9,12 @@ sgc {
     max_per_region = 1
     args {
         river_tile_id = ocean
+        river_gravel_tile_id = gravel
         river_land_threshold = -0.05
-        river_min_island_area_chunks = 225
+        river_min_island_area_chunks = 180
         river_source_min_inlandness = 0.3
         river_source_hash_stride = 11
-        river_source_mouth_min_distance = 500
+        river_source_mouth_min_distance = 400
         river_source_min_separation_steps = 24
         river_main_half_width_start = 2
         river_main_half_width_end = 4

@@ -13,8 +13,8 @@ pub struct SpriteChangedScaleOrOffsetOrParent(pub Entity);
 
 #[allow(unused_parens)]
 pub fn sprite_change_detection(
-    sprite_query: Query<Entity, (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<TemplEntiRef>, Changed<Offset2D>, Changed<Sprite>, Changed<ChildOf>)>)>,
-    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>, Changed<Visibility>)>, Without<Unloaded>, )>,
+    sprite_query: Query<Entity, (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<Rotation>, Changed<TemplEntiRef>, Changed<Offset2D>, Changed<Sprite>, Changed<Mesh2d>, Changed<ChildOf>)>)>,
+    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<Rotation>, Changed<HeldSprites>, Added<GlobalTilePos>, Changed<Visibility>)>, Without<Unloaded>, )>,
     mut removed_unloaded: RemovedComponents<Unloaded>,
     mut writer: MessageWriter<SpriteChangedScaleOrOffsetOrParent>,
     mut changed: Local<HashSet<SpriteChangedScaleOrOffsetOrParent>>,
@@ -41,7 +41,7 @@ pub fn sprite_change_detection(
 
 
 #[allow(unused_parens)]
-pub fn disable_children_sprites_of_disabled(
+pub fn disable_held_sprites_of_disabled(
     mut cmd: Commands,
     templ_bases: Query<(&HeldSprites),(With<Templ>, Added<Disabled>)>,
     non_templ_bases: Query<(&HeldSprites),(Without<Templ>,)>,

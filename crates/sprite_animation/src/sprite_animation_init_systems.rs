@@ -9,11 +9,13 @@ use sprite_animation_shared::EguiAcAnimationsHolder;
 use sprite_systems::EguiScsHolder;
 use ::sprite_animation_shared::*;
 use crate::sprite_animation_anim_parser::*;
+use tilemap_shared::ZSettings;
 
 #[allow(unused_parens)]
 pub fn init_animations(
     mut cmd: Commands,
     library: Res<AcAnimationEntityMap>,
+    y_sort_settings: Res<ZSettings>,
     sc_holder: Query<Entity, With<EguiScsHolder>>,
     anim_holder: Query<Entity, With<EguiAcAnimationsHolder>>,
     //usar state
@@ -82,7 +84,8 @@ pub fn init_animations(
         if let Some(y_sort) = y_sort {
             cmd.entity(ent).insert(YSortOrigin(y_sort));
         }
-        if seri.z.is_finite() {
+        if seri.z.is_finite(){
+
             cmd.entity(ent).insert(AcZ(seri.z));
         }
         if seri.offset != [0.0, 0.0] {

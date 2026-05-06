@@ -7,7 +7,7 @@
     ],
     is_spritetile: true,
     randflipx: true,
-    offset: (0.0, 150.0),
+    offset: (0.0, 148.0),
     z: 1000,
     y_sort: 0.0,
     colmask: [
@@ -22,12 +22,13 @@
     ),
     hp: 100.0,
     light_occluder: (
-        opacity: 0.85,
+        enabled: true,
         color: (0, 0, 0, 255),
-        z_sorting: true,
-        offset: (0.0, 0.0),
-        shape_size: (12.0, 48.0),
-        shape: "capsule",
+        offset: (-0, 70),
+        rotation: -0,
+        use_sprite: false,
+        shape_size: (16, 160),
+        shape: "occlsh",
     ),
 
 )

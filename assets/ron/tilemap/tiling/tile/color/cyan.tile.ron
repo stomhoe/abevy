@@ -1,7 +1,6 @@
 (
     id: "cyan",
     name: "Cyan",
-    z: -900,
     img_paths: [
         ("", "texture/world/white.png"),
     ],

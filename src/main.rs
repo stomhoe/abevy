@@ -48,7 +48,7 @@ fn build_filter() -> String {
 
         (log_targets::PORTAL_INIT, warn),
         (log_targets::POSITION_SEARCH, info),
-        (log_targets::CHILDRENSPRITE_INIT, debug),
+        (log_targets::CHILDRENSPRITE_INIT, info),
         (log_targets::BIOME_INIT, debug),
 
         (log_targets::OPLIST_INIT, warn),

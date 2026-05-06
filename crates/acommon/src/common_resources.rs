@@ -1,3 +1,4 @@
+use bevy::asset::AssetId;
 use bevy::math::U16Vec2;
 #[allow(unused_imports)] use bevy::platform::collections::HashMap;
 #[allow(unused_imports)] use bevy::prelude::*;
@@ -9,6 +10,24 @@ use std::sync::{Mutex, OnceLock};
 
 #[derive(Resource, Default)]
 pub struct ImageSizeMap(pub HashMap<AssetId<Image>, U16Vec2>);
+
+#[derive(Resource, Default, Debug)]
+pub struct RegisteredImageSizeUpdateObservers(pub HashMap<AssetId<Image>, Vec<Entity>>);
+impl RegisteredImageSizeUpdateObservers {
+    pub fn register(&mut self, image_id: AssetId<Image>, entity: Entity) {
+        self.0.entry(image_id).or_default().push(entity);
+    }
+
+    pub fn take_entities(&mut self, image_id: AssetId<Image>) -> Vec<Entity> {
+        self.0.remove(&image_id).unwrap_or_default()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Message)]
+pub struct ImageSizeReady {
+    pub entity: Entity,
+    pub image_id: AssetId<Image>,
+}
 
 
 

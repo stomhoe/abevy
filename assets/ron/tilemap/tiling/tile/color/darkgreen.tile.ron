@@ -2,7 +2,7 @@
 (
     id: "dark_green",
     name: "Dark Green",
-    z: -900,
+    
     img_paths: [
         ("", "texture/world/white.png"),
     ],

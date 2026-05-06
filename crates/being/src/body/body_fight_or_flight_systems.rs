@@ -426,11 +426,19 @@ fn apply_reaction_to_being(
 
 fn affected_beings_for_damage(
     victim_ent: Entity,
+    attacker_ent: Entity,
     queries: &FightOrFlightReactionQueries,
     locals: &mut FightOrFlightReactionLocals,
 ) -> Vec<Entity> {
     if let Ok(squad_member_of) = queries.squad_member_of_query.get(victim_ent) {
         let pack_ent = squad_member_of.0;
+        if queries
+            .squad_member_of_query
+            .get(attacker_ent)
+            .is_ok_and(|attacker_squad_member_of| attacker_squad_member_of.0 == pack_ent)
+        {
+            return vec![victim_ent];
+        }
         let Some((config, _style)) = resolve_template_entity_config_with_pack_fallback(pack_ent, queries) else {
             return vec![victim_ent];
         };
@@ -467,7 +475,7 @@ pub fn handle_fight_or_flight_reactions(
         if attacker_ent == Entity::PLACEHOLDER {
             continue;
         }
-        let affected_beings = affected_beings_for_damage(damage.target_ent, &queries, &mut locals);
+        let affected_beings = affected_beings_for_damage(damage.target_ent, attacker_ent, &queries, &mut locals);
         for being_ent in affected_beings {
             apply_reaction_to_being(&mut cmd, being_ent, attacker_ent, &queries, &grids);
         }

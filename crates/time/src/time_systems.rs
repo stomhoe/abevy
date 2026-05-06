@@ -2,8 +2,6 @@
 
 use crate::{time_components::*, time_resources::*, time_types::*};
 
-
-
 //NO OLVIDARSE DE AGREGARLO AL PLUGIN
 pub fn pass_time(
     time: Res<Time>,
@@ -15,7 +13,8 @@ pub fn pass_time(
     mut curr_year: ResMut<CurrYear>,
     ingame_timing: Res<InGameTiming>,
 ) {
-    let time_scale = ingame_timing.time_scale_rela2irl() * sim_timescale.0;
+    let day_length_minutes = ingame_timing.day_length_minutes().max(1.0);
+    let time_scale = (24.0 / day_length_minutes) * sim_timescale.0;
 
     let days_per_year = ingame_timing.days_per_year();
 

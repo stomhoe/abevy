@@ -2,9 +2,7 @@ use crate::game_common_components::*;
 use crate::game_common_bundles::DenyForTemplClonedChildren;
 use crate::game_common_timers::*;
 use ::common::*;
-use ::sprite_shared::*;
 use bevy::prelude::*;
-use bevy_replicon::prelude::*;
 pub fn tick_time_based_multipliers(
     time: Res<Time>,
     mut query: Query<(
@@ -20,53 +18,6 @@ pub fn tick_time_based_multipliers(
         }
         multiplier.timer.tick(time.delta().mul_f32(factor));
     }
-}
-#[allow(unused_parens)]
-pub fn clone_templ_children_ents(
-    mut cmd: Commands,
-    query: Query<
-        (Entity, &TemplEntiRef, Has<Replicated>, ),
-        (Changed<TemplEntiRef>, common::AnyDisabling),
-    >,
-
-    templ: Query<(&Children, Option<&HeldSprites>, ), (common::AnyDisabling, With<CloneTemplChildren>, )>,
-    client_state: Res<State<ClientState>>,
-) {
-    let mut new_child_of = Vec::new();
-    let mut new_base_holder_ref = Vec::new();
-
-    let is_client = *client_state.get() != ClientState::Disconnected;
-    query.iter().for_each(|(new_ent, templ_ref, is_replicated, )| {
-        let Ok((templ_children, templ_held_sprites)) = templ.get(templ_ref.0)
-        else { return };
-
-        let is_replicated = (is_replicated );
-
-        if is_client && is_replicated {
-            return;
-        }
-
-        templ_children.iter().for_each(|child_to_clone| {
-            let cloned_child = cmd.entity(child_to_clone).clone_and_spawn_with_opt_out(
-                move |builder|{ builder.deny::<DenyForTemplClonedChildren>();
-                    if ! is_replicated{
-                        builder.deny::<Replicated>();
-                    }
-                }
-            ).id();
-            new_child_of.push((cloned_child, (ChildOf(new_ent), TemplEntiRef(child_to_clone))));
-
-            debug!(target: "entity_zero", "Cloned child {:?} of EntityZero {:?} as child of {:?}", cloned_child, templ_ref.0, new_ent);
-
-            if let Some(templ_held_sprites) = templ_held_sprites {
-                if templ_held_sprites.contains(&child_to_clone) {
-                    new_base_holder_ref.push((cloned_child, BaseHolderRef { base: new_ent,  }, ));
-                }
-            }
-        });
-    });
-    cmd.try_insert_batch(new_child_of);
-    cmd.try_insert_batch(new_base_holder_ref);
 }
 
 #[allow(unused_parens)]

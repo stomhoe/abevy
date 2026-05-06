@@ -16,6 +16,10 @@ sgc {
         regular_polygon_weight = 1.0
         pentacle_weight = 0.5
         random_chamber_weight = 2.0
+        room_size.pentacle.width.min = 12
+        room_size.pentacle.height.min = 12
+        room_size.random_chamber.width.min = 8
+        room_size.random_chamber.height.min = 8
         room_same_shape_chance = 0.25
         room_same_shape_weight_rectangle = 1.0
         room_same_shape_weight_ellipse = 1.0

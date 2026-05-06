@@ -6,21 +6,17 @@ mod river_components;
 mod river_formation;
 #[path = "river_sculpting_helpers.rs"]
 mod river_sculpting_helpers;
-#[path = "river_systems.rs"]
-mod river_systems;
+#[path = "river_chunk_claiming_systems.rs"]
+mod river_chunk_claiming_systems;
 
-pub use river_components::{
-    RiverDebugData,
-    RiverMouthRejectReason,
-    RiverRegionDebugInfo,
-    RiverProbeKind,
-    RiverProbeRequest,
-    RiverRegionPlan,
-};
-pub use river_systems::{
-    claim_chunks_for_river_structures,
-    river_structure_building_system,
-};
+#[path = "river_building_systems.rs"]
+mod river_building_systems;
+
+
+
+pub use river_components::*;
+pub use river_building_systems::*;
+pub use river_chunk_claiming_systems::*;
 
 pub fn plugin(app: &mut App) {
     app

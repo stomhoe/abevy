@@ -6,6 +6,7 @@ use bevy_replicon::prelude::*;
 use common::{SPRITE_INIT, common_components::*, common_tag_components::TagSet};
 use game_common::game_common_components::*;
 use sprite_animation_shared::AcAnimationEntityMap;
+use tilemap_shared::ZSettings;
 
 use crate::sprite_config_parser::load_sprite_defs_from_filesystem;
 use crate::sprite_resources::*;
@@ -15,6 +16,7 @@ pub fn init_sprite_configs(
     mut cmd: Commands,
     scs_map: Res<SpriteConfigEntityMap>,
     library: Res<AcAnimationEntityMap>,
+    z_settings: Res<ZSettings>,
     scs_holder: Query<Entity, With<EguiScsHolder>>,
 ) {
     if !scs_map.0.is_empty() {
@@ -89,6 +91,9 @@ pub fn init_sprite_configs(
         if seri.offset != (0.0, 0.0) {
             let offset_2d = seri.offset;
             cmd.entity(spritecfg_ent).insert(Offset2D::from(offset_2d));
+        }
+        if seri.rotation.is_finite() {
+            cmd.entity(spritecfg_ent).insert(Rotation::from(seri.rotation));
         }
         let y_sort_origin = if seri.y_sort.is_finite() {
             Some(seri.y_sort)
@@ -172,7 +177,7 @@ pub fn init_sprite_configs(
         if seri.z.is_finite() {
             cmd.entity(spritecfg_ent).insert(AcZ(seri.z));
         } else if seri.is_being_root_sprite {
-            cmd.entity(spritecfg_ent).insert(AcZ(1000.0));
+            cmd.entity(spritecfg_ent).insert(AcZ(z_settings.sprite_z));
         }
 
         if !seri.mapped_anims.is_empty() {

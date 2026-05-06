@@ -4,6 +4,7 @@ use ::sprite_shared::*;
 use ::tilemap_shared::*;
 #[allow(unused_imports)]
 use bevy::{
+    math::U16Vec2,
     prelude::*,
     ecs::entity::{EntityHashMap, EntityHashSet},
     platform::collections::HashSet,
@@ -11,18 +12,15 @@ use bevy::{
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::*;
 use color_sampler::{ColorSamplerEntityMap, ColorSamplerRef,};
-use common::{AnyDisabling, TILE_INIT, common_components::*, common_tag_components::TagSet, log_targets::CHILDRENSPRITE_INIT};
+use common::{AnyDisabling, TILE_INIT, common_components::*, common_tag_components::TagSet, };
+use common::common_resources::*;
 use item_shared::{ItemEntityMap, ItemsGeneratedOnDeath};
-use sprite_animation_shared::AcAnimationProgresses;
-use std::{fs, path::PathBuf};
 
-use crate::{
-    tile::{
-        tile_components::*,
-        tile_resources::*,
-        tile_shader::{tile_shader_components::*, tile_shader_resources::*},
-    },
-};
+use crate::tile::{
+        tile_components::*, tile_init_helpers::*, tile_resources::*, tile_seris::LightOccluderSeri, tile_shader::{tile_shader_components::*, tile_shader_resources::*}
+    };
+
+
 #[allow(unused_parens)]
 pub fn init_tiles(
     mut cmd: Commands,
@@ -30,6 +28,7 @@ pub fn init_tiles(
     tiling_map: Res<TileEntityMap>,
     color_map: Res<ColorSamplerEntityMap>,
     item_map: Option<Res<ItemEntityMap>>,
+    y_sort_settings: Res<ZSettings>,
     egui_tiles_holder_query: Query<Entity, With<EguiTilesHolder>>,
 ) {
     if !tiling_map.0.0.is_empty() {
@@ -66,7 +65,13 @@ pub fn init_tiles(
             }
         };
         let hash_id = HashId::hash(str_id.as_str());
-        let my_z = AcZ(seri.z);
+        let my_z = AcZ(if seri.z.is_finite() {
+            seri.z
+        } else if seri.is_spritetile {
+            y_sort_settings.sprite_z
+        } else {
+            y_sort_settings.tile_z_unset
+        });
         let size_in_tiles = SizeInTiles::new(&str_id, Some(seri.size_in_tiles), );
         let tile_index = tile_indexing.register_templ_tile(hash_id);
         let tile_enti = cmd.spawn((
@@ -84,6 +89,7 @@ pub fn init_tiles(
             size_in_tiles,
             CloneTemplChildren,
         )).id();
+        cmd.entity(tile_enti).insert(seri.light_occluder.clone());
         let offset_for_terrgen_placement = OffsetForTerrgenPlacement::from_i32s(seri.terrgen_offset);
         if offset_for_terrgen_placement != OffsetForTerrgenPlacement::default() {
             cmd.entity(tile_enti).insert(offset_for_terrgen_placement);
@@ -261,10 +267,6 @@ pub fn init_tiles(
             let mut sprite_cfgs = Vec::new();
             let mut processing_as_sprite_cfgs = None;
             let point_light = seri.point_light.clone();
-            let occluder = seri.light_occluder();
-            if let Some(occluder) = occluder.clone() {
-                cmd.entity(tile_enti).insert(occluder);
-            }
 
             let len = seri.img_paths.len();
             for (key, path) in seri.img_paths.iter_mut() {
@@ -284,6 +286,7 @@ pub fn init_tiles(
 
                     let child_sprite = cmd.spawn((
                         TileChildSprite,
+                        CloneTemplChildren,
                         ChildOf(tile_enti),
                         BaseHolderRef{ base: tile_enti },
                         sprite_child_str_id,
@@ -302,8 +305,8 @@ pub fn init_tiles(
                     cmd.entity(child_sprite).insert(Visibility::Hidden);
                     
                     if !point_light.is_sentinel() {
-                        let (point_light, light_height) = point_light.to_light();
-                        cmd.entity(child_sprite).insert((point_light, light_height));
+                        let (point_light, point_light_transform) = point_light.to_light();
+                        cmd.entity(child_sprite).insert((point_light, point_light_transform));
                     }
                     processing_as_sprite_cfgs = Some(false);
                 }
@@ -314,123 +317,12 @@ pub fn init_tiles(
             }
         }
     }
-    cmd.spawn((tile_indexing, Replicated));
+    cmd.spawn((tile_indexing, Replicated, Name::new("TileU16IndexHashIdMapping"), ChildOf(holder)));
     cmd.insert_resource(res_tile_tags);
 }
 
-fn trim_world_texture_sprite_id(path: &str) -> String {
-    let trimmed = path.strip_prefix("texture/world/").unwrap_or(path).trim_matches('/');
-    if trimmed.is_empty() {
-        return String::new();
-    }
 
-    let mut segments = trimmed.rsplit('/');
-    let file_name = segments.next().unwrap_or(trimmed);
-    let containing_dir = segments.next();
-    if let Some(containing_dir) = containing_dir {
-        return format!("{containing_dir}/{file_name}");
-    }
-    file_name.to_string()
-}
 
-fn gather_step_sfx_paths_from_dir(directory: &str) -> Vec<String> {
-    let directory = directory.trim().trim_matches('/');
-    if directory.is_empty() {
-        return Vec::new();
-    }
-
-    let mut paths = Vec::new();
-    let mut stack = vec![PathBuf::from("assets").join(directory)];
-    while let Some(curr) = stack.pop() {
-        let Ok(entries) = fs::read_dir(&curr) else { continue };
-        for entry in entries.flatten() {
-            let Ok(file_type) = entry.file_type() else { continue };
-            let path = entry.path();
-            if file_type.is_dir() {
-                stack.push(path);
-                continue;
-            }
-            if !file_type.is_file() {
-                continue;
-            }
-            let Some(ext) = path.extension().and_then(|ext| ext.to_str()) else { continue };
-            if !matches!(ext.to_ascii_lowercase().as_str(), "wav" | "ogg" | "mp3" | "flac") {
-                continue;
-            }
-            let Ok(asset_rel) = path.strip_prefix("assets") else { continue };
-            let Some(asset_rel) = asset_rel.to_str() else { continue };
-            paths.push(asset_rel.replace('\\', "/"));
-        }
-    }
-    paths.sort();
-    paths
-}
-
-#[allow(unused_parens)]
-pub fn init_childrensprite(
-    mut cmd: Commands,
-    childrensprite_query: Query<
-        (Entity, AnyOf<(&PathHolder, &TileRef)>),
-        (
-            With<TileChildSprite>,
-            Or<(Added<TileChildSprite>, Changed<PathHolder>, Changed<TileRef>)>,
-            Without<Sprite>,
-            Without<AcAnimationProgresses>,
-            Without<TilemapId>,
-            Without<Children>,
-            Without<TileShader>,
-            common::AnyDisabling,
-        ),
-    >,
-    templ_img_path: Query<(Option<&PathHolder>, Has<SpriteConfig>), (With<Templ>,)>,
-    tile_map: Res<TileEntityMap>,
-    aserver: Res<AssetServer>,
-) {
-    let mut to_insert = Vec::new();
-    for (entity, (image_path_holder, templ_ref)) in childrensprite_query.iter() {
-        if let Some(img_path_holder) = image_path_holder {
-            trace!(target: CHILDRENSPRITE_INIT, "Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", entity, img_path_holder.path());
-            to_insert.push((
-                entity,
-                (Sprite {
-                    image: aserver.load(img_path_holder.path()),
-                    ..Default::default()
-                },
-                Visibility::Inherited,)
-            ));
-        } else if let Some(templ_ref) = templ_ref {
-            let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
-                error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has TileRef {:?} but the referenced tile entity doesn't exist", entity, templ_ref.0);
-                continue;
-            };
-            let Ok((img_path_holder, is_templ_a_spriteconfig)) = templ_img_path.get(templ_ent)
-            else {
-                error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has TileRef {:?} but the referenced tile entity doesn't exist", entity, templ_ref.0);
-                continue;
-            };
-            if is_templ_a_spriteconfig {
-                continue;
-            }
-            let Some(img_path_holder): Option<&PathHolder> = img_path_holder else {
-                error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has TileRef {:?} but the referenced tile entity has no ImagePathHolder", entity, templ_ref.0);
-                continue;
-            };
-
-            trace!(target: CHILDRENSPRITE_INIT, "Inserting Sprite for entity {:?} via TileRef {:?}, path: {:?}", entity, templ_ref.0, img_path_holder.path());
-            to_insert.push((
-                entity,
-                (Sprite {
-                    image: aserver.load(img_path_holder.path()),
-                    ..Default::default()
-                },
-                Visibility::Inherited,)
-            ));
-        } else {
-            error!(target: CHILDRENSPRITE_INIT, "Entity {:?} has neither ImagePathHolder nor TileRef", entity);
-        }
-    }
-    cmd.try_insert_batch(to_insert);
-}
 
 #[allow(unused_parens)]
 pub fn add_handles(
@@ -461,6 +353,7 @@ pub fn add_handles(
     }
     cmd.try_insert_batch(comps);
 }
+
 
 #[allow(unused_parens)]
 pub fn map_min_dist_tiles(

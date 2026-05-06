@@ -1,7 +1,6 @@
 (
     id: "daylight_settings",
     day_length_minutes: 30.0,
-    time_of_day_minutes: 12.0,
     ambient_color_rgb: [1.0, 1.0, 1.0],
     ambient_brightness: 1.1,
     night_color_rgb: [0.14, 0.16, 0.26],

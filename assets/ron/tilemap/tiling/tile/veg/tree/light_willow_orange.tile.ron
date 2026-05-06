@@ -1,8 +1,6 @@
 (
-    id: "light_willow_orange",
-    name: "Light Willow Orange",
-    tags: ["tree", "veg", "light"],
-    z: 1000,
+    id: "lamp",
+    name: "Lamp",
     y_sort: 0.0,
     img_paths: [
         ("", "texture/world/white.png"),

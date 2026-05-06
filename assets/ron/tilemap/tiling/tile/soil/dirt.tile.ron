@@ -2,7 +2,6 @@
     id: "dirt",
     tags: ["land"],
     name: "Dirt",
-    z: -1000,
     img_paths: [
         ("", "texture/world/white.png"),
     ],

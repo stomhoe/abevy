@@ -57,7 +57,7 @@ pub fn switch_or_readjust_sprite_animation(
         Has<GroundingBased>,
         Option<&BaseMovementSpeed>,
         Option<&SpriteAnimSfx>
-    ), ()>,
+    ), (With<SpriteConfig>)>,
     baseline_speed_query: Query<&SpeedMagnitude>,
     strid_query: Query<&StrId>,
 
@@ -112,8 +112,10 @@ pub fn switch_or_readjust_sprite_animation(
 
             let Ok((sprite_cfg_animations_map, has_fallback, fallback_img_path, directionable, movement_based, grounding_based, baseline_move_speed, sprite_cfg_sfx)) = spriteconfig.get(sprite_cfg_ref.0)
             else {
+                /*
                 let sprite_cfg_strid = strid_query.get(sprite_cfg_ref.0).ok().cloned().unwrap_or_default();
-                error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get SpriteConfigRef entity {:?} {}", sprite_cfg_ref.0, sprite_cfg_strid);
+                warn_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get SpriteConfigRef entity {:?} {}", sprite_cfg_ref.0, sprite_cfg_strid);
+                */
                 continue
             };
             let Some(sprite_cfg_animations_map) = sprite_cfg_animations_map else {

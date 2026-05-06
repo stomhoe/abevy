@@ -20,6 +20,7 @@ pub fn plugin(app: &mut App) {
             (replace_multiple_string_refs_by_entity_refs, replace_dim_string_ref_by_hash_id_ref, replace_portal_tile_string_ref_by_entity_ref).run_if(in_state(ClientState::Disconnected)),
             spawn_egui_macro_chunk_holders,
             add_childof_for_enti_with_dimension_rer,
+            advance_daylight,
         ).in_set(StatefulSessionSystems).in_set(DimensionSystems))
 
 
@@ -28,6 +29,7 @@ pub fn plugin(app: &mut App) {
         .replicate::<MultipleDimensionRefs>()
         .replicate::<Gravity>()
         .replicate::<DimensionDaylightSeri>()
+        .replicate::<DimensionDaylightRuntime>()
         .replicate::<DimensionRootOplist>()
         .replicate::<WhitelistedStructureGenTags>()
         .replicate::<BlacklistedStructureGenTags>()
