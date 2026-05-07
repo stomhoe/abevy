@@ -34,5 +34,4 @@ race basilisk {
         beach: 1.0
         temp: 0.2
     }
-    pack_spawn_radius: 7
 }

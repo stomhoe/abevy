@@ -7,6 +7,9 @@
     ],
     is_spritetile: true,
     randflipx: true,
+
+    hori_variation: (min_dev: 0.2, max_dev: 0.2, mean: 1.0, std_dev: 0.1),
+
     offset: (0.0, 148.0),
     z: 1000,
     y_sort: 0.0,
@@ -28,7 +31,7 @@
         rotation: -0,
         use_sprite: false,
         shape_size: (16, 160),
-        shape: "occlsh",
+        shape: "capsule",
     ),
 
 )

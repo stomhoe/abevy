@@ -25,9 +25,8 @@ race ent {
     )
     body_or_sampler: ent
     size_variation: (min_dev: 0.251 max_dev: 0.251 mean: 1.3 std_dev: 0.1)
-    pack_spawn_radius: 7
     pack: {
-        spawn_being_count_normal_dist: { min_dev: 1.0 max_dev: 1.0 mean: 2.0 std_dev: 0.5 }
+        spawn_being_count_normal_dist: { min_dev: 1.0 max_dev: 1.0 mean: 1.5 std_dev: 0.5 }
         ids: {
             ent: { weight: 1.0 rank: { min_dev: 0.0 max_dev: 0.0 mean: 1.0 std_dev: 0.0 } }
         }

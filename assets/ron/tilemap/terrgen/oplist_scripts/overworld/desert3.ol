@@ -8,5 +8,5 @@ let oasisness = lerp(oasisness, inlandness, 0.1)
 
 out = idxmax(continent_min, oasisness, )
 
-[sand] desert4 biomes: [desert=1.0(9.0,0.)]
+[sand] desert4 biomes: [desert=1.0(30, 3)]
 [lake] ""

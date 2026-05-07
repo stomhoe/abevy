@@ -35,5 +35,4 @@ race bat {
         temp: 0.2
     }
     spawn_pack_entity: false
-    pack_spawn_radius: 7
 }

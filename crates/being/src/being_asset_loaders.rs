@@ -87,5 +87,20 @@ pub(crate) fn parse_inline_pack_def(
     default_id: Option<&str>,
     path: &Path,
 ) -> Result<PackSeri, String> {
-    crate::pack::pack_seris::parse_pack_seri_value(pack_value, default_id, path)
+    let mut pack_seri = crate::pack::pack_seris::parse_pack_seri_value(pack_value, default_id, path)?;
+    let Some(default_id) = default_id else {
+        return Ok(pack_seri);
+    };
+    let default_id = default_id.trim();
+    if default_id.is_empty() {
+        return Ok(pack_seri);
+    }
+    pack_seri
+        .ids
+        .entry(default_id.to_string())
+        .or_insert_with(|| crate::pack::pack_seris::PackMemberConfigSeri {
+            race_first: true,
+            ..crate::pack::pack_seris::PackMemberConfigSeri::default()
+        });
+    Ok(pack_seri)
 }

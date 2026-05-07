@@ -1,7 +1,9 @@
 use bevy::prelude::*;
+use bevy_ecs_tilemap::tiles::TileFlip;
 use ::common::*;
 use game_common::game_common_components::*;
 use ::sprite_shared::*;
+use ::tilemap_shared::tilemap_shared_samplers::*;
 
 use crate::{sprite_systems::SpriteChangedScaleOrOffsetOrParent};
 use ::tilemap_shared::directions::*;
@@ -15,6 +17,8 @@ pub fn apply_offsets(
         &BaseHolderRef,
         &ChildOf,
         Option<&TemplEntiRef>,
+        Option<&AutoCorrectOffsetBasedOnParentSizeResults>,
+        Has<DontNegativizeOffset>,
         Option<&Offset2D>,
     ), (Without<Templ>, )>,
     sprite_config_query: Query<(
@@ -26,11 +30,13 @@ pub fn apply_offsets(
     offset_for_children_query: Query<&OffsetForChildren>,
     parent_sprite_query: Query<&TemplEntiRef>,
     base_query: Query<&CardinalDirection>,
+    base_normal_dist_query: Query<(Option<&SpriteGlobalNormalDistResult>, Option<&SpriteHoriNormalDistResult>, Option<&SpriteVertNormalDistResult>)>,
+    base_tile_flip_query: Query<&TileFlip>,
 ) {
     for (msg, _) in reader.par_read() {
         let sprite_ent = msg.0;
         let Ok((
-            mut transform, baseholder, child_of, sprite_config_ref, own_offset,
+            mut transform, baseholder, child_of, sprite_config_ref, auto_correct_offset_based_on_parent_size_results, dont_negativize_offset, own_offset,
         )) = sprite_query.get_mut(sprite_ent) else {
             continue;
         };
@@ -80,6 +86,35 @@ pub fn apply_offsets(
             }
         } else{
             total_offset += own_offset.cloned().unwrap_or_default();
+        }
+
+        if let Some(_auto_correct) = auto_correct_offset_based_on_parent_size_results {
+            let Ok((global_dist, hori_dist, vert_dist)) = base_normal_dist_query.get(baseholder.base) else {
+                error_once!("Failed to get parent normal dist results for offset autocorrection on sprite entity {:?}", sprite_ent);
+                if transform.translation.xy() != total_offset.0 {
+                    transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;
+                }
+                continue;
+            };
+
+            let global_mult = global_dist.map(|value| value.0).unwrap_or(1.0);
+            let hori_mult = hori_dist.map(|value| value.0).unwrap_or(1.0);
+            let vert_mult = vert_dist.map(|value| value.0).unwrap_or(1.0);
+            let offset_scale = Vec2::new(global_mult * hori_mult, global_mult * vert_mult);
+            let correction = total_offset.0 * (offset_scale - Vec2::ONE) * 1.;
+            total_offset += Offset2D::from(correction);
+        }
+        
+
+        if !dont_negativize_offset {
+            if let Ok(tile_flip) = base_tile_flip_query.get(baseholder.base) {
+                if tile_flip.x {
+                    total_offset.0.x = -total_offset.0.x.abs();
+                }
+                if tile_flip.y {
+                    total_offset.0.y = -total_offset.0.y.abs();
+                }
+            }
         }
         if transform.translation.xy() != total_offset.0 {
             transform.translation.x = total_offset.0.x; transform.translation.y = total_offset.0.y;

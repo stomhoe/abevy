@@ -28,5 +28,4 @@ race golem_ice {
     biome_affinity: {
         ice: 1.0
     }
-    pack_spawn_radius: 7
 }

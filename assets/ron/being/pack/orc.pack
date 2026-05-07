@@ -11,5 +11,4 @@ pack orc {
         desert: 0.8
         ocean: -2.5
     }
-    pack_spawn_radius: 7
 }

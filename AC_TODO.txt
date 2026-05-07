@@ -76,3 +76,5 @@ poner async tasks para structure generators
 priorizar no-simulación fake de beings más importantes y simular beings menos significativos (hormigas, zombies, undead)
 
 buscar artic wolf
+
+hacer q arboles tengan normal size variation

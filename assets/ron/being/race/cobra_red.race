@@ -34,5 +34,4 @@ race cobra_red {
         desert: 1.2
         temp: 0.4
     }
-    pack_spawn_radius: 7
 }

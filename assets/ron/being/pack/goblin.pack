@@ -12,5 +12,4 @@ pack goblin {
         beach: 0.3
         ocean: -2.5
     }
-    pack_spawn_radius: 7
 }

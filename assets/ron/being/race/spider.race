@@ -34,5 +34,4 @@ race spider {
         temp: 1.0
         elf: 0.2
     }
-    pack_spawn_radius: 7
 }

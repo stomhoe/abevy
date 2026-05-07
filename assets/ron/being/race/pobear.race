@@ -33,5 +33,4 @@ race pobear {
         anta: 1.0
         ocean: -1.0
     }
-    pack_spawn_radius: 7
 }

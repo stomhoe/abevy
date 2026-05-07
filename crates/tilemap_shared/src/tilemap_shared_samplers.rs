@@ -87,10 +87,19 @@ define_sprite_normal_dist!(SpriteHoriNormalDist);
 define_sprite_normal_dist!(SpriteVertNormalDist);
 define_sprite_normal_dist!(SpriteGlobalNormalDist);
 
+#[derive(Bundle, Default, Debug, Clone, )]
+pub struct SpriteDists (
+    SpriteHoriNormalDist,
+    SpriteVertNormalDist,
+    SpriteGlobalNormalDist,
+);
+
+    
+
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone, )]
 pub struct ScaleHpAndStrengthWithSampledSize;
 
-#[derive(Component, Default, Debug, Clone, )]
+#[derive(Component, Default, Debug, Clone, Deserialize, Serialize, )]
 pub struct CappedNormalDist {
     pub min_dev: f32,
     pub max_dev: f32,

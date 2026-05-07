@@ -1,7 +1,7 @@
 (
     id: "structure_generation_settings",
-    structure_build_timeout_secs: 4.0,
-    claimlist_advance_timeout_secs: 0.6,
-    region_offer_timeout_secs: 2.0,
+    structure_build_timeout_secs: 1.0,
+    claimlist_advance_timeout_secs: 0.001,
+    region_offer_timeout_secs: 0.25,
     max_used_chunks_per_region_ratio: 0.07,
 )

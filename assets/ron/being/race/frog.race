@@ -39,5 +39,4 @@ race frog {
         min_hunger_to_hunt: 0.0
     )
     spawn_pack_entity: false
-    pack_spawn_radius: 7
 }

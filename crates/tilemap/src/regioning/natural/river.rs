@@ -23,8 +23,7 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (
             claim_chunks_for_river_structures
                 .in_set(crate::regioning::RegioningSystems)
-                .after(crate::regioning::claim_chunks_for_various_dungeon_types)
-                .run_if(on_message::<crate::regioning::regioning_messages::OfferChunk>.or(on_message::<crate::terrain::terrprobe::terrprobe_messages::SampledValuesCollected>).or(on_message::<crate::terrain::terrprobe::terrprobe_messages::SearchFailed>)),
+                .after(crate::regioning::claim_chunks_for_various_dungeon_types),
             ApplyDeferred,
             river_structure_building_system.in_set(crate::regioning::StructureBuildingSystems),
         ).chain())

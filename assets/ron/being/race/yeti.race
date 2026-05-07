@@ -29,5 +29,4 @@ race yeti {
         anta: 0.5
         ocean: -1.0
     }
-    pack_spawn_radius: 7
 }

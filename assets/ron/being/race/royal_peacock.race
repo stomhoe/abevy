@@ -30,5 +30,4 @@ race royal_peacock {
         temp: 1.0
         elf: 0.7
     }
-    pack_spawn_radius: 7
 }

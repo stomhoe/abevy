@@ -19,6 +19,7 @@ pub struct EntityZeroCloneDeny(
     HashId,
     GameCommonStringComponentsBundle,
     CloneTemplChildren,
+    SpriteDists,
 );
 
 #[derive(Bundle)]
@@ -31,5 +32,6 @@ pub struct DenyForTemplClonedChildren(
     YSortOrigin,
     AllScalesAndOffsetsAndRotation,
     StrId,
-    Children
+    Children,
+    SpriteDists,
 );

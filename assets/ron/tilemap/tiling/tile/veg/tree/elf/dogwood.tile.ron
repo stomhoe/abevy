@@ -7,7 +7,8 @@
     ],
     is_spritetile: true,
     randflipx: true,
-    offset: (0.0, 135.0),
+    hori_variation: (min_dev: 0.2, max_dev: 0.2, mean: 1.0, std_dev: 0.1),
+    offset: (0.0, 155.0),
     z: 1000,
     y_sort: 0.0,
     colmask: [
@@ -24,10 +25,10 @@
     light_occluder: (
         enabled: true,
         color: (0, 0, 0, 255),
-        offset: (0, 60),
+        offset: (0, 65),
         use_sprite: false,
-        shape_size: (9, 130),
-        shape: "occlsh",
+        shape_size: (10, 70),
+        shape: "capsule",
     ),
 
 )

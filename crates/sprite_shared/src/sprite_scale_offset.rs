@@ -3,6 +3,8 @@
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::{AutoCorrectOffsetBasedOnParentSizeResults, DontNegativizeOffset, FlippedTransform};
+
 
 pub fn plugin(app: &mut App) {
     app
@@ -18,6 +20,9 @@ pub fn plugin(app: &mut App) {
         .register_type::<ScaleLookDown>()
         .register_type::<ScaleLookUpDown>()
         .register_type::<ScaleSideways>()
+        .register_type::<AutoCorrectOffsetBasedOnParentSizeResults>()
+        .register_type::<FlippedTransform>()
+        .register_type::<DontNegativizeOffset>()
 
         .replicate::<Offset2D>()
         .replicate::<OffsetUpDown>()
@@ -31,6 +36,9 @@ pub fn plugin(app: &mut App) {
         .replicate::<ScaleLookDown>()
         .replicate::<ScaleLookUpDown>()
         .replicate::<ScaleSideways>()
+        .replicate::<AutoCorrectOffsetBasedOnParentSizeResults>()
+        .replicate::<FlippedTransform>()
+        .replicate::<DontNegativizeOffset>()
 
     ;
 }

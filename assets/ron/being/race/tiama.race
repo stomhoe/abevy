@@ -33,5 +33,4 @@ race tiama {
     biome_affinity: {
         anta: 1.2
     }
-    pack_spawn_radius: 7
 }

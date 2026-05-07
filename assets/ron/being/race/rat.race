@@ -36,5 +36,4 @@ race rat {
         reaction: flee
     )
     spawn_pack_entity: false
-    pack_spawn_radius: 7
 }

@@ -162,6 +162,15 @@ pub fn init_tiles(
         if seri.randflipd {
             cmd.entity(tile_enti).insert(FlipDiagonallyBasedOnHash);
         }
+        if !seri.size_variation.is_sentinel() {
+            cmd.entity(tile_enti).insert(SpriteGlobalNormalDist::new(seri.size_variation.clone()));
+        }
+        if !seri.hori_variation.is_sentinel() {
+            cmd.entity(tile_enti).insert(SpriteHoriNormalDist::new(seri.hori_variation.clone()));
+        }
+        if !seri.vert_variation.is_sentinel() {
+            cmd.entity(tile_enti).insert(SpriteVertNormalDist::new(seri.vert_variation.clone()));
+        }
         if seri.portal.no_field_is_empty() {
             cmd.entity(tile_enti).insert((std::mem::take(&mut seri.portal), ChildOf(egui_portal_holder)));
         }

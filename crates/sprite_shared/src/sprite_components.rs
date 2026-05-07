@@ -217,6 +217,19 @@ impl YSortOrigin {
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct ExcludedFromNormalSizeModifier;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
+pub struct AutoCorrectOffsetBasedOnParentSizeResults;
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
+pub struct FlippedTransform {
+    pub x: bool,
+    pub y: bool,
+}
+
+#[derive(Component, Debug, Default, Deserialize, Serialize, Clone, Copy, Reflect)]
+pub struct DontNegativizeOffset;
+
 impl From<String> for AppliesOnSpriteDirection {
     fn from(s: String) -> Self {
         Self::from_str(&s)

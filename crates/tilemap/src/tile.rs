@@ -68,6 +68,7 @@ pub fn plugin(app: &mut App) {
         despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_tiles.in_set(PreChunkDespawnSystems),
         despawn_other_tiles_in_same_pos_if_not_excepted.in_set(PreChunkDespawnSystems),//DON'T TOUCH
         add_projectile_colliders_to_tiles,
+        sample_tile_normal_size_variations,
         (snap_transform_to_gpos).chain(),
         add_handles,
         sync_tile_instance_templ_enti_ref_from_map,
@@ -77,6 +78,7 @@ pub fn plugin(app: &mut App) {
         validate_portal_recipes,
 
     ))
+    .add_systems(Update, sample_tile_normal_size_variations)
     .add_systems(Update, (
         resolve_portal_search_results
             .run_if(in_state(ClientState::Disconnected))

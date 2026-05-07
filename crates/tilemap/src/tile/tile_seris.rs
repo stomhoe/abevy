@@ -69,6 +69,7 @@ pub struct LightOccluderSeri {
     pub rotation: f32,
     pub use_sprite: bool,
     pub shape_size: (f32, f32),
+    pub radius: Option<f32>,
     pub shape: String,
 }
 
@@ -81,6 +82,7 @@ impl Default for LightOccluderSeri {
             rotation: f32::NAN,
             use_sprite: false,
             shape_size: (32.0, 32.0),
+            radius: None,
             shape: String::new(),
         }
     }
@@ -103,10 +105,17 @@ impl LightOccluderSeri {
         let width = self.shape_size.0.max(1.0).ceil() as u32;
         let height = self.shape_size.1.max(1.0).ceil() as u32;
         let mut data = vec![0_u8; width as usize * height as usize * 4];
+        let cap_radius = self
+            .radius
+            .unwrap_or_else(|| width.min(height) as f32 * 0.5)
+            .clamp(0.5, width.min(height) as f32 * 0.5);
+        let shear = self.rotation.is_finite().then(|| self.rotation.to_radians().tan()).unwrap_or(0.0);
 
         match self.shape.trim().to_ascii_lowercase().as_str() {
             "circle" => paint_circle_mask(&mut data, width, height),
-            "capsule" => paint_capsule_mask(&mut data, width, height),
+            "capsule" if shear != 0.0 => paint_sheared_capsule_mask(&mut data, width, height, cap_radius, shear),
+            "capsule" => paint_capsule_mask(&mut data, width, height, cap_radius),
+            _ if shear != 0.0 => paint_sheared_rectangle_mask(&mut data, width, height, shear),
             _ => paint_rectangle_mask(&mut data),
         }
 
@@ -147,10 +156,27 @@ fn paint_circle_mask(data: &mut [u8], width: u32, height: u32) {
     }
 }
 
-fn paint_capsule_mask(data: &mut [u8], width: u32, height: u32) {
+fn paint_sheared_rectangle_mask(data: &mut [u8], width: u32, height: u32, shear: f32) {
     let center_x = width as f32 * 0.5;
     let center_y = height as f32 * 0.5;
-    let radius = width.min(height) as f32 * 0.5;
+    let half_width = width as f32 * 0.5;
+    let half_height = height as f32 * 0.5;
+
+    for y in 0..height {
+        let dy = y as f32 + 0.5 - center_y;
+        let x_offset = shear * dy;
+        for x in 0..width {
+            let dx = x as f32 + 0.5 - center_x - x_offset;
+            if dx.abs() <= half_width && dy.abs() <= half_height {
+                paint_opaque_pixel(data, width, x, y);
+            }
+        }
+    }
+}
+
+fn paint_capsule_mask(data: &mut [u8], width: u32, height: u32, radius: f32) {
+    let center_x = width as f32 * 0.5;
+    let center_y = height as f32 * 0.5;
     let straight_half = (height as f32 * 0.5 - radius).max(0.0);
     let radius_squared = radius * radius;
 
@@ -163,8 +189,35 @@ fn paint_capsule_mask(data: &mut [u8], width: u32, height: u32) {
                 dx <= radius
             } else {
                 let circle_dy = dy - straight_half;
-                let circle_dx = (dx - radius).max(0.0);
-                circle_dx * circle_dx + circle_dy * circle_dy <= radius_squared
+                dx * dx + circle_dy * circle_dy <= radius_squared
+            };
+
+            if should_paint {
+                paint_opaque_pixel(data, width, x, y);
+            }
+        }
+    }
+}
+
+fn paint_sheared_capsule_mask(data: &mut [u8], width: u32, height: u32, radius: f32, shear: f32) {
+    let center_x = width as f32 * 0.5;
+    let center_y = height as f32 * 0.5;
+    let straight_half = (height as f32 * 0.5 - radius).max(0.0);
+    let radius_squared = radius * radius;
+
+    for y in 0..height {
+        let dy = y as f32 + 0.5 - center_y;
+        let x_offset = shear * dy;
+        for x in 0..width {
+            let dx = x as f32 + 0.5 - center_x - x_offset;
+            let adx = dx.abs();
+            let ady = dy.abs();
+
+            let should_paint = if ady <= straight_half {
+                adx <= radius
+            } else {
+                let circle_dy = ady - straight_half;
+                dx * dx + circle_dy * circle_dy <= radius_squared
             };
 
             if should_paint {
@@ -205,6 +258,9 @@ pub struct TileSeri {
     pub randflipx: bool,
     pub randflipy: bool,
     pub randflipd: bool,
+    pub size_variation: NormalDistSeri,
+    pub hori_variation: NormalDistSeri,
+    pub vert_variation: NormalDistSeri,
     pub min_distances: HashMap<String, u64>,
     pub portal: PortalSeri,
     pub offset: (f32, f32),
@@ -260,6 +316,9 @@ impl Default for TileSeri {
             randflipx: false,
             randflipy: false,
             randflipd: false,
+            size_variation: NormalDistSeri::default(),
+            hori_variation: NormalDistSeri::default(),
+            vert_variation: NormalDistSeri::default(),
             min_distances: HashMap::default(),
             portal: PortalSeri::default(),
             offset: (0.0, 0.0),

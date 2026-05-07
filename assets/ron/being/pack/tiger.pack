@@ -8,5 +8,4 @@ pack tiger {
         temp: 1.0
         elf: 0.6
     }
-    pack_spawn_radius: 7
 }

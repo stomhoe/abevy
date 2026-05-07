@@ -14,5 +14,4 @@ pack skeleton {
         desert: 0.2
         ocean: -2.5
     }
-    pack_spawn_radius: 7
 }

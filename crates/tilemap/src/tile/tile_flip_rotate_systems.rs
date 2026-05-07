@@ -127,6 +127,9 @@ pub fn sync_sprite_flips_with_tileflip(
         ),
     >,
     mut sprites_query: Query<&mut Sprite, (common::AnyDisabling, )>,
+    mut occluder_query: Query<(), (With<TileChildSpriteOccluder>, common::AnyDisabling, )>,
+    mut flipped_transform_query: Query<&mut FlippedTransform, ()>,
+    mut cmd: Commands,
 ) {
     for (tile_ent, tile_flip, held_sprites, children) in tile_query.iter() {
         if let Ok(mut my_sprite) = sprites_query.get_mut(tile_ent) {
@@ -146,6 +149,14 @@ pub fn sync_sprite_flips_with_tileflip(
                 if let Ok(mut sprite) = sprites_query.get_mut(child) {
                     sprite.flip_x = tile_flip.x;
                     sprite.flip_y = tile_flip.y;
+                }
+                if occluder_query.get_mut(child).is_ok() {
+                    let flipped_transform = FlippedTransform { x: tile_flip.x, y: tile_flip.y };
+                    if let Ok(mut flip_transform) = flipped_transform_query.get_mut(child) {
+                        *flip_transform = flipped_transform;
+                    } else {
+                        cmd.entity(child).try_insert(flipped_transform);
+                    }
                 }
             });
         }

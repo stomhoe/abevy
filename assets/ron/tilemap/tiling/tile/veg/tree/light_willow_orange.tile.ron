@@ -9,6 +9,9 @@
 
     is_spritetile: true,
     randflipx: true,
+
+    hori_variation: (min_dev: 0.2, max_dev: 0.2, mean: 1.0, std_dev: 0.1),
+
     offset: (0.0, 0.0),
     colmask: [
         "1",

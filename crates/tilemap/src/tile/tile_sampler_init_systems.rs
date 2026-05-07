@@ -1,9 +1,13 @@
 #[allow(unused_imports)] use bevy::prelude::*;
+use bevy::ecs::system::SystemParam;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
+use rand::SeedableRng;
 
-use crate::tile::{TileWeightedSamplerEntityMap, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
+use crate::tile::{tile_components::Tile, TileEntityMap, TileWeightedSamplerEntityMap, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
+use game_common::game_common_components::Templ;
 use ::common::*;
-use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
+use rand_pcg::Pcg64Mcg;
+use tilemap_shared::tilemap_shared_samplers::{HashIdWeightedSampler, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist};
 
 #[allow(unused_parens)]
 pub fn init_tile_weighted_samplers(
@@ -78,5 +82,62 @@ pub fn init_tile_weighted_samplers_part_two(
             error!(target: "tile_sampler_init", "Weighted sampler {} encountered a negative weight for value {:?}; rejected", &str_id, negative_item);
         }
         cmd.entity(wmap_ent).insert(wmap);
+    }
+}
+
+#[derive(SystemParam)]
+pub struct SampleTileNormalSizeVariationsParams<'w, 's> {
+    pub tiles_to_sample: Query<'w, 's, (Entity, &'static InitialPos, &'static TileRef), (Changed<InitialPos>, With<Tile>, Without<Templ>, common::AnyDisabling,)>,
+    pub dists_query: Query<'w, 's, (Option<&'static SpriteGlobalNormalDist>, Option<&'static SpriteHoriNormalDist>, Option<&'static SpriteVertNormalDist>)>,
+    pub tile_map: Res<'w, TileEntityMap>,
+    pub gen_settings: Query<'w, 's, &'static GlobalGenSettings>,
+}
+
+#[allow(unused_parens)]
+pub fn sample_tile_normal_size_variations(
+    mut cmd: Commands,
+    queries: SampleTileNormalSizeVariationsParams,
+) {
+    if queries.tiles_to_sample.is_empty() {
+        return;
+    }
+
+    let Ok(settings) = queries.gen_settings.single() else {
+        error_once!("Failed to get global gen settings for tile normal dist sampling");
+        return;
+    };
+
+    for (ent, initial_pos, tile_ref) in queries.tiles_to_sample.iter() {
+        let Ok((global_dist, hori_dist, vert_dist)) = queries.dists_query.get(ent) else {
+            continue;
+        };
+        let Some(templ_ent) = queries.tile_map.0.get_cloned(tile_ref.0).ok() else {
+            error!("Failed to resolve TileRef {:?} while sampling tile normal size variations", tile_ref);
+            continue;
+        };
+        let Ok((templ_global_dist, templ_hori_dist, templ_vert_dist)) = queries.dists_query.get(templ_ent) else {
+            continue;
+        };
+
+        let global_dist = global_dist.or(templ_global_dist);
+        let hori_dist = hori_dist.or(templ_hori_dist);
+        let vert_dist = vert_dist.or(templ_vert_dist);
+        if global_dist.is_none() && hori_dist.is_none() && vert_dist.is_none() {
+            continue;
+        }
+
+        let seed = initial_pos.pos.hash_value(settings, initial_pos.dim.0.merge(tile_ref.0), 0);
+        let mut rng = Pcg64Mcg::seed_from_u64(seed);
+        let mut entity_cmd = cmd.entity(ent);
+
+        if let Some(global_dist) = global_dist {
+            entity_cmd.insert(global_dist.sample(&mut rng));
+        }
+        if let Some(hori_dist) = hori_dist {
+            entity_cmd.insert(hori_dist.sample(&mut rng));
+        }
+        if let Some(vert_dist) = vert_dist {
+            entity_cmd.insert(vert_dist.sample(&mut rng));
+        }
     }
 }

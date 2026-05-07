@@ -29,5 +29,4 @@ race dragon {
     )
     body_or_sampler: dragon
     size_variation: (min_dev: 0.251 max_dev: 0.251 mean: 1.0 std_dev: 0.1)
-    pack_spawn_radius: 7
 }

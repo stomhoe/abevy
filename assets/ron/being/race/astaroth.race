@@ -25,5 +25,4 @@ race astaroth {
     )
     body_or_sampler: astaroth
     size_variation: (min_dev: 0.19999999999999992 max_dev: 0.19999999999999992 mean: 1.0 std_dev: 0.1)
-    pack_spawn_radius: 7
 }

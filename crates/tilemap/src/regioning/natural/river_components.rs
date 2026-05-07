@@ -1,6 +1,7 @@
 use bevy::{
     platform::collections::{HashMap, HashSet},
     prelude::*,
+    tasks::Task,
 };
 use ::tilemap_shared::*;
 
@@ -116,6 +117,22 @@ pub struct RiverRegionDebugInfo {
     pub mouth_reject_stats: RiverMouthRejectStats,
     pub success_count: u32,
     pub failure_count: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct RiverPlanTaskResult {
+    pub region_ent: Entity,
+    pub sgc_ent: Entity,
+    pub offer_i: u64,
+    pub dimension_ref: DimensionRef,
+    pub region_pos: RegionPos,
+    pub region_debug: RiverRegionDebugInfo,
+    pub plan: RiverRegionPlan,
+}
+
+#[derive(Debug, Default)]
+pub struct RiverAsyncTasks {
+    pub plan_tasks: Vec<Task<RiverPlanTaskResult>>,
 }
 
 #[derive(Resource, Debug, Default, Clone)]

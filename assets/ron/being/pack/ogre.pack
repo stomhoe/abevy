@@ -9,5 +9,4 @@ pack ogre {
         desert: 0.5
         ocean: -2.5
     }
-    pack_spawn_radius: 7
 }

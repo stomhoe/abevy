@@ -3,5 +3,4 @@ pack demon {
     ids: {
         demon: 1.0
     }
-    pack_spawn_radius: 7
 }

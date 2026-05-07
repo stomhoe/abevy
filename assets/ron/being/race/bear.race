@@ -33,5 +33,4 @@ race bear {
     biome_affinity: {
         temp: 1.0
     }
-    pack_spawn_radius: 7
 }

@@ -30,9 +30,8 @@ fn spawn_child_sprite_occluder_entity(
     occluder_mesh: Handle<Mesh>,
     occluder_height: f32,
     offset: (f32, f32),
-    rotation: Option<f32>,
 ) {
-    let mut entity = cmd.spawn((
+    cmd.spawn((
         ChildOf(parent),
         BaseHolderRef { base: parent },
         Transform::default(),
@@ -41,17 +40,15 @@ fn spawn_child_sprite_occluder_entity(
         TileChildSpriteOccluder,
         Mesh2d(occluder_mesh),
         Offset2D::from(offset),
+        FlippedTransform { x: false, y: false },
         NegativizeRotationOnTileFlip,
+        AutoCorrectOffsetBasedOnParentSizeResults,
         LightOccluder2d::with_height(occluder_mask, occluder_height),
     ));
-
-    if let Some(rotation) = rotation {
-        entity.insert(Rotation::from(rotation));
-    }
 }
 
-fn spawn_child_sprite_occluder_stub(cmd: &mut Commands, parent: Entity, offset: (f32, f32), rotation: Option<f32>) {
-    let mut entity = cmd.spawn((
+fn spawn_child_sprite_occluder_stub(cmd: &mut Commands, parent: Entity, offset: (f32, f32)) {
+    cmd.spawn((
         ChildOf(parent),
         BaseHolderRef { base: parent },
         Transform::default(),
@@ -59,12 +56,9 @@ fn spawn_child_sprite_occluder_stub(cmd: &mut Commands, parent: Entity, offset: 
         Visibility::Inherited,
         TileChildSpriteOccluder,
         Offset2D::from(offset),
+        FlippedTransform { x: false, y: false },
         NegativizeRotationOnTileFlip,
     ));
-
-    if let Some(rotation) = rotation {
-        entity.insert(Rotation::from(rotation));
-    }
 }
 
 #[allow(unused_parens)]
@@ -196,7 +190,11 @@ pub fn init_templ_childrensprite_light_occluders(
 
             if light_occluder.use_sprite {
                 pending_image_size_updates.register(image.id(), childsprite_ent);
-                spawn_child_sprite_occluder_stub(&mut cmd, base_holder_ref.base, light_occluder.offset, light_occluder.rotation.is_finite().then_some(light_occluder.rotation));
+                spawn_child_sprite_occluder_stub(
+                    &mut cmd,
+                    base_holder_ref.base,
+                    light_occluder.offset,
+                );
             } else {
                 let (occluder_mask, occluder_mesh) = occluder_handle_pair(
                     templ_ent,
@@ -212,7 +210,6 @@ pub fn init_templ_childrensprite_light_occluders(
                     occluder_mesh,
                     light_occluder.shape_height(),
                     light_occluder.offset,
-                    light_occluder.rotation.is_finite().then_some(light_occluder.rotation),
                 );
             }
 
@@ -229,7 +226,11 @@ pub fn init_templ_childrensprite_light_occluders(
         let image = aserver.load(img_path_holder.path().clone());
         if light_occluder.use_sprite {
             pending_image_size_updates.register(image.id(), childsprite_ent);
-            spawn_child_sprite_occluder_stub(&mut cmd, base_holder_ref.base, light_occluder.offset, light_occluder.rotation.is_finite().then_some(light_occluder.rotation));
+            spawn_child_sprite_occluder_stub(
+                &mut cmd,
+                base_holder_ref.base,
+                light_occluder.offset,
+            );
         } else {
             let (occluder_mask, occluder_mesh) = occluder_handle_pair(
                 base_holder_ref.base,
@@ -245,7 +246,6 @@ pub fn init_templ_childrensprite_light_occluders(
                 occluder_mesh,
                 light_occluder.shape_height(),
                 light_occluder.offset,
-                light_occluder.rotation.is_finite().then_some(light_occluder.rotation),
             );
         }
     }
@@ -328,6 +328,9 @@ pub fn fix_childrensprite_spritemask_occluders_img_size(
                     GlobalTransform::default(),
                     Visibility::Inherited,
                     TileChildSpriteOccluder,
+                    Offset2D::from(light_occluder_seri.offset),
+                    FlippedTransform { x: false, y: false },
+                    AutoCorrectOffsetBasedOnParentSizeResults,
                 ))
                 .id()
             });

@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 use tilemap_shared::{ChunkPos, CappedNormalDist, DimensionRef, GlobalGenSettings, GlobalTilePos, HashablePosVec, RegionPos};
 
 use crate::regioning::regioning_sgc_seris::{SgcArgValue, SgcArgsDict};
-use super::river_components::{RiverDebugData, RiverMouthRejectReason, RiverRegionDebugInfo, RiverRegionPlan};
+use super::river_components::{RiverMouthRejectReason, RiverRegionDebugInfo, RiverRegionPlan};
 use super::river_sculpting_helpers::{closest_point_on_path, maybe_add_river_delta, maybe_add_river_gravel_deposits, maybe_add_river_island_gap, path_has_nonconsecutive_overlap, path_touches_forbidden_border_chunks, plan_river_path_tiles, rebuild_claimed_chunks_from_masks, river_noise_signed, segment_reenters_visited_path, smooth_river_path};
 
 pub(super) fn generate_river_region_plan(
@@ -18,13 +18,12 @@ pub(super) fn generate_river_region_plan(
     dimension_ref: DimensionRef,
     source_region_pos: RegionPos,
     plan: &mut RiverRegionPlan,
-    river_debug: &mut RiverDebugData,
+    region_debug: &mut RiverRegionDebugInfo,
 ) -> bool {
     plan.claimed_chunks.clear();
     plan.river_tiles.clear();
     plan.gravel_tiles.clear();
 
-    let region_debug = river_debug.region_mut(dimension_ref, source_region_pos);
     region_debug.river_source_points.clear();
     region_debug.river_mouth_points.clear();
     region_debug.failed_probe_points.clear();

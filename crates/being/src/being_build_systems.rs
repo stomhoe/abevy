@@ -326,11 +326,6 @@ pub struct SampleSpriteNormalSizeVariationsQueryParams<'w, 's> {
 }
 
 #[derive(SystemParam)]
-pub struct SampleSpriteNormalSizeVariationsRemovedParams<'w, 's> {
-    removed_disabled: RemovedComponents<'w, 's, Disabled>,
-}
-
-#[derive(SystemParam)]
 pub struct SampleSpriteNormalSizeVariationsLocalParams<'s> {
     global_dist_results: Local<'s, Vec<(Entity, SpriteGlobalNormalDistResult)>>,
     hori_dist_results: Local<'s, Vec<(Entity, SpriteHoriNormalDistResult)>>,
@@ -342,13 +337,13 @@ pub struct SampleSpriteNormalSizeVariationsLocalParams<'s> {
 pub fn sample_sprite_normal_size_variations(
     mut cmd: Commands,
     queries: SampleSpriteNormalSizeVariationsQueryParams,
-    mut removed: SampleSpriteNormalSizeVariationsRemovedParams,
     mut locals: SampleSpriteNormalSizeVariationsLocalParams,
+    mut removed_disabled: RemovedComponents<Disabled>,
 ) {
     locals.global_dist_results.clear();
     locals.hori_dist_results.clear();
     locals.vert_dist_results.clear();
-    locals.beings_to_process.extend(removed.removed_disabled.read());
+    locals.beings_to_process.extend(removed_disabled.read());
     locals.beings_to_process.extend(queries.changed_beings.iter());
 
     let mut rng = rand::rng();

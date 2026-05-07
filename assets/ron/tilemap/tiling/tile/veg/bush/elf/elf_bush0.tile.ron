@@ -9,4 +9,7 @@
     ],
     is_spritetile: true,
     randflipx: true,
+    size_variation: (min_dev: 0.3, max_dev: 0.3, mean: 1.01, std_dev: 0.1),
+    hori_variation: (min_dev: 0.3, max_dev: 0.3, mean: 1.01, std_dev: 0.05),
+    vert_variation: (min_dev: 0.3, max_dev: 0.3, mean: 1.01, std_dev: 0.05),
 )

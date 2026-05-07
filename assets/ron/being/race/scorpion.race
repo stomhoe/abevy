@@ -34,5 +34,4 @@ race scorpion {
         desert: 1.2
         temp: 0.3
     }
-    pack_spawn_radius: 7
 }

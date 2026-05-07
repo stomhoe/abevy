@@ -223,12 +223,6 @@ pub fn init_races(
 
         entity_cmds.insert(race_seri.tags_with_my_id());
         let entity = entity_cmds.id();
-        if !race_seri.spawn_pack_size_normal_dist.is_sentinel() {
-            cmd.entity(entity).insert(PackInitialSizeSampler(CappedNormalDist::from_seri(
-                race_seri.spawn_pack_size_normal_dist.clone(),
-            )));
-        }
-        cmd.entity(entity).insert(PackSpawnRadius(race_seri.pack_spawn_radius));
         if !race_seri.spawn_pack_entity {
             cmd.entity(entity).insert(NoSpawnSquadEntity);
         }

@@ -31,5 +31,4 @@ race turtle {
         beach: 1.0
     }
     spawn_pack_entity: false
-    pack_spawn_radius: 7
 }

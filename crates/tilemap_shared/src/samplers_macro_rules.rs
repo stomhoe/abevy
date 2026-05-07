@@ -198,7 +198,7 @@ macro_rules! define_weightedsampler {
 macro_rules! define_sprite_normal_dist {
     ($dist_name:ident) => {
         ::paste::paste! {
-            #[derive(Component, Default, Debug, Clone, )]
+            #[derive(Component, Default, Debug, Clone, Deserialize, Serialize, )]
             pub struct $dist_name(pub CappedNormalDist);
             impl $dist_name {
                 pub fn new(seri: NormalDistSeri) -> Self {

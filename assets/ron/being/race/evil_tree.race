@@ -16,14 +16,27 @@ race evil_tree {
         dir_secs_min: 1.0
         dir_secs_max: 2.5
         move_secs_min: 0.8
-        move_secs_max: 10.8
+        move_secs_max: 4.8
         halt_secs_min: 0.7
-        halt_secs_max: 10.0
-        speed_min: 0.5
-        speed_max: 0.6
+        halt_secs_max: 60.0
+        speed_min: 0.9
+        speed_max: 0.9
         avoid_tile_tags: [liquid]
     )
     body_or_sampler: evil_tree
     size_variation: (min_dev: 0.251 max_dev: 0.251 mean: 1.0 std_dev: 0.1)
-    pack_spawn_radius: 7
+    pack: {
+        spawn_being_count_normal_dist: { min_dev: 1.0 max_dev: 1.0 mean: 1. std_dev: 0. }
+        ids: {
+            evil_tree: { weight: 1.0 rank: { min_dev: 0.0 max_dev: 0.0 mean: 1.0 std_dev: 0.0 } }
+        }
+        fight_or_flight_config: {
+            reaction: counterattack
+            min_melee_strength_ratio_to_counterattack: 0.0
+        }
+        biome_affinity: {
+            elf: 0.5
+        }
+        spawn_pack_entity: true
+    }
 }

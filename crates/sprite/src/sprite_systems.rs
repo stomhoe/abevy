@@ -6,16 +6,20 @@ use being_shared::Unloaded;
 use bevy::ecs::entity_disabling::Disabled;
 use game_common::game_common_components::{Templ, TemplEntiRef, };
 use ::sprite_shared::*;
-use tilemap_shared::{GlobalTilePos};
-use ::tilemap_shared::directions::*;
+use ::tilemap_shared::*;
 #[derive(Message, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct SpriteChangedScaleOrOffsetOrParent(pub Entity);
 
+type ChangedDistResult = (Changed<SpriteGlobalNormalDistResult>, Changed<SpriteHoriNormalDistResult>, Changed<SpriteVertNormalDistResult>);
+type ChangedScale = (Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>);
+type ChangedSprite = (Changed<Sprite>, Changed<Mesh2d>);
+
 #[allow(unused_parens)]
 pub fn sprite_change_detection(
-    sprite_query: Query<Entity, (Or<(Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>, Changed<Rotation>, Changed<TemplEntiRef>, Changed<Offset2D>, Changed<Sprite>, Changed<Mesh2d>, Changed<ChildOf>)>)>,
-    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<Rotation>, Changed<HeldSprites>, Added<GlobalTilePos>, Changed<Visibility>)>, Without<Unloaded>, )>,
+    sprite_query: Query<Entity, (Or<(ChangedScale, Changed<Rotation>, Changed<TemplEntiRef>, Changed<Offset2D>, ChangedSprite, Changed<ChildOf>, ChangedDistResult, Changed<FlippedTransform>)>, )>,
+    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>, Changed<Visibility>, ChangedDistResult, )>, Without<Unloaded>, )>,
     mut removed_unloaded: RemovedComponents<Unloaded>,
+    mut removed_flipped_transform: RemovedComponents<FlippedTransform>,
     mut writer: MessageWriter<SpriteChangedScaleOrOffsetOrParent>,
     mut changed: Local<HashSet<SpriteChangedScaleOrOffsetOrParent>>,
 )

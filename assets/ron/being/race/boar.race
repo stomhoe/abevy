@@ -31,5 +31,4 @@ race boar {
         temp: 1.3
     }
     spawn_pack_entity: false
-    pack_spawn_radius: 7
 }

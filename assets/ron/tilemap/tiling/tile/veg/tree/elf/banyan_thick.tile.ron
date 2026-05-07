@@ -1,15 +1,18 @@
 (
-    id: "ancient_banyan",
-    name: "Ancient banyan",
+    id: "banyan_thick",
+    name: "Thick banyan",
     tags: ["tree", "veg"],
+    z: 1000,
+    y_sort: 0.0,
     img_paths: [
-        ("", "texture/world/veg/tree/elf/ancient_banyan.png"),
+        ("", "texture/world/veg/tree/elf/banyan_thick.png"),
     ],
     is_spritetile: true,
     randflipx: true,
-    offset: (0.0, 210.0),
-    z: 1000,
-    y_sort: 0.0,
+
+    hori_variation: (min_dev: 0.2, max_dev: 0.2, mean: 1.0, std_dev: 0.1),
+
+    offset: (0.0, 160.0),
     colmask: [
         "1",
     ],
@@ -24,10 +27,10 @@
     light_occluder: (
         enabled: true,
         color: (0, 0, 0, 255),
-        offset: (0, 60),
+        offset: (0, 90),
         use_sprite: false,
-        shape_size: (9, 130),
-        shape: "occlsh",
+        shape_size: (68, 130),
+        shape: "capsule",
     ),
 
 )

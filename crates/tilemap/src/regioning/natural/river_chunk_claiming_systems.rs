@@ -2,6 +2,7 @@ use bevy::{
     ecs::entity::EntityHashSet,
     platform::collections::{HashMap, HashSet},
     prelude::*,
+    tasks::{AsyncComputeTaskPool, futures_lite::future},
 };
 use common::{common_components::HashId, log_targets::RIVER_SYSTEM};
 use ::tilemap_shared::*;
@@ -34,6 +35,7 @@ pub struct claim_chunks_for_river_structuresLocals<'w, 's> {
     pending_river_regions: Local<'s, EntityHashSet>,
     claims_to_emit: Local<'s, Vec<ChunksClaim>>,
     skipped_offers: Local<'s, Vec<(Entity, usize)>>,
+    pending_plan_tasks: Local<'s, Vec<bevy::tasks::Task<RiverPlanTaskResult>>>,
     claims_writer: MessageWriter<'w, ChunksClaim>,
 }
 
@@ -71,6 +73,7 @@ pub fn claim_chunks_for_river_structures(
         pending_river_regions,
         claims_to_emit,
         skipped_offers,
+        pending_plan_tasks,
         claims_writer,
     } = &mut claim_state;
 
@@ -81,6 +84,72 @@ pub fn claim_chunks_for_river_structures(
     let mut probes_completed = 0_u32;
     let mut claims_emitted = 0_u32;
     let mut offers_skipped = 0_u32;
+
+    pending_plan_tasks.retain_mut(|task| {
+        let Some(result) = future::block_on(future::poll_once(task)) else {
+            return true;
+        };
+
+        let RiverPlanTaskResult {
+            region_ent,
+            sgc_ent,
+            offer_i,
+            dimension_ref,
+            region_pos,
+            region_debug,
+            plan,
+        } = result;
+
+        if plan.river_tiles.is_empty() {
+            error!(target: RIVER_SYSTEM, "River plan task for region {:?} offer {} finished without producing any river tiles", region_ent, offer_i);
+                if let Ok(mut claimlist) = claim_queries.claimlists.get_mut(region_ent) {
+                claimlist.clear_pending_i(offer_i as usize);
+                claimlist.skipped_is.insert(offer_i as usize);
+            }
+            cmd.entity(region_ent).try_remove::<RiverPendingOffer>();
+            *river_debug.region_mut(dimension_ref, region_pos) = region_debug;
+            river_debug.bump_revision();
+            probes_completed = probes_completed.saturating_add(1);
+            offers_skipped = offers_skipped.saturating_add(1);
+            return false;
+        }
+
+        let emitted_claim = queue_claim_for_offer_from_plan(
+            &plan,
+            claims_to_emit,
+            region_ent,
+            sgc_ent,
+            offer_i,
+        );
+        if emitted_claim {
+            cmd.entity(region_ent)
+                .try_insert(plan)
+                .try_remove::<RiverPendingOffer>();
+            claims_emitted = claims_emitted.saturating_add(1);
+        } else {
+            error!(target: RIVER_SYSTEM, "River plan for region {:?} offer {} generated tiles but no claim chunks could be emitted", region_ent, offer_i);
+            if let Ok(mut claimlist) = claim_queries.claimlists.get_mut(region_ent) {
+                claimlist.clear_pending_i(offer_i as usize);
+                claimlist.skipped_is.insert(offer_i as usize);
+            }
+            cmd.entity(region_ent).try_remove::<RiverPendingOffer>();
+            offers_skipped = offers_skipped.saturating_add(1);
+        }
+        *river_debug.region_mut(dimension_ref, region_pos) = region_debug;
+        river_debug.bump_revision();
+            if let Ok(mut claimlist) = claim_queries.claimlists.get_mut(region_ent) {
+            claimlist.clear_pending_i(offer_i as usize);
+        }
+        probes_completed = probes_completed.saturating_add(1);
+        false
+    });
+
+    if offered_chunks.is_empty() && sampled_values_reader.is_empty() && search_failed_reader.is_empty() {
+        for claim in claims_to_emit.drain(..) {
+            claims_writer.write(claim);
+        }
+        return;
+    }
 
     let Some(settings) = claim_queries.settings_q.single().ok() else {
         error!(target: RIVER_SYSTEM, "Missing GlobalGenSettings for river claim pass");
@@ -208,45 +277,34 @@ pub fn claim_chunks_for_river_structures(
             continue;
         }
         sampled_points_total = sampled_points_total.saturating_add(inland_map.len() as u32);
-        let mut plan = RiverRegionPlan::default();
-        let generated_ok = generate_river_region_plan(
-            &inland_map,
-            &coast_points,
-            cfg,
-            settings,
-            *dimension_ref,
-            *region_pos,
-            &mut plan,
-            &mut river_debug,
-        );
-        river_debug.bump_revision();
-        if !generated_ok {
-            clear_claimlist_pending_offer_i(&mut claim_queries.claimlists, region_ent, offer_i);
-            skipped_offers.push((region_ent, offer_i as usize));
-            offers_skipped = offers_skipped.saturating_add(1);
-            cmd.entity(region_ent).try_remove::<RiverPendingOffer>();
-            cmd.entity(sampled_values.requester).try_despawn();
-            continue;
-        }
-        let emitted_claim = queue_claim_for_offer_from_plan(
-            &plan,
-            claims_to_emit,
-            region_ent,
-            sgc_ent,
-            offer_i,
-        );
-        if emitted_claim {
-            cmd.entity(region_ent)
-                .try_insert(plan)
-                .try_remove::<RiverPendingOffer>();
-            claims_emitted = claims_emitted.saturating_add(1);
-        } else {
-            error!(target: RIVER_SYSTEM, "River plan for region {:?} offer {} generated tiles but no claim chunks could be emitted", region_ent, offer_i);
-            skipped_offers.push((region_ent, offer_i as usize));
-            offers_skipped = offers_skipped.saturating_add(1);
-        }
-        clear_claimlist_pending_offer_i(&mut claim_queries.claimlists, region_ent, offer_i);
-        probes_completed = probes_completed.saturating_add(1);
+        let dimension_ref = *dimension_ref;
+        let region_pos = *region_pos;
+        let mut region_debug_snapshot = river_debug.region_mut(dimension_ref, region_pos).clone();
+        let cfg = cfg.clone();
+        let settings = settings.clone();
+        let task_pool = AsyncComputeTaskPool::get();
+        pending_plan_tasks.push(task_pool.spawn(async move {
+            let mut plan = RiverRegionPlan::default();
+            let _ = generate_river_region_plan(
+                &inland_map,
+                &coast_points,
+                &cfg,
+                &settings,
+                dimension_ref,
+                region_pos,
+                &mut plan,
+                &mut region_debug_snapshot,
+            );
+            RiverPlanTaskResult {
+                region_ent,
+                sgc_ent,
+                offer_i,
+                dimension_ref,
+                region_pos,
+                region_debug: region_debug_snapshot,
+                plan,
+            }
+        }));
     }
 
     for offer in offered_chunks.read() {
