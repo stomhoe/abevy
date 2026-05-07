@@ -16,6 +16,7 @@ item_shared = { path = "../item_shared" }
 camera = { path = "../camera" }
 faction = { path = "../faction" }
 faction_shared = { path = "../faction_shared" }
+regioning = { path = "../regioning" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 sprite_shared = { path = "../sprite_shared" }

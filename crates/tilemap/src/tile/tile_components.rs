@@ -5,6 +5,7 @@ pub use bevy_ecs_tilemap::tiles::*;
 use common::common_components::*;
 
 use tilemap_shared::{define_weightedsampler, impl_weighted_sampler_serialization};
+use rand::RngExt;
 
 use ::tilemap_shared::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};

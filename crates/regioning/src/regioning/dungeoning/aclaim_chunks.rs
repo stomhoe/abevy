@@ -2,10 +2,11 @@ use bevy::platform::collections::HashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 
 use rand::{Rng, SeedableRng};
+use rand::RngExt;
 use rand_distr::{Distribution, Normal};
 use ::tilemap_shared::*;
 
-use crate::regioning::{dungeoning::dungeoning_ids::{admitted_structure_ids_for_claiming, ARCHI, SPIRAL}, regioning_components::*, regioning_messages::{ChunksClaim, OfferChunk}, regioning_sgc_components::StructuredGenConfig};
+use crate::dungeoning_ids::*;
 
 const MIN_CLAIM_SIDE_LENGTH: i32 = 4;
 const MIN_CLAIM_AREA: i32 = 16;
@@ -54,7 +55,7 @@ pub fn claim_chunks_for_various_dungeon_types(
         let dimension_hash = dimension_ref.0;
 
         let seed = center_chunk.hash_value(&settings, dimension_hash, 0);
-        let mut rng = rand_pcg::Pcg64Mcg::new(seed as u128);
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let claim_is_square = matches!(structured_gen_cfg.structure_hash_id(), SPIRAL | ARCHI);
         let region_pos = center_chunk.to_region_pos();

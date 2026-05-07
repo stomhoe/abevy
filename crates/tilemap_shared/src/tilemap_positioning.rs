@@ -4,6 +4,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use bevy_ecs_tilemap::tiles::TilePos;
 use common::common_components::{HashId, StrId};
 use rand::{Rng, seq::SliceRandom};
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 
 use crate::{tilemap_shared::GlobalGenSettings, *};

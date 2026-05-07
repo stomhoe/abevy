@@ -1,12 +1,11 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy::ecs::system::SystemParam;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use rand::SeedableRng;
+use rand::{rngs::StdRng as Pcg64Mcg, SeedableRng};
 
 use crate::tile::{tile_components::Tile, TileEntityMap, TileWeightedSamplerEntityMap, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
 use game_common::game_common_components::Templ;
 use ::common::*;
-use rand_pcg::Pcg64Mcg;
 use tilemap_shared::tilemap_shared_samplers::{HashIdWeightedSampler, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist};
 
 #[allow(unused_parens)]

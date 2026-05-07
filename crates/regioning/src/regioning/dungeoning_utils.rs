@@ -1,10 +1,10 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 use common::{common_components::{HashId, Tag}, common_tag_components::TagSet};
-use game_common::game_common_components::ArgsDict;
+use tilemap_shared::ArgsDict;
 use ::tilemap_shared::{GlobalGenSettings, GlobalTilePos};
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
-use crate::tile::tile_sampler_components::TileWeightedSampler;
-use crate::tile::{TileEntityMap, TileWeightedSamplerEntityMap};
+use tilemap::tile::tile_sampler_components::TileWeightedSampler;
+use tilemap::tile::{TileEntityMap, TileWeightedSamplerEntityMap};
 use ::tilemap_shared::DeleteOtherTilesInSamePos;
 
 fn parse_delete_other_tiles_tags(selector: &str) -> Vec<Tag> {

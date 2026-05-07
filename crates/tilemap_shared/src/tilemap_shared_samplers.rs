@@ -1,5 +1,6 @@
 use bevy::{ecs::entity::{EntityHashMap, MapEntities}, prelude::*};
 use common::common_components::HashId;
+use rand::RngExt;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::*;
 

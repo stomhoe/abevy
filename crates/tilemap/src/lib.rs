@@ -12,7 +12,7 @@ mod tilemap_terrbl_systems;
 pub mod chunking;
 pub mod tilemap_bundles;
 pub mod tilemap_resources;
-
-pub mod regioning;
 pub mod tile;
 pub mod terrain;
+
+pub use crate::tilemap_systems::process_tiles_pre;

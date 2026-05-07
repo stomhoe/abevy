@@ -16,11 +16,12 @@ let tree_feature = *(tree_feature, tree_pd, 1.2)
 
 
 let cave_portal_feature = idxmax(hp82, 0.005)
-let cave_portal_feature = *(inlandness, cave_portal_feature)
+let cave_portal_feature = lerp(cave_portal_feature, inlandness, 0.3)
+
 
 out = idxmax(0.5, bush_feature, tree_feature, cave_portal_feature)
 
 [] ""
-[elfveg_sampler] ""
-[elftree_sampler] ""
+[elf_bush_sampler] ""
+[elf_tree_sampler] ""
 [portal_cave, ] ""

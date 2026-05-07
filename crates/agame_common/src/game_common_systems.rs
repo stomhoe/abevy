@@ -1,5 +1,4 @@
 use crate::game_common_components::*;
-use crate::game_common_bundles::DenyForTemplClonedChildren;
 use crate::game_common_timers::*;
 use ::common::*;
 use bevy::prelude::*;

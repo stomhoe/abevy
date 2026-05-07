@@ -3,15 +3,14 @@
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
 use rand::{Rng, SeedableRng};
+use rand::RngExt;
 use ::tilemap_shared::*;
 
-use crate::regioning::{    regioning_components::*,
+use crate::regioning::{   
     regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder, TerrGenDisabledGposForChunks},
-    regioning_sgc_components::StructuredGenConfig,
 };
-use crate::terrain::biome::biome_resources::BiomeEntityMap;
-use crate::tile::tile_resources::*;
-use crate::terrain::terrgen_async_resources::ChunkGposMask;
+use tilemap::terrain::biome::biome_resources::BiomeEntityMap;
+use tilemap::tile::tile_resources::*;
 use super::super::dungeoning_ids::MAZE;
 use super::super::dungeoning_utils::{carve_external_wall_doorways, extend_occupied_gpos, ExternalDoorwayConfig, seal_structure_border_band};
 
@@ -76,19 +75,19 @@ pub fn maze_dungeon_building_system(
         let floor_tile_id = structured_gen_cfg.args
             .get("floor_tile_id")
             .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
+            .map(|s| HashId::hash(s))
             .unwrap_or_else(|| HashId::hash("dunewbie"));
 
         let wall_tile_id = structured_gen_cfg.args
             .get("wall_tile_id")
             .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
+            .map(|s| HashId::hash(s))
             .unwrap_or_else(|| HashId::hash("gray"));
 
         let lava_tile_id = structured_gen_cfg.args
             .get("lava_tile_id")
             .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
+            .map(|s| HashId::hash(s))
             .unwrap_or_else(|| HashId::hash("lava"));
         let delete_other_tiles_by_tile_id = super::super::dungeoning_utils::DeleteOtherTilesConfigMap::from_args(&structured_gen_cfg.args);
         let terrgen_disable_by_tile_id = super::super::dungeoning_utils::TerrGenDisableConfigMap::from_args(&structured_gen_cfg.args);
@@ -153,7 +152,7 @@ pub fn maze_dungeon_building_system(
         let dimension_hash = build_order.dimension_ref.0;
 
         let seed = chunk_positions[0].hash_value(&settings, dimension_hash, 1);
-        let mut rng = rand_pcg::Pcg64Mcg::new(seed as u128);
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         room_spawn_anchors.clear();
         room_spawn_anchors.reserve(32);
 
@@ -808,7 +807,7 @@ pub fn maze_dungeon_building_system(
         let disable_floor_terrgen = terrgen_disable_by_tile_id.should_disable_for("floor_tile_id");
         let disable_lava_terrgen = terrgen_disable_by_tile_id.should_disable_for("lava_tile_id");
         let forced_chunk_biomes = super::super::dungeoning_utils::forced_chunk_biomes_from_args(&structured_gen_cfg.typed_args, &biome_map);
-        let mut chunk_tiles: Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)> = Vec::with_capacity(chunk_positions.len());
+        let mut chunk_tiles = Vec::with_capacity(chunk_positions.len());
         let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
         for &chunk_pos in chunk_positions {
             tiles4chunk.clear();
@@ -822,19 +821,19 @@ pub fn maze_dungeon_building_system(
                 let map_idx = idx_y * tile_width + idx_x;
 
                 if hazard_map[map_idx] {
-                    tiles4chunk.push((tile_pos, lava_entity, lava_delete_other_tiles.clone()));
+                    tiles4chunk.push((tile_pos, lava_entity.0, lava_delete_other_tiles.clone()));
                     if disable_lava_terrgen {
                         let size = templ_size_query.get(lava_entity_ent).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, size);
                     }
                 } else if floor_map[map_idx] {
-                    tiles4chunk.push((tile_pos, floor_entity, floor_delete_other_tiles.clone()));
+                    tiles4chunk.push((tile_pos, floor_entity.0, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
                         let size = templ_size_query.get(floor_entity_ent).copied().unwrap_or_default().inner();
                         extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, size);
                     }
                 } else if wall_map[map_idx] {
-                    tiles4chunk.push((tile_pos, wall_entity, None));
+                    tiles4chunk.push((tile_pos, wall_entity.0, None));
                 }
             }
 

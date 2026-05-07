@@ -1,5 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 use rand::Rng;
+use rand::RngExt;
 use ::tilemap_shared::*;
 
 #[derive(Clone, Copy, Debug, Reflect, PartialEq, Eq, Hash)]

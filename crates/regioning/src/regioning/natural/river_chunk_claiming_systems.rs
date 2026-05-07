@@ -7,18 +7,11 @@ use bevy::{
 use common::{common_components::HashId, log_targets::RIVER_SYSTEM};
 use ::tilemap_shared::*;
 
-use crate::{
-    regioning::{
-        regioning_components::ClaimList,
-        regioning_messages::*,
-        regioning_resources::LoadedRegions,
-        regioning_sgc_components::StructuredGenConfig,
-    },
-    terrain::terrprobe::{
-        terrprobe_components::TerrProbeTempl,
-        terrprobe_messages::{SampledValuesCollected, SearchFailed, TerrProbeJob},
-        terrprobe_resources::TerrProbeTemplEntityMap,
-    },
+
+use tilemap::terrain::terrprobe::{
+    terrprobe_components::TerrProbeTempl,
+    terrprobe_messages::{SampledValuesCollected, SearchFailed, TerrProbeJob},
+    terrprobe_resources::TerrProbeTemplEntityMap,
 };
 
 use super::river_components::*;

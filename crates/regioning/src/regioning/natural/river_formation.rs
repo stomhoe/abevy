@@ -2,18 +2,16 @@ use bevy::{platform::collections::{HashMap, HashSet}, prelude::*};
 use common::common_components::HashId;
 use common::log_targets::RIVER_SYSTEM;
 use rand::SeedableRng;
-use rand::rngs::StdRng as Pcg64Mcg;
 use std::collections::VecDeque;
-use tilemap_shared::{ChunkPos, CappedNormalDist, DimensionRef, GlobalGenSettings, GlobalTilePos, HashablePosVec, RegionPos};
+use tilemap_shared::*;
 
-use crate::regioning::regioning_sgc_seris::{SgcArgValue, SgcArgsDict};
 use super::river_components::{RiverMouthRejectReason, RiverRegionDebugInfo, RiverRegionPlan};
 use super::river_sculpting_helpers::{closest_point_on_path, maybe_add_river_delta, maybe_add_river_gravel_deposits, maybe_add_river_island_gap, path_has_nonconsecutive_overlap, path_touches_forbidden_border_chunks, plan_river_path_tiles, rebuild_claimed_chunks_from_masks, river_noise_signed, segment_reenters_visited_path, smooth_river_path};
 
 pub(super) fn generate_river_region_plan(
     inland_map: &HashMap<GlobalTilePos, f32>,
     coast_points: &HashSet<GlobalTilePos>,
-    cfg: &crate::regioning::regioning_sgc_components::StructuredGenConfig,
+    cfg: &StructuredGenConfig,
     settings: &GlobalGenSettings,
     dimension_ref: DimensionRef,
     source_region_pos: RegionPos,
@@ -100,7 +98,7 @@ pub(super) fn generate_river_region_plan(
         };
         let (half_width_start, half_width_end) = if let Some(dist) = &main_width_dist {
             let seed = main_source.hash_value(settings, dimension_ref.0, 1_643);
-            let mut rng = Pcg64Mcg::new(seed as u128);
+            let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
             let sampled_half_width = dist.sample(&mut rng).round().clamp(3.0, 8.0) as i32;
             (sampled_half_width.max(1), sampled_half_width.max(1))
         } else {

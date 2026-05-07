@@ -1,4 +1,5 @@
 use rand::Rng;
+use rand::RngExt;
 use rand::rngs::StdRng as Pcg64Mcg;
 
 pub fn carve_corridor_horizontal_floor(

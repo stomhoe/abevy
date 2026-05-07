@@ -1,12 +1,7 @@
 use bevy::platform::collections::HashMap;
 #[allow(unused_imports)]
 use bevy::prelude::*;
-use common::{
-    common_components::{HashId, Prefix, StrId},
-    common_tag_components::{passes_tag_filters, TagSet},
-    expect_single_query,
-    log_targets::SGC_CHUNK_CLAIM,
-};
+use ::common::*;
 use debug_unwraps::DebugUnwrapExt;
 use game_common::game_common_timers::*;
 use rand::SeedableRng;
@@ -17,17 +12,9 @@ use tilemap_shared::*;
 
 use crate::regioning::natural::RiverDebugData;
 use crate::regioning::regioning_sgc_seris::load_structure_generation_settings_seri_defs;
-use crate::terrain::terrgen_resources::TerrGenDisabledGposByChunk;
-use crate::{
-    regioning::{
-        regioning_components::*,
-        regioning_messages::*,
-        regioning_resources::*,
-        regioning_sgc_components::*,
-    },
-    tilemap_resources::MassCollectedTiles,
-    tile::TileEntityMap,
-};
+use tilemap::terrain::terrgen_resources::TerrGenDisabledGposByChunk;
+use tilemap::tilemap_resources::MassCollectedTiles;
+use tilemap::tile::TileEntityMap;
 
 use bitvec::prelude::*;
 
@@ -116,7 +103,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
         };
 
         let rng = region_pos.hash_value(&settings, dim_hash, 0);
-        let mut rng = rand_pcg::Pcg64Mcg::new(rng as u128);
+        let mut rng = rand::rngs::StdRng::seed_from_u64(rng);
 
         let all_chunk_positions = region_pos.all_chunk_positions_shuffled(&mut rng);
 
@@ -124,7 +111,7 @@ pub fn offer_chunks_of_new_regions_to_dungeoning_systems(
         const MAX_REATTEMPTS: usize = 10000;
 
         'next_i: for (i, &chunk_pos) in all_chunk_positions.iter().enumerate() {
-            if i >= MAX_CLAIMS as usize {
+            if i >= MAX_CHUNK_CLAIMS_PER_REGION as usize {
                 break;
             }
 
@@ -312,8 +299,8 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             continue;
         };
 
-        if claim.i >= MAX_CLAIMS as u64 {
-            error!(target: "sgc_chunk_claim", "Received claim with index {} >= MAX_CLAIMS {}, skipping", claim.i, MAX_CLAIMS);
+        if claim.i >= MAX_CHUNK_CLAIMS_PER_REGION as u64 {
+            error!(target: "sgc_chunk_claim", "Received claim with index {} >= MAX_CLAIMS {}, skipping", claim.i, MAX_CHUNK_CLAIMS_PER_REGION);
             claims_invalid_index = claims_invalid_index.saturating_add(1);
             continue;
         }
@@ -367,7 +354,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
             continue;
         };
 
-        'nextregion: for i in claimlist.processed_up_to_i..MAX_CLAIMS {
+        'nextregion: for i in claimlist.processed_up_to_i..MAX_CHUNK_CLAIMS_PER_REGION {
             if claimlist.skipped_is.contains(&i) {
                 claimlist.advance_processed_upto_i();
                 continue 'nextregion;
@@ -407,7 +394,7 @@ pub fn read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems(
                 }
                 let mut undo_claims = false;
                 let mut claimed_up_to: u64 = 0;
-                let mut failed_claims_bitmask: BitArr!(for MAX_CLAIMS) = BitArray::ZERO;
+                let mut failed_claims_bitmask: BitArr!(for MAX_CHUNK_CLAIMS_PER_REGION) = BitArray::ZERO;
 
                 'nextpos: for (claim_i, &chunk_pos) in claim.chunks_pos.iter().enumerate() {
                     let Some(occupiers) = grid_of_sgc.0.get_values(chunk_pos, region_pos) else {
@@ -655,7 +642,7 @@ pub fn clonespawn_tiles_on_chunk_spawn(
 
                 if let Some(tiles_to_spawn) = reg_planned.get(&chunk_pos) {
                     for (tile_gpos, templ_ref, delete_others) in tiles_to_spawn {
-                        let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, *templ_ref, *tile_gpos, dimension_ref, &tile_map);
+                        let tile_ent = collected.clonespawn_and_push_tile(&mut cmd, tilemap::tile::TileRef(*templ_ref), *tile_gpos, dimension_ref, &tile_map);
                         if let Some(delete_others) = delete_others {
                             to_insert_delete_others.push((tile_ent, (delete_others.clone())));
                         }

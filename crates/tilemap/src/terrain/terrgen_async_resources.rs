@@ -10,7 +10,6 @@ use crate::{
 
 use ::tilemap_shared::*;
 
-pub type TerrGenBlockedGposMask = ChunkGposMask;
 
 #[derive(Debug, Clone)]
 pub struct ChunkTerrGenWork {
@@ -18,7 +17,7 @@ pub struct ChunkTerrGenWork {
     pub dim_ref: DimensionRef,
     pub root_oplist: DimensionRootOplist,
     pub oplist_size: OplistSize,
-    pub blocked_gpos: TerrGenBlockedGposMask,
+    pub blocked_gpos: ChunkGposMask,
 }
 
 #[derive(Resource, Debug, Default)]

@@ -5,17 +5,14 @@ use ::being_shared::*;
 use common::common_components::StrId;
 use common::common_components::HashId;
 use common::log_targets::{DUNGEONING_SYSTEM, SGC_INIT};
-use game_common::game_common_components::ArgsDict;
+use tilemap_shared::ArgsDict;
 use game_common::game_common_components::Templ;
 use rand::{seq::SliceRandom, Rng};
-use crate::chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk;
-use crate::terrain::biome::biome_resources::BiomeEntityMap;
-use crate::tile::tile_sampler_components::TileWeightedSampler;
-use crate::tile::{TileEntityMap, TileWeightedSamplerEntityMap};
-use crate::regioning::regioning_messages::ForcedChunkBiomeConfig;
-use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
-use crate::regioning::regioning_resources::SgcCommandRegistry;
-use crate::regioning::regioning_sgc_seris::{SgcArgValue, SgcArgsDict};
+use rand::RngExt;
+use tilemap::chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk;
+use tilemap::terrain::biome::biome_resources::BiomeEntityMap;
+use tilemap::tile::tile_sampler_components::TileWeightedSampler;
+use tilemap::tile::{TileEntityMap, TileWeightedSamplerEntityMap};
 use ::tilemap_shared::*;
 
 #[derive(Default, Debug)]
@@ -60,8 +57,8 @@ impl TerrGenDisableConfigMap {
     }
 }
 
-fn parse_bool_arg(values: &[String]) -> Option<bool> {
-    let value = values.first()?.trim();
+fn parse_bool_arg(value: &SgcArgValue) -> Option<bool> {
+    let value = value.first()?.trim();
     match value {
         "true" | "1" | "yes" | "on" => Some(true),
         "false" | "0" | "no" | "off" => Some(false),
@@ -69,8 +66,22 @@ fn parse_bool_arg(values: &[String]) -> Option<bool> {
     }
 }
 
+fn sgc_arg_value_to_strings(value: &SgcArgValue) -> Vec<String> {
+    let Some(list) = value.as_list() else {
+        return value.as_scalar_string().into_iter().collect();
+    };
+    let mut out = Vec::with_capacity(list.len());
+    for item in list {
+        let Some(item) = item.as_scalar_string() else {
+            continue;
+        };
+        out.push(item);
+    }
+    out
+}
+
 pub fn extend_occupied_gpos(
-    blocked_gpos: &mut TerrGenBlockedGposMask,
+    blocked_gpos: &mut ChunkGposMask,
     chunk_pos: ChunkPos,
     anchor_gpos: GlobalTilePos,
     size: UVec2,
@@ -153,7 +164,7 @@ impl ExternalDoorwayConfig {
         let wall_axis_preference = args
             .get("external_doorway_wall_axis_preference")
             .and_then(|values| values.first())
-            .map(|value| value.as_str())
+            .map(|value| value)
             .map(|value| match value {
                 "horizontal" => DoorwayWallAxisPreference::Horizontal,
                 "vertical" => DoorwayWallAxisPreference::Vertical,
@@ -602,7 +613,8 @@ impl DeleteOtherTilesConfigMap {
                 continue;
             }
             let mut parsed_spec = DeleteOtherTilesInSamePos::default();
-            if !parsed_spec.apply_delete_other_tiles_field(field, values) {
+            let values = sgc_arg_value_to_strings(values);
+            if !parsed_spec.apply_delete_other_tiles_field(field, &values) {
                 continue;
             }
             if selector == "*" {

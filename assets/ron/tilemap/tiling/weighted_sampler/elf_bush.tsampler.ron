@@ -1,5 +1,5 @@
 (
-    id: "elfveg_sampler",
+    id: "elf_bush_sampler",
     weights: [
         ("elf_bush0", 10.0),
         ("elf_bush1", 10.0),

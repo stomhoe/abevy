@@ -1,5 +1,6 @@
 use bevy::{platform::collections::*, prelude::*};
 use rand::Rng;
+use rand::RngExt;
 use std::collections::VecDeque;
 
 use super::sg_cha_types::*;
@@ -73,7 +74,7 @@ fn pick_weighted_room_spec(candidates: &[(RoomSpec, f32)], rng: &mut impl Rng) -
 
 pub fn sample_room_spec_for_leaf_with_limit(
     room: &RoomDraft,
-    args: &game_common::game_common_components::ArgsDict,
+    args: &tilemap_shared::ArgsDict,
     size_configs: &HashMap<RoomShape, RoomSizeConfig>,
     global_size_config: &RoomSizeConfig,
     max_area: Option<i32>,

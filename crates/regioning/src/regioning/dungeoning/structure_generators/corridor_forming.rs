@@ -1,4 +1,5 @@
 use rand::Rng;
+use rand::RngExt;
 
 use super::sg_cha_types::*;
 

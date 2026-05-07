@@ -7,8 +7,6 @@ use game_common::game_common::GameplaySystems;
 use ::tilemap_shared::*;
 use crate::{
     chunking,
-    regioning,
-    regioning::RegioningSystems,
     terrain,
     terrain::{TerrainGenSystems, TerrainSystems, },
     tile,
@@ -31,7 +29,6 @@ pub fn plugin(app: &mut App) {
         bevy_ecs_tilemap::TilemapPlugin,
         terrain::plugin,
         tile::plugin,
-        regioning::plugin,
         chunking::plugin,
     ))
 
@@ -46,14 +43,13 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, track_spawned_tiles_for_ai_nav.in_set(HostSystems))
     .add_observer(on_tilemap_despawn)
     .configure_sets(Update, (
-        (TerrainGenSystems, ChunkSystems, RegioningSystems).in_set(GameplaySystems)
+        (TerrainGenSystems, ChunkSystems).in_set(GameplaySystems)
     ))
 
     .configure_sets(
         OnEnter(AssetLoading::SpawnReplicatedEntities), (
             TilingSystems.before(TerrainSystems),
             DimensionSystems.before(TerrainGenSystems),
-            TerrainGenSystems.before(RegioningSystems),
             TerrainGenSystems.before(GameplaySystems),
         )
     )

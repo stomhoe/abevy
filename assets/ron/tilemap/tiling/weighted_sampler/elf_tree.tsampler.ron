@@ -1,5 +1,5 @@
 (
-    id: "elftree_sampler",
+    id: "elf_tree_sampler",
     weights: [
         ("banyan_ancient", 10.0),
         ("banyan", 10.0),

@@ -1,11 +1,11 @@
 
 use bevy::prelude::*;
-use common::log_targets::CHUNK_ACTIVATION;
+use common::{AssetScoped, log_targets::CHUNK_ACTIVATION};
 use tilemap_shared::*;
 use being_shared::{Being, Unloaded};
 
 use super::macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples};
-use crate::{chunking::MacroChunkU16IndexMatrix, regioning::{regioning_components::Region, regioning_resources::LoadedRegions}};
+use crate::chunking::MacroChunkU16IndexMatrix;
 
 
 
@@ -166,6 +166,8 @@ pub fn spawn_activated_chunks(
                         region_pos,
                         Region,
                         Name::new(format!("{:?}", region_pos)),
+                        Visibility::default(),
+                        ClaimList::default(), RegionPlannedTiles::default(), RegionState::default(), AssetScoped,
                         Transform::default(),
                         ChildOf(dimension_ent),
                         dimension_ref,

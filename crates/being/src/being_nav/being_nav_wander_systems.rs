@@ -2,6 +2,7 @@
 
 use crate::being_messages::NavOrder;
 use ::being_shared::*;
+use rand::RngExt;
 use bevy::{
     ecs::entity::{EntityHashMap, EntityHashSet},
     ecs::system::SystemParam,

@@ -6,9 +6,8 @@ use std::collections::{BTreeMap, HashMap};
 
 use camera::camera_components::CameraTarget;
 use common::common_components::*;
-use tilemap::regioning::natural::river::{RiverDebugData, RiverRegionDebugInfo, RiverRegionPlan};
-use tilemap::regioning::regioning_components::*;
-use ::tilemap_shared::*;
+use regioning::natural::river::{RiverDebugData, RiverRegionDebugInfo, RiverRegionPlan};
+use tilemap_shared::*;
 
 use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -511,7 +510,7 @@ pub fn regions_list_window(
                         };
                         let render_region_stats = |ui: &mut egui::Ui| {
                             if let Some(claim) = claim_list {
-                                ui.label(format!("ClaimList: {}/{}", claim.processed_up_to_i, tilemap::regioning::regioning_components::MAX_CLAIMS));
+                                ui.label(format!("ClaimList: {}/{}", claim.processed_up_to_i, MAX_CHUNK_CLAIMS_PER_REGION));
                             }
 
                             if let Some(planned) = planned_tiles {

@@ -27,35 +27,7 @@ pub struct SourceDest {
     #[entities] pub source: Entity, #[entities]pub destination: Entity,
 }
 
-#[derive(Component, Debug, Clone, Default, Deserialize, Serialize)]
-pub struct ArgsDict(HashMap<String, Vec<String>>);
-impl ArgsDict {
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self(HashMap::with_capacity(capacity))
-    }
-    pub fn iter(&self) -> impl Iterator<Item = (&String, &Vec<String>)> {
-        self.0.iter()
-    }
-    pub fn insert<T: AsRef<str>, U: Into<String>>(&mut self, key: T, val: Vec<U>) {
-        let val_strs: Vec<String> = val.into_iter().map(|v| v.into()).collect();
-        self.0.insert(key.as_ref().to_string(), val_strs);
-    }
-    pub fn get<T: AsRef<str>>(&self, key: T) -> Option<&Vec<String>> {
-        self.0.get(key.as_ref())
-    }
-    pub fn parse_arg<T: std::str::FromStr + Clone, K: AsRef<str>>(&self, key: K, default: T) -> T {
-        self.get(key)
-            .and_then(|v| v.first())
-            .and_then(|s| s.parse::<T>().ok())
-            .unwrap_or(default)
-    }
 
-    pub fn parse_opt_arg<T: std::str::FromStr, K: AsRef<str>>(&self, key: K) -> Option<T> {
-        self.get(key)
-            .and_then(|v| v.first())
-            .and_then(|s| s.parse::<T>().ok())
-    }
-}
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone)]
 pub struct Health(pub f32); //SOLO PARA ENEMIGOS ULTRA BÁSICOS SIN CUERPO (GRUNTS IRRECLUTABLES PARA FARMEAR XP O LOOT)

@@ -1,9 +1,12 @@
 use bevy::prelude::*;
+use bevy::ecs::schedule::common_conditions::any_with_component;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
-use game_common::game_common_timers::TimedOut;
-use crate::{ regioning::{regioning_sgc_init_systems::*, regioning_systems::*}, };
+use game_common::{GameplaySystems, game_common_timers::TimedOut};
+use tilemap_shared::*;
+use tilemap::{process_tiles_pre, terrain::{TerrainGenSystems, terrprobe::TerrainProbeSystems}};
 
+use crate::regioning::{regioning_sgc_init_systems::*, regioning_systems::*};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct RegioningSystems;
@@ -43,19 +46,24 @@ pub fn plugin(app: &mut App) {
             mark_as_building_started_timed_out.run_if(on_message::<TimedOut>),
             advance_i_on_claimlist_timeout,
 
-            clonespawn_tiles_on_chunk_spawn.before(crate::tilemap_systems::process_tiles_pre)//removing this breaks it
+            clonespawn_tiles_on_chunk_spawn.before(process_tiles_pre)//removing this breaks it
             ,
         ).in_set(RegioningSystems),
         despawn_empty_regions,
     ))
-    .configure_sets(Update,
-        (StructureBuildingSystems.after(read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems)).run_if(on_message::<SgcPrepareTilesOrder>)
-    )
+    .configure_sets(Update,(
+        StructureBuildingSystems.after(read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems).run_if(on_message::<SgcPrepareTilesOrder>),
+        RegioningSystems.in_set(GameplaySystems)
+    ))
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities), (
-            init_structured_gen_configs, map_structured_gen_config_id_to_entity,
             init_structure_generation_settings,
-        ).in_set(RegioningSystems))
+            init_structured_gen_configs, map_structured_gen_config_id_to_entity,
+        ).chain().in_set(RegioningSystems)
+    )
+    .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities),
+        (RegioningSystems.after(TerrainGenSystems))
+    )
     .add_observer(on_region_despawn_remove_from_loaded_regions)
 
     .init_resource::<LoadedRegions>()
@@ -67,7 +75,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<StructureGenerationSettings>()
     .replicate::<PrioritizedSgs>()
     .replicate::<SgcsWeightedSampler>()
-    .replicate_once::<crate::regioning::regioning_components::Region>()
 
     .add_message::<OfferChunk>()
     .add_message::<ChunksClaim>()
@@ -80,19 +87,13 @@ pub fn plugin(app: &mut App) {
 ;
 }
 
-pub mod regioning_components;
 pub mod regioning_resources;
 pub mod regioning_sgc_seris;
-pub mod regioning_messages;
-pub mod regioning_sgc_components;
 pub mod dungeoning;
 pub mod natural;
 mod regioning_systems;
 mod regioning_sgc_init_systems;
 #[allow(unused_imports)] pub use dungeoning::*;
 #[allow(unused_imports)] pub use natural::*;
-#[allow(unused_imports)] pub use regioning_components::*;
 #[allow(unused_imports)] pub use regioning_messages::*;
-#[allow(unused_imports)] pub use regioning_resources::*;
-#[allow(unused_imports)] pub use regioning_sgc_components::*;
 #[allow(unused_imports)] pub use regioning_sgc_seris::*;

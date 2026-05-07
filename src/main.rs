@@ -13,6 +13,7 @@ use tracing::Level;
 use common::log_targets;
 use common::common_states::AssetLoading;
 use item_systems::ItemSystems;
+use regioning::plugin as regioning_plugin;
 use tilemap::tile::TilingSystems;
 use tilemap_shared::GlobalTilePos;
 use time::ClockPlugin;
@@ -168,6 +169,9 @@ fn main() {
             modifier_systems::plugin,
             item_systems::plugin,
             tilemap::plugin,
+            regioning_plugin,
+        ))
+        .add_plugins((
             setup_screen::plugin,
             pregame_screen::plugin,
             color_sampler::plugin,

@@ -1,3 +1,5 @@
+use rand::RngExt;
+
 #[derive(Component, Asset, TypePath, Clone, Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct WanderSeri {

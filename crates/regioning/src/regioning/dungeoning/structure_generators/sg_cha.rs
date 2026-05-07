@@ -1,18 +1,13 @@
 #[allow(unused_imports)] use bevy::{platform::collections::*, prelude::*};
-use rand::rngs::StdRng as Pcg64Mcg;
 use std::collections::VecDeque;
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
 use rand::{Rng, SeedableRng};
+use rand::RngExt;
 use ::tilemap_shared::*;
 
-use crate::regioning::{    regioning_components::*,
-    regioning_messages::{StructureBuildCompliance, SgcPrepareTilesOrder, TerrGenDisabledGposForChunks},
-    regioning_sgc_components::StructuredGenConfig,
-};
-use crate::terrain::terrgen_async_resources::ChunkGposMask;
-use crate::tile::tile_resources::*;
+use tilemap::tile::tile_resources::*;
 use super::corridor_forming::*;
 use super::super::dungeoning_carve_helpers::{
     carve_corridor_polyline_typed as carve_corridor_path,
@@ -539,19 +534,19 @@ pub fn corridor_dungeon_building_system(
         let floor_tile_id = structured_gen_cfg.args
             .get("floor_tile_id")
             .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
+            .map(|s| HashId::hash(s))
             .unwrap_or_else(|| HashId::hash("dunewbie"));
 
         let floor_b_tile_id = structured_gen_cfg.args
             .get("floor_b_tile_id")
             .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
+            .map(|s| HashId::hash(s))
             .unwrap_or_else(|| HashId::hash("dublack"));
 
         let wall_tile_id = structured_gen_cfg.args
             .get("wall_tile_id")
             .and_then(|v| v.first())
-            .map(|s| HashId::hash(s.as_str()))
+            .map(|s| HashId::hash(s))
             .unwrap_or_else(|| HashId::hash("gray"));
 
         let delete_other_tiles_by_tile_id = DeleteOtherTilesConfigMap::from_args(&structured_gen_cfg.args);
@@ -846,7 +841,7 @@ pub fn corridor_dungeon_building_system(
         }
 
         let seed = origin_chunk.hash_value(&settings, build_order.dimension_ref.0, build_order.i);
-        let mut rng = Pcg64Mcg::new(seed as u128);
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let corridors_are_non_curved = rng.random_range(0.0..1.0) < dungeon_non_curved_corridors_chance;
         let claimed_area = map_width.saturating_mul(map_height);
         let room_density = rng.random_range(room_density_min..=room_density_max);
@@ -1225,7 +1220,7 @@ pub fn corridor_dungeon_building_system(
         let floor_template_size = templ_size_query.get(floor_entity_ent).copied().unwrap_or_default().inner();
         let floor_b_template_size = templ_size_query.get(floor_b_entity_ent).copied().unwrap_or_default().inner();
 
-        let mut chunk_tiles: Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)> = Vec::with_capacity(build_order.chunks_pos.len());
+        let mut chunk_tiles = Vec::with_capacity(build_order.chunks_pos.len());
         let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
         let mut tiles4chunk: TilesFromBuilder = Vec::new();
         for &chunk_pos in &build_order.chunks_pos {
@@ -1244,12 +1239,12 @@ pub fn corridor_dungeon_building_system(
                     } else {
                         (floor_entity, floor_template_size)
                     };
-                    tiles4chunk.push((tile_pos, tile_ref, floor_delete_other_tiles.clone()));
+                    tiles4chunk.push((tile_pos, tile_ref.0, floor_delete_other_tiles.clone()));
                     if disable_floor_terrgen {
                         extend_occupied_gpos(&mut blocked_gpos, chunk_pos, tile_pos, template_size);
                     }
                 } else if wall_map[map_idx] {
-                    tiles4chunk.push((tile_pos, wall_entity, wall_delete_other_tiles.clone()));
+                    tiles4chunk.push((tile_pos, wall_entity.0, wall_delete_other_tiles.clone()));
                 }
             }
             chunk_tiles.extend(std::mem::take(&mut tiles4chunk));

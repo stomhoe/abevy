@@ -8,7 +8,7 @@ use ac_input::ac_input_actions::{
 use common::common_states::*;
 use game_common::game_common_states::*;
 use tilemap_shared::GlobalGenSettings;
-use tilemap::regioning::regioning_resources::StructureGenerationSettings;
+use tilemap_shared::StructureGenerationSettings;
 
 use crate::being_tile_click_picker::set_being_click_picker_active;
 use crate::debug_resources::{BeingClickRemoverState, BeingTileClickInspectorState, DubugWindowsVisibility, TileClickRemoverState};

@@ -6,13 +6,12 @@ use std::sync::Arc;
 
 use crate::terrain::{
     terrgen_components::Terrgen,
-    terrgen_async_resources::TerrGenBlockedGposMask,
     terrgen_components::FnlNoiseComp,
     operation_list::operation_list_components::OperationList,
     terrprobe::opfilter::opfilter_components::OpFilter,
     terrgen_seris::*,
 };
-use tilemap_shared::{ChunkPos, DimensionRef, GlobalTilePos, OplistSize};
+use ::tilemap_shared::*;
 
 #[derive(Debug, Clone)]
 pub struct TerrGenDebugSample {
@@ -62,14 +61,14 @@ pub struct TerrGenDebugGrid {
 }
 
 #[derive(Resource, Debug, Default)]
-pub struct TerrGenDisabledGposByChunk(pub HashMap<(DimensionRef, ChunkPos), TerrGenBlockedGposMask>);
+pub struct TerrGenDisabledGposByChunk(pub HashMap<(DimensionRef, ChunkPos), ChunkGposMask>);
 
 impl TerrGenDisabledGposByChunk {
     pub fn insert_for_chunk(
         &mut self,
         dim_ref: DimensionRef,
         chunk_pos: ChunkPos,
-        blocked_gpos: TerrGenBlockedGposMask,
+        blocked_gpos: ChunkGposMask,
     ) {
         if blocked_gpos.is_empty() {
             return;
@@ -77,7 +76,7 @@ impl TerrGenDisabledGposByChunk {
         self.0.insert((dim_ref, chunk_pos), blocked_gpos);
     }
 
-    pub fn get_for_chunk(&self, dim_ref: DimensionRef, chunk_pos: ChunkPos) -> TerrGenBlockedGposMask {
+    pub fn get_for_chunk(&self, dim_ref: DimensionRef, chunk_pos: ChunkPos) -> ChunkGposMask {
         self.0.get(&(dim_ref, chunk_pos)).cloned().unwrap_or_default()
     }
 }

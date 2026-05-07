@@ -1,5 +1,6 @@
 use bevy::{platform::collections::HashMap, prelude::*};
 use common::common_id_components::{HashId, HashIdMap};
+use rand::RngExt;
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;

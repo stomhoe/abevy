@@ -13,7 +13,8 @@ use crate::terrain::{
         terrprobe_resources::{EguiTptsHolder, TerrProbeTemplEntityMap, load_terrain_probe_seri_defs},
     },
 };
-use crate::{regioning::regioning_resources::StructuredGenConfigEntityMap, tile::tile_resources::{TemplTileEntsWithinTag, TileRef}};
+use tilemap_shared::StructuredGenConfigEntityMap;
+use crate::tile::tile_resources::{TemplTileEntsWithinTag, TileRef};
 #[allow(unused_parens, )]
 pub fn init_terrain_probes(
     mut cmd: Commands,

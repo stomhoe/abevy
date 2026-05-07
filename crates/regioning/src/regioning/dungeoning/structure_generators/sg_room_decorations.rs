@@ -1,4 +1,5 @@
 use rand::Rng;
+use rand::RngExt;
 
 const ROOM_DECORATION_CHANCE: f32 = 0.5;
 

@@ -2,7 +2,6 @@ use bevy::{platform::collections::*, prelude::*};
 use bevy_replicon::prelude::*;
 
 use ::tilemap_shared::*;
-use crate::regioning::regioning_sgc_components::StructuredGenConfig;
 use serde::{Deserialize, Serialize};
 use common::common_components::*;
 pub use crate::regioning::regioning_sgc_seris::*;

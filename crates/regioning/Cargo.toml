@@ -1,0 +1,23 @@
+[package]
+name = "regioning"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../acommon" }
+game_common = { path = "../agame_common" }
+being_shared = { path = "../being_shared" }
+tilemap_shared = { path = "../tilemap_shared" }
+tilemap = { path = "../tilemap" }
+
+bevy = { workspace = true }
+bevy_replicon = { workspace = true }
+bitvec = { workspace = true }
+debug_unwraps = { workspace = true }
+inventory = { workspace = true }
+paste = { workspace = true }
+rand = { workspace = true }
+rand_distr = { workspace = true }
+serde = { workspace = true }
+ron = { workspace = true }
+bevy_egui = "0.39.0"

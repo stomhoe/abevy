@@ -11,6 +11,8 @@ pub mod tilemap_nav;
 pub mod tilemap_param_sets;
 pub mod tilemap_seris;
 pub mod terrgen_components;
+pub mod regioning_shared;
+pub mod regioning_messages;
 pub mod chunking_shared_components;
 pub mod chunking_shared_messages;
 pub mod chunking_shared_resources;
@@ -25,3 +27,4 @@ mod tilemap_shared;
 
 pub use tilemap_shared::*;
 pub use macrochunk_biome_components::*;
+pub use regioning_shared::*;

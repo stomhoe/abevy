@@ -4,15 +4,8 @@ use bevy::{platform::collections::HashSet, prelude::*};
 use common::{common_components::*, common_tag_components::TagSet, log_targets::SGC_INIT};
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use ::tilemap_shared::*;
-
-use crate::{
-    regioning::{
-        regioning_resources::*,
-        regioning_sgc_components::*,
-        StructuredGenConfigEntityMap,
-    },
-    terrain::terrprobe::opfilter::opfilter_resources::OpFilterEntityMap,
-};
+use tilemap::terrain::terrprobe::opfilter::opfilter_resources::OpFilterEntityMap;
+use crate::regioning::regioning_sgc_seris::load_sgc_seri_defs;
 
 struct PrioritySgcDef {
     ent: Entity,
@@ -170,7 +163,7 @@ pub fn init_structured_gen_configs(
         sgc.whitelisted_tags = TagSet::new(structured_gen_seri.whitelisted_tags.iter().map(String::as_str));
         sgc.blacklisted_tags = TagSet::new(structured_gen_seri.blacklisted_tags.iter().map(String::as_str));
         sgc.typed_args = structured_gen_seri.args.clone();
-        sgc.args = sgc.typed_args.to_legacy_args_dict();
+        sgc.args = sgc.typed_args.clone();
         let configured_room_spawn_shapes = sgc.typed_args.room_spawn_shape_keys();
         if !configured_room_spawn_shapes.is_empty()
             && let Some(allowed_room_spawn_shapes) = sgc_command_registry

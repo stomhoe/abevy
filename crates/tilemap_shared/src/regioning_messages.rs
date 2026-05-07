@@ -1,15 +1,8 @@
-#[allow(unused_imports)] use bevy::prelude::*;
-use bevy::platform::collections::HashMap;
-use tilemap_shared::ChunkGposMask;
-use tilemap_shared::DimensionRef;
-use tilemap_shared::{ChunkPos, GlobalTilePos, RegionPos};
-use crate::chunking::macro_chunk_components::BiomeTagWeightAtMacrochunk;
 
-use ::tilemap_shared::DeleteOtherTilesInSamePos;
-use crate::terrain::terrgen_async_resources::TerrGenBlockedGposMask;
-use crate::tile::tile_resources::TileRef;
-
-
+use bevy::{ecs::entity::MapEntities, platform::collections::*, prelude::*};
+use crate::{BiomeTagWeightAtMacrochunk, DimensionRef, RegionPos, TilesFromBuilder};
+use serde::{Deserialize, Serialize};
+use crate::tilemap_shared::*;
 
 #[derive(Message, Debug, Clone, )]
 pub struct OfferChunk {
@@ -48,7 +41,7 @@ pub struct SgcPrepareTilesOrder {
 
 
 #[derive(Debug, Default, Clone)]
-pub struct TerrGenDisabledGposForChunks(pub HashMap<ChunkPos, TerrGenBlockedGposMask>);
+pub struct TerrGenDisabledGposForChunks(pub HashMap<ChunkPos, ChunkGposMask>);
 
 impl TerrGenDisabledGposForChunks {
     pub fn is_empty(&self) -> bool {
@@ -59,7 +52,7 @@ impl TerrGenDisabledGposForChunks {
         self.0.values().map(ChunkGposMask::count_set).sum()
     }
 
-    pub fn insert_for_chunk(&mut self, chunk_pos: ChunkPos, blocked_gpos: TerrGenBlockedGposMask) {
+    pub fn insert_for_chunk(&mut self, chunk_pos: ChunkPos, blocked_gpos: ChunkGposMask) {
         if blocked_gpos.is_empty() {
             return;
         }
@@ -70,7 +63,7 @@ impl TerrGenDisabledGposForChunks {
         self.0.keys().next().copied()
     }
 
-    pub fn take_for_chunk(&mut self, chunk_pos: ChunkPos) -> TerrGenBlockedGposMask {
+    pub fn take_for_chunk(&mut self, chunk_pos: ChunkPos) -> ChunkGposMask {
         self.0.remove(&chunk_pos).unwrap_or_default()
     }
 }
@@ -80,7 +73,7 @@ pub struct StructureBuildCompliance {
     pub i: u64,
     pub structure_gen_cfg_ent: Entity,
     pub dimension_ref: DimensionRef,
-    pub chunk_tiles: Vec<(GlobalTilePos, TileRef, Option<DeleteOtherTilesInSamePos>)>,
+    pub chunk_tiles: TilesFromBuilder,
     pub terrgen_disabled_gpos_for_chunks: TerrGenDisabledGposForChunks,
     pub forced_chunk_biomes: Vec<ForcedChunkBiomeConfig>,
 }
