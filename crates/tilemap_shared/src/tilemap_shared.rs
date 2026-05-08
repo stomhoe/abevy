@@ -18,8 +18,9 @@ pub use crate::chunking_shared_resources::*;
 pub use crate::dimension::*;
 pub use crate::tilemap_positioning::*;
 pub use crate::directions::*;
-pub use crate::regioning_shared::*;
+#[allow(unused_imports)] pub use crate::region_components::*;
 pub use crate::regioning_messages::*;
+#[allow(unused_imports)] pub use crate::regioning_sgc_components::*;
 #[allow(unused_imports)]
 pub use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)]

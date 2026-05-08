@@ -36,7 +36,7 @@ pub fn sprite_change_detection(
         changed.extend(held_sprites.iter().map(SpriteChangedScaleOrOffsetOrParent));
     }
 
-    let removed_iter = removed_unloaded.read();
+    let removed_iter = removed_unloaded.read().chain(removed_flipped_transform.read());
     let (removed_lower, removed_upper) = removed_iter.size_hint();
     changed.reserve(removed_upper.unwrap_or(removed_lower));
     changed.extend(removed_iter.map(SpriteChangedScaleOrOffsetOrParent));
