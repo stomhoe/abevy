@@ -23,7 +23,7 @@ impl Default for StructureGenerationSettings {
     fn default() -> Self {
         Self {
             structure_build_timeout_secs: 4.0,
-            claimlist_advance_timeout_secs: 0.1,
+            claimlist_advance_timeout_secs: DEFAULT_CLAIMLIST_ADVANCE_TIMEOUT_SECS,
             region_offer_timeout_secs: 2.0,
             max_used_chunks_per_region_ratio: 0.07,
         }

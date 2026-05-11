@@ -2,7 +2,6 @@
 
 use crate::{time_components::*, time_resources::*, time_types::*};
 
-//NO OLVIDARSE DE AGREGARLO AL PLUGIN
 pub fn pass_time(
     time: Res<Time>,
     sim_timescale: Res<SimTimeScale>,
@@ -37,8 +36,6 @@ pub fn pass_time(
 }
 
 
-// ----------------------> NO OLVIDARSE DE AGREGARLO AL Plugin DEL MÓDULO <-----------------------------
-//                                                       ^^^^
 #[allow(unused_parens)]
 pub fn reduce_remaining_days(mut query: Query<(&mut RemainingDays),()>, curr_day: Res<CurrDay>) {
     

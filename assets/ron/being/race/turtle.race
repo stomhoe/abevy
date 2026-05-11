@@ -1,12 +1,12 @@
-race turtle {
-    name: "Turtle"
+race tortoise {
+    name: "Tortoise"
     icon_path: ""
     description: ""
-    demonym: "turtle"
-    singular: "turtle"
-    plural: "turtles"
+    demonym: "tortoise"
+    singular: "tortoise"
+    plural: "tortoises"
     sentient: false
-    fallback_sprites_to_sample: [turtle]
+    fallback_sprites_to_sample: [tortoise]
     sets_of_choosable_sprites: []
     can_walk_on: []
     walk_speeds_on_tiles: {}
@@ -23,7 +23,7 @@ race turtle {
         speed_max: 1.0
         avoid_tile_tags: [liquid]
     )
-    body_or_sampler: turtle
+    body_or_sampler: tortoise
     size_variation: (min_dev: 0.251 max_dev: 0.251 mean: 1.0 std_dev: 0.1)
     spawn_pack_size_normal_dist: (min_dev: 0.0 max_dev: 1.0 mean: 1.0 std_dev: 0.5)
     biome_affinity: {

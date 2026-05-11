@@ -8,7 +8,7 @@ use common::{
 use game_common::{
     StatefulSessionSystems, game_common::GameplaySystems,
 };
-use tilemap_shared::ZSettings;
+use ::tilemap_shared::*;
 
 #[allow(unused_imports, )]
 use crate::{
@@ -64,7 +64,7 @@ pub fn plugin(app: &mut App) {
     )
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
-        ((init_sprite_configs, map_sprite_config_id_to_entity, load_y_sort_settings).chain())
+        ((load_y_sort_settings, init_sprite_configs, map_sprite_config_id_to_entity).chain())
             .in_set(AcSpriteSystems),
     )
     .configure_sets(
@@ -74,7 +74,7 @@ pub fn plugin(app: &mut App) {
             SpriteSamplerSystems.before(GameplaySystems),
         ),
     )
-    .init_resource::<ZSettings>()
+    .replicate::<ZSettings>()
     .replicate::<AcZ>()
     .replicate::<MappedAnimations>()
     .replicate::<SpriteLoopSfx>()
@@ -84,7 +84,9 @@ pub fn plugin(app: &mut App) {
     .replicate::<ScsToBuild>()
     .replicate::<BecomeChildOfSpriteWithTag>()
     .replicate::<CardinalDirectionAffectsRotation>()
-
+    .replicate::<SpriteHoriNormalDist>()
+    .replicate::<SpriteVertNormalDist>()
+    .replicate::<SpriteGlobalNormalDist>()
 
     .replicate::<YSortOrigin>()
     .replicate_once::<AddUpAnimAndScAcZ>()

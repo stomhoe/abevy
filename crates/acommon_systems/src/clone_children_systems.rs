@@ -1,20 +1,19 @@
-use crate::game_common_components::*;
-use crate::game_common_bundles::DenyForTemplClonedChildren;
-use ::common::*;
-use ::sprite_shared::*;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use ::common::*;
+use ::game_common::*;
+use ::sprite_shared::*;
+
 #[allow(unused_parens)]
-pub fn clone_templ_children_ents(
+pub fn clone_templ_children_ents_for_new_instances(
     mut cmd: Commands,
     query: Query<
-        (Entity, &TemplEntiRef, Has<Replicated>, ),
-        (Changed<TemplEntiRef>, common::AnyDisabling),
+        (Entity, &TemplEntiRef, Has<Replicated>,),
+        (Changed<TemplEntiRef>, AnyDisabling),
     >,
-
-    templ: Query<(&Children, Option<&HeldSprites>, ), (common::AnyDisabling, With<CloneTemplChildren>, )>,
+    templ: Query<(&Children, Option<&HeldSprites>,), (AnyDisabling, With<CloneTemplChildren>)>,
     child_visibility_query: Query<&Visibility>,
-    clone_children_query: Query<(), (common::AnyDisabling, With<CloneTemplChildren>)>,
+    clone_children_query: Query<(), (AnyDisabling, With<CloneTemplChildren>)>,
     client_state: Res<State<ClientState>>,
 ) {
     let mut new_child_of = Vec::new();
@@ -23,8 +22,8 @@ pub fn clone_templ_children_ents(
     let mut clone_queue = Vec::new();
 
     let is_client = *client_state.get() != ClientState::Disconnected;
-    query.iter().for_each(|(new_ent, templ_ref, is_replicated, )| {
-        let is_replicated = (is_replicated );
+    query.iter().for_each(|(new_ent, templ_ref, is_replicated)| {
+        let is_replicated = is_replicated;
 
         if is_client && is_replicated {
             return;
@@ -58,7 +57,7 @@ pub fn clone_templ_children_ents(
 
                 if let Some(templ_held_sprites) = templ_held_sprites {
                     if templ_held_sprites.contains(&child_to_clone) {
-                        new_base_holder_ref.push((cloned_child, BaseHolderRef { base: clone_parent,  }, ));
+                        new_base_holder_ref.push((cloned_child, BaseHolderRef { base: clone_parent }));
                     }
                 }
 
@@ -72,3 +71,4 @@ pub fn clone_templ_children_ents(
     cmd.try_insert_batch(new_base_holder_ref);
     cmd.try_insert_batch(new_cloned_visibility);
 }
+

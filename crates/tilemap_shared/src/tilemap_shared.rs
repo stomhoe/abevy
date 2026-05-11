@@ -26,7 +26,8 @@ pub use bevy::platform::collections::{HashMap, HashSet};
 #[allow(unused_imports)]
 pub use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 
-#[derive(Resource, Debug, Clone, Copy, Deserialize, Serialize, Reflect)]
+#[derive(Component, Debug, Clone, Copy, Deserialize, Serialize, )]
+#[require(common::ReplicateIfServerStarts, Name::new("Zsettings"))]
 #[serde(default)]
 pub struct ZSettings {
     pub y_mult: f32,

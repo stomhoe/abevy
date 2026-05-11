@@ -16,7 +16,7 @@ pub fn init_sprite_configs(
     mut cmd: Commands,
     scs_map: Res<SpriteConfigEntityMap>,
     library: Res<AcAnimationEntityMap>,
-    z_settings: Res<ZSettings>,
+    z_settings: Query<&ZSettings>,
     scs_holder: Query<Entity, With<EguiScsHolder>>,
 ) {
     if !scs_map.0.is_empty() {
@@ -24,6 +24,10 @@ pub fn init_sprite_configs(
     }
 
     let scs_holder = scs_holder.single().unwrap();
+    let Ok(z_settings) = z_settings.single() else {
+        error!(target: SPRITE_INIT, "Missing singleton ZSettings entity while initializing sprite configs");
+        return;
+    };
 
     let mut comps_to_insert = Vec::new();
 

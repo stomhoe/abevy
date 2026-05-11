@@ -2,7 +2,6 @@ use bevy::ecs::entity::EntityHashSet;
 use bevy_ecs_tilemap::{DrawTilemap, anchor::TilemapAnchor};
 #[allow(unused_imports)]
 use bevy::prelude::*;
-use bevy_lit::prelude::LightOccluder2d;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use game_common::game_common_components::TemplEntiRef;
@@ -15,7 +14,7 @@ pub type Ysortable = (Or<(With<Sprite>, With<TilemapAnchor>, With<Mesh2d>/*Or-EN
 
 #[allow(unused_parens, )]
 pub fn y_sort_system(
-    y_sort_settings: Res<ZSettings>,
+    y_sort_settings: Query<&ZSettings>,
     sprite_holders: Query<&HeldSprites, Changed<GlobalTilePos>, >,
     changed_query: Query<Entity,
         (Or<(Changed<TemplEntiRef>, Changed<GlobalTilePos>, Changed<YSortOrigin>, Changed<AcZ>,
@@ -33,6 +32,10 @@ pub fn y_sort_system(
     mut draw_tmaps: Local<Vec<DrawTilemap>>,
     mut ents_to_process: Local<EntityHashSet>,
 ) {
+    let Ok(y_sort_settings) = y_sort_settings.single() else {
+        return;
+    };
+
     ents_to_process.extend(changed_query.iter());
 
     for held_sprites in sprite_holders.iter() {

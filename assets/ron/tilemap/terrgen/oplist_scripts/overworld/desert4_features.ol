@@ -6,7 +6,7 @@ debug: [tree_feature, cave_portal_feature]
 let shared_pd = pd399
 //todo poner noises para las rocas
 
-let lucky_tree = idxmax(hp81, 0.02)
+let lucky_tree = idxmax(hp81, 0.03)
 let tree_feature = max(fnl.forest_lf, lucky_tree)
 
 let tree_feature = lerp(tree_feature, inlandness, 0.1)

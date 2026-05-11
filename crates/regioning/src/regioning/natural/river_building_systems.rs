@@ -147,7 +147,7 @@ fn mark_occupied_gpos(
 }
 
 fn append_mask_tiles_by_chunk(
-    tiles_by_chunk: &mut HashMap<ChunkPos, TilesFromBuilder>,
+    tiles_by_chunk: &mut HashMap<ChunkPos, StructureBuilderTiles>,
     masks: &HashMap<ChunkPos, ChunkGposMask>,
     claimed_chunks: &HashSet<ChunkPos>,
     tile_ref: TileRef,

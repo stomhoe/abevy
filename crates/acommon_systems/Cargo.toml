@@ -1,0 +1,11 @@
+[package]
+name = "common_systems"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+bevy_replicon = { workspace = true }
+common = { path = "../acommon" }
+sprite_shared = { path = "../sprite_shared" }
+game_common = { path = "../agame_common" }

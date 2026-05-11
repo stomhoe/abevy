@@ -3,10 +3,10 @@ macro_rules! __entity_map_define_ref_struct {
     ($abbreviation:ident $(,)?) => {
         paste::paste! {
             #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, )]
-            pub struct [<$abbreviation Ref>](pub common::common_components::HashId);
+            pub struct [<$abbreviation Ref>](pub common::HashId);
             impl [<$abbreviation Ref>] {
                 pub fn is_placeholder(&self) -> bool {
-                    self.0 == common::common_components::HashId::default()
+                    self.0 == common::HashId::default()
                 }
             }
         }
@@ -17,10 +17,10 @@ macro_rules! __entity_map_define_ref_struct {
     ($abbreviation:ident, reflect_ref) => {
         paste::paste! {
             #[derive(Component, std::fmt::Debug, serde::Deserialize, serde::Serialize, Copy, Clone, std::hash::Hash, PartialEq, Eq, Reflect, )]
-            pub struct [<$abbreviation Ref>](pub common::common_components::HashId);
+            pub struct [<$abbreviation Ref>](pub common::HashId);
             impl [<$abbreviation Ref>] {
                 pub fn is_placeholder(&self) -> bool {
-                    self.0 == common::common_components::HashId::default()
+                    self.0 == common::HashId::default()
                 }
             }
         }
@@ -53,11 +53,11 @@ macro_rules! __entity_map_emit_shared_items {
     ) => {
         paste::paste! {
             #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Clone, )]
-            #[require(common::common_components::AssetScoped, common::common_components::EguiHolder, common::common_id_components::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, $holder_visibility, Transform, Name)]
+            #[require(common::AssetScoped, common::EguiHolder, common::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, $holder_visibility, Transform, Name)]
             pub struct [<Egui $abbreviation sHolder>];
 
             #[derive(bevy::prelude::Resource, std::fmt::Debug, Clone)]
-            pub struct [<$main_component EntityMap>](pub common::common_types::HashIdToEntityMap);
+            pub struct [<$main_component EntityMap>](pub common::HashIdToEntityMap);
             impl Default for [<$main_component EntityMap>] {
                 fn default() -> Self {
                     Self(Default::default())
@@ -67,13 +67,13 @@ macro_rules! __entity_map_emit_shared_items {
             $crate::__entity_map_define_ref_struct!($abbreviation $(, $ref_reflect)?);
 
             #[derive(Component, std::fmt::Debug, Clone, PartialEq, Eq)]
-            pub struct [<$abbreviation StrIdRef>](pub common::common_components::StrId);
+            pub struct [<$abbreviation StrIdRef>](pub common::StrId);
             impl [<$abbreviation StrIdRef>] {
-                pub fn new<I: Into<common::common_components::StrId>>(id: I) -> Self {
+                pub fn new<I: Into<common::StrId>>(id: I) -> Self {
                     Self(id.into())
                 }
                 pub fn asd<S: AsRef<str>>(id: S) -> Self {
-                    Self(common::common_components::StrId::trunc(id.as_ref()))
+                    Self(common::StrId::trunc(id.as_ref()))
                 }
             }
 
@@ -81,7 +81,7 @@ macro_rules! __entity_map_emit_shared_items {
                 mut cmd: Commands,
                 map: Option<ResMut<[<$main_component EntityMap>]>>,
                 client_state: Res<State<bevy_replicon::prelude::ClientState>>,
-                query: Query<(Entity, Option<&common::common_components::Prefix>, &$id_type, Has<common::common_components::RemoveReplicatedAfterClone>), (Changed<$id_type>, With<$main_component>, $with_filters)>,
+                query: Query<(Entity, Option<&common::Prefix>, &$id_type, Has<common::RemoveReplicatedAfterClone>), (Changed<$id_type>, With<$main_component>, $with_filters)>,
             ) {
                 let am_i_client = *client_state.get() == bevy_replicon::prelude::ClientState::Connected;
                 if let Some(mut map) = map {
@@ -179,7 +179,7 @@ macro_rules! __entity_map_emit_shared_items {
                 let iter = query.iter();
                 let mut refs = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
                 for (customer_ent, str_id_ref) in iter {
-                    refs.push((customer_ent, [<$abbreviation Ref>](common::common_components::HashId::from(str_id_ref.0.as_str()))));
+                    refs.push((customer_ent, [<$abbreviation Ref>](common::HashId::from(str_id_ref.0.as_str()))));
                     cmd.entity(customer_ent).try_remove::<[<$abbreviation StrIdRef>]>();
                 }
                 cmd.try_insert_batch(refs);
@@ -190,8 +190,8 @@ macro_rules! __entity_map_emit_shared_items {
                 mut cmd: Commands,
                 emap: Option<Res<[<$main_component EntityMap>]>>,
                 query: Query<
-                    (Entity, &common::common_components::TemplHashIdRef, Option<&common::common_components::TemplEntiRef>, ),
-                    (Or<(Changed<common::common_components::TemplHashIdRef>, Added<$main_component>)>, ),
+                    (Entity, &common::TemplHashIdRef, Option<&common::TemplEntiRef>, ),
+                    (Or<(Changed<common::TemplHashIdRef>, Added<$main_component>)>, ),
                 >,
             ) {
                 let Some(emap) = emap else {
@@ -204,7 +204,7 @@ macro_rules! __entity_map_emit_shared_items {
                     if templ_ref.map(|templ_ref| templ_ref.0 == templ_ent).unwrap_or(false) {
                         continue;
                     }
-                    cmd.entity(entity).insert(common::common_components::TemplEntiRef(templ_ent));
+                    cmd.entity(entity).insert(common::TemplEntiRef(templ_ent));
                 }
             }
 
@@ -236,7 +236,7 @@ macro_rules! __entity_map_emit_instance_templ_enti_ref_sync_system {
                 mut cmd: Commands,
                 emap: Option<Res<$entity_map>>,
                 query: Query<
-                    (Entity, &[<$abbreviation Ref>], Option<&common::common_components::TemplEntiRef>, ),
+                    (Entity, &[<$abbreviation Ref>], Option<&common::TemplEntiRef>, ),
                     (
                         Or<(Changed<[<$abbreviation Ref>]>, Added<$main_component>)>,
                         With<$main_component>,
@@ -254,7 +254,7 @@ macro_rules! __entity_map_emit_instance_templ_enti_ref_sync_system {
                     if templ_ref.map(|templ_ref| templ_ref.0 == templ_ent).unwrap_or(false) {
                         continue;
                     }
-                    cmd.entity(entity).insert(common::common_components::TemplEntiRef(templ_ent));
+                    cmd.entity(entity).insert(common::TemplEntiRef(templ_ent));
                     if !$target.is_empty() {
                         trace!(
                             target: $target,
@@ -281,8 +281,8 @@ macro_rules! __entity_map_emit_instance_templ_enti_ref_sync_system {
             pub fn [<sync_ $abbreviation:snake _instance_templ_enti_ref_from_map>](
                 mut cmd: Commands,
                 emap: Option<Res<$entity_map>>,
-                query: Query<
-                    (Entity, &[<$abbreviation Ref>], Option<&common::common_components::TemplEntiRef>, ),
+                mut query: Query<
+                    (Entity, &[<$abbreviation Ref>], Option<&mut common::TemplEntiRef>, ),
                     (
                         Or<(Changed<[<$abbreviation Ref>]>, Added<$main_component>)>,
                         With<$main_component>,
@@ -295,25 +295,21 @@ macro_rules! __entity_map_emit_instance_templ_enti_ref_sync_system {
                 let Some(emap) = emap else {
                     return;
                 };
-                for (entity, ref_component, templ_ref) in query.iter() {
+                let mut to_insert = Vec::new();
+                for (entity, ref_component, mut templ_ref) in query.iter_mut() {
                     let Ok(templ_ent) = emap.0.get_cloned(ref_component.0) else {
                         continue;
                     };
-                    if templ_ref.map(|templ_ref| templ_ref.0 == templ_ent).unwrap_or(false) {
-                        continue;
-                    }
-                    cmd.entity(entity).insert(common::common_components::TemplEntiRef(templ_ent));
-                    if !$target.is_empty() {
-                        trace!(
-                            target: $target,
-                            "Synced {} entity {:?} to template entity {:?} via {:?}",
-                            stringify!($main_component),
-                            entity,
-                            templ_ent,
-                            ref_component.0,
-                        );
+                    if let Some(mut templ_ref) = templ_ref {
+                        if templ_ref.0 == templ_ent {
+                            continue;
+                        }
+                        templ_ref.0 = templ_ent;
+                    } else {
+                        to_insert.push((entity, common::TemplEntiRef(templ_ent)));
                     }
                 }
+                cmd.try_insert_batch(to_insert);
             }
         }
     };
@@ -422,7 +418,7 @@ macro_rules! define_entity_map_systems {
                     .replicate::<$main_component>()
                     .replicate::<[<Egui $abbreviation sHolder>]>()
                     .replicate::<[<$abbreviation Ref>]>()
-                    .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<[<Egui $abbreviation sHolder>]>,)>();
+                    .replicate_filtered_as::<Visibility, common::VisibilityGameState, (With<[<Egui $abbreviation sHolder>]>,)>();
                 [<plugin_common_ $main_component:snake>](app);
             }
 

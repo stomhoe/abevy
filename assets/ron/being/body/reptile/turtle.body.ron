@@ -1,6 +1,6 @@
 (
-    id: "turtle",
-    name: "Turtle Body",
+    id: "tortoise",
+    name: "Tortoise Body",
     tags: ["quadruped"],
     distributed_totals: {
         "mass_kg": 180.0,
@@ -23,5 +23,5 @@
     max_fat_mobilization_kcal_per_sec: 9999.0,
     max_lean_catabolism_kcal_per_sec: 9999.0,
     damage_per_sec_at_zero_lean: 1.0,
-    bodytree_id: "turtle",
+    bodytree_id: "tortoise",
 )

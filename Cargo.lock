@@ -353,6 +353,7 @@ dependencies = [
  "client",
  "color_sampler",
  "common",
+ "common_systems",
  "debug",
  "dimension",
  "faction",
@@ -2189,6 +2190,7 @@ dependencies = [
  "bytemuck",
  "fixedbitset 0.5.7",
  "rand 0.10.1",
+ "serde",
 ]
 
 [[package]]
@@ -3905,6 +3907,7 @@ dependencies = [
  "bevy_enhanced_input",
  "bevy_kira_audio",
  "bevy_lit",
+ "bevy_replicon",
  "common",
  "game_common",
  "serde",
@@ -4170,6 +4173,17 @@ dependencies = [
  "ron 0.12.1",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "common_systems"
+version = "0.1.0"
+dependencies = [
+ "bevy 0.18.1",
+ "bevy_replicon",
+ "common",
+ "game_common",
+ "sprite_shared",
 ]
 
 [[package]]

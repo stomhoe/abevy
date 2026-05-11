@@ -1,6 +1,7 @@
 
 use bevy::prelude::*;
 use being_shared::FaithfulSimBeing;
+use bevy_replicon::shared::backend::ClientState;
 use ::tilemap_shared::*;
 use common::log_targets::{CHUNK_ACTIVATION, CHUNK_DESPAWN};
 
@@ -104,31 +105,25 @@ pub fn make_checked_chunks_despawn_if_unreferenced(
 #[allow(unused_parens)]
 pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE PUEDEN DESPAWNEAR LOS CHUNKS, PARA RESPETAR EL ORDEN DE SISTEMAS
     mut cmd: Commands,
+    mut despawn_reader: MessageReader<MakeChunkDespawn>,
     chunks_query: Query<(&DimensionRef, &ChunkPos, ), >,
     beings_within_chunk: Res<BeingsInCpos>,
-    mut force_despawn_reader: MessageReader<MakeChunkDespawn>,
-    mut chunks_to_despawn: Local<Vec<MakeChunkDespawn>>,
     mut bcd_writer: MessageWriter<ChunkWithBeingsWantsDespawn>,
     mut bcd_msgs: Local<Vec<ChunkWithBeingsWantsDespawn>>,
+    client_state: Res<State<ClientState>>,
 ) {
-    chunks_to_despawn.clear();
-    chunks_to_despawn.extend(force_despawn_reader.read().cloned());
-    if chunks_to_despawn.is_empty() {
-        return;
-    }
-    for MakeChunkDespawn { chunk_ent, reschedule_if_beings_present } in chunks_to_despawn.drain(..) {
+    let is_host = *client_state.get() == ClientState::Disconnected;
+
+    for &MakeChunkDespawn { chunk_ent, reschedule_if_beings_present } in despawn_reader.read() {
         let Ok((&chunk_dimension, &chunk_pos, )) = chunks_query.get(chunk_ent) else {
-            cmd.entity(chunk_ent).try_despawn();
             continue;
         };
-
-        if reschedule_if_beings_present {
+        if is_host && reschedule_if_beings_present {
             let beings_within_chunk_count = beings_within_chunk
                 .beings_in_chunk(chunk_dimension, chunk_pos)
                 .map_or(0, |beings| beings.len());
             if beings_within_chunk_count > 0 {
                 bcd_msgs.push(ChunkWithBeingsWantsDespawn { chunk_ent });
-                trace!(target: CHUNK_ACTIVATION, "Delegated chunk {:?} despawn decision for {} beings", chunk_ent, beings_within_chunk_count);
                 continue;
             }
         }

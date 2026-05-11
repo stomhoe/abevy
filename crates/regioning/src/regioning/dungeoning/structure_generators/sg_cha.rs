@@ -1222,7 +1222,7 @@ pub fn corridor_dungeon_building_system(
 
         let mut chunk_tiles = Vec::with_capacity(build_order.chunks_pos.len());
         let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
-        let mut tiles4chunk: TilesFromBuilder = Vec::new();
+        let mut tiles4chunk: StructureBuilderTiles = Vec::new();
         for &chunk_pos in &build_order.chunks_pos {
             tiles4chunk.clear();
             let mut blocked_gpos = ChunkGposMask::default();

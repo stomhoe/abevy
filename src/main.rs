@@ -49,7 +49,8 @@ fn build_filter() -> String {
 
         (log_targets::PORTAL_INIT, warn),
         (log_targets::POSITION_SEARCH, info),
-        (log_targets::CHILDRENSPRITE_INIT, info),
+        (log_targets::CHILDRENSPRITE_INIT, trace),
+        (log_targets::OCCLUDER_INIT, info),
         (log_targets::BIOME_INIT, debug),
 
         (log_targets::OPLIST_INIT, warn),
@@ -150,6 +151,7 @@ fn main() {
         .add_plugins((
             asset_loading::plugin,
             common::plugin,
+            common_systems::plugin,
             ac_input::plugin,
             game_common::plugin,
             ui_shared::plugin,

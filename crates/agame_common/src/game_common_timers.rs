@@ -64,35 +64,3 @@ define_timer_bundles!(RepeatingTimeoutTimer, TimerMode::Repeating; MessageOnTime
 
 #[derive(Message, Debug, Clone, )]
 pub struct TimedOut(pub Entity);
-
-#[allow(unused_parens)]
-pub fn tick_timers(
-    mut cmd: Commands,
-    sim_state: Res<State<SimulationState>>,
-    mut query: Query<(Entity, &mut TimerComp, Has<SimRunningOnly>, Has<DespawnOnTimeout>, Has<MessageOnTimeout>), ()>,
-    time: Res<Time>,
-    mut writer: MessageWriter<TimedOut>,
-    mut to_write: Local<Vec<TimedOut>>,
-) {
-    for (ent, mut timer, sim_only, despawn, message_on_timeout) in query.iter_mut() {
-        let should_tick = match (
-            sim_only,
-            sim_state.get().is_running(),
-        ) {
-            (true, false, ) => false,
-            _ => true,
-        };
-        if should_tick {
-            timer.0.tick(time.delta());
-        }
-        if timer.0.is_finished() {
-            if despawn{
-                cmd.entity(ent).try_despawn();
-            }
-            if message_on_timeout {
-                to_write.push(TimedOut(ent));
-            }
-        }
-    }
-    writer.write_batch(to_write.drain(..));
-}

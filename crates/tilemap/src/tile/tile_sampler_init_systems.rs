@@ -1,12 +1,11 @@
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy::ecs::system::SystemParam;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 use rand::{rngs::StdRng as Pcg64Mcg, SeedableRng};
 
 use crate::tile::{tile_components::Tile, TileEntityMap, TileWeightedSamplerEntityMap, tile_resources::*, tile_sampler_components::TileWeightedSampler, tile_sampler_resources::*};
 use game_common::game_common_components::Templ;
 use ::common::*;
-use tilemap_shared::tilemap_shared_samplers::{HashIdWeightedSampler, SpriteGlobalNormalDist, SpriteHoriNormalDist, SpriteVertNormalDist};
+use ::tilemap_shared::*;
 
 #[allow(unused_parens)]
 pub fn init_tile_weighted_samplers(
@@ -84,37 +83,32 @@ pub fn init_tile_weighted_samplers_part_two(
     }
 }
 
-#[derive(SystemParam)]
-pub struct SampleTileNormalSizeVariationsParams<'w, 's> {
-    pub tiles_to_sample: Query<'w, 's, (Entity, &'static InitialPos, &'static TileRef), (Changed<InitialPos>, With<Tile>, Without<Templ>, common::AnyDisabling,)>,
-    pub dists_query: Query<'w, 's, (Option<&'static SpriteGlobalNormalDist>, Option<&'static SpriteHoriNormalDist>, Option<&'static SpriteVertNormalDist>)>,
-    pub tile_map: Res<'w, TileEntityMap>,
-    pub gen_settings: Query<'w, 's, &'static GlobalGenSettings>,
-}
-
 #[allow(unused_parens)]
 pub fn sample_tile_normal_size_variations(
     mut cmd: Commands,
-    queries: SampleTileNormalSizeVariationsParams,
+    tiles_to_sample: Query<(Entity, &InitialPos, &TileRef), (Changed<InitialPos>, With<Tile>, Without<Templ>, common::AnyDisabling,)>,
+    dists_query: Query<(Option<&SpriteGlobalNormalDist>, Option<&SpriteHoriNormalDist>, Option<&SpriteVertNormalDist>)>,
+    tile_map: Res<TileEntityMap>,
+    gen_settings: Query<&GlobalGenSettings>,
 ) {
-    if queries.tiles_to_sample.is_empty() {
+    if tiles_to_sample.is_empty() {
         return;
     }
 
-    let Ok(settings) = queries.gen_settings.single() else {
+    let Ok(settings) = gen_settings.single() else {
         error_once!("Failed to get global gen settings for tile normal dist sampling");
         return;
     };
 
-    for (ent, initial_pos, tile_ref) in queries.tiles_to_sample.iter() {
-        let Ok((global_dist, hori_dist, vert_dist)) = queries.dists_query.get(ent) else {
+    for (ent, initial_pos, tile_ref) in tiles_to_sample.iter() {
+        let Ok((global_dist, hori_dist, vert_dist)) = dists_query.get(ent) else {
             continue;
         };
-        let Some(templ_ent) = queries.tile_map.0.get_cloned(tile_ref.0).ok() else {
+        let Some(templ_ent) = tile_map.0.get_cloned(tile_ref.0).ok() else {
             error!("Failed to resolve TileRef {:?} while sampling tile normal size variations", tile_ref);
             continue;
         };
-        let Ok((templ_global_dist, templ_hori_dist, templ_vert_dist)) = queries.dists_query.get(templ_ent) else {
+        let Ok((templ_global_dist, templ_hori_dist, templ_vert_dist)) = dists_query.get(templ_ent) else {
             continue;
         };
 

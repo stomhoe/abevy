@@ -39,16 +39,16 @@ pub fn plugin(app: &mut App) {
     ).in_set(ChunkSystems))
 
     .add_systems(Update, (
-        make_checked_chunks_despawn_if_unreferenced
-            .run_if(on_message::<CheckIfChunkShouldDespawn>)
-            .after(add_activating_chunks_to_activate_chunks_around)
-            .before(despawn_chunks),
         detect_activators_with_pos_changes,
         rem_outofrange_chunks_from_activators
-            .after(update_activating_chunk_positions)
-            .before(make_checked_chunks_despawn_if_unreferenced),
+        .after(update_activating_chunk_positions)
+        .before(make_checked_chunks_despawn_if_unreferenced),
+        make_checked_chunks_despawn_if_unreferenced
+            .run_if(on_message::<CheckIfChunkShouldDespawn>)
+            .after(add_activating_chunks_to_activate_chunks_around),
         despawn_chunks
             .after(make_checked_chunks_despawn_if_unreferenced)
+            .run_if(on_message::<MakeChunkDespawn>)
             .in_set(PreChunkDespawnSystems),
     ).in_set(ChunkSystems))
 

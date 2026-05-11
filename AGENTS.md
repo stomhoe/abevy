@@ -31,15 +31,15 @@ if a system is purely message-driven (its logic running is dependent on a Messag
 VERY IMPORTANT: for bevy systems, always put #[allow(unused_parens, )] on top of their definition, and for each query, ALWAYS include two sets of parentheses, one for the component querying part and for the filtering part, even if unnecessary, also leave trailing commas to the left of the right enclosing parentheses. Always like this:
 Query<(&ComponentType, ), (With<ComponentType2>, )>,
 
-Prefer imports like this: 
+VERY IMPORTANT: add imports like this: 
 use somethings::*
-Over imports like this:
+Instead of like this:
 use something::FinalNormMoveDir;
 use something::InputMoveDir;
 use something::SpeedMagnitude;
 If you find 2 or more imported things within curly braces, like this:
 use ::something::{ChunkPos, DimensionRef, GlobalTilePos};
-Then, turn it into this:
+turn it into this:
 use ::something::*;
 
 IMPORTANT: In mono-queries (queries for a single component T), NEVER wrap the queried component in Option<&T> or Has<T>; with let Ok(t) else continue or .is_ok() you can handle any need to check presence.

@@ -12,12 +12,11 @@ use bevy::{
 use bevy_ecs_tilemap::prelude::*;
 use bevy_replicon::prelude::*;
 use color_sampler::{ColorSamplerEntityMap, ColorSamplerRef,};
-use common::{AnyDisabling, TILE_INIT, common_components::*, common_tag_components::TagSet, };
-use common::common_resources::*;
-use item_shared::{ItemEntityMap, ItemsGeneratedOnDeath};
+use ::common::*;
+use ::item_shared::*;
 
 use crate::tile::{
-        tile_components::*, tile_init_helpers::*, tile_resources::*, tile_seris::LightOccluderSeri, tile_shader::{tile_shader_components::*, tile_shader_resources::*}
+    tile_components::*, tile_init_helpers::*, tile_resources::*, tile_shader::tile_shader_resources::*
     };
 
 
@@ -28,7 +27,7 @@ pub fn init_tiles(
     tiling_map: Res<TileEntityMap>,
     color_map: Res<ColorSamplerEntityMap>,
     item_map: Option<Res<ItemEntityMap>>,
-    y_sort_settings: Res<ZSettings>,
+    y_sort_settings: Query<&ZSettings>,
     egui_tiles_holder_query: Query<Entity, With<EguiTilesHolder>>,
 ) {
     if !tiling_map.0.0.is_empty() {
@@ -38,6 +37,11 @@ pub fn init_tiles(
         first_holder
     } else {
         cmd.spawn((EguiTilesHolder,)).id()
+    };
+
+    let Ok(y_sort_settings) = y_sort_settings.single() else {
+        error!("Missing singleton ZSettings entity while initializing tiles");
+        return;
     };
 
     let egui_portal_holder = cmd.spawn((PortalsZeroEguiHolder, ChildOf(holder))).id();

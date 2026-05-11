@@ -1,6 +1,6 @@
 
 use bevy::{ecs::entity::MapEntities, platform::collections::*, prelude::*};
-use crate::{BiomeTagWeightAtMacrochunk, DimensionRef, RegionPos, TilesFromBuilder};
+use crate::{BiomeTagWeightAtMacrochunk, DimensionRef, RegionPos, StructureBuilderTiles};
 use serde::{Deserialize, Serialize};
 use crate::tilemap_shared::*;
 
@@ -73,7 +73,7 @@ pub struct StructureBuildCompliance {
     pub i: u64,
     pub structure_gen_cfg_ent: Entity,
     pub dimension_ref: DimensionRef,
-    pub chunk_tiles: TilesFromBuilder,
+    pub chunk_tiles: StructureBuilderTiles,
     pub terrgen_disabled_gpos_for_chunks: TerrGenDisabledGposForChunks,
     pub forced_chunk_biomes: Vec<ForcedChunkBiomeConfig>,
 }

@@ -6,10 +6,9 @@ use common::log_targets::WILDLIFE_SYSTEM;
 use ::game_common::*;
 use tilemap::terrain::biome::biome_components::CreatureSampler;
 use tilemap::terrain::biome::biome_resources::BiomeEntityMap;
-use tilemap::terrain::operation_list::operation_list_components::OperationList;
 use tilemap::terrain::operation_list::operation_list_resources::OperationListEntityMap;
 use tilemap::chunking::macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples};
-use ::tilemap_shared::{DimensionEntityMap, *};
+use ::tilemap_shared::*;
 use tilemap::terrain::terrgen_messages::*;
 
 use crate::wildlife_spawning_helpers::*;

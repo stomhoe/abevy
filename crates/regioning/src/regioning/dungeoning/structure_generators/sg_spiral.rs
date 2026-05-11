@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
-use rand::{Rng, SeedableRng};
+use rand::{SeedableRng};
 use rand::RngExt;
 use ::tilemap_shared::*;
 
@@ -586,7 +586,7 @@ pub fn spiral_dungeon_building_system(
         let disable_floor_terrgen = terrgen_disable_by_tile_id.should_disable_for("floor_tile_id");
         let disable_lava_terrgen = terrgen_disable_by_tile_id.should_disable_for("lava_tile_id");
         let forced_chunk_biomes = super::super::dungeoning_utils::forced_chunk_biomes_from_args(&structured_gen_cfg.typed_args, &biome_map);
-        let mut tiles4chunk: TilesFromBuilder = Vec::with_capacity(chunk_positions.len());
+        let mut tiles4chunk: StructureBuilderTiles = Vec::with_capacity(chunk_positions.len());
         let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
         for &chunk_pos in chunk_positions {
             let mut terrgen_disabled_gpos = ChunkGposMask::default();

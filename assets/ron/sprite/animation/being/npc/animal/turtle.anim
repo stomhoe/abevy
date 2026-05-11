@@ -1,5 +1,5 @@
-anim turtle_s_idle {
-    img_path: "texture/being/npc/reptile/turtle_s.png"
+anim tortoise_s_idle {
+    img_path: "texture/being/npc/reptile/tortoise_s.png"
     rows_cols: 2 3
     paused: true
     speed: 1.0
@@ -9,8 +9,8 @@ anim turtle_s_idle {
     }
 }
 
-anim turtle_s_move {
-    img_path: "texture/being/npc/reptile/turtle_s.png"
+anim tortoise_s_move {
+    img_path: "texture/being/npc/reptile/tortoise_s.png"
     rows_cols: 2 3
     clips {
         row 0
@@ -18,8 +18,8 @@ anim turtle_s_move {
     }
 }
 
-anim turtle_n_idle {
-    img_path: "texture/being/npc/reptile/turtle_n.png"
+anim tortoise_n_idle {
+    img_path: "texture/being/npc/reptile/tortoise_n.png"
     rows_cols: 2 3
     paused: true
     speed: 1.0
@@ -29,8 +29,8 @@ anim turtle_n_idle {
     }
 }
 
-anim turtle_n_move {
-    img_path: "texture/being/npc/reptile/turtle_n.png"
+anim tortoise_n_move {
+    img_path: "texture/being/npc/reptile/tortoise_n.png"
     rows_cols: 2 3
     clips {
         row 0
@@ -38,8 +38,8 @@ anim turtle_n_move {
     }
 }
 
-anim turtle_w_idle {
-    img_path: "texture/being/npc/reptile/turtle_w.png"
+anim tortoise_w_idle {
+    img_path: "texture/being/npc/reptile/tortoise_w.png"
     rows_cols: 2 3
     paused: true
     speed: 1.0
@@ -49,8 +49,8 @@ anim turtle_w_idle {
     }
 }
 
-anim turtle_w_move {
-    img_path: "texture/being/npc/reptile/turtle_w.png"
+anim tortoise_w_move {
+    img_path: "texture/being/npc/reptile/tortoise_w.png"
     rows_cols: 2 3
     clips {
         row 0
@@ -58,8 +58,8 @@ anim turtle_w_move {
     }
 }
 
-anim turtle_e_idle {
-    img_path: "texture/being/npc/reptile/turtle_e.png"
+anim tortoise_e_idle {
+    img_path: "texture/being/npc/reptile/tortoise_e.png"
     rows_cols: 2 3
     paused: true
     speed: 1.0
@@ -69,8 +69,8 @@ anim turtle_e_idle {
     }
 }
 
-anim turtle_e_move {
-    img_path: "texture/being/npc/reptile/turtle_e.png"
+anim tortoise_e_move {
+    img_path: "texture/being/npc/reptile/tortoise_e.png"
     rows_cols: 2 3
     clips {
         row 0

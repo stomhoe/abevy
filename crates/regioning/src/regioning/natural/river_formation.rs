@@ -32,7 +32,7 @@ pub(super) fn generate_river_region_plan(
     }
 
     let land_threshold: f32 = cfg.args.parse_arg("river_land_threshold", -0.05);
-    let source_min_inlandness: f32 = cfg.args.parse_arg("river_source_min_inlandness", (land_threshold + 0.2).max(land_threshold));
+    let source_min_inlandness: f32 = cfg.args.parse_arg("river_source_min_inlandness", 0.2);
     let delta_chance: f32 = cfg.args.parse_arg("river_delta_chance", 0.18_f32).clamp(0.0, 1.0);
     let delta_spread: i32 = cfg.args.parse_arg("river_delta_spread", 1_i32).max(1);
     let max_sources: usize = cfg.args.parse_arg("river_max_sources", 2_usize).max(1);
@@ -45,8 +45,8 @@ pub(super) fn generate_river_region_plan(
     let default_half_width_start: i32 = cfg.args.parse_arg("river_main_half_width_start", 2_i32).max(1);
     let default_half_width_end: i32 = cfg.args.parse_arg("river_main_half_width_end", 4_i32).max(default_half_width_start);
     let main_width_dist = parse_capped_normal_dist_arg(&cfg.typed_args, "river_main_half_width_normal_dist");
-    let min_island_area_chunks: f32 = cfg.args.parse_arg("river_min_island_area_chunks", 225.0_f32).max(1.0);
-
+    let min_island_area_chunks: f32 = cfg.args.parse_arg("river_min_island_area_chunks", 170.0_f32).max(1.0);    let river_gravel_deposit_max: usize = cfg.args.parse_arg("river_gravel_deposit_max", 12_usize).max(1);
+    let river_gravel_deposit_spacing: usize = cfg.args.parse_arg("river_gravel_deposit_spacing", 2_usize).max(1);
     let land_points: HashMap<GlobalTilePos, f32> = inland_map
         .iter()
         .filter(|(pos, _)| !coast_points.contains(*pos) && source_region_pos.contains_chunkpos(pos.to_chunkpos()))
@@ -90,6 +90,10 @@ pub(super) fn generate_river_region_plan(
     };
     let curve_iterations: usize = cfg.args.parse_arg("river_curve_iterations", 2_usize).min(4);
     let curve_jitter_tiles: f32 = cfg.args.parse_arg("river_curve_jitter_tiles", (spacing as f32 * 0.30).clamp(1.0, 8.0));
+    let river_zigzag_chance: f32 = cfg.args.parse_arg("river_zigzag_chance", 0.25_f32).clamp(0.0, 1.0);
+    let river_zigzag_min_path_len: usize = cfg.args.parse_arg("river_zigzag_min_path_len", 80_usize).max(1);
+    let river_zigzag_extra_iterations: usize = cfg.args.parse_arg("river_zigzag_extra_iterations", 1_usize).min(3);
+    let river_zigzag_extra_jitter: f32 = cfg.args.parse_arg("river_zigzag_extra_jitter", 2.5_f32).max(0.0);
 
     let mut built_river = false;
     'source_loop: for main_source in sources.iter().copied() {
@@ -136,7 +140,25 @@ pub(super) fn generate_river_region_plan(
             continue;
         }
 
-        let smoothed_main_path = smooth_river_path(&candidate_main_path, curve_iterations, curve_jitter_tiles, settings, dimension_ref.0, main_source);
+        let zigzag_selected = candidate_main_path.len() >= river_zigzag_min_path_len && {
+            let roll = (main_source.hash_value(settings, dimension_ref.0, 514_379) % 10_000) as f32 / 10_000.0;
+            roll < river_zigzag_chance
+        };
+        let main_curve_iterations = curve_iterations.saturating_add(if zigzag_selected { river_zigzag_extra_iterations } else { 0 }).min(8);
+        let main_curve_jitter = if zigzag_selected {
+            curve_jitter_tiles + river_zigzag_extra_jitter
+        } else {
+            curve_jitter_tiles
+        };
+
+        let smoothed_main_path = smooth_river_path(
+            &candidate_main_path,
+            main_curve_iterations,
+            main_curve_jitter,
+            settings,
+            dimension_ref.0,
+            main_source,
+        );
         if path_has_nonconsecutive_overlap(&smoothed_main_path) {
             error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: source {:?} and mouth {:?} would make the main river intersect itself", source_region_pos, dimension_ref, main_source, mouth_target);
             continue;
@@ -189,7 +211,17 @@ pub(super) fn generate_river_region_plan(
         }
 
         maybe_add_river_island_gap(&smoothed_main_path, half_width_start, half_width_end, source_region_pos, plan, settings, dimension_ref.0, main_source);
-        maybe_add_river_gravel_deposits(&smoothed_main_path, half_width_end, source_region_pos, plan, settings, dimension_ref.0, main_source);
+        maybe_add_river_gravel_deposits(
+            &smoothed_main_path,
+            half_width_end,
+            source_region_pos,
+            plan,
+            settings,
+            dimension_ref.0,
+            main_source,
+            river_gravel_deposit_max,
+            river_gravel_deposit_spacing,
+        );
         rebuild_claimed_chunks_from_masks(plan);
 
         built_river = true;
@@ -650,21 +682,32 @@ fn find_adjacent_point_in_set(
     spacing: i32,
     local_region_pos: Option<RegionPos>,
 ) -> Option<GlobalTilePos> {
-    for oy in -1..=1 {
-        for ox in -1..=1 {
-            if ox == 0 && oy == 0 {
-                continue;
+    let mut best: Option<(GlobalTilePos, i64)> = None;
+    let max_radius = 2;
+    for radius in 1..=max_radius {
+        for oy in -radius..=radius {
+            for ox in -radius..=radius {
+                if ox == 0 && oy == 0 {
+                    continue;
+                }
+                let next = GlobalTilePos(pos.0 + IVec2::new(ox * spacing, oy * spacing));
+                if let Some(region_pos) = local_region_pos
+                    && !region_pos.contains_chunkpos(next.to_chunkpos())
+                {
+                    continue;
+                }
+                if !points.contains(&next) {
+                    continue;
+                }
+                let dist_sq = (next.0.x - pos.0.x) as i64 * (next.0.x - pos.0.x) as i64
+                    + (next.0.y - pos.0.y) as i64 * (next.0.y - pos.0.y) as i64;
+                if best.as_ref().map_or(true, |(_, best_dist_sq)| dist_sq < *best_dist_sq) {
+                    best = Some((next, dist_sq));
+                }
             }
-            let next = GlobalTilePos(pos.0 + IVec2::new(ox * spacing, oy * spacing));
-            if let Some(region_pos) = local_region_pos
-                && !region_pos.contains_chunkpos(next.to_chunkpos())
-            {
-                continue;
-            }
-            if !points.contains(&next) {
-                continue;
-            }
-            return Some(next);
+        }
+        if best.is_some() {
+            return best.map(|(pos, _)| pos);
         }
     }
     None

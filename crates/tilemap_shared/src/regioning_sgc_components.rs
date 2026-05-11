@@ -1,18 +1,17 @@
 use bevy::{ecs::entity::MapEntities, platform::collections::*, prelude::*};
 use bevy_replicon::prelude::*;
-use common::{common_components::*, common_tag_components::{passes_tag_filters, TagSet}};
-use crate::{DimensionRef, RegionPos, regioning_messages::*};
+use ::common::*;
 use serde::{Deserialize, Serialize};
 use crate::tilemap_shared::*;
 
-common::define_entity_map_systems!(
+define_entity_map_systems!(
     main_component: StructuredGenConfig,
     with_filters: (),
     abbreviation: Sgc,
     target: "sgc",
     entity_prefix: "SGC",
     despawn_trigger: StructuredGenConfig,
-    id_type: common::common_components::StrId,
+    id_type: StrId,
 );
 
 
@@ -173,7 +172,7 @@ impl Default for StructureGenerationSettings {
     fn default() -> Self {
         Self {
             structure_build_timeout_secs: 4.0,
-            claimlist_advance_timeout_secs: 0.1,
+            claimlist_advance_timeout_secs: crate::DEFAULT_CLAIMLIST_ADVANCE_TIMEOUT_SECS,
             region_offer_timeout_secs: 2.0,
             max_used_chunks_per_region_ratio: 0.07,
         }

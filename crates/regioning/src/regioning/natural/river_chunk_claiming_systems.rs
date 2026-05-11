@@ -130,9 +130,6 @@ pub fn claim_chunks_for_river_structures(
         }
         *river_debug.region_mut(dimension_ref, region_pos) = region_debug;
         river_debug.bump_revision();
-            if let Ok(mut claimlist) = claim_queries.claimlists.get_mut(region_ent) {
-            claimlist.clear_pending_i(offer_i as usize);
-        }
         probes_completed = probes_completed.saturating_add(1);
         false
     });

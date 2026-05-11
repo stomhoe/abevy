@@ -536,15 +536,15 @@ pub fn play_step_sfx_from_moved_distance(
             } else {
                 rand::random_range(0..step_paths.len())
             };
-            let chosen_path = &step_paths[chosen_i];
-            let mut play_cmd = audio.play(asset_server.load(chosen_path.clone()));
+            let chosen_path = step_paths[chosen_i].clone();
+            let mut play_cmd = audio.play(asset_server.load(&chosen_path));
             if is_locally_controlled {
                 let _ = play_cmd.handle();
             } else {
                 play_cmd.with_emitter(being_ent);
                 spatial_handles.push(play_cmd.handle());
             }
-            step_state.last_sfx_path_hash = hash_path(chosen_path);
+            step_state.last_sfx_path_hash = hash_path(&chosen_path);
         }
         if is_locally_controlled || spatial_handles.is_empty() {
             continue;

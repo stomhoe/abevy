@@ -16,3 +16,4 @@ bevy_enhanced_input = { workspace = true }
 bevy_kira_audio = { workspace = true }
 bevy_lit = { workspace = true }
 serde = { workspace = true }
+bevy_replicon = { workspace = true }

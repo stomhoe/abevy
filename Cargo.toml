@@ -72,6 +72,7 @@ bevy_lit = {  path = "aother/bevy_lit" }
 
 multiplayer_shared = { path = "crates/multiplayer_shared" }
 common = { path = "crates/acommon" }
+common_systems = { path = "crates/acommon_systems" }
 asset_loading = { path = "crates/asset_loading" }
 game_common = { path = "crates/agame_common" }
 debug = { path = "crates/debug" }

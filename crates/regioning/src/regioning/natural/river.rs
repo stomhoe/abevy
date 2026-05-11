@@ -23,7 +23,8 @@ pub fn plugin(app: &mut App) {
         .add_systems(Update, (
             claim_chunks_for_river_structures
                 .in_set(crate::regioning::RegioningSystems)
-                .after(crate::regioning::claim_chunks_for_various_dungeon_types),
+                //para determinismo
+                .before(crate::regioning::claim_chunks_for_various_dungeon_types),
             ApplyDeferred,
             river_structure_building_system.in_set(crate::regioning::StructureBuildingSystems),
         ).chain())

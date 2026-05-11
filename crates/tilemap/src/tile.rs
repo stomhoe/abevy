@@ -1,3 +1,5 @@
+use bevy_lit::directional_light::DirectionalLight2d;
+use bevy_lit::prelude::LightOccluder2d;
 use bevy_replicon::prelude::*;
 use color_sampler::ColorSampleSystems;
 use common::{common_states::AssetLoading };
@@ -55,30 +57,40 @@ pub struct TilingSystems;
 #[allow(unused_parens, path_statements, )]
 pub fn plugin(app: &mut App) {
     app
+
+
+
     .add_systems(Update, (
 
         start_portal_search
             .run_if(in_state(ClientState::Disconnected))
             .run_if(any_with_component::<AwaitingStartSearch>)
             .before(search_suitable_positions),
+        (despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_tiles, 
+            despawn_other_tiles_in_same_pos_if_not_excepted).in_set(PreChunkDespawnSystems),//DON'T TOUCH
+        add_projectile_colliders_to_tiles,
+        snap_transform_to_gpos,
+        sync_tile_instance_templ_enti_ref_from_map,
+        emit_global_tile_pos_change,
+        validate_portal_recipes,
+        
+    ))
+    .add_systems(Update, (
         flip_tile_based_on_initial_pos_hash,
         rotate_tile_based_on_initial_pos_hash,
         track_non_default_tile_cardinal_direction_changes,
         sync_sprite_flips_with_tileflip,
-        despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_tiles.in_set(PreChunkDespawnSystems),
-        despawn_other_tiles_in_same_pos_if_not_excepted.in_set(PreChunkDespawnSystems),//DON'T TOUCH
-        add_projectile_colliders_to_tiles,
         sample_tile_normal_size_variations,
-        (snap_transform_to_gpos).chain(),
-        add_handles,
-        sync_tile_instance_templ_enti_ref_from_map,
-        init_childrensprite,
-        init_templ_childrensprite_light_occluders,
-        emit_global_tile_pos_change,
-        validate_portal_recipes,
-
+        
     ))
-    .add_systems(Update, sample_tile_normal_size_variations)
+    .add_systems(Update, (
+        add_handles,
+        (init_childrensprite,
+        ApplyDeferred,
+        init_templ_childrensprite_light_occluders,).chain()
+        
+    ))
+
     .add_systems(Update, (
         resolve_portal_search_results
             .run_if(in_state(ClientState::Disconnected))
@@ -147,6 +159,8 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<TileStepSfx>()
     .replicate::<U16TileIndex>()
     .replicate::<TileU16IndexHashIdMapping>()
+    .replicate::<DirectionalLight2d>()
+    .replicate::<LightOccluderSeri>()
 
 
     .replicate_once::<GlobalTilePos>()

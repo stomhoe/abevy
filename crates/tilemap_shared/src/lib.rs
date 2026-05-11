@@ -16,6 +16,8 @@ pub mod regioning_sgc_components;
 pub mod regioning_messages;
 pub mod chunking_shared_components;
 pub mod chunking_shared_messages;
+
+pub const DEFAULT_CLAIMLIST_ADVANCE_TIMEOUT_SECS: f32 = 0.3;
 pub mod chunking_shared_resources;
 pub mod macrochunk_biome_components;
 mod dimension;

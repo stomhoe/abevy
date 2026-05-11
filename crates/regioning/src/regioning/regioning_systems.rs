@@ -233,9 +233,10 @@ pub fn advance_i_on_claimlist_timeout(
             if *state != RegionState::OfferingChunks {
                 return;
             }
+            let claimlist_advance_timeout_secs = structure_settings.claimlist_advance_timeout_secs.max(DEFAULT_CLAIMLIST_ADVANCE_TIMEOUT_SECS);
             claimlist
                 .advance_timer
-                .set_duration(Duration::from_secs_f32(structure_settings.claimlist_advance_timeout_secs));
+                .set_duration(Duration::from_secs_f32(claimlist_advance_timeout_secs));
             if claimlist.waiting_for_current_i() {
                 claimlist.advance_timer.reset();
                 return;

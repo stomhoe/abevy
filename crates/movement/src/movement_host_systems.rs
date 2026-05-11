@@ -367,16 +367,7 @@ pub fn receive_step_request_from_client(
                 force_resync: false,
             },
         });
-        info!(
-            target: MOVEMENT_SYSTEM,
-            "Accepted step request for {:?}: dir {:?}, steps={}, target {:?}, credit {:.2}, expected {:.3}s",
-            being_ent,
-            step_dir,
-            steps_taken,
-            curr_tile_pos,
-            state.step_credit,
-            secs_per_step
-        );
+
     }
     writer.write_batch(messages.drain(..));
     move_state_writer.write_batch(move_state_msgs.drain(..));

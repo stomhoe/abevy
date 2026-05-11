@@ -1,15 +1,15 @@
-sprite turtle {
-name Turtle
+sprite tortoise {
+name Tortoise
 z 1000
 mapped_anims {
-    south idle g _ = turtle_s_idle
-    south move g _ = turtle_s_move
-    west idle g _ = turtle_w_idle
-    west move g _ = turtle_w_move
-    east idle g _ = turtle_e_idle
-    east move g _ = turtle_e_move
-    north idle g _ = turtle_n_idle
-    north move g _ = turtle_n_move
+    south idle g _ = tortoise_s_idle
+    south move g _ = tortoise_s_move
+    west idle g _ = tortoise_w_idle
+    west move g _ = tortoise_w_move
+    east idle g _ = tortoise_e_idle
+    east move g _ = tortoise_e_move
+    north idle g _ = tortoise_n_idle
+    north move g _ = tortoise_n_move
 }
 children_sprites []
 shares_tag []

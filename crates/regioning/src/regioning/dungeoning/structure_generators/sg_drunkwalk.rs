@@ -50,7 +50,7 @@ pub fn drunkwalk_dungeon_building_system(
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
     mut chambers: Local<Vec<Chamber>>,
     mut candidates: Local<Vec<(usize, usize)>>,
-    mut tiles4chunk: Local<TilesFromBuilder>,
+    mut tiles4chunk: Local<StructureBuilderTiles>,
     mut writer: MessageWriter<StructureBuildCompliance>,
 ) {
     let Ok(settings) = settings.single() else {
@@ -620,7 +620,7 @@ pub fn drunkwalk_dungeon_building_system(
         let disable_lava_terrgen = terrgen_disable_by_tile_id.should_disable_for("lava_tile_id");
         let forced_chunk_biomes = super::super::dungeoning_utils::forced_chunk_biomes_from_args(&structured_gen_cfg.typed_args, &biome_map);
 
-        let mut chunk_tiles: TilesFromBuilder = Vec::with_capacity(chunk_positions.len());
+        let mut chunk_tiles: StructureBuilderTiles = Vec::with_capacity(chunk_positions.len());
         let mut terrgen_disabled_gpos_for_chunks = TerrGenDisabledGposForChunks::default();
         for &chunk_pos in chunk_positions {
             tiles4chunk.clear();

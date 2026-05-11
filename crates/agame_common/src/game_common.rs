@@ -6,7 +6,7 @@ use common::{common_states::*};
 use tilemap_shared::tilemap_shared_samplers::*;
 
 use crate::{
-    clone_children_systems::*, game_common_components::*, game_common_states::*, game_common_string_components::Description, game_common_systems::*, game_common_timers::{TimedOut, tick_timers}
+    game_common_components::*, game_common_states::*, game_common_string_components::Description, game_common_timers::TimedOut,
 };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -32,19 +32,6 @@ pub struct AcClientSystems;
 
 #[allow(unused_parens, path_statements)]
 pub fn plugin(app: &mut App) {
-    app.add_systems(
-        Update,
-        (
-            (tick_time_based_multipliers).in_set(SimRunningSystems),
-            clone_templ_children_ents,
-            tick_timers,
-            despawn_sprites_without_childof,
-        ),
-    );
-    //#[cfg(debug_assertions)]
-    {
-        app.add_systems(Update, set_entity_name);
-    }
 
     app.configure_sets(
         Update,

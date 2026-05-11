@@ -6,4 +6,5 @@ pub use camera_systems::*;
 pub mod camera;
 pub mod camera_daylight;
 pub mod camera_systems;
+pub mod lighting_systems;
 pub mod camera_components;

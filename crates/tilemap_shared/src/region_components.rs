@@ -1,6 +1,7 @@
 use bevy::{ecs::entity::EntityHashMap, platform::collections::{HashMap, HashSet}, prelude::*};
 use bevy_inspector_egui::egui;
 use common::common_components::*;
+use smallvec::SmallVec;
 use crate::{DimensionRef, RegionPos, regioning_messages::*};
 use crate::tilemap_shared::*;
 use serde::{Deserialize, Serialize};
@@ -70,7 +71,7 @@ impl Default for ClaimList {
             processed_up_to_i: 0,
             skipped_is: HashSet::new(),
             pending_is: HashSet::new(),
-            advance_timer: Timer::from_seconds(0.1, TimerMode::Once),
+            advance_timer: Timer::from_seconds(crate::DEFAULT_CLAIMLIST_ADVANCE_TIMEOUT_SECS, TimerMode::Once),
         }
     }
 }
@@ -78,7 +79,7 @@ impl Default for ClaimList {
 #[derive(Component, Debug, Default, Clone)]
 pub struct CountsOfSgcs(pub EntityHashMap<u32>);
 
-pub type TilesFromBuilder = Vec<(GlobalTilePos, HashId, Option<DeleteOtherTilesInSamePos>)>;
+pub type StructureBuilderTiles = Vec<(GlobalTilePos, HashId, Option<DeleteOtherTilesInSamePos>)>;
 
 #[derive(Debug, Clone)]
 pub struct PendingBuildOrder {
@@ -88,7 +89,7 @@ pub struct PendingBuildOrder {
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct RegionPlannedTiles {
-    tiles_to_spawn_on_chunk_load_map: HashMap<ChunkPos, TilesFromBuilder>,
+    tiles_to_spawn_on_chunk_load_map: HashMap<ChunkPos, StructureBuilderTiles>,
     terrgen_disabled_gpos_on_chunk_load: HashMap<ChunkPos, ChunkGposMask>,
     pending_build_orders: HashMap<u64, PendingBuildOrder>,
     pending_chunks: HashSet<ChunkPos>,
@@ -127,13 +128,13 @@ impl RegionPlannedTiles {
     pub fn add_planned_tiles_and_remove_from_pending(
         &mut self,
         order_i: u64,
-        chunk_tiles: TilesFromBuilder,
+        chunk_tiles: StructureBuilderTiles,
         terrgen_disabled_gpos_for_chunks: TerrGenDisabledGposForChunks,
     ) -> Result<bool, BevyError> {
         let Some(order) = self.pending_build_orders.remove(&order_i) else {
             return Err(BevyError::from(format!("Build order {} is not pending", order_i)));
         };
-        let mut chunk_tiles_by_chunk: HashMap<ChunkPos, TilesFromBuilder> = HashMap::new();
+        let mut chunk_tiles_by_chunk: HashMap<ChunkPos, StructureBuilderTiles> = HashMap::new();
         let selected_chunks: HashSet<ChunkPos> = order.chunks.iter().copied().collect();
         for (tile_pos, tile_ref, delete_others) in chunk_tiles {
             let chunk_pos = tile_pos.to_chunkpos();
@@ -170,7 +171,7 @@ impl RegionPlannedTiles {
         Ok(self.pending_build_orders.is_empty())
     }
 
-    pub fn get(&self, chunk_pos: &ChunkPos) -> Option<&TilesFromBuilder> {
+    pub fn get(&self, chunk_pos: &ChunkPos) -> Option<&StructureBuilderTiles> {
         self.tiles_to_spawn_on_chunk_load_map.get(chunk_pos)
     }
 
@@ -199,21 +200,20 @@ impl RegionPlannedTiles {
 pub const MAX_CHUNK_CLAIMS_PER_REGION: usize = REGION_SIZE_IN_CHUNKS.area_usize();
 
 #[derive(Debug, Clone)]
-pub struct RegionGrid<T: Copy + Eq> {
-    grid: Vec<Vec<T>>,
-    count: u64,
+pub struct RegionGrid<T> {
+    grid: Vec<T>,
 }
 
-impl<T: Copy + Eq> Default for RegionGrid<T> {
+impl<T: Default> Default for RegionGrid<T> {
     fn default() -> Self {
         let total_cells = REGION_SIZE_IN_CHUNKS.area_usize();
         let mut grid = Vec::with_capacity(total_cells);
-        grid.resize_with(total_cells, Vec::new);
-        Self { grid, count: 0 }
+        grid.resize_with(total_cells, T::default);
+        Self { grid }
     }
 }
 
-impl<T: Copy + Eq> RegionGrid<T> {
+impl<T> RegionGrid<T> {
     #[inline]
     const fn width() -> usize {
         REGION_SIZE_IN_CHUNKS.0.x as usize
@@ -225,20 +225,22 @@ impl<T: Copy + Eq> RegionGrid<T> {
     }
 
     #[inline]
-    fn cell(&self, x: usize, y: usize) -> &Vec<T> {
+    fn cell(&self, x: usize, y: usize) -> &T {
         &self.grid[Self::flat_index(x, y)]
     }
 
     #[inline]
-    fn cell_mut(&mut self, x: usize, y: usize) -> &mut Vec<T> {
+    fn cell_mut(&mut self, x: usize, y: usize) -> &mut T {
         &mut self.grid[Self::flat_index(x, y)]
     }
 
     #[inline]
-    fn cell_opt(&self, x: usize, y: usize) -> Option<&Vec<T>> {
+    fn cell_opt(&self, x: usize, y: usize) -> Option<&T> {
         self.grid.get(Self::flat_index(x, y))
     }
+}
 
+impl RegionGrid<SmallVec<[Entity; 4]>> {
     #[inline]
     fn get_local_pos(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Result<(usize, usize), ChunkOccupyError> {
         let local_chunk_pos = global_chunk_pos - region_pos.to_chunkpos();
@@ -266,46 +268,37 @@ impl<T: Copy + Eq> RegionGrid<T> {
         !self.is_occupied(global_chunk_pos, region_pos)
     }
 
-    pub fn occupy(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: T) -> Result<(), ChunkOccupyError> {
+    pub fn occupy(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: Entity) -> Result<(), ChunkOccupyError> {
         let (x, y) = self.get_local_pos(global_chunk_pos, region_pos)?;
-        let was_empty = {
-            let cell = self.cell_mut(x, y);
-            if cell.iter().any(|&existing| existing == value) {
-                return Err(ChunkOccupyError::AlreadyOccupied);
-            }
-            let was_empty = cell.is_empty();
-            cell.push(value);
-            was_empty
-        };
-        if was_empty {
-            self.count += 1;
+        let cell = self.cell_mut(x, y);
+        if cell.contains(&value) {
+            return Err(ChunkOccupyError::AlreadyOccupied);
         }
+        cell.push(value);
         Ok(())
     }
 
-    pub fn free(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: T) {
-        if let Ok((x, y)) = self.get_local_pos(global_chunk_pos, region_pos) {
-            let cell = self.cell_mut(x, y);
-            if let Some(i) = cell.iter().position(|&existing| existing == value) {
-                cell.swap_remove(i);
-            }
-            if cell.is_empty() {
-                self.count -= 1;
-            }
+    pub fn free(&mut self, global_chunk_pos: ChunkPos, region_pos: RegionPos, value: Entity) {
+        let Ok((x, y)) = self.get_local_pos(global_chunk_pos, region_pos) else {
+            return;
+        };
+        let cell = self.cell_mut(x, y);
+        if let Some(i) = cell.iter().position(|&existing| existing == value) {
+            cell.swap_remove(i);
         }
     }
 
     pub fn occupied_count(&self) -> u64 {
-        self.count
+        self.grid.iter().filter(|cell| !cell.is_empty()).count() as u64
     }
 
-    pub fn get_value(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Option<T> {
+    pub fn get_value(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Option<Entity> {
         self.get_local_pos(global_chunk_pos, region_pos)
             .ok()
             .and_then(|(x, y)| self.cell(x, y).first().copied())
     }
 
-    pub fn get_values(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Option<&[T]> {
+    pub fn get_values(&self, global_chunk_pos: ChunkPos, region_pos: RegionPos) -> Option<&[Entity]> {
         self.get_local_pos(global_chunk_pos, region_pos)
             .ok()
             .map(|(x, y)| self.cell(x, y).as_slice())
@@ -318,7 +311,7 @@ pub enum ChunkOccupyError {
 }
 
 #[derive(Component, Debug, Default, Clone)]
-pub struct GridOfSgcs(pub RegionGrid<Entity>);
+pub struct GridOfSgcs(pub RegionGrid<SmallVec<[Entity; 4]>>);
 
 impl GridOfSgcs {
     pub fn sampled_structure_at_gpos(&self, gpos: GlobalTilePos, region_pos: RegionPos) -> Option<Entity> {

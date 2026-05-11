@@ -3,7 +3,7 @@ use std::path::Path;
 use bevy::{platform::collections::*, prelude::*};
 use common::def_db;
 pub use tilemap_shared::{SgcArgValue, SgcArgsDict};
-use serde::{Deserialize, Serialize};
+#[allow(unused_imports, )] use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 pub struct SgcSeri {
@@ -692,7 +692,7 @@ fn default_structure_build_timeout_secs() -> f64 {
 }
 
 fn default_claimlist_advance_timeout_secs() -> f32 {
-    0.1
+    tilemap_shared::DEFAULT_CLAIMLIST_ADVANCE_TIMEOUT_SECS
 }
 
 fn default_region_offer_timeout_secs() -> f32 {

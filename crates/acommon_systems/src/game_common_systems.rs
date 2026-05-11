@@ -1,28 +1,15 @@
-use crate::game_common_components::*;
-use crate::game_common_timers::*;
-use ::common::*;
 use bevy::prelude::*;
-pub fn tick_time_based_multipliers(
-    time: Res<Time>,
-    mut query: Query<(
-        &mut TimeBasedMultiplier,
-        Option<&TickMultFactor>,
-        Option<&TickMultFactors>,
-    )>,
-) {
-    for (mut multiplier, tick_mult_factor, tick_mult_factors) in query.iter_mut() {
-        let mut factor = tick_mult_factor.map(|f| f.value()).unwrap_or(1.0);
-        if let Some(factors) = tick_mult_factors {
-            factor *= factors.0.iter().map(|f| f.value()).product::<f32>();
-        }
-        multiplier.timer.tick(time.delta().mul_f32(factor));
-    }
-}
+#[allow(unused_imports, )]
+use bevy_replicon::prelude::*;
+use ::common::*;
+use ::game_common::*;
+
+
 
 #[allow(unused_parens)]
 pub fn despawn_sprites_without_childof(
     mut cmd: Commands,
-    query: Query<(Entity), (Or<(With<Sprite>, With<Mesh2d>)>, Without<ChildOf>, common::AnyDisabling)>,
+    query: Query<Entity, (Or<(With<Sprite>, With<Mesh2d>)>, Without<ChildOf>, AnyDisabling)>,
 ) {
     query
         .iter()
@@ -33,13 +20,10 @@ pub fn despawn_sprites_without_childof(
 pub fn set_entity_name(
     templs_query: Query<
         AnyOf<(&Prefix, &StrId, &StrId20B, &HashId, &DisplayName,)>,
-        (With<Templ>, common::AnyDisabling),
+        (With<Templ>, AnyDisabling),
     >,
     mut changers_query: Query<
-        (
-            &mut Name,
-            AnyOf<(&Prefix, &StrId, &StrId20B, &HashId, &DisplayName, &TemplEntiRef)>,
-        ),
+        (&mut Name, AnyOf<(&Prefix, &StrId, &StrId20B, &HashId, &DisplayName, &TemplEntiRef)>),
         (
             Without<ExcludedFromAutoRenamer>,
             Or<(
@@ -50,7 +34,7 @@ pub fn set_entity_name(
                 Changed<DisplayName>,
                 Changed<TemplEntiRef>,
             )>,
-            common::AnyDisabling,
+            AnyDisabling,
         ),
     >,
 ) {
@@ -65,7 +49,7 @@ pub fn set_entity_name(
 
         let mut templ_id = String::new();
         if let Some(templ_ref) = templ_ref {
-            if let Ok((z_prefix, z_strid, z_strid20, z_hash, z_display_name, )) =
+            if let Ok((z_prefix, z_strid, z_strid20, z_hash, z_display_name,)) =
                 templs_query.get(templ_ref.0)
             {
                 if prefix.is_none() {

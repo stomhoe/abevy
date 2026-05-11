@@ -2,7 +2,7 @@
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
-use rand::{Rng, SeedableRng, seq::SliceRandom};
+use rand::{SeedableRng, seq::SliceRandom};
 use rand::RngExt;
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use ::tilemap_shared::*;
@@ -37,7 +37,7 @@ pub fn archimedes_spiral_building_system(
     mut compliances_to_emit: Local<Vec<StructureBuildCompliance>>,
     mut candidates: Local<Vec<(usize, usize)>>,
     mut ring_spawn_anchors: Local<Vec<(GlobalTilePos, String, i32)>>,
-    mut tiles4chunk: Local<TilesFromBuilder>,
+    mut tiles4chunk: Local<StructureBuilderTiles>,
 ) {
     let Ok(settings) = settings.single() else {
         return;

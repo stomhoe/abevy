@@ -292,16 +292,19 @@ pub(super) fn maybe_add_river_gravel_deposits(
     settings: &GlobalGenSettings,
     dimension_hash: HashId,
     source: GlobalTilePos,
+    gravel_deposit_max: usize,
+    gravel_deposit_spacing: usize,
 ) {
     if path.len() < 2 || half_width_end < 1 {
         return;
     }
 
     let gravel_segment_limit = (((path.len() - 1) as f32) * 0.9).floor().max(1.0) as usize;
+    let gravel_deposit_max = gravel_deposit_max.min(gravel_segment_limit).max(1);
     let mut deposits_added = 0usize;
 
     for (step_i, segment) in path.windows(2).enumerate().take(gravel_segment_limit) {
-        if deposits_added >= 4 {
+        if deposits_added >= gravel_deposit_max {
             break;
         }
         let from = segment[0];
@@ -311,12 +314,12 @@ pub(super) fn maybe_add_river_gravel_deposits(
         }
         let bank_side = if source.hash_value(settings, dimension_hash, 997 + step_i as u64) & 1 == 0 { 1 } else { -1 };
         let anchor = GlobalTilePos(from.0 + normal * bank_side * (half_width_end.max(1) + 1));
-        let deposit_phase = source.hash_value(settings, dimension_hash, 1091 + step_i as u64) % 3;
+        let deposit_phase = source.hash_value(settings, dimension_hash, 1091 + step_i as u64) % gravel_deposit_spacing as u64;
         if deposit_phase != 0 {
             continue;
         }
 
-        let base_radius = 2 + (source.hash_value(settings, dimension_hash, 991 + step_i as u64) % 3) as i32;
+        let base_radius = 3 + (source.hash_value(settings, dimension_hash, 991 + step_i as u64) % 3) as i32;
         for offset_i in -1..=1 {
             let along = flow * offset_i;
             let side_bias = normal * bank_side * (1 + (source.hash_value(settings, dimension_hash, 1601 + step_i as u64 + offset_i.unsigned_abs() as u64) % 2) as i32);

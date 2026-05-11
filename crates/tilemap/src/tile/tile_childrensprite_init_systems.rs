@@ -9,7 +9,7 @@ use bevy::{
 };
 use bevy_ecs_tilemap::prelude::*;
 use bevy_lit::prelude::LightOccluder2d;
-use common::{AnyDisabling, TILE_INIT, common_components::*, common_tag_components::TagSet, log_targets::CHILDRENSPRITE_INIT};
+use common::{AnyDisabling, common_components::*, log_targets::{CHILDRENSPRITE_INIT, OCCLUDER_INIT}};
 use common::common_resources::*;
 use sprite_animation_shared::AcAnimationProgresses;
 
@@ -18,7 +18,7 @@ use crate::{
         tile_components::*,
         tile_resources::*,
         tile_seris::LightOccluderSeri,
-        tile_shader::{tile_shader_components::*, tile_shader_resources::*},
+        tile_shader::{tile_shader_components::*,},
     },
 };
 
@@ -61,6 +61,11 @@ fn spawn_child_sprite_occluder_stub(cmd: &mut Commands, parent: Entity, offset: 
     ));
 }
 
+fn entity_label(entity: Entity, str_id_query: &Query<&StrId>) -> String {
+    let strid = str_id_query.get(entity).ok().map(|id| id.as_str()).unwrap_or("");
+    format!("\"{}\" {:?}", strid, entity)
+}
+
 #[allow(unused_parens)]
 pub fn init_childrensprite(
     mut cmd: Commands,
@@ -74,7 +79,7 @@ pub fn init_childrensprite(
             Without<TilemapId>,
             Without<Children>,
             Without<TileShader>,
-            common::AnyDisabling,
+            AnyDisabling,
         ),
     >,
     templ_img_path: Query<(Option<&PathHolder>, Has<SpriteConfig>), (With<Templ>,)>,
@@ -82,11 +87,11 @@ pub fn init_childrensprite(
     aserver: Res<AssetServer>,
 ) {
     let mut to_insert = Vec::new();
-    for (childsprite_ent, (image_path_holder, templ_ref), has_templ) in childrensprite_query.iter() {
+    for (childsprite_ent, (image_path_holder, templ_ref), is_templ) in childrensprite_query.iter() {
         if let Some(img_path_holder) = image_path_holder {
             trace!(target: CHILDRENSPRITE_INIT, "Inserting Sprite for entity {:?} with direct ImagePathHolder: {:?}", childsprite_ent, img_path_holder.path());
             let image = aserver.load(img_path_holder.path().clone());
-            let visibility = if has_templ {
+            let visibility = if is_templ {
                 Visibility::Hidden
             } else {
                 Visibility::Inherited
@@ -120,11 +125,15 @@ pub fn init_childrensprite(
 
             trace!(target: CHILDRENSPRITE_INIT, "Inserting Sprite for entity {:?} via TileRef {:?}, path: {:?}", childsprite_ent, templ_ref.0, img_path_holder.path());
             let image = aserver.load(img_path_holder.path().clone());
-            let visibility = if has_templ {
+            let visibility = if is_templ {
                 Visibility::Hidden
             } else {
                 Visibility::Inherited
             };
+            if is_templ {
+                cmd.entity(childsprite_ent).try_insert_if_new(BaseHolderRef { base: templ_ent });
+            }
+
             to_insert.push((
                 childsprite_ent,
                 (Sprite {
@@ -152,12 +161,11 @@ pub fn init_templ_childrensprite_light_occluders(
             With<Templ>,
             With<TileChildSprite>,
             Or<(Added<TileChildSprite>, Changed<PathHolder>, Changed<TileRef>)>,
-            Without<Sprite>,
             Without<AcAnimationProgresses>,
             Without<TilemapId>,
             Without<Children>,
             Without<TileShader>,
-            common::AnyDisabling,
+            AnyDisabling,
         ),
     >,
     templ_img_path: Query<(&PathHolder, ), (With<Templ>, Without<SpriteConfig>)>,
@@ -165,6 +173,7 @@ pub fn init_templ_childrensprite_light_occluders(
     tile_map: Res<TileEntityMap>,
     aserver: Res<AssetServer>,
     mut occluder_cache: Local<EntityHashMap<(Handle<Image>, Handle<Mesh>)>>,
+    str_id_query: Query<&StrId>,
 ) {
     for (childsprite_ent, (image_path_holder, templ_ref), base_holder_ref, ) in childrensprite_query.iter() {
 
@@ -176,61 +185,64 @@ pub fn init_templ_childrensprite_light_occluders(
             let Ok(templ_ent) = tile_map.0.get_cloned(templ_ref.0) else {
                 continue;
             };
-            let Ok((img_path_holder, )) = templ_img_path.get(templ_ent) else {
-                continue;
-            };
-
-            let image = aserver.load(img_path_holder.path().clone());
             let Ok(light_occluder) = templ_light_occluder.get(templ_ent) else {
+                warn!(target: OCCLUDER_INIT, "Skipping templ child sprite {}: template {} has no LightOccluderSeri", entity_label(childsprite_ent, &str_id_query), entity_label(templ_ent, &str_id_query));
                 continue;
             };
             if !light_occluder.enabled {
                 continue;
             }
-
             if light_occluder.use_sprite {
+                let Ok((img_path_holder, )) = templ_img_path.get(templ_ent) else {
+                    warn!(target: OCCLUDER_INIT, "Skipping templ child sprite {}: template {} has sprite occluder enabled but no PathHolder", entity_label(childsprite_ent, &str_id_query), entity_label(templ_ent, &str_id_query));
+                    continue;
+                };
+                let image = aserver.load(img_path_holder.path());
                 pending_image_size_updates.register(image.id(), childsprite_ent);
                 spawn_child_sprite_occluder_stub(
                     &mut cmd,
                     base_holder_ref.base,
                     light_occluder.offset,
                 );
+                trace!(target: OCCLUDER_INIT, "Spawned sprite occluder stub for child {} from template {} at base {} offset={:?}", entity_label(childsprite_ent, &str_id_query), entity_label(templ_ent, &str_id_query), entity_label(base_holder_ref.base, &str_id_query), light_occluder.offset);
             } else {
-                let (occluder_mask, occluder_mesh) = occluder_handle_pair(
-                    templ_ent,
-                    light_occluder,
-                    &mut occluder_cache,
-                    &mut images,
-                    &mut meshes,
-                );
-                spawn_child_sprite_occluder_entity(
-                    &mut cmd,
-                    childsprite_ent,
-                    occluder_mask,
-                    occluder_mesh,
-                    light_occluder.shape_height(),
-                    light_occluder.offset,
-                );
-            }
+            let (occluder_mask, occluder_mesh) = occluder_handle_pair(
+                templ_ent,
+                light_occluder,
+                &mut occluder_cache,
+                &mut images,
+                &mut meshes,
+            );
+            spawn_child_sprite_occluder_entity(
+                &mut cmd,
+                childsprite_ent,
+                occluder_mask,
+                occluder_mesh,
+                light_occluder.shape_height(),
+                light_occluder.offset,
+            );
+            trace!(target: OCCLUDER_INIT, "Spawned mesh occluder entity for child {} from template {} with height={:.3}", entity_label(childsprite_ent, &str_id_query), entity_label(templ_ent, &str_id_query), light_occluder.shape_height());
+        }
 
-            continue;
-        };
+        continue;
+    };
 
         let Ok(light_occluder) = templ_light_occluder.get(base_holder_ref.base) else {
+            warn!(target: OCCLUDER_INIT, "Skipping child sprite {}: base holder {} has no LightOccluderSeri", entity_label(childsprite_ent, &str_id_query), entity_label(base_holder_ref.base, &str_id_query));
             continue;
         };
         if !light_occluder.enabled {
             continue;
         }
-
-        let image = aserver.load(img_path_holder.path().clone());
         if light_occluder.use_sprite {
+            let image = aserver.load(img_path_holder.path());
             pending_image_size_updates.register(image.id(), childsprite_ent);
             spawn_child_sprite_occluder_stub(
                 &mut cmd,
                 base_holder_ref.base,
                 light_occluder.offset,
             );
+            trace!(target: OCCLUDER_INIT, "Spawned sprite occluder stub for child {} at base {} offset={:?}", entity_label(childsprite_ent, &str_id_query), entity_label(base_holder_ref.base, &str_id_query), light_occluder.offset);
         } else {
             let (occluder_mask, occluder_mesh) = occluder_handle_pair(
                 base_holder_ref.base,
@@ -247,6 +259,7 @@ pub fn init_templ_childrensprite_light_occluders(
                 light_occluder.shape_height(),
                 light_occluder.offset,
             );
+            trace!(target: OCCLUDER_INIT, "Spawned mesh occluder entity for child {} at base {} with height={:.3}", entity_label(childsprite_ent, &str_id_query), entity_label(base_holder_ref.base, &str_id_query), light_occluder.shape_height());
         }
     }
 }
@@ -282,9 +295,10 @@ pub fn fix_childrensprite_spritemask_occluders_img_size(
             Option<&BaseHolderRef>,
             Option<&Children>,
         ),
-        (With<TileChildSprite>, With<Templ>, common::AnyDisabling),
+        (With<TileChildSprite>, With<Templ>, AnyDisabling),
     >,
     occluder_query: Query<&TileChildSpriteOccluder>,
+    str_id_query: Query<&StrId>,
 ) {
     for image_ready in image_events.read() {
         let Some(image_size) = image_size_map.0.get(&image_ready.image_id).copied() else {
@@ -298,10 +312,12 @@ pub fn fix_childrensprite_spritemask_occluders_img_size(
         let template_entity = if let Some(base_holder_ref) = base_holder_ref {
             base_holder_ref.base
         } else {
+            warn!(target: OCCLUDER_INIT, "ImageSizeReady event for {} has no BaseHolderRef, skipping occluder fix", entity_label(image_ready.entity, &str_id_query));
             continue;
         };
 
         let Ok(light_occluder_seri) = templ_light_occluder.get(template_entity) else {
+            warn!(target: OCCLUDER_INIT, "Skipping occluder resize for {}: template entity {} has no LightOccluderSeri", entity_label(image_ready.entity, &str_id_query), entity_label(template_entity, &str_id_query));
             continue;
         };
         if !light_occluder_seri.enabled {
@@ -340,7 +356,7 @@ pub fn fix_childrensprite_spritemask_occluders_img_size(
             Mesh2d(meshes.add(Rectangle::new(image_size.x as f32, image_size.y as f32))),
             LightOccluder2d::with_height(image, image_size.y as f32),
         ));
-        trace!(target: CHILDRENSPRITE_INIT, "Updated child sprite occluder entity {:?} for parent {:?} to {:?}", occluder_entity, image_ready.entity, image_size);
+        trace!(target: OCCLUDER_INIT, "Updated child sprite occluder entity {} for parent {} to size={:?}", entity_label(occluder_entity, &str_id_query), entity_label(image_ready.entity, &str_id_query), image_size);
     }
 }
 

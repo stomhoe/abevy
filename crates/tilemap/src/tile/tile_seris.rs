@@ -4,7 +4,7 @@ use bevy::{
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
 use bevy_lit::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use item_shared::GeneratedItemsSeri;
 use tilemap_shared::*;
@@ -60,7 +60,7 @@ impl PointLightSeri {
     }
 }
 
-#[derive(Component, Deserialize, Clone, Debug)]
+#[derive(Component, Deserialize, Clone, Debug, Serialize)]
 #[serde(default)]
 pub struct LightOccluderSeri {
     pub enabled: bool,

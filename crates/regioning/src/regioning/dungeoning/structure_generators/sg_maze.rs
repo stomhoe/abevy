@@ -2,7 +2,7 @@
 
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
-use rand::{Rng, SeedableRng};
+use rand::{SeedableRng};
 use rand::RngExt;
 use ::tilemap_shared::*;
 
@@ -45,7 +45,7 @@ pub fn maze_dungeon_building_system(
     mut accepted_island_bounds: Local<Vec<(usize, usize, usize, usize)>>,
     mut stack: Local<Vec<(usize, usize)>>,
     mut room_positions: Local<Vec<(usize, usize)>>,
-    mut tiles4chunk: Local<TilesFromBuilder>,
+    mut tiles4chunk: Local<StructureBuilderTiles>,
 ) {
     let Ok(settings) = settings.single() else {
         return;

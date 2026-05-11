@@ -14,7 +14,6 @@ pub use crate::marker_macros::*;
 pub use crate::common_systems::expect_single_query;
 
 use bevy::ecs::entity_disabling::Disabled;
-use bevy::ecs::schedule::common_conditions::{on_message, };
 use bevy_replicon::prelude::*;
 
 use crate::{common_systems::*, common_tag_systems::*, };
@@ -34,10 +33,6 @@ pub fn plugin(app: &mut App) {
             Update,
             (
                 sync_replicate_if_server_starts,
-                clone_and_tell_server.run_if(in_state(ClientState::Connected)),
-                remove_replicated_after_clone_from_client
-                    .run_if(in_state(ServerState::Running))
-                    .run_if(on_message::<FromClient<RemoveReplicated>>)
             ),
         )
         .add_plugins(())
