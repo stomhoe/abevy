@@ -62,8 +62,8 @@ impl Default for DimensionDaylightSeri {
             ambient_max_brightness_factor: 1.1,
             disable_directional_light: false,
             directional_light_color_rgb: [1.0, 1.0, 1.0],
-            height_min: 0.0,
-            height_max: 3.5,
+            height_min: 0.3,
+            height_max: 2.4,
             height_curve: 3.0,
         }
     }
@@ -223,11 +223,17 @@ impl DimensionDaylightSeri {
     }
 
     pub fn directional_light(&self, runtime: &DimensionDaylightRuntime) -> DirectionalLight2d {
-        let phase = self.day_progress(runtime) * std::f32::consts::TAU;
+        let day_progress = self.day_progress(runtime).rem_euclid(1.0);
+        let dawn = 0.05;
+        let dusk = 0.95;
+        let day_cycle = (day_progress - dawn) / (dusk - dawn);
+        let phase = (day_cycle.clamp(0.0, 1.0) * std::f32::consts::PI).clamp(0.0, std::f32::consts::PI);
+        let sun_height = phase.sin().max(0.0);
+
         let x = phase.cos();
-        let y = 0.35 + phase.sin().abs() * 0.9;
-        let time_factor = ((phase - std::f32::consts::PI).cos() + 1.0) * 0.5;
-        let height_factor = time_factor.clamp(0.0, 1.0).powf(self.height_curve);
+        let y = 0.2 + sun_height * 0.9;
+        let peak_distance = ((phase - std::f32::consts::FRAC_PI_2).abs() / std::f32::consts::FRAC_PI_2).clamp(0.0, 1.0);
+        let height_factor = (1.0 - peak_distance).powf(1.8 + (self.height_curve - 1.0) * 0.2);
         let height = self.height_min + (self.height_max - self.height_min) * height_factor;
 
         DirectionalLight2d {

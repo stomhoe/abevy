@@ -74,6 +74,10 @@ sgc {
             { source_id = spawn, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
             { source_id = golem, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
         ]
+        room_spawn.corridor = [
+            { source_id = goblin, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
+            { source_id = skeleton, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+        ]
         disable_terrgen.floor_tile_id = true
     }
 }

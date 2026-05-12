@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use being_shared::FaithfulSimBeing;
 use bevy_replicon::shared::backend::ClientState;
 use ::tilemap_shared::*;
-use common::log_targets::{CHUNK_ACTIVATION, CHUNK_DESPAWN};
+use common::log_targets::{CHUNK_DESPAWN};
 
 #[allow(unused_parens, )]
 pub fn rem_outofrange_chunks_from_activators(

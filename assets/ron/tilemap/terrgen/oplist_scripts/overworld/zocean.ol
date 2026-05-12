@@ -4,4 +4,4 @@ size: (1, 1)
 
 out = 0.0
 
-[ocean] "" biomes: [ocean=0.5(2.7,0.45)]
+[saltwater] "" biomes: [ocean=0.5(2.7,0.45)]

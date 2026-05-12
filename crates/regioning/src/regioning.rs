@@ -3,7 +3,7 @@ use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
 use game_common::{GameplaySystems, game_common_timers::TimedOut};
 use tilemap_shared::*;
-use tilemap::{process_tiles_pre, terrain::{TerrainGenSystems, terrprobe::TerrainProbeSystems}};
+use tilemap::{process_tiles_pre, terrain::{TerrainGenSystems, }};
 
 use crate::regioning::{regioning_sgc_init_systems::*, regioning_systems::*};
 

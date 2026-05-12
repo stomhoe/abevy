@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use paste::paste;
 
 pub use crate::entity_zero_components::*;
-use crate::{game_common_states::SimulationState};
 
 #[derive(Component, Debug, Clone, )]
 pub struct TimerComp(pub Timer);
@@ -17,7 +16,7 @@ impl TimerComp {
 }
 impl Default for TimerComp {
     fn default() -> Self {
-        Self::new_with_mode(30.0, TimerMode::Once)
+        Self::new_with_mode(10.0, TimerMode::Once)
     }
 }
 

@@ -3,7 +3,7 @@
 use common::common_components::HashId;
 #[allow(unused_imports)] use common::log_targets::DUNGEONING_SYSTEM;
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
-use rand::{Rng, SeedableRng, seq::SliceRandom};
+use rand::{SeedableRng, seq::SliceRandom};
 use rand::RngExt;
 use rand_distr::{Distribution, Normal};
 use ::tilemap_shared::*;

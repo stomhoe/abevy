@@ -1,7 +1,6 @@
 
-use bevy::{ecs::entity::MapEntities, platform::collections::*, prelude::*};
+use bevy::{platform::collections::*, prelude::*};
 use crate::{BiomeTagWeightAtMacrochunk, DimensionRef, RegionPos, StructureBuilderTiles};
-use serde::{Deserialize, Serialize};
 use crate::tilemap_shared::*;
 
 #[derive(Message, Debug, Clone, )]

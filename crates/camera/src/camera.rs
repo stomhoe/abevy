@@ -1,6 +1,5 @@
 use bevy::prelude::*;
-use bevy_lit::{directional_light::DirectionalLight2d, prelude::Lighting2dPlugin};
-use bevy_replicon::prelude::*;
+use bevy_lit::{prelude::Lighting2dPlugin};
 use common::common_states::GamePhase;
 
 use crate::{camera_systems::*, lighting_systems::*};

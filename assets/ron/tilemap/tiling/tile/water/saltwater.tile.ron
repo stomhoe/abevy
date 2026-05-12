@@ -1,7 +1,7 @@
 (
-    id: "ocean",
-    name: "Ocean",
-    tags: ["water", "liquid", "deep", "saltwater"],
+    id: "saltwater",
+    name: "Saltwater",
+    tags: ["water", "liquid", "saltwater"],
     img_paths: [
         ("", "texture/world/white.png"),
     ],

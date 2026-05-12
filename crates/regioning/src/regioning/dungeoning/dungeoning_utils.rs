@@ -731,6 +731,10 @@ impl DungeonRoomPackSpawnConfig {
         sampler.sample_with_rng(rng)
     }
 
+    pub fn has_room_spawn_key(&self, key: &str) -> bool {
+        self.0.contains_key(key)
+    }
+
     pub fn from_typed_args(
         args: &SgcArgsDict,
         command_registry: &SgcCommandRegistry,

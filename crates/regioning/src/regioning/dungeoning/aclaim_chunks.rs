@@ -1,7 +1,7 @@
 use bevy::platform::collections::HashSet;
 #[allow(unused_imports)] use bevy::prelude::*;
 
-use rand::{Rng, SeedableRng};
+use rand::{SeedableRng};
 use rand::RngExt;
 use rand_distr::{Distribution, Normal};
 use ::tilemap_shared::*;

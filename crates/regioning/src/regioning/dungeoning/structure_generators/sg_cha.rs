@@ -202,6 +202,34 @@ fn route_crosses_other_rooms(route: &[(i32, i32)], actual_rooms: &[Room], source
     false
 }
 
+fn sample_corridor_spawn_anchor(
+    corridor_map: &[bool],
+    floor_map: &[u8],
+    hazard_map: &[bool],
+    map_width: usize,
+    origin_tile: GlobalTilePos,
+    rng: &mut impl Rng,
+    floor_none: u8,
+) -> Option<GlobalTilePos> {
+    let mut chosen = None;
+    let mut valid_count = 0usize;
+    for idx in 0..corridor_map.len() {
+        if !corridor_map[idx] {
+            continue;
+        }
+        if floor_map[idx] == floor_none || hazard_map[idx] {
+            continue;
+        }
+        let x = (idx % map_width) as i32;
+        let y = (idx / map_width) as i32;
+        valid_count = valid_count.saturating_add(1);
+        if rng.random_range(0..valid_count) == 0 {
+            chosen = Some(GlobalTilePos::new(origin_tile.x() + x, origin_tile.y() + y));
+        }
+    }
+    chosen
+}
+
 fn sample_dead_end_corridor_route(
     source_center: (i32, i32),
     source_room_idx: usize,
@@ -1268,6 +1296,33 @@ pub fn corridor_dungeon_building_system(
                 continue;
             }
             trace!(target: DUNGEONING_SYSTEM, "Queued room_spawn InstancePack for structure={} shape={} at {}", structured_gen_cfg.structure_id(), room.shape.as_str(), anchor_gpos);
+        }
+
+        if room_spawn_config.has_room_spawn_key("corridor") {
+            if let Some(anchor_gpos) = sample_corridor_spawn_anchor(
+                &corridor_map,
+                &floor_map,
+                &hazard_map,
+                map_width,
+                origin_tile,
+                &mut rng,
+                FLOOR_NONE,
+            ) {
+                let queued = queue_room_spawn_instance_message(
+                    "corridor",
+                    anchor_gpos,
+                    build_order.dimension_ref,
+                    None,
+                    &mut beings_remaining,
+                    &room_spawn_config,
+                    &room_pack_spawn.source_lookup,
+                    &mut room_pack_spawn.pending_messages,
+                    &mut rng,
+                );
+                if queued {
+                    trace!(target: DUNGEONING_SYSTEM, "Queued corridor spawn InstancePack for structure={} at {}", structured_gen_cfg.structure_id(), anchor_gpos);
+                }
+            }
         }
 
         compliances_to_emit.push(StructureBuildCompliance {

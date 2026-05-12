@@ -1,4 +1,4 @@
-use bevy::{ecs::schedule::ApplyDeferred, prelude::*};
+use bevy::{prelude::*};
 
 #[path = "river_components.rs"]
 mod river_components;
@@ -25,8 +25,7 @@ pub fn plugin(app: &mut App) {
                 .in_set(crate::regioning::RegioningSystems)
                 //para determinismo
                 .before(crate::regioning::claim_chunks_for_various_dungeon_types),
-            ApplyDeferred,
             river_structure_building_system.in_set(crate::regioning::StructureBuildingSystems),
-        ).chain())
+        ))
         .init_resource::<RiverDebugData>();
 }

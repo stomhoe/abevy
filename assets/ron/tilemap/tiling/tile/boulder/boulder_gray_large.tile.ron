@@ -16,10 +16,4 @@
         "111",
         "111",
     ],
-    light_occluder: (
-        enabled: true,
-        color: (0, 0, 0, 255),
-        offset: (0.0, 0.0),
-        use_sprite: true,
-    ),
 )

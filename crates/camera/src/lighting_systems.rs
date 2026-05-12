@@ -6,7 +6,6 @@ use common::log_targets::LIGHTING_INIT;
 use crate::camera_daylight::*;
 use crate::camera_components::*;
 use ::tilemap_shared::*;
-use serde::{Deserialize, Serialize};
 
 #[derive(Component, Debug, Default, Copy, Clone, )]
 pub struct Sun;
