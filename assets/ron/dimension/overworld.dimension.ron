@@ -2,6 +2,7 @@
     id: "ow",
     name: "Overworld",
     description: "The overworld",
+    root_oplist: "ow_root",
     daylight: (
         day_length_minutes: 30.0,
         ambient_color_rgb: (1, 1, 1),

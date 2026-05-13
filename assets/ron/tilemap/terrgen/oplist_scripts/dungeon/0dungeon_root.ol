@@ -1,5 +1,4 @@
 id: dungeon_root
-roots: [dungeon]
 tags: [portal]
 size: (1, 1)
 

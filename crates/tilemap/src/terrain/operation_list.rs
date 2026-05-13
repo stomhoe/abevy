@@ -29,9 +29,9 @@ pub fn plugin(app: &mut App) {
                 cache_tg_oplists,
                 init_oplists_from_assets,
                 map_operation_list_id_to_entity,
+                validate_dimension_root_oplists,
                 init_oplists_bifurcations,
                 cycle_detection,
-                assign_rootoplist_to_dimensions,
 
             ).chain(),
             ).in_set(OperationListSystems)

@@ -85,7 +85,7 @@ impl TerrblParamsSeri {
     }
 }
 
-#[derive(AsBindGroup, Debug, Clone, Asset, TypePath, InspectorOptions, Deserialize, Serialize)]
+#[derive(AsBindGroup, Debug, Clone, Asset, TypePath, Deserialize, Serialize)]
 pub struct TerrBlendMat {
     #[texture(1)]
     #[serde(skip)]
@@ -96,35 +96,35 @@ pub struct TerrBlendMat {
     #[texture(3)]
     #[serde(skip)]
     pub tile_params_map: Handle<Image>,
-    #[texture(14)]
+    #[texture(4)]
     #[serde(skip)]
     pub tile_tint_map: Handle<Image>,
-    #[uniform(4)]
-    pub map_size_tiles: Vec2,
     #[uniform(5)]
+    pub map_size_tiles: Vec2,
+    #[uniform(6)]
     pub time: f32,
-    #[texture(6)]
-    #[serde(skip)]
-    pub overlay_tex_0: Handle<Image>,
     #[texture(7)]
     #[serde(skip)]
-    pub overlay_tex_1: Handle<Image>,
+    pub overlay_tex_0: Handle<Image>,
     #[texture(8)]
     #[serde(skip)]
-    pub overlay_tex_2: Handle<Image>,
+    pub overlay_tex_1: Handle<Image>,
     #[texture(9)]
     #[serde(skip)]
-    pub overlay_tex_3: Handle<Image>,
+    pub overlay_tex_2: Handle<Image>,
     #[texture(10)]
     #[serde(skip)]
-    pub overlay_tex_4: Handle<Image>,
+    pub overlay_tex_3: Handle<Image>,
     #[texture(11)]
     #[serde(skip)]
-    pub overlay_tex_5: Handle<Image>,
+    pub overlay_tex_4: Handle<Image>,
     #[texture(12)]
     #[serde(skip)]
-    pub overlay_tex_6: Handle<Image>,
+    pub overlay_tex_5: Handle<Image>,
     #[texture(13)]
+    #[serde(skip)]
+    pub overlay_tex_6: Handle<Image>,
+    #[texture(14)]
     #[serde(skip)]
     pub overlay_tex_7: Handle<Image>,
 }

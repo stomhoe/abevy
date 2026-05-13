@@ -56,7 +56,7 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(Update, (
 
-        start_portal_search
+        start_portals_oe_search
             .run_if(in_state(ClientState::Disconnected))
             .run_if(any_with_component::<AwaitingStartSearch>)
             .before(search_suitable_positions),
@@ -86,7 +86,7 @@ pub fn plugin(app: &mut App) {
     ))
 
     .add_systems(Update, (
-        resolve_portal_search_results
+        handler_portals_search_results
             .run_if(in_state(ClientState::Disconnected))
             .run_if(on_message::<SuitablePosFound>.or(on_message::<SearchFailed>))
             .after(search_suitable_positions),

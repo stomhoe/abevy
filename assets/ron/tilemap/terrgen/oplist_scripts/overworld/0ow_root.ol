@@ -1,5 +1,4 @@
 id: ow_root
-roots: [ow]
 debug: []
 
 let normal_tect = +(fnl.tect, 0.0)

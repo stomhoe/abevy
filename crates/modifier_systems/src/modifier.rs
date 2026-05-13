@@ -40,7 +40,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<ModifierTarget>()
     .replicate::<ModifierTags>()
     .replicate::<BaseValue>()
-    .replicate_once::<CurrEffectiveValue>()
+    .replicate::<CurrEffectiveValue>()
     .replicate::<MitigatingOnly>()
     .replicate::<ApplyMode>()
     .replicate::<Antidote>()

@@ -2,6 +2,7 @@
     id: "dungeon",
     name: "Dungeon dimension",
     description: "The dungeon dimension",
+    root_oplist: "dungeon_root",
     tags: [ "dungeon", ],
     whitelisted_structure_gen_tags: [ "dungeon", ],
     daylight: (

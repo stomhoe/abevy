@@ -7,7 +7,6 @@ pub struct OpListSeri {
     pub tags: Option<Vec<String>>,
     #[serde(default)]
     pub debug_vars: Vec<String>,
-    pub root_in_dimensions: Vec<String>,
     pub bifs: Vec<OpListBifSeri>,
     pub size: Option<[u32; 2]>,
     pub expr_tree: crate::terrain::terrgen_expression::ExprOpList,

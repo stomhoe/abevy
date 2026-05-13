@@ -31,11 +31,10 @@ pub fn load_tg_oplists() -> Vec<OpListSeri> {
         };
 
         let compiled = match parse_tg_script_to_expr_tree(&source, &file) {
-            Ok((id, roots, tags, debug_vars, size, bifs, expr_tree)) => OpListSeri {
+            Ok((id, tags, debug_vars, size, bifs, expr_tree)) => OpListSeri {
                 id,
                 tags,
                 debug_vars,
-                root_in_dimensions: roots,
                 bifs,
                 size,
                 expr_tree,
@@ -113,11 +112,10 @@ fn collect_tg_files(dir: &Path, out: &mut Vec<PathBuf>) {
 pub fn parse_tg_script_to_expr_tree(
     source: &str,
     path: &Path,
-) -> Result<(String, Vec<String>, Option<Vec<String>>, Vec<String>, Option<[u32; 2]>, Vec<OpListBifSeri>, ExprOpList), String> {
+) -> Result<(String, Option<Vec<String>>, Vec<String>, Option<[u32; 2]>, Vec<OpListBifSeri>, ExprOpList), String> {
     let mut id: Option<String> = None;
     let mut tags: Option<Vec<String>> = None;
     let mut debug_vars: Vec<String> = Vec::new();
-    let mut roots: Option<Vec<String>> = None;
     let mut size: Option<[u32; 2]> = None;
     let mut bifs: Vec<OpListBifSeri> = Vec::new();
     let mut assignments: Vec<Assignment> = Vec::new();
@@ -139,12 +137,16 @@ pub fn parse_tg_script_to_expr_tree(
             id = Some(trim_token(value).to_string());
             continue;
         }
-        if let Some(value) = key_value(line, "root_in_dimensions")
-            .or_else(|| key_value(line, "roots"))
-            .or_else(|| key_value(line, "root"))
+        if key_value(line, "root_in_dimensions").is_some()
+            || key_value(line, "roots").is_some()
+            || key_value(line, "root").is_some()
         {
-            roots = Some(parse_string_list(value));
-            continue;
+            return Err(format!(
+                "{}:{} root declarations now belong in dimension.ron; remove '{}' from the oplist script",
+                path.display(),
+                line_no,
+                line
+            ));
         }
         if let Some(value) = key_value(line, "tags") {
             tags = Some(parse_string_list(value));
@@ -228,12 +230,10 @@ pub fn parse_tg_script_to_expr_tree(
     }
 
     let id = id.ok_or_else(|| format!("{}: missing 'id'", path.display()))?;
-    let root_in_dimensions = roots.unwrap_or_else(|| vec![String::new()]);
     let output = output_expr.ok_or_else(|| format!("{}: missing 'out' assignment", path.display()))?;
 
     Ok((
         id,
-        root_in_dimensions,
         tags,
         debug_vars,
         size,

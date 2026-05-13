@@ -1,7 +1,7 @@
 
 
 
-use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
+use bevy::{ecs::entity::EntityHashSet, platform::collections::HashSet, prelude::*};
 
 use common::{common_components::*, common_tag_components::TagSet};
 
@@ -34,8 +34,6 @@ pub fn init_oplists_from_assets(
     samplers_map: Res<TileWeightedSamplerEntityMap>,
     tiles_map: Res<TileEntityMap>,
     biome_map: Res<BiomeEntityMap>,
-    dimension_map: Res<DimensionEntityMap>,
-    dimension_hash_query: Query<&HashId, With<Dimension>>,
     oplist_map: Res<OperationListEntityMap>,
     tg_oplists: Res<TgCompiledOpLists>,
     egui_holder: Query<Entity, With<EguiOperationListsHolder>>,
@@ -51,7 +49,6 @@ pub fn init_oplists_from_assets(
     cmd.spawn((FailedSearchOplistFilterHolder, ChildOf(egui_oplist_holder_ent)));
 
     let mut oplist_comps = Vec::new();
-    let mut oplist_multiple_dimension_refs = Vec::new();
     let mut tags_to_insert = Vec::new();
 
     let mut seris = merged_oplist_seris(&tg_oplists);
@@ -151,30 +148,26 @@ pub fn init_oplists_from_assets(
         }
 
         oplist_comps.push((spawned_oplist, (str_id.clone(), str_id.hash_id(), oplist, size, ReplicateIfServerStarts, ChildOf(egui_oplist_holder_ent))));
-        if seri.is_root() {
-            let mut dim_refs = MultipleDimensionRefs::default();
-            for dim_id in seri.root_in_dimensions.iter() {
-                if dim_id.trim().is_empty() { continue; }
-                let Ok(dim_entity) = dimension_map.0.get_cloned(&dim_id) else {
-                    error!(target: "oplist_init", "Dimension '{}' not found in DimensionEntityMap for root oplist '{}'", dim_id, seri.id);
-                    continue;
-                };
-                let Ok(&dim_hash) = dimension_hash_query.get(dim_entity) else {
-                    error!(target: "oplist_init", "Dimension entity '{}' referenced by root oplist '{}' is missing HashId", dim_id, seri.id);
-                    continue;
-                };
-                dim_refs.0.insert(dim_hash);
-            }
-            oplist_multiple_dimension_refs.push((spawned_oplist, dim_refs));
-        }
 
         if let Some(tags) = &seri.tags {
             tags_to_insert.push((spawned_oplist, TagSet::new(tags)));
         }
     }
     cmd.try_insert_batch(oplist_comps);
-    cmd.try_insert_batch(oplist_multiple_dimension_refs);
     cmd.try_insert_batch(tags_to_insert);
+}
+
+#[allow(unused_parens)]
+pub fn validate_dimension_root_oplists(
+    dimension_query: Query<(Entity, &StrId, &DimensionRootOplist), With<Dimension>>,
+    oplist_map: Res<OperationListEntityMap>,
+) {
+    for (_, dim_id, root_oplist) in dimension_query.iter() {
+        if oplist_map.0.get_cloned(root_oplist.0).is_ok() {
+            continue;
+        }
+        error!(target: "oplist_init", "Dimension '{}' references missing root oplist hash {:?}", dim_id, root_oplist.0);
+    }
 }
 
 #[allow(unused_parens)]
@@ -182,8 +175,12 @@ pub fn init_oplists_bifurcations(
     oplist_map: Res<OperationListEntityMap>,
     tg_oplists: Res<TgCompiledOpLists>,
     mut oplist_query: Query<(Entity, &mut OperationList, &OplistSize)>,
-    is_root: Query<&MultipleDimensionRefs>,
+    dimension_root_query: Query<&DimensionRootOplist, With<Dimension>>,
 ) {
+    let mut root_hashes: HashSet<HashId> = HashSet::default();
+    for root_oplist in dimension_root_query.iter() {
+        root_hashes.insert(root_oplist.0);
+    }
     let seris = merged_oplist_seris(&tg_oplists);
     for seri in seris {
             let seri_hash = StrId::from(seri.id.as_str()).hash_id();
@@ -217,7 +214,7 @@ pub fn init_oplists_bifurcations(
                     error!(target: "oplist_init", "bifurcation entity with id '{}' would make parent diverge into itself ", bifurcation_str);
                     continue;
                 }
-                if is_root.get(bifurcation_ent).is_ok() {
+                if root_hashes.contains(&bifurcation_hash) {
                     error!(target: "oplist_init", "bifurcation entity with id '{}' must not be a root oplist", bifurcation_str);
                     continue;
                 }
@@ -230,20 +227,25 @@ pub fn init_oplists_bifurcations(
 
 #[allow(unused_parens, )]
 pub fn cycle_detection(
-    query: Query<(Entity, &OperationList, &StrId, Has<MultipleDimensionRefs>, ), ()>,
+    query: Query<(Entity, &OperationList, &StrId), ()>,
+    dimension_root_query: Query<&DimensionRootOplist, With<Dimension>>,
+    oplist_map: Res<OperationListEntityMap>,
 ) {
     let mut oplist_entities = HashIdMap::default();
-    for (ent, _, str_id, _) in query.iter() {
+    for (ent, _, str_id) in query.iter() {
         let _ = oplist_entities.overwrite(str_id.hash_id(), ent);
     }
 
-    let roots: Vec<Entity> = query
-        .iter()
-        .filter_map(|(ent, _, _, is_root)| if is_root { Some(ent) } else { None })
-        .collect();
+    let mut roots = EntityHashSet::default();
+    for root_oplist in dimension_root_query.iter() {
+        let Ok(root_ent) = oplist_map.0.get_cloned(root_oplist.0) else {
+            continue;
+        };
+        roots.insert(root_ent);
+    }
 
     fn dfs(
-        query: &Query<(Entity, &OperationList, &StrId, Has<MultipleDimensionRefs>, ), ()>,
+        query: &Query<(Entity, &OperationList, &StrId), ()>,
         oplist_entities: &HashIdMap<Entity>,
         current: Entity,
         visited: &mut EntityHashSet,
@@ -258,7 +260,7 @@ pub fn cycle_detection(
         }
         on_path.insert(current);
 
-        let Ok((_, oplist, _, _)) = query.get(current) else {
+        let Ok((_, oplist, _)) = query.get(current) else {
             on_path.remove(&current);
             return false;
         };
@@ -284,67 +286,4 @@ pub fn cycle_detection(
             error!(target: "oplist_init", "Cycle detected starting from root oplist {:?}", root);
         }
     }
-}
-
-#[allow(unused_parens)]
-pub fn assign_rootoplist_to_dimensions(mut cmd: Commands,
-    oplist_query: Query<(Entity, &StrId, &MultipleDimensionRefs),(With<OperationList>, )>,
-    dimension_query: Query<(Entity, &StrId, &HashId, Option<&DimensionRootOplist>), With<Dimension>>,
-) {
-    let mut assignments: EntityHashMap<DimensionRootOplist> = EntityHashMap::new();
-
-    for (_oplist_ent, my_oplist_id, dim_refs) in oplist_query.iter() {
-        for &dim_hash in dim_refs.0.iter() {
-            let Some((dim_ent, dim_str_id, root_op_list)) = dimension_query
-                .iter()
-                .find_map(|(ent, str_id, hash_id, root)| (*hash_id == dim_hash).then_some((ent, str_id.clone(), root.copied())))
-            else {
-                error!(target: "oplist_init", "Dimension hash '{}' referenced by root oplist '{}' is not spawned in world", dim_hash, my_oplist_id);
-                continue;
-            };
-
-            match (assignments.get(&dim_ent), root_op_list) {
-                (Some(other_root), _) => {
-                    let my_oplist_hash = my_oplist_id.hash_id();
-                    if other_root.0 == my_oplist_hash {
-                        trace!(target: "oplist_init", "self is already dimoplist");
-                        continue;
-                    }
-                    let Some((other_ent, _, _)) = oplist_query
-                        .iter()
-                        .find(|(_, str_id, _)| str_id.hash_id() == other_root.0)
-                    else {
-                        continue;
-                    };
-                    let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
-                        continue;
-                    };
-                    error!(target: "oplist_init", "Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_oplist_id);
-                    continue;
-                },
-                (_, Some(DimensionRootOplist(other_hash))) => {
-                    let my_oplist_hash = my_oplist_id.hash_id();
-                    if other_hash == my_oplist_hash {
-                        trace!(target: "oplist_init", "self is already dimoplist");
-                        continue;
-                    }
-                    let Some((other_ent, _, _)) = oplist_query
-                        .iter()
-                        .find(|(_, str_id, _)| str_id.hash_id() == other_hash)
-                    else {
-                        continue;
-                    };
-                    let Ok((_, other_id, _, )) = oplist_query.get(other_ent) else {
-                        continue;
-                    };
-                    error!(target: "oplist_init", "Dimension {} already has root operation list {}; couldn't assign {} as its root oplist", dim_str_id, other_id, my_oplist_id);
-                    continue;
-                },
-                (None, None) => {
-                    assignments.insert(dim_ent, DimensionRootOplist(my_oplist_id.hash_id()));
-                },
-            }
-        }
-    }
-    cmd.try_insert_batch(assignments);
 }

@@ -1,8 +1,8 @@
 use bevy::prelude::*;
-use bevy::transform::components::GlobalTransform;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use std::collections::BTreeMap;
 
+use ::being_shared::{Being, LocalHumanControlled};
 use camera::camera_components::CameraTarget;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 use tilemap::tile::tile_components::{TileStrId};
@@ -30,10 +30,12 @@ pub fn portals_list_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
-    portal_query: Query<(Entity, &DimensionRef, &GlobalTilePos, Option<&TemplEntiRef>, &PortalTo), With<PortalTo>>,
+    portal_query: Query<(Entity, Option<&TemplEntiRef>, &PortalTo), With<PortalTo>>,
+    mut location_query: Query<(&mut DimensionRef, &mut GlobalTilePos), >,
+    local_human_controlled_query: Query<Entity, (With<Being>, LocalHumanControlled)>,
     dimension_query: Query<&Name>,
     dimension_map: Res<DimensionEntityMap>,
-    camera_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    camera_query: Query<Entity, With<CameraTarget>>,
     templ_query: Query<&TileStrId, With<Templ>>,
     target_query: Query<Entity>,
 ) {
@@ -50,20 +52,30 @@ pub fn portals_list_window(
     let default_y = screen_rect.top() + 10.0;
     let mut open = window_visible.portals_list;
 
-    // Get camera position and dimension
-    let camera_info = camera_query.iter().next();
-    let camera_pos = camera_info.map(|(_, transform)| transform.translation().xy());
-    let camera_dim_ref = camera_info.map(|(dim_ref, _)| dim_ref);
+    let camera_entity = camera_query.iter().next();
+    let (cam_dim, cam_pos) = if let Some(camera_entity) = camera_entity {
+        if let Ok((camera_dim, camera_gpos)) = location_query.get(camera_entity) {
+            (Some(camera_dim), Some(camera_gpos.to_pixelpos()))
+        } else {
+            (None, None)
+        }
+    } else {
+        (None, None)
+    };
 
     // Group portals by dimension
-    let mut portals_by_dimension: BTreeMap<String, Vec<(Entity, GlobalTilePos, Option<TemplEntiRef>, Vec2, bool, f32)>> = BTreeMap::new();
+    let mut portals_by_dimension: BTreeMap<String, Vec<(Entity, DimensionRef, GlobalTilePos, Option<TemplEntiRef>, Vec2, bool, f32)>> = BTreeMap::new();
 
-    for (entity, dim_ref, global_pos, templ_ref, portal_to) in portal_query.iter() {
+    for (portal_ent, templ_ref, portal_to) in portal_query.iter() {
+        let Ok((dim_ref, global_pos)) = location_query.get(portal_ent) else {
+            continue;
+        };
+
         let dim_name = dimension_name_for_ref(dim_ref, &dimension_map, &dimension_query);
 
         // Calculate direction vector if in same dimension
-        let direction = if camera_dim_ref.map(|c| c == dim_ref).unwrap_or(false) {
-            if let Some(cam_pos) = camera_pos {
+        let direction = if cam_dim.map(|c| c == dim_ref).unwrap_or(false) {
+            if let Some(cam_pos) = cam_pos {
                 let portal_pixel_pos: Vec2 = (*global_pos).into();
                 portal_pixel_pos - cam_pos
             } else {
@@ -81,13 +93,13 @@ pub fn portals_list_window(
         portals_by_dimension
             .entry(dim_name)
             .or_insert_with(Vec::new)
-            .push((entity, *global_pos, templ_ref.copied(), direction, target_exists, distance));
+            .push((portal_ent, *dim_ref, *global_pos, templ_ref.copied(), direction, target_exists, distance));
     }
 
     // Sort dimensions with camera dimension first
     let mut sorted_dims: Vec<_> = portals_by_dimension.keys().cloned().collect();
-    if let Some(camera_ref) = camera_dim_ref {
-        let camera_dim_str = dimension_name_for_ref(camera_ref, &dimension_map, &dimension_query);
+    if let Some(cam_dim) = cam_dim {
+        let camera_dim_str = dimension_name_for_ref(cam_dim, &dimension_map, &dimension_query);
         if !camera_dim_str.is_empty() {
             sorted_dims.sort_by(|a, b| {
                 if a == &camera_dim_str { std::cmp::Ordering::Less }
@@ -117,7 +129,7 @@ pub fn portals_list_window(
                     egui::CollapsingHeader::new(format!("{} ({})", dim_key, portals.len()))
                         .default_open(true)
                         .show(ui, |ui| {
-                            for (entity, _global_pos, templ_ref, direction, target_exists, distance) in portals.iter() {
+                            for (entity, dim_ref, global_pos, templ_ref, direction, target_exists, distance) in portals.iter() {
                                 // Check if this portal is selected
                                 let is_selected = selected_entities.selected_portals.contains(entity);
 
@@ -144,13 +156,30 @@ pub fn portals_list_window(
                                     text.color(egui::Color32::WHITE)
                                 };
 
-                                if ui.selectable_label(is_selected, text).clicked() {
-                                    selected_entities.selected_portals.clear();
-                                    selected_entities.selected_portals.insert(*entity);
-                                    selected_entities.selected_tile = Some(*entity);
-                                    selected_entities.selected_exempted_entity = None;
-                                    window_visible.tile_details = true;
-                                }
+                                ui.horizontal(|ui| {
+                                    if ui.selectable_label(is_selected, text).clicked() {
+                                        selected_entities.selected_portals.clear();
+                                        selected_entities.selected_portals.insert(*entity);
+                                        selected_entities.selected_tile = Some(*entity);
+                                        selected_entities.selected_exempted_entity = None;
+                                        window_visible.tile_details = true;
+                                    }
+
+                                    if ui.button("⇣").clicked() 
+                                    && let Ok(local_human_controlled_entity) = local_human_controlled_query.single() {
+                                        let target_gpos = GlobalTilePos(global_pos.0 + IVec2::new(0, -5));
+                                   
+                                        match location_query.get_mut(local_human_controlled_entity) {
+                                            Ok((mut human_dim_ref, mut human_global_pos)) => {
+                                                *human_dim_ref = *dim_ref;
+                                                *human_global_pos = target_gpos;
+                                            }
+                                            Err(_) => {
+                                                warn!(target: "debug", "Cannot teleport local human-controlled being because its location component is missing");
+                                            }
+                                        }
+                                    }
+                                });
                             }
                         });
                 }

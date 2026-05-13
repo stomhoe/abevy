@@ -133,22 +133,22 @@ pub fn search_suitable_positions(
     if terrain_probe.is_empty() { return; }
 
     let mut inputs = Vec::with_capacity(terrain_probe.len());
-    for pos_search in terrain_probe.drain() {
-        let Ok(templ) = terrprobe_query.get(pos_search.templ_ent).cloned() else {
-            search_failed_evs.push(SearchFailed(pos_search.requester));
+    for probe in terrain_probe.drain() {
+        let Ok(templ) = terrprobe_query.get(probe.templ_ent).cloned() else {
+            search_failed_evs.push(SearchFailed(probe.requester));
             continue;
         };
-        let Ok(dim_ent) = dimension_map.0.get_cloned(pos_search.dimension_ref.0) else {
-            search_failed_evs.push(SearchFailed(pos_search.requester));
+        let Ok(dim_ent) = dimension_map.0.get_cloned(probe.dimension_ref.0) else {
+            search_failed_evs.push(SearchFailed(probe.requester));
             continue;
         };
         let Ok(&root_oplist) = dimensions_query.get(dim_ent) else {
-            error!(target: "pos_search", "No root oplist found for dimension {:?}", pos_search.dimension_ref);
-            search_failed_evs.push(SearchFailed(pos_search.requester));
+            error!(target: "pos_search", "No root oplist found for dimension {:?}", probe.dimension_ref);
+            search_failed_evs.push(SearchFailed(probe.requester));
             continue;
         };
         let filtered_op = templ.opfilter_ref.0;
-        inputs.push(TerrGenSearchTaskInput { probe: pos_search, templ, root_oplist, filtered_op });
+        inputs.push(TerrGenSearchTaskInput { probe, templ, root_oplist, filtered_op });
     }
     let found = found_suitable_positions.drain().collect::<EntityHashSet>();
     let task_pool = AsyncComputeTaskPool::get();

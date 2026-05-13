@@ -37,6 +37,7 @@ pub fn init_dimensions(
     let mut tagsets_to_insert = Vec::new();
     let mut whitelisted_structure_gen_tags_to_insert = Vec::new();
     let mut blacklisted_structure_gen_tags_to_insert = Vec::new();
+    let mut root_oplists_to_insert = Vec::new();
 
     for record in db.iter() {
         let seri = &record.value;
@@ -63,6 +64,12 @@ pub fn init_dimensions(
             blacklisted_structure_gen_tags_to_insert.push((dim_ent, tag_set));
         }
 
+        if seri.root_oplist.trim().is_empty() {
+            error!(target: "dimension_loading", "Dimension '{}' is missing root_oplist in its dimension.ron", seri.id);
+            continue;
+        }
+        root_oplists_to_insert.push((dim_ent, DimensionRootOplist(HashId::from(seri.root_oplist.as_str()))));
+
         daylight_to_insert.push((dim_ent, seri.daylight));
         let daylight_runtime = DimensionDaylightRuntime::default();
         daylight_runtime_to_insert.push((dim_ent, daylight_runtime));
@@ -83,6 +90,7 @@ pub fn init_dimensions(
     cmd.insert_batch(tagsets_to_insert);
     cmd.insert_batch(whitelisted_structure_gen_tags_to_insert);
     cmd.insert_batch(blacklisted_structure_gen_tags_to_insert);
+    cmd.insert_batch(root_oplists_to_insert);
 }
 
 #[allow(unused_parens, )]

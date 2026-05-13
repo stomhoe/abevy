@@ -49,6 +49,13 @@ pub struct DubugWindowsVisibility{
     pub river_debug: bool,
 }
 
+    #[derive(Resource, Debug, Default)]
+    pub struct DebugBeingLocationEditorState {
+        pub last_selected_being_entity: Option<Entity>,
+        pub gpos_x_text: String,
+        pub gpos_y_text: String,
+        pub teleport_error: Option<String>,
+    }
 impl Default for DubugWindowsVisibility {
     fn default() -> Self {
         Self {

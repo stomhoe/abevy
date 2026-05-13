@@ -8,20 +8,20 @@
 // Per-tile overlay animation params (scale, speed, wave strength, priority).
 @group(3) @binding(3) var tile_params_map: texture_2d<f32>;
 // Per-tile overlay tint plus time offset in alpha.
-@group(3) @binding(14) var tile_tint_map: texture_2d<f32>;
+@group(3) @binding(4) var tile_tint_map: texture_2d<f32>;
 // Map size in tiles, used for bounds checks when sampling neighbors.
-@group(3) @binding(4) var<uniform> map_size_tiles: vec2<f32>;
+@group(3) @binding(5) var<uniform> map_size_tiles: vec2<f32>;
 // Global shader time used for animated overlay sampling.
-@group(3) @binding(5) var<uniform> time: f32;
+@group(3) @binding(6) var<uniform> time: f32;
 // Overlay texture atlases/slices addressed by overlay_tex_index.
-@group(3) @binding(6) var overlay_tex_0: texture_2d<f32>;
-@group(3) @binding(7) var overlay_tex_1: texture_2d<f32>;
-@group(3) @binding(8) var overlay_tex_2: texture_2d<f32>;
-@group(3) @binding(9) var overlay_tex_3: texture_2d<f32>;
-@group(3) @binding(10) var overlay_tex_4: texture_2d<f32>;
-@group(3) @binding(11) var overlay_tex_5: texture_2d<f32>;
-@group(3) @binding(12) var overlay_tex_6: texture_2d<f32>;
-@group(3) @binding(13) var overlay_tex_7: texture_2d<f32>;
+@group(3) @binding(7) var overlay_tex_0: texture_2d<f32>;
+@group(3) @binding(8) var overlay_tex_1: texture_2d<f32>;
+@group(3) @binding(9) var overlay_tex_2: texture_2d<f32>;
+@group(3) @binding(10) var overlay_tex_3: texture_2d<f32>;
+@group(3) @binding(11) var overlay_tex_4: texture_2d<f32>;
+@group(3) @binding(12) var overlay_tex_5: texture_2d<f32>;
+@group(3) @binding(13) var overlay_tex_6: texture_2d<f32>;
+@group(3) @binding(14) var overlay_tex_7: texture_2d<f32>;
 
 // Base sprite color that marks pixels where overlay composition is allowed.
 const MASK_COLOR = vec3<f32>(1.0, 0.0, 0.0);

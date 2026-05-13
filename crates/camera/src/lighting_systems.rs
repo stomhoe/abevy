@@ -17,8 +17,6 @@ pub fn enable_lighting(
     camera_dimension: Query<&DimensionRef, With<CameraTarget>>,
     dimension_map: Res<DimensionEntityMap>,
     daylight_query: Query<(&DimensionDaylightSeri, &DimensionDaylightRuntime)>,
-    sun_query: Query<Entity, With<Sun>>,
-    debug_dir_light_override: Option<Res<DirectionalLight2dOverride>>,
 ) {
     let mut cameras = camera.iter();
     let Some(camera) = cameras.next() else {
@@ -50,22 +48,6 @@ pub fn enable_lighting(
     let ambient_light = daylight.ambient_light(daylight_runtime);
     debug!(target: LIGHTING_INIT, "Enabling 2D lighting ambient_intensity={:.3} ambient_color={:?}", ambient_light.intensity, ambient_light.color);
     commands.entity(camera).insert((daylight.lighting_settings(), ambient_light));
-
-    let Ok(directional_light_entity) = sun_query.single() else {
-        error_once!(target: LIGHTING_INIT, "Unable to find directional light entity with Sun component");
-        return;
-    };
-
-    let light_entity = directional_light_entity;
-    if daylight.disable_directional_light {
-        commands.entity(light_entity).try_remove::<DirectionalLight2d>();
-        return;
-    }
-
-    let directional_light_next = debug_dir_light_override
-        .as_ref()
-        .map_or_else(|| daylight.directional_light(daylight_runtime), |override_settings| override_settings.apply_to(&daylight.directional_light(daylight_runtime)));
-    commands.entity(light_entity).insert(directional_light_next);
 }
 
 #[allow(unused_parens, )]
@@ -115,7 +97,7 @@ pub fn sync_dir_light_angle(
 
     let directional_light_next = directional_light_override
         .as_ref()
-        .map_or_else(|| daylight.directional_light(daylight_runtime), |override_settings| override_settings.apply_to(&daylight.directional_light(daylight_runtime)));
+        .map_or_else(|| daylight.next_directional_light(daylight_runtime), |override_settings| override_settings.apply_to(&daylight.next_directional_light(daylight_runtime)));
     if let Ok(mut directional_light) = directional_light_query.get_mut(light_entity) {
         *directional_light = directional_light_next;
     } else {

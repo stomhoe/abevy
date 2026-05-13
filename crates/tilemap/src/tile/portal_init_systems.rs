@@ -105,7 +105,7 @@ pub fn validate_portal_recipes(
     }
 }
 #[allow(unused_parens)]
-pub fn start_portal_search(
+pub fn start_portals_oe_search(
     mut cmd: Commands,
     portals: Query<
         (
@@ -159,14 +159,13 @@ pub fn start_portal_search(
     };
 
     for (portal_ent, dim_ref, global_pos, templ_ref, portal_to, searching_for) in portals.iter() {
+        cmd.entity(portal_ent).try_remove::<AwaitingStartSearch>();
         if portal_to.is_some() {
-            cmd.entity(portal_ent).try_remove::<AwaitingStartSearch>();
             continue;
         }
         if searching_for.is_some() {
             continue;
         }
-        cmd.entity(portal_ent).try_remove::<AwaitingStartSearch>();
 
         let Some(mut probe) = make_search_request(&mut cmd, portal_ent, *global_pos, *templ_ref) else {
             continue;
@@ -207,7 +206,7 @@ pub fn start_portal_search(
 }
 
 #[allow(unused_parens)]
-pub fn resolve_portal_search_results(
+pub fn handler_portals_search_results(
     mut cmd: Commands,
     portals: Query<
         (

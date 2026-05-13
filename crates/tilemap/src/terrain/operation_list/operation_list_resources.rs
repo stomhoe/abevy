@@ -16,8 +16,3 @@ common::define_entity_map_systems!(
 
 #[derive(Resource, Default, Clone)]
 pub struct TgCompiledOpLists(pub Vec<OpListSeri>);
-impl OpListSeri {
-    pub fn is_root(&self) -> bool {
-        self.root_in_dimensions.iter().any(|s| !s.is_empty())
-    }
-}

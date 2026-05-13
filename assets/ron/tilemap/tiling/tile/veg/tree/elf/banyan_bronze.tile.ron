@@ -24,7 +24,6 @@
     hp: 100.0,
     light_occluder: (
         enabled: true,
-        color: (0, 0, 0, 255),
         offset: (0, 130),
         use_sprite: false,
         shape_size: (40, 300),

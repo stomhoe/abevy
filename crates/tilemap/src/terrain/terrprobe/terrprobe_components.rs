@@ -88,8 +88,6 @@ impl TerrProbeTempl {
             dimension_ref,
             search_start_pos,
             min_result_distance: self.min_result_distance,
-            structuregen_whitelist: self.sgc_whitelist.clone(),
-            structuregen_blacklist: self.sgc_blacklist.clone(),
             collect_all_successes: self.collect
                 && matches!(self.probe_pattern, ProbePattern::Chunk(_) | ProbePattern::Region { .. }),
             ..Default::default()

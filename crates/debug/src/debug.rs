@@ -1,3 +1,4 @@
+use crate::debug_resources::DebugBeingLocationEditorState;
 #[allow(unused_imports)]
 use bevy::prelude::*;
 use bevy_fps_counter::FpsCounterPlugin;
@@ -130,6 +131,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<BeingClickRemoverState>()
         .init_resource::<BeingTileClickInspectorState>()
         .init_resource::<DebugBeingNavUiState>()
+        .init_resource::<DebugBeingLocationEditorState>()
         .init_resource::<DebuggingBeingNav>()
         .init_resource::<common::common_states::HotReloadSelection>();
 }

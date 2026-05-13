@@ -1,6 +1,7 @@
 use ac_input::ac_input_actions::*;
 use ::being_shared::*;
 use ::being_shared::body_energy::*;
+use std::collections::BTreeMap;
 
 use being::body::{BodySums, HeldBody};
 use being::being_nav::RetainedChasePathSnapshot;
@@ -10,6 +11,7 @@ use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
 use common::common_components::{DisplayName, StrId};
+use common::common_components::HashId;
 use common::log_targets::DEBUG;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 use ::item_shared::*;
@@ -18,7 +20,7 @@ use player_shared::{player_components::*, };
 use ::sprite_shared::*;
 use ::tilemap_shared::*;
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use crate::debug_resources::{DebugBeingLocationEditorState, DebugSelectedEntities, DubugWindowsVisibility};
 
 #[derive(Default, Copy, Clone)]
 struct StatSummary {
@@ -80,6 +82,11 @@ fn part_label(entity: Entity, display_name: Option<&DisplayName>, str_id: Option
         }
     }
     format!("{:?}", entity)
+}
+
+fn dimension_label(name: Option<&Name>, dim_ref: DimensionRef) -> String {
+    name.map(|name| name.to_string())
+        .unwrap_or_else(|| format!("{:?}", dim_ref))
 }
 
 fn paint_collision_mask_preview(ui: &mut egui::Ui, collision_zone: &tilemap_shared::InteractionZone, facing: CardinalDirection) {
@@ -696,11 +703,12 @@ pub fn being_details_inspector(world: &mut World) {
     let mut lod_level_query = world.query::<&LodLevel>();
     let mut behavorial_nav_state_query = world.query::<Has<BehavorialNavState>>();
     let mut retained_chase_path_snapshot_query = world.query::<&RetainedChasePathSnapshot>();
+    let mut dimension_query = world.query_filtered::<(Entity, &HashId, Option<&Name>), With<Dimension>>();
+    let mut dimension_ref_query = world.query::<&DimensionRef>();
 
-    let Ok(body) = body_query.get(world, selected_being_entity) else {
-        return;
-    };
-    let body_entity = body.entity();
+    let body = body_query.get(world, selected_being_entity).ok();
+    let body_available = body.is_some();
+    let body_entity = body.map_or(selected_being_entity, |body| body.entity());
     let bit_map = world.get_resource::<BeingInstTemplateEntityMap>();
     let bit_ref_ent = bit_ref_query
         .get(world, selected_being_entity)
@@ -714,13 +722,26 @@ pub fn being_details_inspector(world: &mut World) {
                 .get_resource::<RaceEntityMap>()
                 .and_then(|map| map.0.get_cloned(race_ref.0).ok())
         });
-    let body_label = part_label(
-        body_entity,
-        display_name_query.get(world, body_entity).ok(),
-        str_id_query.get(world, body_entity).ok(),
-    );
-    let body_sums = body_sums_query.get(world, body_entity).ok().cloned();
-    let body_templ_ref = templ_refs_query.get(world, body_entity).ok().copied();
+    let body_label = if body_available {
+        part_label(
+            body_entity,
+            display_name_query.get(world, body_entity).ok(),
+            str_id_query.get(world, body_entity).ok(),
+        )
+    } else {
+        format!("Missing body for {:?}", selected_being_entity)
+    };
+    let body_sums = body_available.then(|| body_sums_query.get(world, body_entity).ok().cloned()).flatten();
+    let body_templ_ref = body_available.then(|| templ_refs_query.get(world, body_entity).ok().copied()).flatten();
+    let current_dim_ref = dimension_ref_query.get(world, selected_being_entity).ok().copied();
+    let current_gpos = gpos_query.get(world, selected_being_entity).ok().copied();
+
+    let mut dimensions_by_label: BTreeMap<String, (DimensionRef, Entity)> = BTreeMap::default();
+    for (dimension_ent, hash_id, name) in dimension_query.iter(world) {
+        let dim_ref = DimensionRef(*hash_id);
+        let label = format!("{} ({:?})", dimension_label(name, dim_ref), dim_ref);
+        dimensions_by_label.insert(label, (dim_ref, dimension_ent));
+    }
 
     let mut inventory_holders = vec![(
         selected_being_entity,
@@ -730,20 +751,21 @@ pub fn being_details_inspector(world: &mut World) {
             str_id_query.get(world, selected_being_entity).ok(),
         ),
     )];
-    inventory_holders.push((body_entity, body_label.clone()));
+    if body_available && body_entity != selected_being_entity {
+        inventory_holders.push((body_entity, body_label.clone()));
+    }
 
     let mut part_infos: Vec<(Entity, String)> = Vec::new();
-    let Ok(parts) = bodyparts_query.get(world, body_entity) else {
-        return;
-    };
-    for part_entity in parts.iter() {
-        let label = part_label(
-            part_entity,
-            display_name_query.get(world, part_entity).ok(),
-            str_id_query.get(world, part_entity).ok(),
-        );
-        inventory_holders.push((part_entity, label.clone()));
-        part_infos.push((part_entity, label));
+    if body_available && let Ok(parts) = bodyparts_query.get(world, body_entity) {
+        for part_entity in parts.iter() {
+            let label = part_label(
+                part_entity,
+                display_name_query.get(world, part_entity).ok(),
+                str_id_query.get(world, part_entity).ok(),
+            );
+            inventory_holders.push((part_entity, label.clone()));
+            part_infos.push((part_entity, label));
+        }
     }
     if selected_part.is_none() || !part_infos.iter().any(|(entity, _)| Some(*entity) == selected_part) {
         selected_part = part_infos.first().map(|(entity, _)| *entity);
@@ -786,6 +808,121 @@ pub fn being_details_inspector(world: &mut World) {
             });
             ui.separator();
 
+            let mut pending_dimension_change: Option<(DimensionRef, Entity)> = None;
+            let mut pending_teleport_gpos: Option<GlobalTilePos> = None;
+            let mut pending_teleport_error: Option<String> = None;
+
+            {
+                let world = unsafe { &mut *world_ptr };
+                let mut location_editor_state = world.resource_mut::<DebugBeingLocationEditorState>();
+                if location_editor_state.last_selected_being_entity != Some(selected_being_entity) {
+                    location_editor_state.last_selected_being_entity = Some(selected_being_entity);
+                    location_editor_state.teleport_error = None;
+                    if let Some(current_gpos) = current_gpos {
+                        location_editor_state.gpos_x_text = current_gpos.0.x.to_string();
+                        location_editor_state.gpos_y_text = current_gpos.0.y.to_string();
+                    } else {
+                        location_editor_state.gpos_x_text.clear();
+                        location_editor_state.gpos_y_text.clear();
+                    }
+                }
+
+                ui.horizontal(|ui| {
+                    ui.label("Dimension:");
+                    if dimensions_by_label.is_empty() {
+                        ui.label("No dimensions are currently loaded.");
+                        return;
+                    }
+
+                    let current_dimension_label = current_dim_ref
+                        .and_then(|current_dim_ref| {
+                            dimensions_by_label.iter().find_map(|(label, (dim_ref, _))| {
+                                (*dim_ref == current_dim_ref).then_some(label.clone())
+                            })
+                        })
+                        .unwrap_or_else(|| {
+                            current_dim_ref
+                                .map_or_else(|| "Missing DimensionRef".to_string(), |dim_ref| format!("{:?}", dim_ref))
+                        });
+
+                    egui::ComboBox::from_id_salt(("bdw_dimension_combo", selected_being_entity))
+                        .selected_text(current_dimension_label)
+                        .show_ui(ui, |ui| {
+                            for (label, (dim_ref, dimension_ent)) in dimensions_by_label.iter() {
+                                let is_current = current_dim_ref.is_some_and(|current_dim_ref| current_dim_ref == *dim_ref);
+                                if ui.selectable_label(is_current, label).clicked() {
+                                    pending_dimension_change = Some((*dim_ref, *dimension_ent));
+                                }
+                            }
+                        });
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label("GPos:");
+                    ui.add_sized(
+                        [80.0, 0.0],
+                        egui::TextEdit::singleline(&mut location_editor_state.gpos_x_text),
+                    );
+                    ui.add_sized(
+                        [80.0, 0.0],
+                        egui::TextEdit::singleline(&mut location_editor_state.gpos_y_text),
+                    );
+                    if ui.button("Teleport").clicked() {
+                        let parsed_x = location_editor_state.gpos_x_text.trim().parse::<i32>();
+                        let parsed_y = location_editor_state.gpos_y_text.trim().parse::<i32>();
+                        match (parsed_x, parsed_y) {
+                            (Ok(x), Ok(y)) => {
+                                pending_teleport_gpos = Some(GlobalTilePos::new(x, y));
+                                location_editor_state.teleport_error = None;
+                            }
+                            _ => {
+                                pending_teleport_error = Some("GPos must be valid integers for both x and y.".to_string());
+                            }
+                        }
+                    }
+                });
+
+                if let Some(error) = &location_editor_state.teleport_error {
+                    ui.label(egui::RichText::new(error).color(egui::Color32::LIGHT_RED));
+                }
+            }
+
+            if let Some((dim_ref, dimension_ent)) = pending_dimension_change {
+                unsafe {
+                    let world = &mut *world_ptr;
+                    world.entity_mut(selected_being_entity).insert((dim_ref, ChildOf(dimension_ent)));
+                }
+            }
+
+            if let Some(new_gpos) = pending_teleport_gpos {
+                let z = unsafe { (&mut *world_ptr).get::<Transform>(selected_being_entity) }
+                    .map(|transform| transform.translation.z)
+                    .unwrap_or_default();
+                let new_transform = Transform::from_translation(new_gpos.to_translation(z));
+                unsafe {
+                    let world = &mut *world_ptr;
+                    world.entity_mut(selected_being_entity).insert((
+                        new_gpos,
+                        new_transform,
+                        GridLockedMovement::default(),
+                        GridLockedMovementVisual::default(),
+                    ));
+                    let mut location_editor_state = world.resource_mut::<DebugBeingLocationEditorState>();
+                    location_editor_state.gpos_x_text = new_gpos.0.x.to_string();
+                    location_editor_state.gpos_y_text = new_gpos.0.y.to_string();
+                    location_editor_state.teleport_error = None;
+                }
+            }
+
+            if let Some(error) = pending_teleport_error {
+                unsafe {
+                    let world = &mut *world_ptr;
+                    world.resource_mut::<DebugBeingLocationEditorState>().teleport_error = Some(error);
+                }
+            }
+
+            ui.separator();
+
             if show_full_components {
                 ui.label("All Components on this Being:");
                 ui.separator();
@@ -797,6 +934,9 @@ pub fn being_details_inspector(world: &mut World) {
 
             ui.heading("Body");
             ui.label(format!("Body: {} [{:?}]", body_label, body_entity));
+            if !body_available {
+                ui.label("HeldBody: missing on this client.");
+            }
             ui.label(format!(
                 "Body templ ref: {}",
                 body_templ_ref.map_or("missing".to_string(), |refe| format!("{:?}", refe.0))

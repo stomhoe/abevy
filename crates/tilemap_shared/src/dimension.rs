@@ -222,7 +222,7 @@ impl DimensionDaylightSeri {
         }
     }
 
-    pub fn directional_light(&self, runtime: &DimensionDaylightRuntime) -> DirectionalLight2d {
+    pub fn next_directional_light(&self, runtime: &DimensionDaylightRuntime) -> DirectionalLight2d {
         let day_progress = self.day_progress(runtime).rem_euclid(1.0);
         let dawn = 0.05;
         let dusk = 0.95;
@@ -270,6 +270,8 @@ pub struct DimensionSeri {
     pub id: String,
     pub name: String,
     pub description: String,
+    #[serde(default)]
+    pub root_oplist: String,
     #[serde(default = "default_dimension_gravity")]
     pub gravity: f32,
     #[serde(default)]
