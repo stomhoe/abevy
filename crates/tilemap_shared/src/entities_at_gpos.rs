@@ -17,15 +17,20 @@ impl SpriteTilesAtGpos {
         gpos: GlobalTilePos,
         interaction_zones: Option<&InteractionZones>,
     ) -> Vec<GlobalTilePos> {
+        let mut positions = Vec::new();
         let Some(interaction_zones) = interaction_zones else {
-            return Vec::new();
+            positions.push(gpos);
+            return positions;
         };
         let Some(zone) = interaction_zones.get_collision_mask() else {
-            return Vec::new();
+            positions.push(gpos);
+            return positions;
         };
 
-        let mut positions = Vec::new();
         zone.gather_zone_positions(CardinalDirection::South, gpos.to_pixelpos(), &mut positions);
+        if positions.is_empty() {
+            positions.push(gpos);
+        }
         positions
     }
 

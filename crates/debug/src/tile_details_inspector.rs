@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
 use common::common_tag_components::TagSet;
+use common::common_components::StrId;
 use game_common::game_common_components::TemplEntiRef;
 use bevy_ecs_tilemap::map::TilemapId;
 use tilemap::tile::tile_components::{TileStrId};
@@ -112,14 +113,33 @@ pub fn tile_details_inspector(world: &mut World) {
             );
 
             if let Some(templ_entity) = referenced_templ_entity {
-                ui.separator();
-                ui.label(format!("TemplEntiRef target: {:?}", templ_entity));
-                render_tagset_section(ui, "TagSet on EntityZero", tags_templ.as_ref());
-                render_delete_other_tiles_section(
-                    ui,
-                    "DeleteOtherTilesInSamePos on EntityZero",
-                    delete_other_tiles_templ.as_ref(),
+                let templ_str_id = world
+                    .get_entity(templ_entity)
+                    .ok()
+                    .and_then(|entity_ref| entity_ref.get::<StrId>().cloned());
+                let templ_label = format!(
+                    "TemplEntiRef: {} {:?}",
+                    templ_str_id.map_or_else(|| "<no-strid>".to_string(), |str_id| str_id.to_string()),
+                    templ_entity,
                 );
+
+                ui.separator();
+                ui.collapsing(templ_label, |ui| {
+                    if world.get_entity(templ_entity).is_ok() {
+                        unsafe {
+                            bevy_inspector::ui_for_entity(&mut *world_ptr, templ_entity, ui);
+                        }
+                    } else {
+                        ui.label("TemplEntiRef target entity missing");
+                    }
+
+                    render_tagset_section(ui, "TagSet on EntityZero", tags_templ.as_ref());
+                    render_delete_other_tiles_section(
+                        ui,
+                        "DeleteOtherTilesInSamePos on EntityZero",
+                        delete_other_tiles_templ.as_ref(),
+                    );
+                });
             }
 
             if let Some(tilemap_entity) = referenced_tilemap_entity {
@@ -148,6 +168,7 @@ pub fn tile_details_inspector(world: &mut World) {
             if ui.button("Clear Selection").clicked() {
                 if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
                     selected_entities.selected_tile = None;
+                    selected_entities.selected_tiles.clear();
                     selected_entities.selected_exempted_entity = None;
                 }
             }

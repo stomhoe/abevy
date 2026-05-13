@@ -116,6 +116,7 @@ pub struct DebugSelectedEntities {
     pub selected_operationlist: Option<Entity>,
     pub selected_noise: Option<Entity>,
     pub selected_tile: Option<Entity>,
+    pub selected_tiles: EntityHashSet,
     pub selected_being: Option<Entity>,
     pub selected_being_interaction_zone: Option<HashId>,
     pub selected_being_bodypart: Option<Entity>,
@@ -142,6 +143,7 @@ impl Default for DebugSelectedEntities {
             selected_operationlist: None,
             selected_noise: None,
             selected_tile: None,
+            selected_tiles: EntityHashSet::default(),
             selected_being: None,
             selected_being_interaction_zone: None,
             selected_being_bodypart: None,
@@ -166,9 +168,11 @@ pub struct WorldTileClickInspectorState {
     pub enabled: bool,
     pub clicked_dim: Option<HashId>,
     pub clicked_gpos: Option<tilemap_shared::GlobalTilePos>,
-    pub entities_at_gpos: Vec<Entity>,
-    pub click_generation: u64,
-    pub last_opened_click_generation: u64,
+}
+
+impl WorldTileClickInspectorState {
+    pub fn clear_picker_selection(&mut self) {
+    }
 }
 
 #[derive(Resource, Debug)]

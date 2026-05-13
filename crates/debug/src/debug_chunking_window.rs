@@ -396,6 +396,7 @@ pub fn debug_chunking_window(
                                                         camera_tile_pos_for_this_dim,
                                                     ) {
                                                         selected_entities.selected_tile = Some(clicked_tile);
+                                                        selected_entities.selected_tiles.clear();
                                                         window_visible.tile_details = true;
                                                     }
                                                 });

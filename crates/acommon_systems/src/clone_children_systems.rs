@@ -8,26 +8,19 @@ use ::sprite_shared::*;
 pub fn clone_templ_children_ents_for_new_instances(
     mut cmd: Commands,
     query: Query<
-        (Entity, &TemplEntiRef, Has<Replicated>,),
+        (Entity, &TemplEntiRef, ),
         (Changed<TemplEntiRef>, AnyDisabling),
     >,
     templ: Query<(&Children, Option<&HeldSprites>,), (AnyDisabling, With<CloneTemplChildren>)>,
     child_visibility_query: Query<&Visibility>,
     clone_children_query: Query<(), (AnyDisabling, With<CloneTemplChildren>)>,
-    client_state: Res<State<ClientState>>,
 ) {
     let mut new_child_of = Vec::new();
     let mut new_base_holder_ref = Vec::new();
     let mut new_cloned_visibility = Vec::new();
     let mut clone_queue = Vec::new();
 
-    let is_client = *client_state.get() != ClientState::Disconnected;
-    query.iter().for_each(|(new_ent, templ_ref, is_replicated)| {
-        let is_replicated = is_replicated;
-
-        if is_client && is_replicated {
-            return;
-        }
+    query.iter().for_each(|(new_ent, templ_ref, )| {
 
         clone_queue.clear();
         clone_queue.push((templ_ref.0, new_ent));
@@ -43,9 +36,7 @@ pub fn clone_templ_children_ents_for_new_instances(
                 let cloned_child = cmd.entity(child_to_clone).clone_and_spawn_with_opt_out(
                     move |builder| {
                         builder.deny::<DenyForTemplClonedChildren>();
-                        if !is_replicated {
-                            builder.deny::<Replicated>();
-                        }
+                        builder.deny::<Replicated>();
                     }
                 ).id();
                 if has_visibility {

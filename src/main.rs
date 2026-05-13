@@ -49,7 +49,7 @@ fn build_filter() -> String {
 
         (log_targets::PORTAL_INIT, warn),
         (log_targets::POSITION_SEARCH, info),
-        (log_targets::CHILDRENSPRITE_INIT, info),
+        (log_targets::CHILDRENSPRITE_INIT, trace),
         (log_targets::OCCLUDER_INIT, info),
         (log_targets::BIOME_INIT, debug),
 
