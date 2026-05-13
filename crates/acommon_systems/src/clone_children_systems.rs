@@ -7,9 +7,9 @@ use ::sprite_shared::*;
 #[allow(unused_parens)]
 pub fn clone_templ_children_ents_for_new_instances(
     mut cmd: Commands,
-    query: Query<
-        (Entity, &TemplEntiRef, ),
-        (Changed<TemplEntiRef>, AnyDisabling),
+    missing_clonechildren_query: Query<
+        (Entity, &TemplEntiRef, Option<&Children>),
+        (Changed<TemplEntiRef>, AnyDisabling, ),
     >,
     templ: Query<(&Children, Option<&HeldSprites>,), (AnyDisabling, With<CloneTemplChildren>)>,
     child_visibility_query: Query<&Visibility>,
@@ -20,7 +20,12 @@ pub fn clone_templ_children_ents_for_new_instances(
     let mut new_cloned_visibility = Vec::new();
     let mut clone_queue = Vec::new();
 
-    query.iter().for_each(|(new_ent, templ_ref, )| {
+    missing_clonechildren_query.iter().for_each(|(new_ent, templ_ref, children)| {
+        if let Some(children) = children {
+            if ! children.is_empty() {
+                return;
+            }
+        }
 
         clone_queue.clear();
         clone_queue.push((templ_ref.0, new_ent));

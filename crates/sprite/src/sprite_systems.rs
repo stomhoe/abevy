@@ -15,10 +15,13 @@ type ChangedDistResult = (Changed<SpriteGlobalNormalDistResult>, Changed<SpriteH
 type ChangedScale = (Changed<Scale2D>, Changed<ScaleLookUpDown>, Changed<ScaleSideways>);
 type ChangedSprite = (Changed<Sprite>, Changed<Mesh2d>);
 
+type SpriteChanges = Or<(Changed<Scale2D>, Changed<Rotation>, Changed<TemplEntiRef>, Changed<Offset2D>, Changed<Sprite>, Changed<ChildOf>, Changed<FlippedTransform>, Added<Transform>,)>;
+type HolderChanges = Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>, Added<Transform>, Changed<Visibility>, ChangedDistResult, )>;
+
 #[allow(unused_parens)]
 pub fn sprite_change_detection(
-    sprite_query: Query<Entity, (Or<(ChangedScale, Changed<Rotation>, Changed<TemplEntiRef>, Changed<Offset2D>, ChangedSprite, Changed<ChildOf>, ChangedDistResult, Changed<FlippedTransform>)>, SpriteOrMesh)>,
-    baseholder_query: Query<&HeldSprites, (Or<(Changed<CardinalDirection>, Changed<HeldSprites>, Added<GlobalTilePos>, Changed<Visibility>, ChangedDistResult, )>, Without<Unloaded>, )>,
+    sprite_query: Query<Entity, (SpriteChanges, SpriteOrMesh)>,
+    baseholder_query: Query<&HeldSprites, (HolderChanges, Without<Unloaded>, )>,
     mut removed_unloaded: RemovedComponents<Unloaded>,
     mut removed_flipped_transform: RemovedComponents<FlippedTransform>,
     mut writer: MessageWriter<SpriteChangedScaleOrOffsetOrParent>,

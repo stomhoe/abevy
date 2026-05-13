@@ -3,10 +3,18 @@ use bevy::prelude::*;
 use common::HashId;
 use common::log_targets::DEBUG;
 use game_common::game_common_components::Templ;
+use bevy_replicon::prelude::FromClient;
+use ::being_shared::{Being, GridLockedMovement, GridLockedMovementVisual};
+use tilemap_shared::{DimensionRef, GlobalTilePos};
 use modifier_shared::{
     modifier_components::*,
     modifier_move_bundles::SpeedModifier,
     modifier_types::WalkStrength,
+};
+
+use crate::debug_messages::{
+    ClientDebugDecreaseSpeedRequest, ClientDebugIncreaseSpeedRequest, ClientDebugSetBeingDimensionRequest,
+    ClientDebugTeleportBeingRequest,
 };
 
 fn apply_speed_factor(
@@ -76,5 +84,70 @@ pub fn receive_debug_decrease_speed_request(
             continue;
         };
         apply_speed_factor(&mut cmd, being_ent, applied_modifiers, &mut debug_modi_query, 0.98);
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn receive_client_debug_increase_speed_request(
+    mut cmd: Commands,
+    mut requests: MessageReader<FromClient<ClientDebugIncreaseSpeedRequest>>,
+    controlled_beings_query: Query<(&AppliedModifiers, ), ()>,
+    mut debug_modi_query: Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkStrength>, Without<Templ>, )>,
+) {
+    for request in requests.read() {
+        let being_ent = request.message.being_ent;
+        let Ok((applied_modifiers, )) = controlled_beings_query.get(being_ent) else {
+            continue;
+        };
+        apply_speed_factor(&mut cmd, being_ent, applied_modifiers, &mut debug_modi_query, 1.02);
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn receive_client_debug_decrease_speed_request(
+    mut cmd: Commands,
+    mut requests: MessageReader<FromClient<ClientDebugDecreaseSpeedRequest>>,
+    controlled_beings_query: Query<(&AppliedModifiers, ), ()>,
+    mut debug_modi_query: Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkStrength>, Without<Templ>, )>,
+) {
+    for request in requests.read() {
+        let being_ent = request.message.being_ent;
+        let Ok((applied_modifiers, )) = controlled_beings_query.get(being_ent) else {
+            continue;
+        };
+        apply_speed_factor(&mut cmd, being_ent, applied_modifiers, &mut debug_modi_query, 0.98);
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn receive_client_debug_set_being_dimension_request(
+    mut requests: MessageReader<FromClient<ClientDebugSetBeingDimensionRequest>>,
+    mut being_query: Query<(&mut DimensionRef, ), (With<Being>,)>,
+) {
+    for request in requests.read() {
+        let being_ent = request.message.being_ent;
+        let Ok((mut dim_ref, )) = being_query.get_mut(being_ent) else {
+            continue;
+        };
+        dim_ref.0 = request.message.dim_ref.0;
+    }
+}
+
+#[allow(unused_parens, )]
+pub fn receive_client_debug_teleport_being_request(
+    mut requests: MessageReader<FromClient<ClientDebugTeleportBeingRequest>>,
+    mut being_query: Query<(&mut GlobalTilePos, &mut Transform, &mut GridLockedMovement, &mut GridLockedMovementVisual), (With<Being>,)>,
+) {
+    for request in requests.read() {
+        let being_ent = request.message.being_ent;
+        let Ok((mut gpos, mut transform, mut grid_locked, mut grid_locked_visual)) = being_query.get_mut(being_ent) else {
+            continue;
+        };
+        let new_gpos = request.message.gpos;
+        let z = transform.translation.z;
+        *gpos = new_gpos;
+        *transform = Transform::from_translation(new_gpos.to_translation(z));
+        *grid_locked = GridLockedMovement::default();
+        *grid_locked_visual = GridLockedMovementVisual::default();
     }
 }

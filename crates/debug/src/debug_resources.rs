@@ -312,6 +312,7 @@ impl Default for DebugNoiseWorkshopState {
 pub struct DebugUiConfig {
     pub enable_debug_menus: bool,
     pub wall_phaser: bool,
+    pub client_debug: bool,
     pub hot_reload_defaults: common::common_states::HotReloadSelection,
     pub windows_open_on_start: DubugWindowsVisibility,
 }
@@ -338,6 +339,7 @@ impl Default for DebugUiConfig {
         Self {
             enable_debug_menus: true,
             wall_phaser: false,
+            client_debug: false,
             hot_reload_defaults: common::common_states::HotReloadSelection::default(),
             windows_open_on_start: DubugWindowsVisibility::default(),
         }
@@ -349,6 +351,7 @@ impl DebugUiConfigSeri {
         DebugUiConfig {
             enable_debug_menus: self.enable_debug_menus,
             wall_phaser: self.wall_phaser,
+            client_debug: self.client_debug,
             hot_reload_defaults: common::common_states::HotReloadSelection {
                 tiles: self.hot_reload_defaults.tiles,
                 sprite_configs_and_animations: self.hot_reload_defaults.sprite_configs_and_animations,

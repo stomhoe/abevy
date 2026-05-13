@@ -5,6 +5,8 @@
     enable_debug_menus: true,
     // If true, the host-controlled character starts with WallPhaser on spawn.
     wall_phaser: true,
+    // If true, connected clients may send certain debug actions to the host.
+    client_debug: true,
     drift_file_logging: true,
 
     // Defaults for the Hot Reload window checkboxes.

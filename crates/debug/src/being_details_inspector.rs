@@ -10,6 +10,7 @@ use bevy::prelude::*;
 use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
+use bevy_replicon::prelude::ClientState;
 use common::common_components::{DisplayName, StrId};
 use common::common_components::HashId;
 use common::log_targets::DEBUG;
@@ -20,7 +21,8 @@ use player_shared::{player_components::*, };
 use ::sprite_shared::*;
 use ::tilemap_shared::*;
 
-use crate::debug_resources::{DebugBeingLocationEditorState, DebugSelectedEntities, DubugWindowsVisibility};
+use crate::debug_messages::{ClientDebugSetBeingDimensionRequest, ClientDebugTeleportBeingRequest};
+use crate::debug_resources::{DebugBeingLocationEditorState, DebugSelectedEntities, DebugUiConfig, DubugWindowsVisibility};
 
 #[derive(Default, Copy, Clone)]
 struct StatSummary {
@@ -887,32 +889,59 @@ pub fn being_details_inspector(world: &mut World) {
                 }
             }
 
-            if let Some((dim_ref, dimension_ent)) = pending_dimension_change {
-                unsafe {
-                    let world = &mut *world_ptr;
-                    world.entity_mut(selected_being_entity).insert((dim_ref, ChildOf(dimension_ent)));
+                if let Some((dim_ref, dimension_ent)) = pending_dimension_change {
+                    let route_via_client = world
+                        .get_resource::<DebugUiConfig>()
+                        .is_some_and(|cfg| cfg.client_debug)
+                        && world.get_resource::<State<ClientState>>().is_some_and(|state| *state.get() == ClientState::Connected);
+                    if route_via_client {
+                        world
+                            .resource_mut::<Messages<ClientDebugSetBeingDimensionRequest>>()
+                            .write(ClientDebugSetBeingDimensionRequest {
+                                being_ent: selected_being_entity,
+                                dim_ref,
+                                dimension_ent,
+                            });
+                    } else {
+                        unsafe {
+                            let world = &mut *world_ptr;
+                            world.entity_mut(selected_being_entity).insert((dim_ref, ChildOf(dimension_ent)));
+                        }
+                    }
                 }
-            }
 
-            if let Some(new_gpos) = pending_teleport_gpos {
-                let z = unsafe { (&mut *world_ptr).get::<Transform>(selected_being_entity) }
-                    .map(|transform| transform.translation.z)
-                    .unwrap_or_default();
-                let new_transform = Transform::from_translation(new_gpos.to_translation(z));
-                unsafe {
-                    let world = &mut *world_ptr;
-                    world.entity_mut(selected_being_entity).insert((
-                        new_gpos,
-                        new_transform,
-                        GridLockedMovement::default(),
-                        GridLockedMovementVisual::default(),
-                    ));
-                    let mut location_editor_state = world.resource_mut::<DebugBeingLocationEditorState>();
-                    location_editor_state.gpos_x_text = new_gpos.0.x.to_string();
-                    location_editor_state.gpos_y_text = new_gpos.0.y.to_string();
-                    location_editor_state.teleport_error = None;
+                if let Some(new_gpos) = pending_teleport_gpos {
+                    let route_via_client = world
+                        .get_resource::<DebugUiConfig>()
+                        .is_some_and(|cfg| cfg.client_debug)
+                        && world.get_resource::<State<ClientState>>().is_some_and(|state| *state.get() == ClientState::Connected);
+                    if route_via_client {
+                        world
+                            .resource_mut::<Messages<ClientDebugTeleportBeingRequest>>()
+                            .write(ClientDebugTeleportBeingRequest {
+                                being_ent: selected_being_entity,
+                                gpos: new_gpos,
+                            });
+                    } else {
+                        let z = unsafe { (&mut *world_ptr).get::<Transform>(selected_being_entity) }
+                            .map(|transform| transform.translation.z)
+                            .unwrap_or_default();
+                        let new_transform = Transform::from_translation(new_gpos.to_translation(z));
+                        unsafe {
+                            let world = &mut *world_ptr;
+                            world.entity_mut(selected_being_entity).insert((
+                                new_gpos,
+                                new_transform,
+                                GridLockedMovement::default(),
+                                GridLockedMovementVisual::default(),
+                            ));
+                            let mut location_editor_state = world.resource_mut::<DebugBeingLocationEditorState>();
+                            location_editor_state.gpos_x_text = new_gpos.0.x.to_string();
+                            location_editor_state.gpos_y_text = new_gpos.0.y.to_string();
+                            location_editor_state.teleport_error = None;
+                        }
+                    }
                 }
-            }
 
             if let Some(error) = pending_teleport_error {
                 unsafe {

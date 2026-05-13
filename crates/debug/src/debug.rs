@@ -10,6 +10,7 @@ use common::common_states::AssetLoading;
 use ::being_shared::{BeingNavDebugLine, DebuggingBeingNav};
 use ::being_shared::WallPhaserOnSpawn;
 use tilemap_shared::DirectionalLight2dOverride;
+use crate::debug_messages::*;
 
     use crate::{
         being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
@@ -40,6 +41,10 @@ pub fn plugin(app: &mut App) {
     let debug_enabled = |cfg: Res<DebugUiConfig>| cfg.enable_debug_menus;
 
     app.add_plugins((FpsCounterPlugin))
+        .add_mapped_client_message::<ClientDebugIncreaseSpeedRequest>(bevy_replicon::prelude::Channel::Unordered)
+        .add_mapped_client_message::<ClientDebugDecreaseSpeedRequest>(bevy_replicon::prelude::Channel::Unordered)
+        .add_mapped_client_message::<ClientDebugSetBeingDimensionRequest>(bevy_replicon::prelude::Channel::Unordered)
+        .add_mapped_client_message::<ClientDebugTeleportBeingRequest>(bevy_replicon::prelude::Channel::Unordered)
         .add_systems(
             OnEnter(AssetLoading::SpawnReplicatedEntities),
             load_debug_ui_config,
@@ -65,6 +70,18 @@ pub fn plugin(app: &mut App) {
                 .run_if(on_message::<ac_input::LocalDebugIncreaseSpeedRequest>),
                 receive_debug_decrease_speed_request
                 .run_if(on_message::<ac_input::LocalDebugDecreaseSpeedRequest>),
+                receive_client_debug_increase_speed_request
+                    .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugIncreaseSpeedRequest>>)
+                    .run_if(in_state(ServerState::Running)),
+                receive_client_debug_decrease_speed_request
+                    .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugDecreaseSpeedRequest>>)
+                    .run_if(in_state(ServerState::Running)),
+                receive_client_debug_set_being_dimension_request
+                    .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugSetBeingDimensionRequest>>)
+                    .run_if(in_state(ServerState::Running)),
+                receive_client_debug_teleport_being_request
+                    .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugTeleportBeingRequest>>)
+                    .run_if(in_state(ServerState::Running)),
             ).run_if(in_state(ServerState::Running)),
         )
         .add_systems(

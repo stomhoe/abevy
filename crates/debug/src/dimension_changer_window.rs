@@ -2,12 +2,14 @@ use std::collections::BTreeMap;
 
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
+use bevy_replicon::prelude::ClientState;
 use common::common_components::HashId;
 
 use ::being_shared::{Being, LocalHumanControlled};
 use ::tilemap_shared::{Dimension, DimensionRef};
 
-use crate::debug_resources::DubugWindowsVisibility;
+use crate::debug_messages::ClientDebugSetBeingDimensionRequest;
+use crate::debug_resources::{DebugUiConfig, DubugWindowsVisibility};
 
 fn dimension_label(name: Option<&Name>, dim_ref: DimensionRef) -> String {
     name.map(|name| name.to_string())
@@ -18,8 +20,12 @@ fn dimension_label(name: Option<&Name>, dim_ref: DimensionRef) -> String {
 pub fn dimension_changer_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
+    debug_ui_config: Res<DebugUiConfig>,
+    client_state: Res<State<ClientState>>,
+    controlled_being_query: Query<Entity, (With<Being>, LocalHumanControlled, )>,
     mut controlled_dim_query: Query<&mut DimensionRef, (With<Being>, LocalHumanControlled, )>,
-    dimension_query: Query<(&HashId, Option<&Name>, ), (With<Dimension>, )>,
+    dimension_query: Query<(Entity, &HashId, Option<&Name>, ), (With<Dimension>, )>,
+    mut client_request_writer: MessageWriter<ClientDebugSetBeingDimensionRequest>,
 ) {
     if !window_visible.dimension_changer {
         return;
@@ -43,7 +49,7 @@ pub fn dimension_changer_window(
 
     let current_dim_ref = *controlled_dim_ref;
     let mut dimensions_by_label: BTreeMap<String, DimensionRef> = BTreeMap::default();
-    for (hash_id, name, ) in dimension_query.iter() {
+    for (_, hash_id, name, ) in dimension_query.iter() {
         let dim_ref = DimensionRef(*hash_id);
         let label = format!("{} ({:?})", dimension_label(name, dim_ref), dim_ref);
         dimensions_by_label.insert(label, dim_ref);
@@ -69,7 +75,20 @@ pub fn dimension_changer_window(
                     let is_current = *dim_ref == current_dim_ref;
                     let response = ui.selectable_label(is_current, label);
                     if response.clicked() {
-                        *controlled_dim_ref = *dim_ref;
+                        if *client_state.get() == ClientState::Connected && debug_ui_config.client_debug {
+                            let Ok(controlled_being_entity) = controlled_being_query.single() else {
+                                continue;
+                            };
+                            if let Some((dimension_ent, _, _, )) = dimension_query.iter().find(|(_, hash_id, _, )| DimensionRef(**hash_id) == *dim_ref) {
+                                client_request_writer.write(ClientDebugSetBeingDimensionRequest {
+                                    being_ent: controlled_being_entity,
+                                    dim_ref: *dim_ref,
+                                    dimension_ent,
+                                });
+                            }
+                        } else {
+                            *controlled_dim_ref = *dim_ref;
+                        }
                     }
                 }
             });

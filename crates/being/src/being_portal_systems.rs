@@ -152,6 +152,7 @@ pub fn cross_portal(
             let arrival_gpos = dest_tile_gpos + sampled_offset;
             being_transform.translation = arrival_gpos.to_translation(being_transform.translation.z);
             being_glm.clear_step(&mut being_glm_visual, arrival_gpos);
+            cmd.entity(being_entity).try_remove::<GlobalTilePos>();
             cmd.entity(being_entity).try_insert(arrival_gpos);
             debug!(target: BEING_SYSTEM, "Teleported {:?} from {:?} to {:?} via portal {:?}", being_entity, being_gpos, arrival_gpos, interacting_portal_ent);
             continue;

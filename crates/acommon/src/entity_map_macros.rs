@@ -190,15 +190,27 @@ macro_rules! __entity_map_emit_shared_items {
                 mut cmd: Commands,
                 emap: Option<Res<[<$main_component EntityMap>]>>,
                 query: Query<
-                    (Entity, &common::TemplHashIdRef, Option<&common::TemplEntiRef>, ),
-                    (Or<(Changed<common::TemplHashIdRef>, Added<$main_component>)>, ),
+                    (Entity, Option<&[<$abbreviation Ref>]>, Option<&common::TemplHashIdRef>, Option<&common::TemplEntiRef>, ),
+                    (
+                        Or<(
+                            Changed<[<$abbreviation Ref>]>,
+                            Changed<common::TemplHashIdRef>,
+                            Added<$main_component>,
+                        )>,
+                    ),
                 >,
             ) {
                 let Some(emap) = emap else {
                     return;
                 };
-                for (entity, templ_hash_ref, templ_ref) in query.iter() {
-                    let Ok(templ_ent) = emap.0.get_cloned(templ_hash_ref.0) else {
+                for (entity, ref_ref, templ_hash_ref, templ_ref) in query.iter() {
+                    let Some(templ_hash_id) = ref_ref
+                        .map(|ref_ref| ref_ref.0)
+                        .or_else(|| templ_hash_ref.map(|templ_hash_ref| templ_hash_ref.0))
+                    else {
+                        continue;
+                    };
+                    let Ok(templ_ent) = emap.0.get_cloned(templ_hash_id) else {
                         continue;
                     };
                     if templ_ref.map(|templ_ref| templ_ref.0 == templ_ent).unwrap_or(false) {

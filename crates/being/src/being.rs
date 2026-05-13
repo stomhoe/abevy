@@ -135,6 +135,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<FightOrFlightConfig>()
     .replicate::<FightingStyle>()
     .replicate::<WanderState>()
+    .replicate::<PortalTo>()
     .replicate::<Fleeing>()
     .replicate::<DoAvoidBlacklistedSpawnTilesForWander>()
     .replicate::<LodLevel>()
