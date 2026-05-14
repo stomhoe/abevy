@@ -84,7 +84,7 @@ macro_rules! define_player_action_request_module {
                     if !should_send {
                         continue;
                     }
-                    for &being_ent in computed_beings.being_ents() {
+                    for being_ent in computed_beings.iter() {
                         let Ok((controlled_by, $extra_binding)) = controlled_beings.get(being_ent) else {
                             continue;
                         };

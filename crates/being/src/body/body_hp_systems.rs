@@ -685,7 +685,7 @@ pub fn update_body_health_from_parts(
         let dead = has_initialized_vitals && !bloodless_nonbleeding && (consciousness < 0.01 || curr_blood <= 0.0);
         if dead {
             let being_ent = body_of.being;
-            error!(
+            warn!(
                 target: BODY_HP_SYSTEM,
                 "Inserting Dead on being {:?} from body {:?}: blood={:.3} blood_capacity={:.3} total_max_hp={:.3} initialized_vitals={}",
                 being_ent,

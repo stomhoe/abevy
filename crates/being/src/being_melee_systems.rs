@@ -18,11 +18,11 @@ const TEMP_AI_MELEE_ATTACK_COOLDOWN: Duration = Duration::from_secs(1);
 pub fn make_hunted_be_melee_targets(
     mut hunted_beings: Query<
         (Entity, &Hunting, &mut AiAutoMeleeTargets, ),
-        (With<Being>, LocalAiControlled, With<Hunting>, ),
+        (With<Being>, LocalAiControlledNonDead, With<Hunting>, ),
     >,
     mut ai_melee_targets_query: Query<
         &mut AiAutoMeleeTargets,
-        (With<Being>, LocalAiControlled, Without<Hunting>, ),
+        (With<Being>, LocalAiControlledNonDead, Without<Hunting>, ),
     >,
     mut ceased_to_hunt: RemovedComponents<Hunting>,
 ) {
@@ -50,7 +50,7 @@ pub fn emit_ai_melee_attack_requests(
             Option<&BitRef>,
             Option<&RaceRef>,
         ),
-        (With<Being>, LocalAiControlled, ),
+        (With<Being>, LocalAiControlledNonDead, ),
     >,
     direction_query: Query<&CardinalDirection, (),>,
     target_pos_query: Query<

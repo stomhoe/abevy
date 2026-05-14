@@ -91,7 +91,7 @@ pub fn add_melee_target_comp_to_ai_controlled(
     mut commands: Commands,
     ai_controlled_beings: Query<
         Entity,
-        (With<Being>, LocalAiControlled, Without<AiAutoMeleeTargets>, ),
+        (With<Being>, LocalAiControlledNonDead, Without<AiAutoMeleeTargets>, ),
     >,
     ceased_2b_ai_controlled: Query<Entity, Added<HumanControlled>>,
 ) {

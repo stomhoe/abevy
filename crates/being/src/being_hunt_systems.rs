@@ -224,7 +224,7 @@ pub struct UpdatePredatorHuntingTargetsQueries<'w, 's> {
             &'static BodyCondition,
             Option<&'static PredatorCfg>,
         ),
-        (Or<(With<Predator>, With<PredatorCfg>)>, LocalAiControlled),
+        (Or<(With<Predator>, With<PredatorCfg>)>, LocalAiControlledNonDead),
     >,
     pub beings_query: Query<'w, 's, Entity, (With<Being>, )>,
     pub pos_dim_query: Query<'w, 's, (&'static ::tilemap_shared::DimensionRef, &'static GlobalTilePos), >,

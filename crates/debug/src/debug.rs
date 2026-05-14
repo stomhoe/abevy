@@ -1,4 +1,4 @@
-use crate::debug_resources::DebugBeingLocationEditorState;
+use crate::debug_resources::{DebugBeingLocationEditorState, DebugBeingVitalsAdjustState};
 #[allow(unused_imports)]
 use bevy::prelude::*;
 use bevy_fps_counter::FpsCounterPlugin;
@@ -44,6 +44,10 @@ pub fn plugin(app: &mut App) {
         .add_mapped_client_message::<ClientDebugDecreaseSpeedRequest>(bevy_replicon::prelude::Channel::Unordered)
         .add_mapped_client_message::<ClientDebugSetBeingDimensionRequest>(bevy_replicon::prelude::Channel::Unordered)
         .add_mapped_client_message::<ClientDebugTeleportBeingRequest>(bevy_replicon::prelude::Channel::Unordered)
+        .add_mapped_client_message::<ClientDebugSetBeingCurrentHpRequest>(bevy_replicon::prelude::Channel::Unordered)
+        .add_mapped_client_message::<ClientDebugSetBeingCurrentBloodRequest>(bevy_replicon::prelude::Channel::Unordered)
+        .add_mapped_client_message::<ClientDebugKillBeingRequest>(bevy_replicon::prelude::Channel::Unordered)
+        .add_mapped_client_message::<ClientDebugReviveBeingRequest>(bevy_replicon::prelude::Channel::Unordered)
         .add_systems(
             OnEnter(AssetLoading::SpawnReplicatedEntities),
             load_debug_ui_config,
@@ -78,6 +82,18 @@ pub fn plugin(app: &mut App) {
                     .run_if(in_state(ServerState::Running)),
                 receive_client_debug_teleport_being_request
                     .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugTeleportBeingRequest>>)
+                    .run_if(in_state(ServerState::Running)),
+                receive_client_debug_set_being_current_hp_request
+                    .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugSetBeingCurrentHpRequest>>)
+                    .run_if(in_state(ServerState::Running)),
+                receive_client_debug_set_being_current_blood_request
+                    .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugSetBeingCurrentBloodRequest>>)
+                    .run_if(in_state(ServerState::Running)),
+                receive_client_debug_kill_being_request
+                    .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugKillBeingRequest>>)
+                    .run_if(in_state(ServerState::Running)),
+                receive_client_debug_revive_being_request
+                    .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugReviveBeingRequest>>)
                     .run_if(in_state(ServerState::Running)),
             ).run_if(in_state(ServerState::Running)),
         )
@@ -145,6 +161,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<BeingClickRemoverState>()
         .init_resource::<DebugBeingNavUiState>()
         .init_resource::<DebugBeingLocationEditorState>()
+        .init_resource::<DebugBeingVitalsAdjustState>()
         .init_resource::<DebuggingBeingNav>()
         .init_resource::<common::common_states::HotReloadSelection>();
 }

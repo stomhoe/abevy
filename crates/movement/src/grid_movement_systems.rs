@@ -4,6 +4,7 @@ use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_components::StrId;
+use ::game_common::*;
 use param_sets::BlockingTileParamSet;
 use common::log_targets::{BEING_SYSTEM, MOVEMENT_SYSTEM};
 use common::file_logging::file_log;
@@ -186,7 +187,7 @@ pub fn start_grid_locked_steps(
         &SpeedMagnitude,
         &mut GridLockedMovement,
         &mut GridLockedMovementVisual,
-    ), (With<ComputedLocally>, Without<Tile>)>,
+    ), (With<ComputedLocally>, Without<Tile>, Without<Dead>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut sync_gpos_msgs: Local<Vec<ToClients<SyncGpos>>>,
     mut req_step_msgs: Local<Vec<SendStepRequest>>,
@@ -317,7 +318,11 @@ pub fn progress_tile_transition_transform(
         &mut MoveAnimActive,
         &mut GridLockedMovement,
         &mut GridLockedMovementVisual,
-    )>,
+    ),
+    (Or<(Changed<GridLockedMovement>, Changed<GridLockedMovementVisual>, Changed<GlobalTilePos>)>,
+        Without<Dead>,
+    )
+    >,
     mut writer: MessageWriter<MirrorHolderStateForSprite>,
     mut messages: Local<HashSet<MirrorHolderStateForSprite>>,
 ) {

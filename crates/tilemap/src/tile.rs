@@ -64,6 +64,7 @@ pub fn plugin(app: &mut App) {
             despawn_other_tiles_in_same_pos_if_not_excepted).in_set(PreChunkDespawnSystems),//DON'T TOUCH
         add_projectile_colliders_to_tiles,
         snap_transform_to_gpos,
+        apply_dead_snap_pose_after_gpos_change.after(snap_transform_to_gpos),
         sync_tile_instance_templ_enti_ref_from_map,
         emit_global_tile_pos_change,
         validate_portal_recipes,

@@ -39,3 +39,29 @@ pub struct ClientDebugTeleportBeingRequest {
     pub being_ent: Entity,
     pub gpos: GlobalTilePos,
 }
+
+#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
+pub struct ClientDebugSetBeingCurrentHpRequest {
+    #[entities]
+    pub being_ent: Entity,
+    pub current_hp: f32,
+}
+
+#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
+pub struct ClientDebugSetBeingCurrentBloodRequest {
+    #[entities]
+    pub being_ent: Entity,
+    pub blood: f32,
+}
+
+#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
+pub struct ClientDebugKillBeingRequest {
+    #[entities]
+    pub being_ent: Entity,
+}
+
+#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
+pub struct ClientDebugReviveBeingRequest {
+    #[entities]
+    pub being_ent: Entity,
+}

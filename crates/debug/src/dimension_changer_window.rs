@@ -5,7 +5,7 @@ use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use bevy_replicon::prelude::ClientState;
 use common::common_components::HashId;
 
-use ::being_shared::{Being, LocalHumanControlled};
+use ::being_shared::{Being, LocalHumanControlledNonDead};
 use ::tilemap_shared::{Dimension, DimensionRef};
 
 use crate::debug_messages::ClientDebugSetBeingDimensionRequest;
@@ -22,8 +22,8 @@ pub fn dimension_changer_window(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     debug_ui_config: Res<DebugUiConfig>,
     client_state: Res<State<ClientState>>,
-    controlled_being_query: Query<Entity, (With<Being>, LocalHumanControlled, )>,
-    mut controlled_dim_query: Query<&mut DimensionRef, (With<Being>, LocalHumanControlled, )>,
+    controlled_being_query: Query<Entity, (With<Being>, LocalHumanControlledNonDead, )>,
+    mut controlled_dim_query: Query<&mut DimensionRef, (With<Being>, LocalHumanControlledNonDead, )>,
     dimension_query: Query<(Entity, &HashId, Option<&Name>, ), (With<Dimension>, )>,
     mut client_request_writer: MessageWriter<ClientDebugSetBeingDimensionRequest>,
 ) {

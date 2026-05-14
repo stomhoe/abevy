@@ -331,7 +331,7 @@ pub struct WanderBehaviorQueryParams<'w, 's> {
         (
             With<Being>,
             Without<Fleeing>,
-            LocalAiControlled,
+            LocalAiControlledNonDead,
         ),
     >,
     wander_cfg_query: Query<'w, 's, &'static WanderSeri>,
@@ -362,13 +362,11 @@ pub struct WanderBehaviorLocals<'s> {
     seen_wanderers: Local<'s, EntityHashSet>,
     pack_members_by_squad: Local<'s, EntityHashMap<Vec<(Entity, DimensionRef, bool)>>>,
     messages: Local<'s, Vec<NavOrder>>,
-    facing_messages: Local<'s, Vec<MirrorHolderStateForSprite>>,
 }
 
 #[allow(unused_parens, )]
 pub fn wander_behavior(
     mut writer: MessageWriter<NavOrder>,
-    mut facing_writer: MessageWriter<MirrorHolderStateForSprite>,
     time: Res<Time>,
     queries: WanderBehaviorQueryParams,
     locals: WanderBehaviorLocals,
@@ -393,7 +391,6 @@ pub fn wander_behavior(
         mut seen_wanderers,
         mut pack_members_by_squad,
         mut messages,
-        mut facing_messages,
     } = locals;
 
     let mut rng = rand::rng();
@@ -640,12 +637,6 @@ pub fn wander_behavior(
                             Some(current_facing),
                         )
                         .unwrap_or(current_facing);
-                        if next_facing != current_facing {
-                            if let Ok(mut facing_dir) = blocking_tiles.cardinal_direction_query().get_mut(pred_ent) {
-                                *facing_dir = next_facing;
-                                facing_messages.push(MirrorHolderStateForSprite(pred_ent));
-                            }
-                        }
                     }
                 }
                 state.mark_halt_facing_adjusted();
@@ -711,6 +702,5 @@ pub fn wander_behavior(
         );
     }
     writer.write_batch(messages.drain(..));
-    facing_writer.write_batch(facing_messages.drain(..));
     nav_log.flush();
 }

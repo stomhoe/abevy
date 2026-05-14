@@ -1,6 +1,6 @@
 
 use bevy::prelude::*;
-use bevy::ecs::entity::EntityHashSet;
+use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use ::being_shared::WallPhaserOnSpawn;
 pub use crate::debug_seris::*;
 use common::common_components::HashId;
@@ -55,6 +55,21 @@ pub struct DubugWindowsVisibility{
         pub gpos_x_text: String,
         pub gpos_y_text: String,
         pub teleport_error: Option<String>,
+    }
+
+    #[derive(Debug, Default, Clone, Copy)]
+    pub struct BeingVitalsAdjustState {
+        pub current_hp: f32,
+        pub blood: f32,
+        pub hp_dragging: bool,
+        pub blood_dragging: bool,
+        pub hp_pending_target: Option<f32>,
+        pub blood_pending_target: Option<f32>,
+    }
+
+    #[derive(Resource, Debug, Default)]
+    pub struct DebugBeingVitalsAdjustState {
+        pub states: EntityHashMap<BeingVitalsAdjustState>,
     }
 impl Default for DubugWindowsVisibility {
     fn default() -> Self {

@@ -3,7 +3,7 @@ use ::being_shared::*;
 use ::being_shared::body_energy::*;
 use std::collections::BTreeMap;
 
-use being::body::{BodySums, HeldBody};
+use being::body::{BodySums, DamageDistributeMode, HeldBody, IncHealthDamageOrHeal};
 use being::being_nav::RetainedChasePathSnapshot;
 use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
@@ -14,6 +14,7 @@ use bevy_replicon::prelude::ClientState;
 use common::common_components::{DisplayName, StrId};
 use common::common_components::HashId;
 use common::log_targets::DEBUG;
+use game_common::game_common_components::Dead;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 use ::item_shared::*;
 use ::modifier_shared::*;
@@ -21,8 +22,14 @@ use player_shared::{player_components::*, };
 use ::sprite_shared::*;
 use ::tilemap_shared::*;
 
-use crate::debug_messages::{ClientDebugSetBeingDimensionRequest, ClientDebugTeleportBeingRequest};
-use crate::debug_resources::{DebugBeingLocationEditorState, DebugSelectedEntities, DebugUiConfig, DubugWindowsVisibility};
+use crate::debug_messages::{
+    ClientDebugSetBeingCurrentBloodRequest, ClientDebugSetBeingCurrentHpRequest, ClientDebugSetBeingDimensionRequest,
+    ClientDebugKillBeingRequest, ClientDebugReviveBeingRequest, ClientDebugTeleportBeingRequest,
+};
+use crate::debug_resources::{
+    DebugBeingLocationEditorState, DebugBeingVitalsAdjustState, DebugSelectedEntities,
+    DebugUiConfig, DubugWindowsVisibility,
+};
 
 #[derive(Default, Copy, Clone)]
 struct StatSummary {
@@ -41,6 +48,204 @@ impl StatSummary {
             self
         } else {
             fallback
+        }
+    }
+}
+
+fn render_body_vitals_controls(
+    ui: &mut egui::Ui,
+    world: &mut World,
+    selected_being_entity: Entity,
+    body_entity: Entity,
+    body_sums: &BodySums,
+) {
+    let route_via_client = world
+        .get_resource::<DebugUiConfig>()
+        .is_some_and(|cfg| cfg.client_debug)
+        && world.get_resource::<State<ClientState>>().is_some_and(|state| *state.get() == ClientState::Connected);
+
+    let mut hp_commit_target = None;
+    let mut hp_commit_amount = 0.0;
+    let mut hp_commit_via_client = false;
+    let mut blood_commit_target = None;
+    let mut blood_commit_via_client = false;
+    let mut kill_requested = false;
+    let mut revive_requested = false;
+
+    {
+        let mut adjust_state = world.resource_mut::<DebugBeingVitalsAdjustState>();
+        let state = adjust_state.states.entry(body_entity).or_default();
+
+        let hp_max = body_sums.total_hp.max(0.0);
+        let live_hp = body_sums.current_hp.clamp(0.0, hp_max);
+        if let Some(target) = state.hp_pending_target {
+            if (live_hp - target).abs() <= 0.01 {
+                state.hp_pending_target = None;
+            }
+        }
+        if !state.hp_dragging && state.hp_pending_target.is_none() {
+            state.current_hp = live_hp;
+        }
+
+        let hp_response = ui.add_enabled(
+            hp_max > 0.0,
+            egui::Slider::new(&mut state.current_hp, 0.0..=hp_max).text("Current HP"),
+        );
+        if hp_response.dragged() {
+            state.hp_dragging = true;
+        }
+        if state.hp_dragging && !ui.input(|input| input.pointer.primary_down()) {
+            let target_hp = state.current_hp.clamp(0.0, hp_max);
+            if (live_hp - target_hp).abs() > 0.01 {
+                state.hp_pending_target = Some(target_hp);
+                hp_commit_target = Some(target_hp);
+                hp_commit_amount = live_hp - target_hp;
+                hp_commit_via_client = route_via_client;
+            }
+            state.hp_dragging = false;
+        }
+
+        let blood_max = body_sums.blood_capacity.max(0.0);
+        let live_blood = if body_sums.blood.is_nan() {
+            blood_max
+        } else {
+            body_sums.blood.clamp(0.0, blood_max)
+        };
+        if let Some(target) = state.blood_pending_target {
+            if (live_blood - target).abs() <= 0.01 {
+                state.blood_pending_target = None;
+            }
+        }
+        if !state.blood_dragging && state.blood_pending_target.is_none() {
+            state.blood = live_blood;
+        }
+
+        let blood_response = ui.add_enabled(
+            blood_max > 0.0,
+            egui::Slider::new(&mut state.blood, 0.0..=blood_max).text("Blood"),
+        );
+        if blood_response.dragged() {
+            state.blood_dragging = true;
+        }
+        if state.blood_dragging && !ui.input(|input| input.pointer.primary_down()) {
+            let target_blood = state.blood.clamp(0.0, blood_max);
+            if (live_blood - target_blood).abs() > 0.01 {
+                state.blood_pending_target = Some(target_blood);
+                blood_commit_target = Some(target_blood);
+                blood_commit_via_client = route_via_client;
+            }
+            state.blood_dragging = false;
+        }
+
+        ui.horizontal(|ui| {
+            if ui.button("Kill").clicked() {
+                kill_requested = true;
+            }
+            if ui.button("Revive").clicked() {
+                revive_requested = true;
+            }
+        });
+    }
+
+    if let Some(target_hp) = hp_commit_target {
+        if hp_commit_via_client {
+            world
+                .resource_mut::<Messages<ClientDebugSetBeingCurrentHpRequest>>()
+                .write(ClientDebugSetBeingCurrentHpRequest {
+                    being_ent: selected_being_entity,
+                    current_hp: target_hp,
+                });
+        } else {
+            world
+                .resource_mut::<Messages<IncHealthDamageOrHeal>>()
+                .write(IncHealthDamageOrHeal {
+                    source_ent: selected_being_entity,
+                    target_ent: body_entity,
+                    amount: hp_commit_amount,
+                    distribute_mode: DamageDistributeMode::EquitativelyDistributedBetweenAllBasedOnRatioOverBodyTotalHitpointsCapacity,
+                });
+        }
+        debug!(
+            target: DEBUG,
+            "Committed current HP adjustment for {:?} body {:?} to {:.2}",
+            selected_being_entity,
+            body_entity,
+            target_hp,
+        );
+    }
+
+    if let Some(target_blood) = blood_commit_target {
+        if blood_commit_via_client {
+            world
+                .resource_mut::<Messages<ClientDebugSetBeingCurrentBloodRequest>>()
+                .write(ClientDebugSetBeingCurrentBloodRequest {
+                    being_ent: selected_being_entity,
+                    blood: target_blood,
+                });
+        } else if let Some(mut body_sums) = world.get_mut::<BodySums>(body_entity) {
+            body_sums.blood = target_blood.max(0.0);
+        }
+        debug!(
+            target: DEBUG,
+            "Committed blood adjustment for {:?} body {:?} to {:.2}",
+            selected_being_entity,
+            body_entity,
+            target_blood,
+        );
+    }
+
+    if kill_requested {
+        if route_via_client {
+            world
+                .resource_mut::<Messages<ClientDebugKillBeingRequest>>()
+                .write(ClientDebugKillBeingRequest {
+                    being_ent: selected_being_entity,
+                });
+        } else {
+            let current_hp = body_sums.current_hp.max(0.0);
+            world
+                .resource_mut::<Messages<IncHealthDamageOrHeal>>()
+                .write(IncHealthDamageOrHeal {
+                    source_ent: selected_being_entity,
+                    target_ent: body_entity,
+                    amount: current_hp,
+                    distribute_mode: DamageDistributeMode::EquitativelyDistributedBetweenAllBasedOnRatioOverBodyTotalHitpointsCapacity,
+                });
+            if let Some(mut body_sums) = world.get_mut::<BodySums>(body_entity) {
+                body_sums.blood = 0.0;
+            }
+            world.entity_mut(selected_being_entity).insert_if_new(Dead);
+        }
+    }
+
+    if revive_requested {
+        if route_via_client {
+            world
+                .resource_mut::<Messages<ClientDebugReviveBeingRequest>>()
+                .write(ClientDebugReviveBeingRequest {
+                    being_ent: selected_being_entity,
+                });
+        } else {
+            let current_hp = body_sums.current_hp.max(0.0);
+            let total_hp = body_sums.total_hp.max(0.0);
+            world
+                .resource_mut::<Messages<IncHealthDamageOrHeal>>()
+                .write(IncHealthDamageOrHeal {
+                    source_ent: selected_being_entity,
+                    target_ent: body_entity,
+                    amount: current_hp - total_hp,
+                    distribute_mode: DamageDistributeMode::EquitativelyDistributedBetweenAllBasedOnRatioOverBodyTotalHitpointsCapacity,
+                });
+            if let Some(mut body_sums) = world.get_mut::<BodySums>(body_entity) {
+                body_sums.blood = body_sums.blood_capacity.max(0.0);
+            }
+            world.entity_mut(selected_being_entity).remove::<Dead>();
+            if let Some(gpos) = world.get::<GlobalTilePos>(selected_being_entity).copied() {
+                if let Some(mut transform) = world.get_mut::<Transform>(selected_being_entity) {
+                    let z = transform.translation.z;
+                    *transform = Transform::from_translation(gpos.to_translation(z));
+                }
+            }
         }
     }
 }
@@ -631,6 +836,7 @@ fn render_held_sprite_entry(
             }
         }
     }
+
 }
 
 #[allow(unused_parens)]
@@ -1082,8 +1288,7 @@ pub fn being_details_inspector(world: &mut World) {
                 body_templ_ref.map_or("missing".to_string(), |refe| format!("{:?}", refe.0))
             ));
             if let Some(sums) = body_sums {
-                ui.label(format!("HP: {:.2}/{:.2}", sums.current_hp, sums.total_hp));
-                ui.label(format!("Blood: {:.2}/{:.2}", sums.blood, sums.blood_capacity));
+                render_body_vitals_controls(ui, unsafe { &mut *world_ptr }, selected_being_entity, body_entity, &sums);
                 ui.label(format!("Bleed rate: {:.2}", sums.bleed_rate));
                 ui.label(format!("Consciousness: {:.2}", sums.consciousness));
                 ui.label(format!("Pain: {:.2}", sums.pain));
@@ -1927,8 +2132,7 @@ fn render_multi_being_details_column(
             body_templ_ref.map_or("missing".to_string(), |refe| format!("{:?}", refe.0))
         ));
         if let Some(sums) = body_sums {
-            ui.label(format!("HP: {:.2}/{:.2}", sums.current_hp, sums.total_hp));
-            ui.label(format!("Blood: {:.2}/{:.2}", sums.blood, sums.blood_capacity));
+            render_body_vitals_controls(ui, unsafe { &mut *world_ptr }, selected_being_entity, body_entity, &sums);
             ui.label(format!("Bleed rate: {:.2}", sums.bleed_rate));
             ui.label(format!("Consciousness: {:.2}", sums.consciousness));
             ui.label(format!("Pain: {:.2}", sums.pain));

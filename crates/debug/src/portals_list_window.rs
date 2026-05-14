@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use std::collections::BTreeMap;
 
-use ::being_shared::{Being, LocalHumanControlled};
+use ::being_shared::{Being, LocalHumanControlledNonDead};
 use camera::camera_components::CameraTarget;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 use tilemap::tile::tile_components::{TileStrId};
@@ -32,7 +32,7 @@ pub fn portals_list_window(
     mut selected_entities: ResMut<DebugSelectedEntities>,
     portal_query: Query<(Entity, Option<&TemplEntiRef>, &PortalTo), With<PortalTo>>,
     mut location_query: Query<(&mut DimensionRef, &mut GlobalTilePos), >,
-    local_human_controlled_query: Query<Entity, (With<Being>, LocalHumanControlled)>,
+    local_human_controlled_query: Query<Entity, (With<Being>, LocalHumanControlledNonDead)>,
     dimension_query: Query<&Name>,
     dimension_map: Res<DimensionEntityMap>,
     camera_query: Query<Entity, With<CameraTarget>>,

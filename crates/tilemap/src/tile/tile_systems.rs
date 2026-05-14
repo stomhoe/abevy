@@ -8,28 +8,69 @@ use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, };
 #[allow(unused_imports, )]use bevy_replicon::prelude::*;
+use being_shared::Being;
 use game_common::game_common_components::*;
 use ::tilemap_shared::*;
+use rand::RngExt;
+use std::f32::consts::TAU;
 
 pub type ExcludedComps = (Without<Templ>, Without<TilemapAnchor>, Without<TilePos>);
+
+fn corpse_rotation() -> Quat {
+    let corpse_rotation_min = 15.0_f32.to_radians();
+    let mut rng = rand::rng();
+    loop {
+        let angle = rng.random_range(0.0..TAU);
+        if angle >= corpse_rotation_min && angle <= TAU - corpse_rotation_min {
+            return Quat::from_rotation_z(angle);
+        }
+    }
+}
+
+#[allow(unused_parens)]
+pub fn apply_dead_snap_pose_after_gpos_change(
+    mut query: Query<
+        (Option<&mut Transform>, Option<&mut CardinalDirection>, Has<Being>, Has<Dead>, ),
+        (
+            common::AnyDisabling,
+            ExcludedComps,
+            Or<(Changed<GlobalTilePos>, Added<Dead>)>,
+        ),
+    >,
+) {
+    let mut rng = rand::rng();
+    for (transform, card_dir, has_being, has_dead) in query.iter_mut() {
+        let corpse_pose = has_being && has_dead;
+        let Some(mut transform) = transform else { continue };
+        if corpse_pose {
+            let rotation = corpse_rotation();
+            let corpse_offset = rotation * Vec3::new(0.0, -16.0, 0.0);
+            transform.translation += corpse_offset;
+            transform.rotation = rotation;
+            if let Some(mut card_dir) = card_dir {
+                *card_dir = CardinalDirection::random(&mut rng);
+            }
+        }
+    }
+}
 
 #[allow(unused_parens)]
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, TemplEntiRef O CHILDOF, O SI SE AGREGA REPLICATED
 pub fn snap_transform_to_gpos(
     mut cmd: Commands,
-    mut main_query: Query<
-        (Entity, Option<&mut Transform>, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, ),
-        (With<SnapTransformToGpos>, common::AnyDisabling, ExcludedComps),
-    >,
     gpos_state_query: Query<
         (Entity, Ref<GlobalTilePos>, &SnapTransformToGpos, ),
         (common::AnyDisabling, Changed<GlobalTilePos>, ExcludedComps),
+    >,
+    mut main_query: Query<
+        (Entity, Option<&mut Transform>, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, ),
+        (With<SnapTransformToGpos>, common::AnyDisabling, ExcludedComps),
     >,
     parent_query: Query<&GlobalTransform, common::AnyDisabling>,
     mut ents_to_process: Local<EntityHashSet>,
 ) {
     //TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
-    for (ent, gpos, snap_on_gpos, ) in gpos_state_query {
+    for (ent, gpos, snap_on_gpos) in gpos_state_query {
         let should_snap = match snap_on_gpos {
             SnapTransformToGpos::OnChange => gpos.is_changed(),
             SnapTransformToGpos::OnAdd => gpos.is_added(),
@@ -55,6 +96,7 @@ pub fn snap_transform_to_gpos(
             .unwrap_or(Vec3::ZERO);
 
         let local_translation = transl_from_global_pos - parent_global_transl;
+
         if let Some(mut transform) = transform {
             transform.translation = local_translation;
         } else {
