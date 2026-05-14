@@ -1,6 +1,6 @@
 
 
-use bevy::{ecs::{entity::EntityHashSet, system::SystemParam}, platform::collections::HashSet};
+use bevy::{ecs::{entity::EntityHashSet, system::SystemParam}, };
 use bevy_replicon::prelude::*;
 use ac_audio::ac_audio_components::{AnimationFrameSfxState, AnimationSeriSfxConfig, AnimationSeriSfxState};
 use being_shared::{Grounding, ComputedBy, ComputedLocally};
@@ -40,8 +40,7 @@ pub struct SpriteAnimationQueries<'w, 's> {
 #[allow(unused_parens, )]
 pub fn switch_or_readjust_sprite_animation(
     mut cmd: Commands, asset_server: Res<AssetServer>,
-    mut move_anims_changed: MessageReader<MirrorHolderStateForSprite>,
-    changers: Query<Entity, (Or<(Changed<HeldSprites>, Changed<Grounding>, )>, Without<Templ>)>,
+    changed_entities: Query<Entity, (Or<(Changed<HeldSprites>, Changed<Grounding>, Changed<MoveAnimActive>, Changed<CardinalDirection>, Changed<SpeedMagnitude>, )>, Without<Templ>)>,
     changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<TemplEntiRef>, Without<SpriteConfig>, Without<Templ>)>,
     animation_map: Res<AcAnimationEntityMap>,
     queries: SpriteAnimationQueries,
@@ -86,15 +85,13 @@ pub fn switch_or_readjust_sprite_animation(
         animation_seri_query,
     } = queries;
 
-    let changers_iter = changers.iter();
+    let changed_entities_iter = changed_entities.iter();
     let cfg_refs_iter = changed_sprite_cfg_refs.iter();
     sprite_entis_to_iter.reserve(
-        changers_iter.size_hint().1.unwrap_or(changers_iter.size_hint().0)
-            + move_anims_changed.len()
+        changed_entities_iter.size_hint().1.unwrap_or(changed_entities_iter.size_hint().0)
             + cfg_refs_iter.size_hint().1.unwrap_or(cfg_refs_iter.size_hint().0)
     );
-    sprite_entis_to_iter.extend(changers_iter);
-    sprite_entis_to_iter.extend(move_anims_changed.read().map(|f| f.0));
+    sprite_entis_to_iter.extend(changed_entities_iter);
     sprite_entis_to_iter.extend(cfg_refs_iter.map(|base_holder| base_holder.base));
 
     for (held_sprites, direction, moving, grounding) in base.iter_many(sprite_entis_to_iter.drain()) {
@@ -412,8 +409,7 @@ pub fn switch_or_readjust_sprite_animation(
 #[allow(unused_parens)]
 pub fn msg_movestate_update_to_clients_for_sprite_animation(
     connected: Query<&Player, Without<Mine>>,
-    mut move_anims_changed: MessageReader<MirrorHolderStateForSprite>,
-    changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, )>>,
+    changed_entities: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, Changed<MoveAnimActive>, Changed<CardinalDirection>, )>>,
 
     bases_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&CardinalDirection>, Option<&StrId>)>,
     controller: Query<&ComputedBy>,
@@ -423,10 +419,9 @@ pub fn msg_movestate_update_to_clients_for_sprite_animation(
 ){
     if connected.is_empty() { return; }
     entis_to_iter.clear();
-    let changers_iter = changers.iter();
-    entis_to_iter.reserve(changers_iter.size_hint().1.unwrap_or(changers_iter.size_hint().0) + move_anims_changed.len());
-    entis_to_iter.extend(changers_iter);
-    entis_to_iter.extend(move_anims_changed.read().map(|f| f.0));
+    let changed_entities_iter = changed_entities.iter();
+    entis_to_iter.reserve(changed_entities_iter.size_hint().1.unwrap_or(changed_entities_iter.size_hint().0));
+    entis_to_iter.extend(changed_entities_iter);
 
     for (being_ent, &moving, grounding, direction, id) in bases_query.iter_many(entis_to_iter.iter()) {
         let moving = moving.get();
@@ -448,19 +443,14 @@ pub fn msg_movestate_update_to_clients_for_sprite_animation(
 #[allow(unused_parens, )]
 pub fn client_receive_moving_anim(
     mut mreader: MessageReader<SyncMoveState>,
-    mut beings_changed_move_state_writer: MessageWriter<MirrorHolderStateForSprite>,
-    mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut CardinalDirection, Has<ComputedLocally>)>,
-    mut being_changed_state_set: Local<HashSet<MirrorHolderStateForSprite>>
+    mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut CardinalDirection), Without<ComputedLocally>>,
 ) {
     for message in mreader.par_read() {
         let SyncMoveState { being_ent, moving, grounding, direction } = message.0;
         trace!(target: SPRITE_ANIMATION_SYSTEM, "Received moving {} for entity {:?}", moving, being_ent);
 
-        if let Ok((mut move_anim, mut grounding_comp, mut direction_comp, computed_locally)) = query.get_mut(*being_ent) {
-            if computed_locally {
-                continue;
-            }
-            move_anim.set(*moving, *being_ent, &mut being_changed_state_set);
+        if let Ok((mut move_anim, mut grounding_comp, mut direction_comp)) = query.get_mut(*being_ent) {
+            move_anim.set(*moving);
             if let Some(grounding) = grounding {
                 *grounding_comp = *grounding;
             }
@@ -471,5 +461,4 @@ pub fn client_receive_moving_anim(
             warn_once!("Received moving state for entity {:?} that does not exist in this client.", being_ent);
         }
     }
-    beings_changed_move_state_writer.write_batch(being_changed_state_set.drain());
 }

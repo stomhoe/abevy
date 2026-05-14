@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use ac_audio::AcAudioSystems;
 use common::common_states::AssetLoading;
 use game_common::{AcClientSystems, game_common::SimRunningSystems};
+use movement::MovementSystems;
 use sprite_systems::AcSpriteSystems;
 use ::sprite_animation_shared::*;
 use crate::{sprite_animation_init_systems::*, sprite_animation_systems::*};
@@ -20,7 +21,7 @@ pub fn plugin(app: &mut App) {
         plugin_ac_animation,
     ))
     .add_systems(Update, ((
-           switch_or_readjust_sprite_animation,
+           switch_or_readjust_sprite_animation.after(client_receive_moving_anim),
            msg_movestate_update_to_clients_for_sprite_animation
                .run_if(in_state(ServerState::Running)),
            client_receive_moving_anim
@@ -32,7 +33,7 @@ pub fn plugin(app: &mut App) {
             init_animation_sheet_and_handle,
         ).in_set(SpriteAnimationSystems),
     ))
-    .configure_sets(Update, (SpriteAnimationSystems.in_set(SimRunningSystems).after(AcAudioSystems),))
+    .configure_sets(Update, (SpriteAnimationSystems.in_set(SimRunningSystems).after(AcAudioSystems).after(MovementSystems),))
 
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
         SpriteAnimationSystems.before(AcSpriteSystems)
@@ -43,8 +44,6 @@ pub fn plugin(app: &mut App) {
     ).in_set(SpriteAnimationSystems))
 
     .add_mapped_server_message::<SyncMoveState>(Channel::Ordered)
-
-    .add_message::<MirrorHolderStateForSprite>()
 
     .replicate_once::<AnimExtraState>()
     .replicate_once::<MoveAnimActive>()

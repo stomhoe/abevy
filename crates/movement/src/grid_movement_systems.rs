@@ -318,8 +318,6 @@ pub fn progress_tile_transition_transform(
         &mut GridLockedMovement,
         &mut GridLockedMovementVisual,
     )>,
-    mut writer: MessageWriter<MirrorHolderStateForSprite>,
-    mut messages: Local<HashSet<MirrorHolderStateForSprite>>,
 ) {
     for (being_ent, tile_pos, mut transform, mut move_anim, mut glm, mut glm_visual) in query.iter_mut() {
         let had_motion_this_tick = glm_visual.consume_recent_motion();
@@ -330,14 +328,9 @@ pub fn progress_tile_transition_transform(
         if transform.translation != new_translation {
             transform.translation = new_translation;
         }
-        move_anim_changed(
-            being_ent,
-            &mut move_anim,
-            glm.is_stepping() || was_stepping || had_motion_this_tick,
-            &mut messages,
-        );
+        let _ = being_ent;
+        move_anim.set(glm.is_stepping() || was_stepping || had_motion_this_tick);
     }
-    writer.write_batch(messages.drain());
 }
 
 pub fn receive_gpos_from_server(

@@ -1,6 +1,4 @@
-use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use ::sprite_animation_shared::*;
 use tilemap_shared::GlobalTilePos;
 
 pub const MAX_GRID_STEPS_PER_FIXED_TICK: u16 = 256;
@@ -25,13 +23,4 @@ pub fn ticks_per_tile(speed: f32, delta: f32, dir: IVec2) -> u16 {
 
 pub fn secs_per_tile(speed: f32, delta: f32, dir: IVec2) -> f32 {
     ticks_per_tile(speed, delta, dir) as f32 * delta
-}
-
-pub fn move_anim_changed(
-    being_ent: Entity,
-    move_anim: &mut MoveAnimActive,
-    active: bool,
-    messages: &mut HashSet<MirrorHolderStateForSprite>,
-) {
-    move_anim.set(active, being_ent, messages);
 }
