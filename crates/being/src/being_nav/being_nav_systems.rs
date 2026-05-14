@@ -80,7 +80,7 @@ pub fn ensure_loaded_beings_have_nav_state(
 pub fn update_goto_from_chasing(
     mut writer: MessageWriter<NavOrder>,
     mut messages: Local<Vec<NavOrder>>,
-    chasing_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Chasing, ), (With<Being>, LocalAiControlledNonDead, )>,
+    chasing_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Chasing, ), (LocalAiControlled, )>,
     targets_query: Query<(Entity, &GlobalTilePos, &::tilemap_shared::DimensionRef), >,
 ) {
     for (being_ent, &being_dim, chasing, ) in chasing_query.iter() {
@@ -164,7 +164,7 @@ pub fn apply_nav_orders(
 #[allow(unused_parens, )]
 pub fn clear_nav_outputs_for_beings_without_nav_state(
     mut cmd: Commands,
-    mut query: Query<(Entity, ), (With<Being>, LocalAiControlledNonDead, Without<WanderState>, Without<Chasing>, Without<Fleeing>)>,
+    mut query: Query<(Entity, ), (LocalAiControlled, Without<WanderState>, Without<Chasing>, Without<Fleeing>)>,
     mut input_speed_query: Query<(&mut InputSpeedThrottleMult, &mut InputMaxSpeed, ), (), >,
 ) {
     for (being_ent, ) in query.iter_mut() {
@@ -201,7 +201,7 @@ pub fn sync_ai_nav_grids(
             Option<&GoTo>,
             Option<&LodLevel>,
         ),
-        (With<Being>, LocalAiControlledNonDead, ),
+        (LocalAiControlled, ),
     >,
     mut nav_grid_dirty_msgs: MessageReader<AiNavGridDirtyDim>,
     mut grids: ResMut<AiNavGrids>,

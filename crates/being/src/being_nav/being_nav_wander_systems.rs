@@ -330,7 +330,7 @@ pub struct WanderBehaviorQueryParams<'w, 's> {
         (
             With<Being>,
             Without<Fleeing>,
-            LocalAiControlledNonDead,
+            LocalAiControlled,
         ),
     >,
     wander_cfg_query: Query<'w, 's, &'static WanderSeri>,

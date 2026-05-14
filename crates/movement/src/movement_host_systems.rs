@@ -6,6 +6,7 @@ use common::log_targets::MOVEMENT_SYSTEM;
 use serde::Deserialize;
 use std::collections::VecDeque;
 use param_sets::BlockingTileParamSet;
+use sprite_animation_shared::MirrorHolderStateForSprite;
 use tilemap::tile::tile_components::Tile;
 use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};
 
@@ -99,6 +100,8 @@ pub fn receive_step_request_from_client(
     ), (With<Being>, Without<ComputedLocally>, Without<Tile>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut messages: Local<Vec<ToClients<SyncGpos>>>,
+    mut move_state_writer: MessageWriter<MirrorHolderStateForSprite>,
+    mut move_state_msgs: Local<Vec<MirrorHolderStateForSprite>>,
     mut rate_states: Local<EntityHashMap<ClientStepRateState>>,
     mut deferred_requests: Local<EntityHashMap<VecDeque<DeferredStepRequest>>>,
 ) {
@@ -164,6 +167,7 @@ pub fn receive_step_request_from_client(
             if steps == 0 {
                 if facing_dir != step_dir {
                     let _ = blocking_tiles.set_being_direction(being_ent, step_dir);
+                    move_state_msgs.push(MirrorHolderStateForSprite(being_ent));
                     messages.push(ToClients {
                         mode: SendMode::BroadcastExcept(client_id),
                         message: SyncGpos {
@@ -275,6 +279,7 @@ pub fn receive_step_request_from_client(
                     TryStartStepOutcome::Successful => {
                         if facing_dir != step_dir {
                             let _ = blocking_tiles.set_being_direction(being_ent, step_dir);
+                            move_state_msgs.push(MirrorHolderStateForSprite(being_ent));
                         }
                         1
                     }
@@ -351,6 +356,7 @@ pub fn receive_step_request_from_client(
                 }
                 if facing_dir != step_dir {
                     let _ = blocking_tiles.set_being_direction(being_ent, step_dir);
+                    move_state_msgs.push(MirrorHolderStateForSprite(being_ent));
                 }
                 steps_taken
             };
@@ -372,4 +378,5 @@ pub fn receive_step_request_from_client(
     }
     *deferred_requests = next_deferred_requests;
     writer.write_batch(messages.drain(..));
+    move_state_writer.write_batch(move_state_msgs.drain(..));
 }

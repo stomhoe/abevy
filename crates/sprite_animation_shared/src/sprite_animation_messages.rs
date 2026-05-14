@@ -4,6 +4,9 @@ use common::common_components::Grounding;
 use serde::{Deserialize, Serialize};
 use tilemap_shared::CardinalDirection;
 
+#[derive(Message, Clone, PartialEq, Eq, Hash)]
+pub struct MirrorHolderStateForSprite(pub Entity);
+
 #[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
 pub struct SyncMoveState {
     #[entities] pub being_ent: Entity,

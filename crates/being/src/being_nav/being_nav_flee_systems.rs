@@ -238,7 +238,7 @@ pub fn update_goto_from_fleeing(
     mut cmd: Commands,
     mut writer: MessageWriter<NavOrder>,
     mut blocking_tiles: BlockingTileParamSet,
-    flee_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, Has<DoAvoidBlacklistedSpawnTilesForWander>, ), (With<Being>, LocalAiControlledNonDead, )>,
+    flee_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, Has<DoAvoidBlacklistedSpawnTilesForWander>, ), (LocalAiControlled, )>,
     body_weight_query: Query<&BodyWeightSum>,
     held_body_query: Query<&HeldBody>,
     body_sums_query: Query<&BodySums>,

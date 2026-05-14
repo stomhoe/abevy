@@ -63,6 +63,7 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             MOVEMENT_SCHEDULE,
             (
+                emit_move_state_on_movevecmag_speed_mag_change,
                 start_grid_locked_steps,
                 progress_tile_transition_transform,
             )
