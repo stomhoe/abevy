@@ -11,6 +11,7 @@ pub fn clone_templ_children_ents_for_new_instances(
         (Entity, &TemplEntiRef, Option<&Children>),
         (Changed<TemplEntiRef>, AnyDisabling, ),
     >,
+    name_query: Query<&Name>,
     templ: Query<(&Children, Option<&HeldSprites>,), (AnyDisabling, With<CloneTemplChildren>)>,
     child_visibility_query: Query<&Visibility>,
     clone_children_query: Query<(), (AnyDisabling, With<CloneTemplChildren>)>,
@@ -20,20 +21,23 @@ pub fn clone_templ_children_ents_for_new_instances(
     let mut new_cloned_visibility = Vec::new();
     let mut clone_queue = Vec::new();
 
-    missing_clonechildren_query.iter().for_each(|(new_ent, templ_ref, children)| {
-        if let Some(children) = children {
-            if ! children.is_empty() {
-                return;
-            }
-        }
-
+    missing_clonechildren_query.iter().for_each(|(new_ent, templ_ref, prev_children)| {
+        
         clone_queue.clear();
         clone_queue.push((templ_ref.0, new_ent));
-
+        
         while let Some((source_parent, clone_parent)) = clone_queue.pop() {
             let Ok((templ_children, templ_held_sprites)) = templ.get(source_parent) else {
                 continue;
             };
+            if let Some(prev_children) = prev_children {
+                let name = name_query.get(new_ent).map(|name| name.as_str()).unwrap_or("<unnamed>");
+                debug!(target: "entity_zero", "Entity {:?} ('{}') has CloneTemplChildren but already has children, despawning them first", new_ent, name);
+                
+                for child in prev_children.iter() {
+                    cmd.entity(child).try_despawn();
+                }
+            }
 
             templ_children.iter().for_each(|child_to_clone| {
                 let has_visibility = child_visibility_query.get(child_to_clone).is_ok();

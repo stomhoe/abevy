@@ -445,7 +445,19 @@ fn render_held_sprite_entry(
     world: &mut World,
     sprite_ent: Entity,
 ) {
-    let Some((templ_ref, templ_display_name, templ_str_id, templ_add_up_anim_and_sc_acz, sprite_visibility, sprite_acz, sprite_y_sort_origin, sprite_transform, sprite_global_transform, sprite_flip, base_holder_ref, templ_acz, templ_y_sort_origin, template_flags, template_detail_lines)) = (|| {
+    let highlighted_sprite_original_color = world
+        .get_entity_mut(sprite_ent)
+        .ok()
+        .and_then(|mut sprite_entity| {
+            let Some(mut sprite) = sprite_entity.get_mut::<Sprite>() else {
+                return None;
+            };
+            let original_color = sprite.color;
+            sprite.color = Color::srgb(0.0, 1.0, 1.0);
+            Some(original_color)
+        });
+
+    let Some((templ_ref, templ_display_name, templ_str_id, sprite_display_name, sprite_str_id, templ_add_up_anim_and_sc_acz, sprite_visibility, sprite_acz, sprite_y_sort_origin, sprite_transform, sprite_global_transform, sprite, base_holder_ref, templ_acz, templ_y_sort_origin, template_flags, template_detail_lines)) = (|| {
         let Ok(sprite_ref) = world.get_entity(sprite_ent) else {
             ui.label(format!("{:?}: missing entity", sprite_ent));
             return None;
@@ -517,6 +529,8 @@ fn render_held_sprite_entry(
             templ_ref,
             templ_ref_entity.get::<DisplayName>().cloned(),
             templ_ref_entity.get::<StrId>().cloned(),
+            templ_ref_entity.get::<DisplayName>().cloned(),
+            templ_ref_entity.get::<StrId>().cloned(),
             templ_ref_entity.get::<AddUpAnimAndScAcZ>().is_some(),
             sprite_ref.get::<Visibility>().copied(),
             sprite_ref.get::<AcZ>().copied().map(|value| value.0),
@@ -538,67 +552,60 @@ fn render_held_sprite_entry(
 
     let sprite_label = part_label(
         sprite_ent,
-        templ_display_name.as_ref(),
-        templ_str_id.as_ref(),
+        sprite_display_name.as_ref(),
+        sprite_str_id.as_ref(),
     );
 
     egui::CollapsingHeader::new(sprite_label)
-        .default_open(true)
+        .default_open(false)
         .show(ui, |ui| {
-        ui.label(format!(
-            "Visibility: {}",
-            sprite_visibility.map_or_else(|| "missing".to_string(), |visibility| format!("{:?}", visibility))
-        ));
-        ui.label(format!(
-            "Transform: {}",
-            sprite_transform
-                .map(|transform| format!(
-                    "x={:.1} y={:.1} z={}",
-                    transform.translation.x,
-                    transform.translation.y,
-                    transform.translation.z,
-                ))
-                .unwrap_or_else(|| "missing".to_string())
-        ));
-        ui.label(format!(
-            "GlobalTransform: {}",
-            sprite_global_transform
-                .map(|transform| format!(
-                    "x={:.1} y={:.1} z={}",
-                    transform.translation().x,
-                    transform.translation().y,
-                    transform.translation().z,
-                ))
-                .unwrap_or_else(|| "missing".to_string())
-        ));
-        ui.label(format!(
-            "flip: {}",
-            sprite_flip
-                .map(|sprite| format!("x={} y={}", sprite.flip_x, sprite.flip_y))
-                .unwrap_or_else(|| "missing".to_string())
-        ));
-        ui.label(format!(
-            "StrId: {}",
-            templ_str_id.as_ref().map_or_else(|| "missing".to_string(), |str_id| str_id.to_string())
-        ));
-        ui.label(format!(
-            "DisplayName: {}",
-            templ_display_name.map_or_else(|| "missing".to_string(), |display_name| display_name.0)
-        ));
+        if let Some(visibility) = sprite_visibility {
+            ui.label(format!("Visibility: {:?}", visibility));
+        }
+        if let Some(transform) = sprite_transform {
+            ui.label(format!(
+                "Transform: x={:.1} y={:.1} z={}",
+                transform.translation.x,
+                transform.translation.y,
+                transform.translation.z,
+            ));
+        }
+        if let Some(transform) = sprite_global_transform {
+            ui.label(format!(
+                "GlobalTransform: x={:.1} y={:.1} z={}",
+                transform.translation().x,
+                transform.translation().y,
+                transform.translation().z,
+            ));
+        }
+        if let Some(sprite) = sprite {
+            ui.label(format!("Color: {:?}", sprite.color));
+            ui.label(format!("flip: x={} y={}", sprite.flip_x, sprite.flip_y));
+        }
         if let Some(base_holder_ref) = base_holder_ref {
             ui.label(format!("BaseHolderRef.base: {:?}", base_holder_ref.base));
         }
-        ui.label(format!("TemplEntiRef.0: {:?}", templ_ref.0));
+        if sprite_acz.is_some() || templ_acz.is_some() {
+            ui.label(format_resolved_acz(sprite_acz, templ_acz, templ_add_up_anim_and_sc_acz));
+        }
+        if sprite_y_sort_origin.is_some() || templ_y_sort_origin.is_some() {
+            ui.label(format_resolved_f32("YSortOrigin", sprite_y_sort_origin, templ_y_sort_origin));
+        }
 
-        ui.label(format!(
-            "TemplEntiRef.0 StrId: {}",
-            templ_str_id.as_ref().map_or_else(|| "missing".to_string(), |str_id| str_id.to_string())
-        ));
-        ui.label(format_resolved_acz(sprite_acz, templ_acz, templ_add_up_anim_and_sc_acz));
-        ui.label(format_resolved_f32("YSortOrigin", sprite_y_sort_origin, templ_y_sort_origin));
+        let templ_str_id_label = templ_str_id
+            .as_ref()
+            .map(|str_id| str_id.as_str())
+            .unwrap_or("<no-strid>");
+        let templ_display_name_label = templ_display_name
+            .as_ref()
+            .map(|display_name| display_name.0.clone());
+        let templ_collapsing_label = if let Some(display_name) = templ_display_name_label {
+            format!("SpriteCfg {} {} {}", templ_str_id_label, templ_ref.0.index(), display_name)
+        } else {
+            format!("SpriteCfg {} {:?}", templ_str_id_label, templ_ref.0)
+        };
 
-        let sprite_config_ref_label = format!("SpriteConfigRef full components: {:?}", templ_ref.0);
-        ui.collapsing(sprite_config_ref_label, |ui| {
+        ui.collapsing(templ_collapsing_label, |ui| {
             if world.get_entity(templ_ref.0).is_ok() {
                 unsafe {
                     bevy_inspector::ui_for_entity(&mut *world_ptr, templ_ref.0, ui);
@@ -616,6 +623,14 @@ fn render_held_sprite_entry(
             ui.label(line);
         }
     });
+
+    if let Some(original_color) = highlighted_sprite_original_color {
+        if let Ok(mut sprite_entity) = world.get_entity_mut(sprite_ent) {
+            if let Some(mut sprite) = sprite_entity.get_mut::<Sprite>() {
+                sprite.color = original_color;
+            }
+        }
+    }
 }
 
 #[allow(unused_parens)]
@@ -656,6 +671,8 @@ pub fn being_details_inspector(world: &mut World) {
             let screen_rect = egui_context.get_mut().content_rect();
             let world_ptr = world as *mut World;
             let mut is_open = true;
+            let mut remove_being_requested = None;
+            let mut clear_all_requested = false;
 
             egui::Window::new("Selected Being Details")
                 .default_width(980.0)
@@ -664,20 +681,46 @@ pub fn being_details_inspector(world: &mut World) {
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(egui_context.get_mut(), |ui| {
-                    ui.heading("Being Details");
+                    ui.horizontal(|ui| {
+                        ui.heading("Being Details");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.button("Clear all selections").clicked() {
+                                clear_all_requested = true;
+                            }
+                        });
+                    });
                     ui.separator();
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         ui.spacing_mut().item_spacing.x = 0.0;
                         ui.columns(beings.len(), |columns| {
                             for (column, entity) in columns.iter_mut().zip(beings.iter().copied()) {
                                 column.push_id(entity, |ui| {
-                                    ui.set_min_width(700.0);
-                                    render_multi_being_details_column(ui, world, world_ptr, entity);
+                                    render_multi_being_details_column(ui, world, world_ptr, entity, &mut remove_being_requested);
                                 });
                             }
                         });
                     });
                 });
+
+            if clear_all_requested {
+                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                    selected_entities.selected_beings.clear();
+                    selected_entities.selected_being = None;
+                    selected_entities.selected_exempted_entity = None;
+                }
+            }
+
+            if let Some(being_to_remove) = remove_being_requested {
+                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                    selected_entities.selected_beings.remove(&being_to_remove);
+                    if selected_entities.selected_being == Some(being_to_remove) {
+                        selected_entities.selected_being = selected_entities.selected_beings.iter().next().copied();
+                    }
+                    if selected_entities.selected_beings.is_empty() {
+                        selected_entities.selected_being = None;
+                    }
+                }
+            }
 
             if !is_open {
                 if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
@@ -1827,7 +1870,13 @@ pub fn being_details_inspector(world: &mut World) {
     }
 }
 
-fn render_multi_being_details_column(ui: &mut egui::Ui, world: &mut World, world_ptr: *mut World, selected_being_entity: Entity) {
+fn render_multi_being_details_column(
+    ui: &mut egui::Ui,
+    world: &mut World,
+    world_ptr: *mut World,
+    selected_being_entity: Entity,
+    remove_being_requested: &mut Option<Entity>,
+) {
     let mut body_query = world.query::<&HeldBody>();
     let mut body_sums_query = world.query::<&BodySums>();
     let mut display_name_query = world.query::<&DisplayName>();
@@ -1858,7 +1907,14 @@ fn render_multi_being_details_column(ui: &mut egui::Ui, world: &mut World, world
     let body_sums = body_available.then(|| body_sums_query.get(world, body_entity).ok().cloned()).flatten();
     let body_templ_ref = body_available.then(|| templ_refs_query.get(world, body_entity).ok().copied()).flatten();
 
-    ui.heading(format!("Being: {:?}", selected_being_entity));
+    ui.horizontal(|ui| {
+        ui.heading(format!("Being: {:?}", selected_being_entity));
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui.add_sized([24.0, 24.0], egui::Button::new(egui::RichText::new("X").strong().size(18.0))).clicked() {
+                *remove_being_requested = Some(selected_being_entity);
+            }
+        });
+    });
     ui.separator();
 
     ui.collapsing("Body", |ui| {
@@ -1888,7 +1944,7 @@ fn render_multi_being_details_column(ui: &mut egui::Ui, world: &mut World, world
             ui.label("RaceRef: missing");
             return;
         };
-        ui.label(format!("RaceRef.0 (hash): {:?}", race_ref.0));
+        ui.label(format!("Race{:?}", race_ref.0));
         let Some(race_map) = world.get_resource::<RaceEntityMap>() else {
             ui.label("RaceEntityMap: missing resource");
             return;

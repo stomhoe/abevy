@@ -121,16 +121,7 @@ pub fn click_picker_window(
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
                     ui.checkbox(&mut state.picking_enabled, "Picking");
-                    if ui.checkbox(&mut state.mult_being_windows, "mult being windows").changed() {
-                        if state.mult_being_windows {
-                            if let Some(selected_being) = selected_entities.selected_being.or(selected_entities.selected_exempted_entity) {
-                                selected_entities.selected_beings.insert(selected_being);
-                            }
-                        } else {
-                            selected_entities.selected_beings.clear();
-                        }
-                    }
-                    if ui.checkbox(&mut state.mult_tile_windows, "mult tile windows").changed() {
+                    if ui.checkbox(&mut state.mult_tile_windows, "multicolumn tile▦ window").changed() {
                         if state.mult_tile_windows {
                             if let Some(selected_tile) = selected_entities.selected_tile.or(selected_entities.selected_exempted_entity) {
                                 selected_entities.selected_tiles.insert(selected_tile);
@@ -139,8 +130,17 @@ pub fn click_picker_window(
                             selected_entities.selected_tiles.clear();
                         }
                     }
-                    ui.checkbox(&mut state.auto_open_being_details, "auto-open details of beings at clicked gpos");
-                    ui.checkbox(&mut state.auto_open_tile_details, "auto-open details of tiles at clicked gpos");
+                    ui.checkbox(&mut state.auto_open_tile_details, "auto-open tiles▦ at clicked gpos");
+                    if ui.checkbox(&mut state.mult_being_windows, "multicolumn being👥 window").changed() {
+                        if state.mult_being_windows {
+                            if let Some(selected_being) = selected_entities.selected_being.or(selected_entities.selected_exempted_entity) {
+                                selected_entities.selected_beings.insert(selected_being);
+                            }
+                        } else {
+                            selected_entities.selected_beings.clear();
+                        }
+                    }
+                    ui.checkbox(&mut state.auto_open_being_details, "auto-open beings👥 at clicked gpos");
                 });
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -230,10 +230,9 @@ pub fn click_picker_window(
                                         }
                                     }
 
-                                    ui.label("Beings");
                                     if beings.is_empty() {
-                                        ui.label("-");
                                     } else {
+                                        ui.label("Beings");
                                         for entity in beings.drain(..) {
                                             let label = part_label(
                                                 entity,

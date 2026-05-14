@@ -40,6 +40,8 @@ pub fn tile_details_inspector(world: &mut World) {
             let screen_rect = egui_context.get_mut().content_rect();
             let world_ptr = world as *mut World;
             let mut is_open = true;
+            let mut remove_tile_requested = None;
+            let mut clear_all_requested = false;
 
             egui::Window::new("Selected Tile Details")
                 .default_width(780.0)
@@ -48,19 +50,46 @@ pub fn tile_details_inspector(world: &mut World) {
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(egui_context.get_mut(), |ui| {
-                    ui.heading("Tile Details");
+                    ui.horizontal(|ui| {
+                        ui.heading("Tile Details");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.button("Clear all selections").clicked() {
+                                clear_all_requested = true;
+                            }
+                        });
+                    });
                     ui.separator();
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         ui.spacing_mut().item_spacing.x = 0.0;
                         ui.columns(tiles.len(), |columns| {
                             for (column, entity) in columns.iter_mut().zip(tiles.iter().copied()) {
                                 column.push_id(entity, |ui| {
-                                    render_tile_details_column(ui, world, world_ptr, entity);
+                                    render_tile_details_column(ui, world, world_ptr, entity, &mut remove_tile_requested, false);
                                 });
                             }
                         });
                     });
                 });
+
+            if clear_all_requested {
+                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                    selected_entities.selected_tiles.clear();
+                    selected_entities.selected_tile = None;
+                    selected_entities.selected_exempted_entity = None;
+                }
+            }
+
+            if let Some(tile_to_remove) = remove_tile_requested {
+                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                    selected_entities.selected_tiles.remove(&tile_to_remove);
+                    if selected_entities.selected_tile == Some(tile_to_remove) {
+                        selected_entities.selected_tile = selected_entities.selected_tiles.iter().next().copied();
+                    }
+                    if selected_entities.selected_tiles.is_empty() {
+                        selected_entities.selected_tile = None;
+                    }
+                }
+            }
 
             if !is_open {
                 if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
@@ -143,11 +172,14 @@ pub fn tile_details_inspector(world: &mut World) {
         .open(&mut is_open)
         .vscroll(true)
         .show(egui_context.get_mut(), |ui| {
+            let mut remove_tile_requested = None;
             render_tile_details_column(
                 ui,
                 world,
                 world_ptr,
                 selected_tile_entity,
+                &mut remove_tile_requested,
+                true,
             );
         });
 
@@ -158,7 +190,14 @@ pub fn tile_details_inspector(world: &mut World) {
     }
 }
 
-fn render_tile_details_column(ui: &mut egui::Ui, world: &mut World, world_ptr: *mut World, selected_tile_entity: Entity) {
+fn render_tile_details_column(
+    ui: &mut egui::Ui,
+    world: &mut World,
+    world_ptr: *mut World,
+    selected_tile_entity: Entity,
+    remove_tile_requested: &mut Option<Entity>,
+    show_clear_selection_button: bool,
+) {
     let tile_str_id = if let Ok(entity_ref) = world.get_entity(selected_tile_entity) {
         if let Some(templ_ref) = entity_ref.get::<TemplEntiRef>() {
             if let Ok(templ_entity) = world.get_entity(templ_ref.0) {
@@ -194,11 +233,18 @@ fn render_tile_details_column(ui: &mut egui::Ui, world: &mut World, world_ptr: *
         }
     }
 
-    if let Some(str_id) = tile_str_id {
-        ui.heading(format!("Tile: {}", str_id));
-    } else {
-        ui.heading(format!("Entity: {:?}", selected_tile_entity));
-    }
+    ui.horizontal(|ui| {
+        if let Some(str_id) = tile_str_id {
+            ui.heading(format!("Tile: {}", str_id));
+        } else {
+            ui.heading(format!("Entity: {:?}", selected_tile_entity));
+        }
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui.add_sized([24.0, 24.0], egui::Button::new(egui::RichText::new("X").strong().size(18.0))).clicked() {
+                *remove_tile_requested = Some(selected_tile_entity);
+            }
+        });
+    });
     ui.separator();
 
     ui.collapsing("Full Entity Components", |ui| {
@@ -272,12 +318,30 @@ fn render_tile_details_column(ui: &mut egui::Ui, world: &mut World, world_ptr: *
                 tile_ent: selected_tile_entity,
                 remove_u16_index: true,
             });
-    }
-    if ui.button("Clear Selection").clicked() {
         if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
-            selected_entities.selected_tile = None;
-            selected_entities.selected_tiles.clear();
-            selected_entities.selected_exempted_entity = None;
+            if selected_entities.selected_tile == Some(selected_tile_entity) {
+                selected_entities.selected_tile = selected_entities
+                    .selected_tiles
+                    .iter()
+                    .copied()
+                    .find(|entity| *entity != selected_tile_entity);
+            }
+            selected_entities.selected_tiles.remove(&selected_tile_entity);
+            if selected_entities.selected_exempted_entity == Some(selected_tile_entity) {
+                selected_entities.selected_exempted_entity = None;
+            }
+            if selected_entities.selected_tile == Some(selected_tile_entity) {
+                selected_entities.selected_tile = None;
+            }
+        }
+    }
+    if show_clear_selection_button {
+        if ui.button("Clear Selection").clicked() {
+            if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                selected_entities.selected_tile = None;
+                selected_entities.selected_tiles.clear();
+                selected_entities.selected_exempted_entity = None;
+            }
         }
     }
 }
