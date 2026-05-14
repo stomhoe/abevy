@@ -11,7 +11,6 @@ use bevy::{
 use common::common_tag_components::TagSet;
 use common::log_targets::WANDER_SYSTEM;
 use ::being_shared::movement_shared_components::FinalNormMoveDir;
-use sprite_animation_shared::MirrorHolderStateForSprite;
 use ::param_sets::*;
 use std::time::Duration;
 use ::tilemap_shared::*;

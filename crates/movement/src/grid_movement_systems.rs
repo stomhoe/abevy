@@ -1,5 +1,5 @@
 use being_shared::{Being, ComputedLocally};
-use bevy::ecs::entity::EntityHashMap;
+use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
@@ -323,8 +323,7 @@ pub fn progress_tile_transition_transform(
         Without<Dead>,
     )
     >,
-    mut writer: MessageWriter<MirrorHolderStateForSprite>,
-    mut messages: Local<HashSet<MirrorHolderStateForSprite>>,
+    mut messages: Local<EntityHashSet>,
 ) {
     for (being_ent, tile_pos, mut transform, mut move_anim, mut glm, mut glm_visual) in query.iter_mut() {
         let had_motion_this_tick = glm_visual.consume_recent_motion();
@@ -342,7 +341,6 @@ pub fn progress_tile_transition_transform(
             &mut messages,
         );
     }
-    writer.write_batch(messages.drain());
 }
 
 pub fn receive_gpos_from_server(

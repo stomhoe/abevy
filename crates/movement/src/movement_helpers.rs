@@ -1,4 +1,4 @@
-use bevy::platform::collections::HashSet;
+use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use ::sprite_animation_shared::*;
 use tilemap_shared::GlobalTilePos;
@@ -31,7 +31,9 @@ pub fn move_anim_changed(
     being_ent: Entity,
     move_anim: &mut MoveAnimActive,
     active: bool,
-    messages: &mut HashSet<MirrorHolderStateForSprite>,
+    messages: &mut EntityHashSet,
 ) {
-    move_anim.set(active, being_ent, messages);
+    if move_anim.set(active) {
+        messages.insert(being_ent);
+    }
 }
