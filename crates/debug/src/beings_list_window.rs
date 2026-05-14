@@ -83,6 +83,7 @@ pub fn beings_list_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
+    mut state: ResMut<WorldTileClickInspectorState>,
     being_query: Query<
         (
             Entity,
@@ -163,7 +164,21 @@ pub fn beings_list_window(
         .default_width(350.0)
         .open(&mut open)
         .show(ctx, |ui| {
-            ui.heading(format!("Beings: {}", being_query.iter().count()));
+            ui.horizontal(|ui| {
+                ui.heading(format!("Beings: {}", being_query.iter().count()));
+                ui.separator();
+                let mut multi_being_windows = state.mult_being_windows;
+                if ui.checkbox(&mut multi_being_windows, "Multi-select beings").changed() {
+                    state.mult_being_windows = multi_being_windows;
+                    if state.mult_being_windows {
+                        if let Some(selected_being) = selected_entities.selected_being.or(selected_entities.selected_exempted_entity) {
+                            selected_entities.selected_beings.insert(selected_being);
+                        }
+                    } else {
+                        selected_entities.selected_beings.clear();
+                    }
+                }
+            });
             ui.separator();
 
             for dim_key in sorted_dims.iter() {
@@ -187,11 +202,23 @@ pub fn beings_list_window(
                                     direction_arrow(*direction),
                                     distance.round() as i32
                                 );
-                                let is_selected = selected_entities.selected_being == Some(*entity);
+                                let is_selected = if state.mult_being_windows {
+                                    selected_entities.selected_beings.contains(entity) || selected_entities.selected_being == Some(*entity)
+                                } else {
+                                    selected_entities.selected_being == Some(*entity)
+                                };
                                 if ui.selectable_label(is_selected, label).clicked() {
-                                    selected_entities.selected_being = Some(*entity);
-                                    selected_entities.selected_being_bodypart = None;
-                                    selected_entities.show_full_being_components = false;
+                                    if state.mult_being_windows {
+                                        if !selected_entities.selected_beings.insert(*entity) {
+                                            selected_entities.selected_beings.remove(entity);
+                                        }
+                                        selected_entities.selected_being = Some(*entity);
+                                    } else {
+                                        selected_entities.selected_being = Some(*entity);
+                                        selected_entities.selected_beings.clear();
+                                        selected_entities.selected_being_bodypart = None;
+                                        selected_entities.show_full_being_components = false;
+                                    }
                                     window_visible.being_details = true;
                                 }
                             }

@@ -6,6 +6,7 @@ pub use crate::debug_seris::*;
 use common::common_components::HashId;
 use common::common_states::HotReloadSelection;
 use std::collections::HashMap;
+use bevy_ecs_tilemap::tiles::TileColor;
 
 use tilemap_shared::GlobalTilePos;
 
@@ -32,7 +33,6 @@ pub struct DubugWindowsVisibility{
     pub tilemap_details: bool,
     pub being_details: bool,
     pub being_nav_log: bool,
-    pub being_tile_click_picker: bool,
     pub faction_details: bool,
     pub player_details: bool,
     pub registered_positions: bool,
@@ -42,7 +42,7 @@ pub struct DubugWindowsVisibility{
     pub gpos_maps: bool,
     pub tile_indices_map: bool,
     pub nav_maps: bool,
-    pub world_tile_click_picker: bool,
+    pub click_picker: bool,
     pub tile_click_remover: bool,
     pub being_click_remover: bool,
     pub hot_reload_window_open_on_start: bool,
@@ -80,7 +80,6 @@ impl Default for DubugWindowsVisibility {
             tilemap_details: false,
             being_details: false,
             being_nav_log: false,
-            being_tile_click_picker: false,
             faction_details: false,
             player_details: false,
             registered_positions: false,
@@ -90,7 +89,7 @@ impl Default for DubugWindowsVisibility {
             gpos_maps: false,
             tile_indices_map: false,
             nav_maps: false,
-            world_tile_click_picker: false,
+            click_picker: false,
             tile_click_remover: false,
             being_click_remover: false,
             hot_reload_window_open_on_start: false,
@@ -118,6 +117,7 @@ pub struct DebugSelectedEntities {
     pub selected_tile: Option<Entity>,
     pub selected_tiles: EntityHashSet,
     pub selected_being: Option<Entity>,
+    pub selected_beings: EntityHashSet,
     pub selected_being_interaction_zone: Option<HashId>,
     pub selected_being_bodypart: Option<Entity>,
     pub show_full_being_components: bool,
@@ -145,6 +145,7 @@ impl Default for DebugSelectedEntities {
             selected_tile: None,
             selected_tiles: EntityHashSet::default(),
             selected_being: None,
+            selected_beings: EntityHashSet::default(),
             selected_being_interaction_zone: None,
             selected_being_bodypart: None,
             show_full_being_components: false,
@@ -163,18 +164,45 @@ impl Default for DebugSelectedEntities {
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct WorldTileClickInspectorState {
     pub enabled: bool,
+    pub picking_enabled: bool,
+    pub picker_side: usize,
+    pub mult_being_windows: bool,
+    pub mult_tile_windows: bool,
+    pub auto_open_being_details: bool,
+    pub auto_open_tile_details: bool,
     pub clicked_dim: Option<HashId>,
     pub clicked_gpos: Option<tilemap_shared::GlobalTilePos>,
+    pub highlighted_center_tile: Option<Entity>,
+    pub highlighted_center_tile_original_color: Option<TileColor>,
 }
 
 impl WorldTileClickInspectorState {
     pub fn clear_picker_selection(&mut self) {
+        self.clicked_dim = None;
+        self.clicked_gpos = None;
     }
 }
 
+impl Default for WorldTileClickInspectorState {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            picking_enabled: true,
+            picker_side: 5,
+            mult_being_windows: false,
+            mult_tile_windows: false,
+            auto_open_being_details: false,
+            auto_open_tile_details: false,
+            clicked_dim: None,
+            clicked_gpos: None,
+            highlighted_center_tile: None,
+            highlighted_center_tile_original_color: None,
+        }
+    }
+}
 #[derive(Resource, Debug)]
 pub struct TileClickRemoverState {
     pub despawn_last_tile: bool,
@@ -210,37 +238,6 @@ impl Default for BeingClickRemoverState {
 }
 
 impl BeingClickRemoverState {
-    pub fn reset_inactivity_timer(&mut self) {
-        self.inactivity_timer.reset();
-    }
-}
-
-#[derive(Resource, Debug)]
-pub struct BeingTileClickInspectorState {
-    pub last_clicked_dim: Option<HashId>,
-    pub last_clicked_gpos: Option<tilemap_shared::GlobalTilePos>,
-    pub last_selected_being: Option<Entity>,
-    pub inactivity_timer: Timer,
-}
-
-impl Default for BeingTileClickInspectorState {
-    fn default() -> Self {
-        Self {
-            last_clicked_dim: None,
-            last_clicked_gpos: None,
-            last_selected_being: None,
-            inactivity_timer: Timer::from_seconds(10.0, TimerMode::Once),
-        }
-    }
-}
-
-impl BeingTileClickInspectorState {
-    pub fn clear_selection(&mut self) {
-        self.last_clicked_dim = None;
-        self.last_clicked_gpos = None;
-        self.last_selected_being = None;
-    }
-
     pub fn reset_inactivity_timer(&mut self) {
         self.inactivity_timer.reset();
     }

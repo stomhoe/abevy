@@ -2,7 +2,6 @@
 pub use debug::*;
 pub use beings_list_window::*;
 pub use being_details_inspector::*;
-pub use being_tile_click_picker::*;
 pub use being_click_remover::*;
 pub use faction_details_inspector::*;
 pub use chunk_details_inspector::*;
@@ -44,7 +43,6 @@ mod chunk_details_inspector;
 mod region_details_inspector;
 mod tilemap_details_inspector;
 mod being_details_inspector;
-mod being_tile_click_picker;
 mod being_click_remover;
 mod faction_details_inspector;
 mod player_details_inspector;

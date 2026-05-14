@@ -14,7 +14,6 @@ use crate::debug_messages::*;
 
     use crate::{
         being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
-        being_tile_click_picker::*,
         being_click_remover::*,
         being_nav_log_window::*,
         daylight_window::*,
@@ -57,9 +56,7 @@ pub fn plugin(app: &mut App) {
                 debug_toggle_main_menu,
                 capture_world_tile_click_selection,
                 capture_world_tile_click_removal,
-                capture_world_being_click_selection,
                 capture_world_being_click_removal,
-                capture_world_being_nav_selection,
             )
                 .run_if(debug_enabled),
         )
@@ -114,7 +111,7 @@ pub fn plugin(app: &mut App) {
                 gpos_maps_window_system,
                 tile_indices_map_window,
                 nav_maps_window,
-                world_tile_click_picker_window,
+                click_picker_window,
                 nav_log_window,
                 terrgen_debug_window_system
                     .run_if(|visible: Res<DubugWindowsVisibility>| visible.terrgen_values),
@@ -124,10 +121,10 @@ pub fn plugin(app: &mut App) {
         .add_systems(
             EguiPrimaryContextPass,
             (
-                tile_details_inspector,
                 chunk_details_inspector,
                 region_details_inspector,
                 tilemap_details_inspector,
+                tile_details_inspector,
                 being_details_inspector,
                 faction_details_inspector,
                 player_details_inspector,
@@ -146,7 +143,6 @@ pub fn plugin(app: &mut App) {
         .init_resource::<WorldTileClickInspectorState>()
         .init_resource::<TileClickRemoverState>()
         .init_resource::<BeingClickRemoverState>()
-        .init_resource::<BeingTileClickInspectorState>()
         .init_resource::<DebugBeingNavUiState>()
         .init_resource::<DebugBeingLocationEditorState>()
         .init_resource::<DebuggingBeingNav>()
