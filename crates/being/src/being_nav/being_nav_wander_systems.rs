@@ -623,8 +623,8 @@ pub fn wander_behavior(
         let axis = FinalNormMoveDir(input_dir).normalize_to_axis_dir();
         if axis == IVec2::ZERO {
             if lod_level <= 1 && state.should_adjust_halt_facing_once() {
-                if let Ok(facing_dir) = blocking_tiles.cardinal_direction_query().get_mut(pred_ent) {
-                    let current_facing = *facing_dir;
+                if let Ok(current_facing) = blocking_tiles.cardinal_direction_query().get(pred_ent) {
+                    let current_facing = *current_facing;
                     let facing_gpos = GlobalTilePos(gpos.0 + current_facing.to_dir_vec());
                     if !can_phase && blocking_tiles.is_blocked_at_tiles_only(dim_ref, facing_gpos, pred_ent) {
                         let next_facing = pick_clear_cardinal_dir(
@@ -636,6 +636,9 @@ pub fn wander_behavior(
                             Some(current_facing),
                         )
                         .unwrap_or(current_facing);
+                        if let Ok(mut facing_dir) = blocking_tiles.cardinal_direction_query().get_mut(pred_ent) {
+                            *facing_dir = next_facing;
+                        }
                     }
                 }
                 state.mark_halt_facing_adjusted();

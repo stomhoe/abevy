@@ -37,10 +37,14 @@ pub struct SpriteAnimationQueries<'w, 's> {
     pub animation_seri_query: Query<'w, 's, &'static AnimationSeri>,
 }
 
+
+
+pub type HoldersChangeFilter = (Without<Templ>, Or<(Changed<HeldSprites>, Changed<Grounding>, Changed<MoveAnimActive>, Changed<CardinalDirection>, Changed<SpeedMagnitude>)>);
+
 #[allow(unused_parens, )]
 pub fn switch_or_readjust_sprite_animation(
     mut cmd: Commands, asset_server: Res<AssetServer>,
-    changed_entities: Query<Entity, (Or<(Changed<HeldSprites>, Changed<Grounding>, Changed<MoveAnimActive>, Changed<CardinalDirection>, Changed<SpeedMagnitude>, )>, Without<Templ>)>,
+    changed_entities: Query<Entity, (HoldersChangeFilter)>,
     changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<TemplEntiRef>, Without<SpriteConfig>, Without<Templ>)>,
     animation_map: Res<AcAnimationEntityMap>,
     queries: SpriteAnimationQueries,
@@ -313,7 +317,7 @@ pub fn switch_or_readjust_sprite_animation(
                     sprite_comp.rect = rect;
                     sprite_comp.image_mode = image_mode;
                 } else {
-                    cmd.entity(ent).insert(Sprite {
+                    cmd.entity(ent).try_insert(Sprite {
                         image,
                         texture_atlas,
                         color,
@@ -331,7 +335,7 @@ pub fn switch_or_readjust_sprite_animation(
                     prev_animation.playing = playing;
                     prev_animation.speed_factor = speed_factor;
                 } else {
-                    cmd.entity(ent).insert(SpritesheetAnimation {
+                    cmd.entity(ent).try_insert(SpritesheetAnimation {
                         animation,
                         progress,
                         playing,
@@ -394,7 +398,6 @@ pub fn switch_or_readjust_sprite_animation(
                         }
                     }
                 }
-                // Update alternating state after using it
                 if should_update_alternating_state {
                     if let Some(alt_state) = alternating_state.as_mut() {
                         if !alt_state.0.is_empty() {
@@ -409,9 +412,10 @@ pub fn switch_or_readjust_sprite_animation(
 #[allow(unused_parens)]
 pub fn msg_movestate_update_to_clients_for_sprite_animation(
     connected: Query<&Player, Without<Mine>>,
-    changed_entities: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, Changed<MoveAnimActive>, Changed<CardinalDirection>, )>>,
+    changed_entities: Query<Entity, (HoldersChangeFilter, )>,
+    bases_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&CardinalDirection>, Option<&StrId>), (HoldersChangeFilter)>,
+    changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<TemplEntiRef>, Without<SpriteConfig>, Without<Templ>)>,
 
-    bases_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&CardinalDirection>, Option<&StrId>)>,
     controller: Query<&ComputedBy>,
     mut mwriter: MessageWriter<ToClients<SyncMoveState>>,
     mut messages_to_send: Local<Vec<ToClients<SyncMoveState>>>,
@@ -420,8 +424,10 @@ pub fn msg_movestate_update_to_clients_for_sprite_animation(
     if connected.is_empty() { return; }
     entis_to_iter.clear();
     let changed_entities_iter = changed_entities.iter();
-    entis_to_iter.reserve(changed_entities_iter.size_hint().1.unwrap_or(changed_entities_iter.size_hint().0));
+    let cfg_refs_iter = changed_sprite_cfg_refs.iter();
+    entis_to_iter.reserve(changed_entities_iter.size_hint().1.unwrap_or(changed_entities_iter.size_hint().0) + cfg_refs_iter.size_hint().1.unwrap_or(cfg_refs_iter.size_hint().0));
     entis_to_iter.extend(changed_entities_iter);
+    entis_to_iter.extend(cfg_refs_iter.map(|base_holder| base_holder.base));
 
     for (being_ent, &moving, grounding, direction, id) in bases_query.iter_many(entis_to_iter.iter()) {
         let moving = moving.get();
