@@ -28,29 +28,30 @@ fn corpse_rotation() -> Quat {
 }
 
 #[allow(unused_parens)]
-pub fn apply_dead_snap_pose_after_gpos_change(
+pub fn apply_corpse_pose_after_gpos_change(
+    mut cmd: Commands,
     mut query: Query<
-        (Option<&mut Transform>, Option<&mut CardinalDirection>, Has<Being>, Has<Dead>, ),
+        (Entity, Option<&mut Transform>, Option<&mut CardinalDirection>, ),
         (
             common::AnyDisabling,
             ExcludedComps,
             Or<(Changed<GlobalTilePos>, Added<Dead>)>,
+            With<Being>, With<Dead>,
         ),
     >,
 ) {
     let mut rng = rand::rng();
-    for (transform, card_dir, has_being, has_dead) in query.iter_mut() {
-        let corpse_pose = has_being && has_dead;
+    for (being_ent, transform, card_dir, ) in query.iter_mut() {
         let Some(mut transform) = transform else { continue };
-        if corpse_pose {
-            let rotation = corpse_rotation();
-            let corpse_offset = rotation * Vec3::new(0.0, -16.0, 0.0);
-            transform.translation += corpse_offset;
-            transform.rotation = rotation;
-            if let Some(mut card_dir) = card_dir {
-                *card_dir = CardinalDirection::random(&mut rng);
-            }
+        let rotation = corpse_rotation();
+        let corpse_offset = rotation * Vec3::new(0.0, -16.0, 0.0);
+        transform.translation += corpse_offset;
+        transform.rotation = rotation;
+        if let Some(mut card_dir) = card_dir {
+            *card_dir = CardinalDirection::random(&mut rng);
+            cmd.entity(being_ent).try_insert(card_dir.clone());
         }
+        cmd.entity(being_ent).try_insert((transform.clone()));
     }
 }
 

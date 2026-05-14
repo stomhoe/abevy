@@ -5,6 +5,7 @@ use common::{common_states::AssetLoading };
 use common::common_resources::ImageSizeReady;
 use bevy_ecs_tilemap::prelude::*;
 use bevy::ecs::schedule::common_conditions::{any_with_component, on_message};
+use game_common::HostSystems;
 use sprite_systems::AcSpriteSystems;
 use bevy::prelude::*;
 use crate::terrain::terrprobe::{search_suitable_positions, terrprobe_components::AwaitingStartSearch, terrprobe_messages::{SearchFailed, SuitablePosFound}};
@@ -63,8 +64,9 @@ pub fn plugin(app: &mut App) {
         (despawn_other_tiles_in_same_pos_if_not_excepted_from_added_delete_other_tiles, 
             despawn_other_tiles_in_same_pos_if_not_excepted).in_set(PreChunkDespawnSystems),//DON'T TOUCH
         add_projectile_colliders_to_tiles,
-        snap_transform_to_gpos,
-        apply_dead_snap_pose_after_gpos_change.after(snap_transform_to_gpos),
+        (snap_transform_to_gpos, 
+            apply_corpse_pose_after_gpos_change.in_set(HostSystems)
+        ).chain(),
         sync_tile_instance_templ_enti_ref_from_map,
         emit_global_tile_pos_change,
         validate_portal_recipes,

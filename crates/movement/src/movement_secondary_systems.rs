@@ -120,7 +120,7 @@ pub fn update_facing_dir(
 pub fn copy_client_move_input_to_controlled_beings(
     player_query: Query<(&Actions<BeingDirectControlInputContext>, &ComputedBeings), (With<Mine>, With<Player>)>,
     move_action_query: Query<&Action<DcWasdAction>>,
-    mut beings: Query<(&ComputedBy, &mut InputMoveDir), (LocalHumanControlledNonDead, Without<Dead>)>,
+    mut beings: Query<(&ComputedBy, &mut InputMoveDir), (LocalHumanControlledNonDead,)>,
 ) {
     let mut found_player = false;
     if beings.is_empty(){

@@ -772,7 +772,9 @@ fn add_part_or_body_modifier_sum(
 pub fn apply_bodypart_hp_regen(
     time: Res<Time>,
     max_hp_by_part: Res<BodypartMaxHpMap>,
-    mut parts_query: Query<(Entity, Option<&mut AccuDamage>,), (With<BodypartChildOfBodypart>, Without<Templ>, Without<Missing>)>,
+    mut parts_query: Query<(Entity, &ChildOf, Option<&mut AccuDamage>,), (With<BodypartChildOfBodypart>, Without<Templ>, Without<Missing>)>,
+    body_of_query: Query<&BodyOf>,
+    dead_query: Query<(), With<Dead>>,
     applied_mods_query: Query<&AppliedModifiers>,
     hp_regen_query: Query<(), (With<HitpointRegenRate>,)>,
 
@@ -785,7 +787,14 @@ pub fn apply_bodypart_hp_regen(
         return;
     }
 
-    for (part_ent, damage) in parts_query.iter_mut() {
+    for (part_ent, child_of, damage) in parts_query.iter_mut() {
+        let Ok(body_of) = body_of_query.get(child_of.parent()) else {
+            continue;
+        };
+        if dead_query.get(body_of.being).is_ok() {
+            continue;
+        }
+
         let part_templ_ref = templ_enti_refs_query.get(part_ent).ok();
         effects.clear();
         collect_applied_modifier_entities(
