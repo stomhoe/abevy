@@ -9,7 +9,7 @@ use ::being_shared::{Being, LocalHumanControlled};
 use ::tilemap_shared::{Dimension, DimensionRef};
 
 use crate::debug_messages::ClientDebugSetBeingDimensionRequest;
-use crate::debug_resources::{DebugUiConfig, DubugWindowsVisibility};
+use debug_shared::{DebugUiConfig, DubugWindowsVisibility};
 
 fn dimension_label(name: Option<&Name>, dim_ref: DimensionRef) -> String {
     name.map(|name| name.to_string())

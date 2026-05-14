@@ -9,7 +9,7 @@ use tilemap::tile::tile_components::{TileStrId};
 use ::tilemap_shared::*;
 
 use crate::debug_ui_helpers::direction_arrow;
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility};
 
 fn dimension_name_for_ref(
     dim_ref: &DimensionRef,

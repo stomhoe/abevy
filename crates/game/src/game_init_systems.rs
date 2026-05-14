@@ -200,8 +200,10 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
 }
 
 #[allow(unused_parens)]
+//TODO chequear el estado actual de la partida (new game o loaded (cargar su character si ya tiene)) y los Res<State<GamePhase>> antes de hacer esto
+
 pub fn host_on_player_added(mut cmd: Commands,
-    query: Query<(Entity, &StrId, Has<HostPlayer>),(Added<StrId>, With<Player>)>,
+    query: Query<(Entity, &StrId, Has<HostPlayer>),(With<Player>, Or<(Added<StrId>, Added<Player>)>, )>,
     player_query: Query<(&CreatedCharacters)>,
     ________settings: Res<GameInitSettings>,
     wall_phaser_on_spawn: Res<::being_shared::WallPhaserOnSpawn>,

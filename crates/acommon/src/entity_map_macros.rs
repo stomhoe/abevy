@@ -53,7 +53,7 @@ macro_rules! __entity_map_emit_shared_items {
     ) => {
         paste::paste! {
             #[derive(Component, Debug, Default, serde::Deserialize, serde::Serialize, Clone, )]
-            #[require(common::AssetScoped, common::EguiHolder, common::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), bevy_replicon::shared::replication::Replicated, $holder_visibility, Transform, Name)]
+            #[require(common::AssetScoped, common::EguiHolder, common::Prefix::trunc(concat!("Egui", stringify!($main_component), "Holder")), $holder_visibility, Transform, Name)]
             pub struct [<Egui $abbreviation sHolder>];
 
             #[derive(bevy::prelude::Resource, std::fmt::Debug, Clone)]
@@ -428,7 +428,6 @@ macro_rules! define_entity_map_systems {
                 use bevy_replicon::prelude::AppRuleExt;
                 app
                     .replicate::<$main_component>()
-                    .replicate::<[<Egui $abbreviation sHolder>]>()
                     .replicate::<[<$abbreviation Ref>]>()
                     .replicate_filtered_as::<Visibility, common::VisibilityGameState, (With<[<Egui $abbreviation sHolder>]>,)>();
                 [<plugin_common_ $main_component:snake>](app);
@@ -498,7 +497,6 @@ macro_rules! define_entity_map_systems {
                     .init_resource::<bevy_asset_loader::dynamic_asset::DynamicAssets>()
                     .replicate::<$main_component>()
                     .replicate::<[<$abbreviation Ref>]>()
-                    .replicate::<[<Egui $abbreviation sHolder>]>()
                     .configure_loading_state(
                         bevy_asset_loader::prelude::LoadingStateConfig::new(common::common_states::AssetLoading::LoadingAssetsIntoHandles)
                             $(.load_collection::<[<$seri_type sHandles>]>() )*
@@ -522,7 +520,6 @@ macro_rules! define_entity_map_systems {
                         [<map_ $main_component:snake _id_to_entity>],
                         [<add_ $main_component:snake _templs_to_egui_holder>]
                             .run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1)))
-                            .run_if(in_state(bevy_replicon::prelude::ClientState::Disconnected)),
                     ))
                     .add_observer([<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>]);
             }
@@ -566,7 +563,6 @@ macro_rules! define_entity_map_systems_no_replicate {
                         [<map_ $main_component:snake _id_to_entity>],
                         [<add_ $main_component:snake _templs_to_egui_holder>]
                             .run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1)))
-                            .run_if(in_state(bevy_replicon::prelude::ClientState::Disconnected)),
                     ))
                     .add_observer([<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>]);
             }
@@ -622,7 +618,6 @@ macro_rules! define_entity_map_systems_no_replicate {
                         [<resolve_ $abbreviation:snake _templ_enti_ref_from_hash_id>].after([<map_ $main_component:snake _id_to_entity>]),
                         [<add_ $main_component:snake _templs_to_egui_holder>]
                             .run_if(bevy::time::common_conditions::on_timer(core::time::Duration::from_secs(1)))
-                            .run_if(in_state(bevy_replicon::prelude::ClientState::Disconnected)),
                     ))
                     .add_observer([<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>])
                     .configure_loading_state(

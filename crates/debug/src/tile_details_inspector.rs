@@ -9,14 +9,14 @@ use tilemap::tile::tile_components::{TileStrId};
 use tilemap_shared::DeleteOtherTilesInSamePos;
 use tilemap_shared::SafeDespawn;
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility};
 
 #[allow(unused_parens)]
 pub fn tile_details_inspector(world: &mut World) {
     let selected_entities = world.resource::<DebugSelectedEntities>();
 
     let multi_tiles_active = world
-        .get_resource::<crate::debug_resources::WorldTileClickInspectorState>()
+        .get_resource::<debug_shared::ClickInspectorState>()
         .is_some_and(|state| state.mult_tile_windows);
 
     if multi_tiles_active {

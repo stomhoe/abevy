@@ -1,10 +1,11 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 
-use crate::{time_components::*, time_resources::*, time_types::*};
+use common::common_components::SettingsEntity;
+use time_shared::*;
 
 pub fn pass_time(
     time: Res<Time>,
-    sim_timescale: Res<SimTimeScale>,
+    sim_timescale_query: Query<&SimTimeScale, With<SettingsEntity>>,
     mut curr_min: ResMut<CurrMin>,
     mut curr_hour: ResMut<CurrHour>,
     mut curr_day: ResMut<CurrDay>,
@@ -12,6 +13,9 @@ pub fn pass_time(
     mut curr_year: ResMut<CurrYear>,
     ingame_timing: Res<InGameTiming>,
 ) {
+    let Ok(sim_timescale) = sim_timescale_query.single() else {
+        return;
+    };
     let day_length_minutes = ingame_timing.day_length_minutes().max(1.0);
     let time_scale = (24.0 / day_length_minutes) * sim_timescale.0;
 

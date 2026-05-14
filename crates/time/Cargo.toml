@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 bevy = { workspace = true }
 bevy_replicon = { workspace = true }
+time_shared = { path = "../time_shared" }
 common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 tilemap_shared = { path = "../tilemap_shared" }

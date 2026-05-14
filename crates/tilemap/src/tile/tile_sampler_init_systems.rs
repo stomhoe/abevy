@@ -19,7 +19,7 @@ pub fn init_tile_weighted_samplers(
     for seri in load_tile_weighted_sampler_seri_defs() {
         let Ok(str_id) = StrId::new_with_result(seri.id, 4) else { continue };
         let ent = cmd.spawn_empty().id();
-        comps_to_insert.push((ent, (str_id, AddHashIdFromStrId, HashIdWeightedSampler::default(), TileWeightedSampler, )));
+        comps_to_insert.push((ent, (str_id, AddHashIdFromStrId, HashIdWeightedSampler::default(), TileWeightedSampler, ReplicateIfServerStarts)));
     }
     cmd.insert_batch(comps_to_insert);
 }

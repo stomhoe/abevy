@@ -3,7 +3,7 @@ use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
-use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
 
 use camera::camera_components::CameraTarget;
 use common::common_components::StrId;

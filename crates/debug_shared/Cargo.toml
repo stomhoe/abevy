@@ -1,0 +1,12 @@
+[package]
+name = "debug_shared"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+bevy_ecs_tilemap = { workspace = true }
+common = { path = "../acommon" }
+being_shared = { path = "../being_shared" }
+tilemap_shared = { path = "../tilemap_shared" }
+serde = { workspace = true }

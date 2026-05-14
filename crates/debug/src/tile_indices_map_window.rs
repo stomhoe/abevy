@@ -5,7 +5,7 @@ use common::common_components::HashId;
 use tilemap::chunking::MacroChunkU16IndexMatrix;
 use tilemap_shared::{DimensionRef, GlobalTilePos, LoadedMacroChunks};
 
-use crate::debug_resources::DubugWindowsVisibility;
+use debug_shared::DubugWindowsVisibility;
 
 pub struct TileIndicesMapUiState {
     radius: i32,

@@ -26,7 +26,7 @@ use crate::debug_messages::{
     ClientDebugSetBeingCurrentBloodRequest, ClientDebugSetBeingCurrentHpRequest, ClientDebugSetBeingDimensionRequest,
     ClientDebugKillBeingRequest, ClientDebugReviveBeingRequest, ClientDebugTeleportBeingRequest,
 };
-use crate::debug_resources::{
+use debug_shared::{
     DebugBeingLocationEditorState, DebugBeingVitalsAdjustState, DebugSelectedEntities,
     DebugUiConfig, DubugWindowsVisibility,
 };
@@ -853,7 +853,7 @@ pub fn being_details_inspector(world: &mut World) {
     };
 
     let multi_beings_active = world
-        .get_resource::<crate::debug_resources::WorldTileClickInspectorState>()
+        .get_resource::<debug_shared::ClickInspectorState>()
         .is_some_and(|state| state.mult_being_windows);
 
     if multi_beings_active {
@@ -1091,7 +1091,6 @@ pub fn being_details_inspector(world: &mut World) {
     }
 
     let mut clear_selection = false;
-    let mut open_nav_log = false;
     let mut is_open = true;
     let world_ptr = world as *mut World;
 
@@ -1117,9 +1116,6 @@ pub fn being_details_inspector(world: &mut World) {
                             world.entity_mut(selected_being_entity).insert(WallPhaser);
                         }
                     }
-                }
-                if ui.button("NavLog").clicked() {
-                    open_nav_log = true;
                 }
                 if ui.button("Clear Selection").clicked() {
                     clear_selection = true;
@@ -2051,20 +2047,6 @@ pub fn being_details_inspector(world: &mut World) {
             selected_entities.selected_being_interaction_zone = selected_interaction_zone;
             selected_entities.selected_being_bodypart = selected_part;
             selected_entities.show_full_being_components = show_full_components;
-        }
-    }
-
-    if open_nav_log {
-        let should_track = behavorial_nav_state_query
-            .get(world, selected_being_entity)
-            .unwrap_or(false);
-        if should_track {
-            if let Some(mut nav_debug) = world.get_resource_mut::<DebuggingBeingNav>() {
-                nav_debug.track_being(selected_being_entity);
-            }
-        }
-        if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
-            window_visible.being_nav_log = true;
         }
     }
 

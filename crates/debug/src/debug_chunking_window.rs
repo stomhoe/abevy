@@ -4,7 +4,7 @@ use bevy_ecs_tilemap::prelude::{TilePos, TileStorage};
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use std::collections::{BTreeMap, HashMap};
 
-use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
 
 use camera::camera_components::CameraTarget;
 use common::common_components::*;

@@ -22,6 +22,7 @@ bevy = { workspace = true }
 paste = { workspace = true }
 serde = { workspace = true }
 bevy_replicon = { workspace = true }
+bevy_replicon_renet = { workspace = true }
 bevy_common_assets = { workspace = true }
 bevy_asset_loader = { workspace = true }
 rand = { workspace = true }

@@ -9,7 +9,7 @@ use common::common_components::*;
 use regioning::natural::river::{RiverDebugData, RiverRegionDebugInfo, RiverRegionPlan};
 use tilemap_shared::*;
 
-use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
 
 fn region_dim_key_for_ref(
     dim_ref: &DimensionRef,

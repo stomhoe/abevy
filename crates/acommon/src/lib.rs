@@ -5,6 +5,7 @@ pub use paste;
 pub mod common;
 
 pub mod common_components;
+pub mod common_events;
 pub mod common_id_components;
 pub mod common_tag_components;
 pub mod common_types;

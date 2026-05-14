@@ -125,7 +125,6 @@ pub fn init_terrain_probes(
                 let _ = cmd.spawn((
                     inline_opfilter_strid.clone(),
                     AddHashIdFromStrId,
-                    Replicated,
                     AssetScoped,
                     SelectedForHotReload,
                     Templ,

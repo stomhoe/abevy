@@ -21,7 +21,7 @@ pub fn plugin(app: &mut App) {
         plugin_ac_animation,
     ))
     .add_systems(Update, ((
-           switch_or_readjust_sprite_animation.after(client_receive_moving_anim),
+           switch_or_readjust_sprite_animation,
            msg_movestate_update_to_clients_for_sprite_animation
                .run_if(in_state(ServerState::Running)),
            client_receive_moving_anim
@@ -33,7 +33,7 @@ pub fn plugin(app: &mut App) {
             init_animation_sheet_and_handle,
         ).in_set(SpriteAnimationSystems),
     ))
-    .configure_sets(Update, (SpriteAnimationSystems.in_set(SimRunningSystems).after(AcAudioSystems).after(MovementSystems),))
+    .configure_sets(Update, (SpriteAnimationSystems.in_set(SimRunningSystems).after(AcAudioSystems)))
 
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
         SpriteAnimationSystems.before(AcSpriteSystems)
@@ -47,7 +47,6 @@ pub fn plugin(app: &mut App) {
 
     .replicate_once::<AnimExtraState>()
     .replicate_once::<MoveAnimActive>()
-    .replicate_filtered::<ChildOf, With<AcAnimation>>()
     .replicate::<AnimationSeri>()
     .replicate::<ClipStartFrames>()
     .replicate::<AlternatingStartFramesConfig>()

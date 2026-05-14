@@ -3,7 +3,7 @@ use bevy_inspector_egui::bevy_egui::{EguiContexts, egui};
 use common::common_components::StrId;
 use player_shared::player_components::{Mine, Player};
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility};
 
 #[allow(unused_parens)]
 pub fn players_list_window(

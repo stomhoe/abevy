@@ -8,7 +8,7 @@ use game_common::game_common_components::TemplEntiRef;
 use sprite_shared::AcZ;
 use tilemap_shared::{DimensionRef, GlobalTilePos, SafeDespawn, TileGatheringParamSet};
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility, TileClickRemoverState};
+use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility, TileClickRemoverState};
 
 fn cursor_tile_pick_context(
     contexts: &mut EguiContexts,

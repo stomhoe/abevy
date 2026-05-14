@@ -168,10 +168,10 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<(OplistSize)>()//LO USAN LAS TILE INSTANCES DE TILEMAP, NO BORRAR
 
 
-    .replicate_filtered::<ChildOf, (Without<TilemapId>)>()
+    .replicate_filtered::<ChildOf, (With<Tile>, Without<game_common::Templ>, Without<TilemapId>)>()
+    .replicate_filtered::<ChildOf, (With<TileChildSprite>, Without<TilemapId>)>()
 
 
-    .replicate_filtered::<ChildOf, With<HashIdWeightedSampler>>()
 
     //usar feature
     .add_message::<SavedTileHadChunkDespawn>()

@@ -10,7 +10,7 @@ use game_common::game_common_states::*;
 use tilemap_shared::GlobalGenSettings;
 use tilemap_shared::StructureGenerationSettings;
 
-use crate::debug_resources::{BeingClickRemoverState, DubugWindowsVisibility, TileClickRemoverState};
+use debug_shared::{BeingClickRemoverState, DubugWindowsVisibility, TileClickRemoverState};
 use crate::tile_click_remover::set_tile_click_remover_active;
 use crate::being_click_remover::set_being_click_remover_active;
 
@@ -211,7 +211,6 @@ pub fn main_menu_window(
                 window_visible.beings_list = false;
                 window_visible.players_list = false;
                 window_visible.portals_list = false;
-                window_visible.terrgen_editor = false;
                 window_visible.terrgen_values = false;
                 window_visible.inlandness_visualizer = false;
                 window_visible.settings_editor = false;
@@ -233,7 +232,6 @@ pub fn main_menu_window(
                 window_visible.click_picker = false;
                 window_visible.tile_click_remover = false;
                 window_visible.being_click_remover = false;
-                window_visible.being_nav_log = false;
                 window_visible.hot_reload_window_open_on_start = false;
                 window_visible.river_debug = false;
             }
@@ -300,9 +298,6 @@ pub fn main_menu_window(
                     &mut window_visible,
                 );
             }
-            if ui.button(egui::RichText::new("NavLog").size(16.0)).clicked() {
-                window_visible.being_nav_log = true;
-            }
             if ui.button(egui::RichText::new("👥 Beings list").size(16.0)).clicked() {
                 window_visible.beings_list = !window_visible.beings_list;
             }
@@ -320,9 +315,6 @@ pub fn main_menu_window(
             }
             if ui.button(egui::RichText::new("� Sprite Configs").size(16.0)).clicked() {
                 window_visible.sprite_configs_list = !window_visible.sprite_configs_list;
-            }
-            if ui.button(egui::RichText::new("🌍 Terrain generation editor").size(16.0)).clicked() {
-                window_visible.terrgen_editor = !window_visible.terrgen_editor;
             }
             if ui.button(egui::RichText::new("▦ Terrain noise values map").size(16.0)).clicked() {
                 window_visible.terrgen_values = !window_visible.terrgen_values;

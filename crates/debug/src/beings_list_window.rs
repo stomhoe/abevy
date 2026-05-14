@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use camera::camera_components::CameraTarget;
 use ::being_shared::*;
 use crate::debug_ui_helpers::direction_arrow;
-use crate::debug_resources::*;
+use debug_shared::*;
 
 fn ref_id_label(entity: Entity, id_query: &Query<&StrId>) -> String {
     id_query
@@ -83,7 +83,7 @@ pub fn beings_list_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
-    mut state: ResMut<WorldTileClickInspectorState>,
+    mut state: ResMut<ClickInspectorState>,
     being_query: Query<
         (
             Entity,

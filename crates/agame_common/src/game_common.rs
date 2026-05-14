@@ -40,14 +40,7 @@ pub fn plugin(app: &mut App) {
             (ModifierSystems,).in_set(SimRunningSystems),
             SimRunningSystems.run_if(in_state(SimulationState::Running)),
             (SimRunningSystems, SimPausedSystems).in_set(GameplaySystems),
-            (GameplaySystems)
-                .run_if(
-                    in_state(GamePhase::ActiveGame).and(
-                        (in_state(ClientState::Connected))
-                            .or(in_state(AssetLoading::SpawnReplicatedEntities)
-                                .and(in_state(ClientState::Disconnected))),
-                    ),
-                )
+            (GameplaySystems).run_if(in_state(GamePhase::ActiveGame))
                 .in_set(StatefulSessionSystems),
             StatefulSessionSystems.run_if(in_state(AppState::StatefulGameSession)),
             HostSystems.run_if(in_state(ClientState::Disconnected)),
@@ -59,14 +52,7 @@ pub fn plugin(app: &mut App) {
         (
             (ModifierSystems,).in_set(SimRunningSystems),
             (SimRunningSystems, SimPausedSystems).in_set(GameplaySystems),
-            (GameplaySystems)
-                .run_if(
-                    in_state(GamePhase::ActiveGame).and(
-                        (in_state(ClientState::Connected))
-                            .or(in_state(AssetLoading::SpawnReplicatedEntities)
-                                .and(in_state(ClientState::Disconnected))),
-                    ),
-                )
+            (GameplaySystems).run_if(in_state(GamePhase::ActiveGame))
                 .in_set(StatefulSessionSystems),
             StatefulSessionSystems.run_if(in_state(AppState::StatefulGameSession)),
             SimRunningSystems.run_if(in_state(SimulationState::Running)),
@@ -92,7 +78,6 @@ pub fn plugin(app: &mut App) {
     .replicate::<Dead>()
     .replicate::<DespawnOnDeath>()
     .replicate::<ScaleHpAndStrengthWithSampledSize>()
-    .replicate_filtered::<ChildOf, Without<TilemapId>>()
     .replicate::<HashIdWeightedSampler>()
     .replicate::<CloneTemplChildren>()
 

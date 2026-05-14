@@ -2,10 +2,11 @@ use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 
 use camera::camera_components::CameraTarget;
+use common::common_components::SettingsEntity;
 use tilemap_shared::{DirectionalLight2dOverride, DimensionDaylightRuntime, DimensionDaylightSeri, DimensionEntityMap, DimensionRef};
 use time::SimTimeScale;
 
-use crate::debug_resources::DubugWindowsVisibility;
+use debug_shared::DubugWindowsVisibility;
 
 fn edit_rgb(ui: &mut egui::Ui, label: &str, rgb: &mut [f32; 3]) {
     ui.horizontal(|ui| {
@@ -38,7 +39,7 @@ pub fn daylight_window(
     camera_dimension: Query<&DimensionRef, With<CameraTarget>>,
     dimension_map: Res<DimensionEntityMap>,
     mut daylight_query: Query<(&mut DimensionDaylightSeri, &mut DimensionDaylightRuntime)>,
-    mut sim_timescale: ResMut<SimTimeScale>,
+    mut sim_timescale_query: Query<&mut SimTimeScale, With<SettingsEntity>>,
     mut directional_light_override: ResMut<DirectionalLight2dOverride>,
 ) {
     if !window_visible.daylight {
@@ -59,6 +60,9 @@ pub fn daylight_window(
         return;
     };
     let Ok((mut daylight, mut daylight_runtime)) = daylight_query.get_mut(dimension_ent) else {
+        return;
+    };
+    let Ok(mut sim_timescale) = sim_timescale_query.single_mut() else {
         return;
     };
     daylight.normalize();

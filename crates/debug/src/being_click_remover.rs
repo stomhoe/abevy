@@ -6,8 +6,8 @@ use common::log_targets::DEBUG;
 use camera::camera_components::CameraTarget;
 use tilemap_shared::DimensionRef;
 
-use crate::world_tile_click_picker_window::cursor_world_pick_context;
-use crate::debug_resources::{BeingClickRemoverState, DubugWindowsVisibility, DebugSelectedEntities};
+use crate::click_picker_window::cursor_world_pick_context;
+use debug_shared::{BeingClickRemoverState, DubugWindowsVisibility, DebugSelectedEntities};
 
 pub(crate) fn set_being_click_remover_active(
     active: bool,

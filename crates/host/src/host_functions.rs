@@ -12,11 +12,10 @@ use bevy_replicon_renet::{
 use multiplayer_shared::{multiplayer_events::AttemptHostServer, multiplayer_shared::PROTOCOL_ID};
 
 
-pub fn host_server(
+pub fn open_server_on_udp_socket(
     commands: &mut Commands,
     channels: Res<RepliconChannels>,
     start_server: AttemptHostServer,
-    max_clients: u8,
 ) -> Result {
     let server_channels_config = channels.server_configs();
     let client_channels_config = channels.client_configs();
@@ -33,7 +32,7 @@ pub fn host_server(
     let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, port))?;
     let server_config = ServerConfig {
         current_time,
-        max_clients: max_clients as usize,
+        max_clients: 4_usize,
         protocol_id: PROTOCOL_ID,
         authentication: ServerAuthentication::Unsecure,
         public_addresses: Default::default(),

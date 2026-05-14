@@ -2,15 +2,14 @@ use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::{ServerState};
 use ac_input::ac_input_actions::AssetReloadAction;
-use common::{common_components::{AssetScoped, SelectedForHotReload, TemplEntiRef}, common_states::*, StrId};
+use ::common::*;
 use being::sex::sex_components::Sex;
 use ::being_shared::*;
 use ::sprite_shared::{BaseHolderRef, SpriteConfig};
 use sprite_systems::SpriteConfigEntityMap;
 use sprite_animation_shared::sprite_animation_components::AcAnimation;
-use tilemap_shared::GlobalGenSettings;
 
-use tilemap_shared::ForceAllChunksDespawn;
+use ::tilemap_shared::*;
 use tilemap::{
     tile::tile_components::Tile,
     terrain::{
@@ -20,6 +19,10 @@ use tilemap::{
         terrprobe::terrprobe_components::TerrProbeTempl,
     },
 };
+
+#[derive(Resource, Default)]
+pub struct ChangeAssetLoadingStateToFinishedTimer(pub Timer);
+
 
 
 #[allow(unused_parens, )]
@@ -86,16 +89,16 @@ pub fn remap_broken_sprite_config_refs_after_hotreload(
 }
 
 pub fn validate_defs_after_load(
-    config: Res<common::def_db::DefValidationConfig>,
+    config: Res<DefValidationConfig>,
 ) {
     if !config.enabled {
         return;
     }
-    if !common::def_db::expected_types_loaded() {
+    if !expected_types_loaded() {
         return;
     }
 
-    match common::def_db::validate_global_registry() {
+    match validate_global_registry() {
         Ok(_) => {
             info!(target: "def_validation", "Def validation passed");
         }
@@ -187,4 +190,30 @@ pub fn sync_hot_reload_markers(
         if selection.sexes { commands.entity(entity).try_insert_if_new(SelectedForHotReload); }
         else { commands.entity(entity).try_remove::<SelectedForHotReload>(); }
     }
+}
+
+#[allow(unused_parens)]
+pub fn change_to_finished_asset_loading_state(
+    _on: On<ChangeAssetLoadingStateToFinished>,
+    mut cmd: Commands,
+) {
+    cmd.insert_resource(ChangeAssetLoadingStateToFinishedTimer(Timer::from_seconds(1., TimerMode::Once)));
+}
+
+#[allow(unused_parens)]
+pub fn finish_asset_loading_after_delay(
+    time: Res<Time>,
+    finish_timer: If<ResMut<ChangeAssetLoadingStateToFinishedTimer>>,
+    mut cmd: Commands,
+    mut asset_loading_state: ResMut<NextState<AssetLoading>>,
+) {
+    let mut finish_timer = finish_timer.into_inner();
+
+    finish_timer.0.tick(time.delta());
+    if !finish_timer.0.is_finished() {
+        return;
+    }
+
+    cmd.remove_resource::<ChangeAssetLoadingStateToFinishedTimer>();
+    asset_loading_state.set(AssetLoading::Finished);
 }

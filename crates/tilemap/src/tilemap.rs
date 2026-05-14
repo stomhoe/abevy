@@ -6,17 +6,7 @@ use game_common::HostSystems;
 use game_common::game_common::GameplaySystems;
 use ::tilemap_shared::*;
 use crate::{
-    chunking,
-    terrain,
-    terrain::{TerrainGenSystems, TerrainSystems, },
-    tile,
-    tile::TilingSystems,
-    tilemap_resources::*,
-    tilemap_nav_systems::*,
-    tilemap_systems::*,
-    tilemap_despawn_systems::*,
-    tilemap_structs::*,
-    tilemap_terrbl_systems::*,
+    chunking, terrain::{self, TerrainGenSystems, TerrainProbeSystems, TerrainSystems}, tile::{self, TilingSystems}, tilemap_despawn_systems::*, tilemap_nav_systems::*, tilemap_resources::*, tilemap_structs::*, tilemap_systems::*, tilemap_terrbl_systems::*
 };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -46,11 +36,12 @@ pub fn plugin(app: &mut App) {
         (TerrainGenSystems, ChunkSystems).in_set(GameplaySystems)
     ))
 
-    .configure_sets(
-        OnEnter(AssetLoading::SpawnReplicatedEntities), (
+    .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
             TilingSystems.before(TerrainSystems),
             DimensionSystems.before(TerrainGenSystems),
             TerrainGenSystems.before(GameplaySystems),
+            TerrainProbeSystems.before(GameplaySystems),
+
         )
     )
 

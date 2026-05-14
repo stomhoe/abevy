@@ -1,7 +1,6 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Sub, SubAssign};
 use strum_macros::{IntoStaticStr, VariantNames};
 
-
 #[derive(Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub struct Years(pub u32);
 
@@ -161,27 +160,6 @@ impl AddAssign for Minutes {
     }
 }
 
-
-
-
-
-
-
-
-// Hours
-impl Sub for Hours {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self(self.0 - rhs.0)
-    }
-}
-impl SubAssign for Hours {
-    fn sub_assign(&mut self, rhs: Self) {
-        self.0 -= rhs.0;
-    }
-}
-
-// Minutes
 impl Sub for Minutes {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
@@ -189,6 +167,18 @@ impl Sub for Minutes {
     }
 }
 impl SubAssign for Minutes {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
+    }
+}
+
+impl Sub for Hours {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0 - rhs.0)
+    }
+}
+impl SubAssign for Hours {
     fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
     }

@@ -3,7 +3,6 @@ use bevy_replicon::prelude::{ClientState, };
 use ::being_shared::WallPhaserOnSpawn;
 use common::common_states::*;
 use game_common::game_common::*;
-use tilemap::terrain::TerrainProbeSystems;
 
 use crate::game_init_systems::*;
 
@@ -19,22 +18,17 @@ pub fn plugin(app: &mut App) {
 
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
-        (load_game_init_settings.after(TerrainProbeSystems), server_or_singleplayer_setup).chain()
-        .run_if(
-            in_state(ClientState::Disconnected)
-        )
-        .in_set(GameplaySystems)
+        (load_game_init_settings, server_or_singleplayer_setup).chain()
+        .in_set(GameplaySystems).in_set(HostSystems)
     )
     .add_systems(Update, (
-        host_on_player_added.run_if(in_state(ClientState::Disconnected)),
-        find_common_player_spawn_origin
-            .run_if(in_state(ClientState::Disconnected))
-            .in_set(GameplaySystems),
-        place_unpositioned_player_beings_with_cached_origin
-            .run_if(in_state(ClientState::Disconnected))
-            .in_set(GameplaySystems)
-            .after(host_on_player_added),
-    ))
+        host_on_player_added,
+
+        (find_common_player_spawn_origin, place_unpositioned_player_beings_with_cached_origin
+        .after(host_on_player_added),
+        )
+    .in_set(GameplaySystems)
+    ).in_set(HostSystems))
     //.add_systems(Update, ())
 
 

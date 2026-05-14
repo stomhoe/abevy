@@ -16,7 +16,7 @@ pub fn init_sprite_configs(
     mut cmd: Commands,
     scs_map: Res<SpriteConfigEntityMap>,
     library: Res<AcAnimationEntityMap>,
-    z_settings: Query<&ZSettings>,
+    z_settings: Query<&ZSettings, With<SettingsEntity>>,
     scs_holder: Query<Entity, With<EguiScsHolder>>,
 ) {
     if !scs_map.0.is_empty() {

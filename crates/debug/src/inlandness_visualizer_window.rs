@@ -6,7 +6,7 @@ use common::log_targets::DEBUG;
 use tilemap::terrain::terrprobe::*;
 use ::tilemap_shared::*;
 
-use crate::debug_resources::*;
+use debug_shared::*;
 
 const INLANDNESS_VISUALIZER_PROBE_ID: &str = "inlandness_visualizer_probe";
 const INLANDNESS_VISUALIZER_DEFAULT_STEP_SIZE: u16 = 160;

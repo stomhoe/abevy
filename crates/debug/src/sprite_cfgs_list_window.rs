@@ -3,7 +3,7 @@ use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 
 use sprite_shared::SpriteConfig;
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility};
 
 #[allow(unused_parens)]
 pub fn sprites_list_window(

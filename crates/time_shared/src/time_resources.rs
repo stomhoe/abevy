@@ -2,10 +2,10 @@
 
 use crate::time_types::*;
 
-#[derive(Resource, PartialEq, PartialOrd, Copy, Clone, Debug)]
-//NO OLVIDARSE DE MULTIPLICAR DELTA POR ESTO AL USAR TIMERS.TICKK
+use serde::{Deserialize, Serialize};
+
+#[derive(Component, Serialize, Deserialize, PartialEq, PartialOrd, Copy, Clone, Debug, Default)]
 pub struct SimTimeScale(pub f32);
-impl Default for SimTimeScale {fn default() -> Self {Self (1.0)}}
 
 #[derive(Resource, PartialEq, PartialOrd, Debug, Clone, Copy)]
 pub struct InGameTiming {
@@ -21,8 +21,8 @@ impl InGameTiming {
     }
 
     pub fn day_length_minutes(&self) -> f32 { self.day_length_minutes }
-    pub fn days_per_year(&self) -> Days {self.days_per_year }
-    pub fn days_per_season(&self) -> Days { self.days_per_year/4 }
+    pub fn days_per_year(&self) -> Days { self.days_per_year }
+    pub fn days_per_season(&self) -> Days { self.days_per_year / 4 }
 }
 
 impl Default for InGameTiming {
@@ -31,13 +31,9 @@ impl Default for InGameTiming {
     }
 }
 
-
-
-
-
 #[derive(Resource, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub struct CurrYear(pub Years);
-impl Default for CurrYear {fn default() -> Self {Self (Years(1))}}
+impl Default for CurrYear { fn default() -> Self { Self(Years(1)) } }
 
 impl std::fmt::Display for CurrYear {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -56,7 +52,7 @@ impl std::fmt::Display for CurrSeason {
 
 #[derive(Resource, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub struct CurrDay(pub Days);
-impl Default for CurrDay {fn default() -> Self {Self (Days(1))}}
+impl Default for CurrDay { fn default() -> Self { Self(Days(1)) } }
 
 impl std::fmt::Display for CurrDay {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -69,7 +65,7 @@ pub struct CurrHour(pub Hours);
 
 impl std::fmt::Display for CurrHour {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:02}h", self.0.0)
+        write!(f, "{:02}h", self.0 .0)
     }
 }
 
@@ -78,18 +74,15 @@ pub struct CurrMin(pub Minutes);
 
 impl std::fmt::Display for CurrMin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:02.0}m", self.0.0)
+        write!(f, "{:02.0}m", self.0 .0)
     }
 }
 
-//USAR Res<tIMER> PARA COOLDOWNS DE ATAQUES??
 #[derive(Resource, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub struct CurrSec(pub u8);
-
 
 impl std::fmt::Display for CurrSec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:02}s", self.0)
     }
 }
-

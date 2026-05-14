@@ -36,6 +36,9 @@ pub enum AssetLoading {
 
     /// Init systems which spawn entities are executed
     SpawnReplicatedEntities,
+
+    /// Asset loading and spawn initialization has finished
+    Finished,
 }
 
 

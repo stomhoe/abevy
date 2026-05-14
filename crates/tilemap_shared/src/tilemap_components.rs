@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 pub struct PreChunkDespawnSystems;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, )]
-#[require(Replicated, Prefix::trunc("GlobalGenSettings"), AssetScoped, SelectedForHotReload)]
 pub struct GlobalGenSettings {
 
     pub seed: i32,

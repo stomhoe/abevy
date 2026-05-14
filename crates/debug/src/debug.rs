@@ -1,4 +1,3 @@
-use crate::debug_resources::{DebugBeingLocationEditorState, DebugBeingVitalsAdjustState};
 #[allow(unused_imports)]
 use bevy::prelude::*;
 use bevy_fps_counter::FpsCounterPlugin;
@@ -11,13 +10,25 @@ use ::being_shared::{BeingNavDebugLine, DebuggingBeingNav};
 use ::being_shared::WallPhaserOnSpawn;
 use tilemap_shared::DirectionalLight2dOverride;
 use crate::debug_messages::*;
+use debug_shared::{
+    DebugUiConfig,
+    DubugWindowsVisibility,
+    DebugSelectedEntities,
+    DebugChunkingUiState,
+    ClickInspectorState,
+    TileClickRemoverState,
+    BeingClickRemoverState,
+    DebugBeingNavUiState,
+    DebugBeingLocationEditorState,
+    DebugBeingVitalsAdjustState,
+    load_debug_ui_config,
+};
 
     use crate::{
         being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,
         being_click_remover::*,
-        being_nav_log_window::*,
         daylight_window::*,
-        debug_chunking_window::*, debug_fonts::*, debug_resources::*,
+        debug_chunking_window::*, debug_fonts::*,
         debug_systems::*, debug_window_systems::*,
         dimension_changer_window::*,
         gpos_maps_window::*,
@@ -26,10 +37,10 @@ use crate::debug_messages::*;
         macrochunks_grid_window::*,
         player_details_inspector::*, players_list_window::*, portals_list_window::*, region_details_inspector::*,
         regions_list_window::*, registered_positions_window::*, sprite_cfgs_details_inspector::*,
-        sprite_cfgs_list_window::*, terrgen_editor_window::*, terrgen_values_window::*,
+        sprite_cfgs_list_window::*, terrgen_values_window::*,
         inlandness_visualizer_window::*,
         tile_indices_map_window::*,
-        world_tile_click_picker_window::*,
+        click_picker_window::*,
         tile_click_remover::*,
         tile_details_inspector::*,
         tilemap_details_inspector::*,
@@ -103,7 +114,6 @@ pub fn plugin(app: &mut App) {
                 main_menu_window,
                 states_window,
                 all_states_window,
-                collect_being_nav_debug_messages.run_if(on_message::<BeingNavDebugLine>),
                 debug_chunking_window,
                 macrochunks_grid_window,
                 regions_list_window,
@@ -111,7 +121,6 @@ pub fn plugin(app: &mut App) {
                 players_list_window,
                 portals_list_window,
                 sprites_list_window,
-                terrgen_editor_window,
             )
                 .run_if(debug_enabled),
         )
@@ -128,7 +137,6 @@ pub fn plugin(app: &mut App) {
                 tile_indices_map_window,
                 nav_maps_window,
                 click_picker_window,
-                nav_log_window,
                 terrgen_debug_window_system
                     .run_if(|visible: Res<DubugWindowsVisibility>| visible.terrgen_values),
             )
@@ -151,12 +159,11 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DubugWindowsVisibility>()
         .init_resource::<DebugSelectedEntities>()
         .init_resource::<DebugChunkingUiState>()
-        .init_resource::<DebugNoiseWorkshopState>()
         .init_resource::<DebugFontsInitialized>()
         .init_resource::<DebugUiConfig>()
         .init_resource::<DirectionalLight2dOverride>()
         .init_resource::<WallPhaserOnSpawn>()
-        .init_resource::<WorldTileClickInspectorState>()
+        .init_resource::<ClickInspectorState>()
         .init_resource::<TileClickRemoverState>()
         .init_resource::<BeingClickRemoverState>()
         .init_resource::<DebugBeingNavUiState>()

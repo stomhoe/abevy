@@ -13,7 +13,7 @@ use tilemap::tile::tile_resources::TileRef;
 use tilemap::tile::TileEntityMap;
 use tilemap_shared::{BeingsAtGpos, DimensionRef, GlobalTilePos, TileGatheringParamSet};
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility, WorldTileClickInspectorState};
+use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility, ClickInspectorState};
 
 const PICKER_MIN_SIDE: usize = 3;
 const PICKER_MAX_SIDE: usize = 15;
@@ -31,7 +31,7 @@ pub fn capture_world_tile_click_selection(
     tile_ref_query: Query<&TileRef>,
     tile_map: Res<TileEntityMap>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
-    mut state: ResMut<WorldTileClickInspectorState>,
+    mut state: ResMut<ClickInspectorState>,
     mut window_visible: ResMut<DubugWindowsVisibility>,
 ) {
     if !state.enabled || !state.picking_enabled || !mouse.just_pressed(MouseButton::Left) {
@@ -85,7 +85,7 @@ pub fn capture_world_tile_click_selection(
 pub fn click_picker_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
-    mut state: ResMut<WorldTileClickInspectorState>,
+    mut state: ResMut<ClickInspectorState>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
     mut cmd: Commands,
     mut tile_gathering: TileGatheringParamSet,
@@ -204,7 +204,7 @@ pub fn click_picker_window(
                         egui::vec2(cell_inner, cell_inner),
                     );
 
-                    ui.allocate_ui_at_rect(cell_rect, |ui| {
+                    ui.scope_builder(egui::UiBuilder::new().max_rect(cell_rect), |ui| {
                         ui.set_min_size(egui::vec2(cell_inner, cell_inner));
                         ui.spacing_mut().item_spacing = egui::vec2(0.0, 0.0);
                         ui.vertical(|ui| {
@@ -380,7 +380,7 @@ fn grid_cell_gpos(center_gpos: GlobalTilePos, row: usize, col: usize, picker_sid
 }
 
 fn select_tile_for_details(
-    state: &mut WorldTileClickInspectorState,
+    state: &mut ClickInspectorState,
     selected_entities: &mut DebugSelectedEntities,
     window_visible: &mut DubugWindowsVisibility,
     tile_entity: Entity,
@@ -399,7 +399,7 @@ fn select_tile_for_details(
 }
 
 fn select_being_for_details(
-    state: &mut WorldTileClickInspectorState,
+    state: &mut ClickInspectorState,
     selected_entities: &mut DebugSelectedEntities,
     window_visible: &mut DubugWindowsVisibility,
     being_entity: Entity,
@@ -420,7 +420,7 @@ fn select_being_for_details(
 }
 
 fn toggle_tile_selection(
-    state: &mut WorldTileClickInspectorState,
+    state: &mut ClickInspectorState,
     selected_entities: &mut DebugSelectedEntities,
     window_visible: &mut DubugWindowsVisibility,
     tile_entity: Entity,
@@ -447,7 +447,7 @@ fn toggle_tile_selection(
 }
 
 fn toggle_being_selection(
-    state: &mut WorldTileClickInspectorState,
+    state: &mut ClickInspectorState,
     selected_entities: &mut DebugSelectedEntities,
     window_visible: &mut DubugWindowsVisibility,
     being_entity: Entity,
@@ -476,7 +476,7 @@ fn toggle_being_selection(
     }
 }
 
-fn clear_center_highlight(cmd: &mut Commands, state: &mut WorldTileClickInspectorState) {
+fn clear_center_highlight(cmd: &mut Commands, state: &mut ClickInspectorState) {
     let Some(center_tile) = state.highlighted_center_tile.take() else {
         state.highlighted_center_tile_original_color = None;
         return;
@@ -491,7 +491,7 @@ fn clear_center_highlight(cmd: &mut Commands, state: &mut WorldTileClickInspecto
 
 fn sync_center_highlight(
     cmd: &mut Commands,
-    state: &mut WorldTileClickInspectorState,
+    state: &mut ClickInspectorState,
     center_tile: Option<Entity>,
     tile_color_query: &Query<&TileColor>,
 ) {

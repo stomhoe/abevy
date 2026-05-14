@@ -47,6 +47,7 @@ dependencies = [
  "bevy_enhanced_input",
  "bevy_replicon",
  "common",
+ "debug_shared",
  "game_common",
  "paste",
  "player_shared",
@@ -4615,6 +4616,7 @@ dependencies = [
  "bevy_replicon",
  "camera",
  "common",
+ "debug_shared",
  "faction",
  "faction_shared",
  "fnl",
@@ -4631,7 +4633,20 @@ dependencies = [
  "tilemap",
  "tilemap_shared",
  "time",
+ "time_shared",
  "wildlife",
+]
+
+[[package]]
+name = "debug_shared"
+version = "0.1.0"
+dependencies = [
+ "being_shared",
+ "bevy 0.18.1",
+ "bevy_ecs_tilemap",
+ "common",
+ "serde",
+ "tilemap_shared",
 ]
 
 [[package]]
@@ -5795,6 +5810,7 @@ dependencies = [
  "game_common",
  "multiplayer_shared",
  "player_shared",
+ "time_shared",
 ]
 
 [[package]]
@@ -8589,6 +8605,7 @@ dependencies = [
  "bevy_ecs_tilemap",
  "bevy_lit",
  "bevy_replicon",
+ "bevy_replicon_renet",
  "camera",
  "common",
  "game_common",
@@ -9065,6 +9082,17 @@ dependencies = [
  "strum 0.28.0",
  "strum_macros 0.28.0",
  "tilemap_shared",
+ "time_shared",
+]
+
+[[package]]
+name = "time_shared"
+version = "0.1.0"
+dependencies = [
+ "bevy 0.18.1",
+ "serde",
+ "strum 0.28.0",
+ "strum_macros 0.28.0",
 ]
 
 [[package]]

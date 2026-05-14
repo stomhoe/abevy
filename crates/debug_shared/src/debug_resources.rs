@@ -1,17 +1,14 @@
-
 use bevy::prelude::*;
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
-use ::being_shared::WallPhaserOnSpawn;
-pub use crate::debug_seris::*;
+use bevy_ecs_tilemap::tiles::TileColor;
+use being_shared::WallPhaserOnSpawn;
 use common::common_components::HashId;
 use common::common_states::HotReloadSelection;
-use std::collections::HashMap;
-use bevy_ecs_tilemap::tiles::TileColor;
-
 use tilemap_shared::GlobalTilePos;
+use crate::debug_seris::*;
 
 #[derive(Resource, Debug, Clone)]
-pub struct DubugWindowsVisibility{
+pub struct DubugWindowsVisibility {
     pub states: bool,
     pub all_states: bool,
     pub main_menu: bool,
@@ -22,7 +19,6 @@ pub struct DubugWindowsVisibility{
     pub beings_list: bool,
     pub players_list: bool,
     pub portals_list: bool,
-    pub terrgen_editor: bool,
     pub terrgen_values: bool,
     pub inlandness_visualizer: bool,
     pub settings_editor: bool,
@@ -32,7 +28,6 @@ pub struct DubugWindowsVisibility{
     pub region_details: bool,
     pub tilemap_details: bool,
     pub being_details: bool,
-    pub being_nav_log: bool,
     pub faction_details: bool,
     pub player_details: bool,
     pub registered_positions: bool,
@@ -49,34 +44,35 @@ pub struct DubugWindowsVisibility{
     pub river_debug: bool,
 }
 
-    #[derive(Resource, Debug, Default)]
-    pub struct DebugBeingLocationEditorState {
-        pub last_selected_being_entity: Option<Entity>,
-        pub gpos_x_text: String,
-        pub gpos_y_text: String,
-        pub teleport_error: Option<String>,
-    }
+#[derive(Resource, Debug, Default)]
+pub struct DebugBeingLocationEditorState {
+    pub last_selected_being_entity: Option<Entity>,
+    pub gpos_x_text: String,
+    pub gpos_y_text: String,
+    pub teleport_error: Option<String>,
+}
 
-    #[derive(Debug, Default, Clone, Copy)]
-    pub struct BeingVitalsAdjustState {
-        pub current_hp: f32,
-        pub blood: f32,
-        pub hp_dragging: bool,
-        pub blood_dragging: bool,
-        pub hp_pending_target: Option<f32>,
-        pub blood_pending_target: Option<f32>,
-    }
+#[derive(Debug, Default, Clone, Copy)]
+pub struct BeingVitalsAdjustState {
+    pub current_hp: f32,
+    pub blood: f32,
+    pub hp_dragging: bool,
+    pub blood_dragging: bool,
+    pub hp_pending_target: Option<f32>,
+    pub blood_pending_target: Option<f32>,
+}
 
-    #[derive(Resource, Debug, Default)]
-    pub struct DebugBeingVitalsAdjustState {
-        pub states: EntityHashMap<BeingVitalsAdjustState>,
-    }
+#[derive(Resource, Debug, Default)]
+pub struct DebugBeingVitalsAdjustState {
+    pub states: EntityHashMap<BeingVitalsAdjustState>,
+}
+
 impl Default for DubugWindowsVisibility {
     fn default() -> Self {
         Self {
             states: false,
             all_states: false,
-            main_menu: true,
+            main_menu: false,
             dimension_changer: false,
             chunks_list: false,
             macrochunks_grid: false,
@@ -84,7 +80,6 @@ impl Default for DubugWindowsVisibility {
             beings_list: false,
             players_list: false,
             portals_list: false,
-            terrgen_editor: false,
             terrgen_values: false,
             inlandness_visualizer: false,
             settings_editor: false,
@@ -94,7 +89,6 @@ impl Default for DubugWindowsVisibility {
             region_details: false,
             tilemap_details: false,
             being_details: false,
-            being_nav_log: false,
             faction_details: false,
             player_details: false,
             registered_positions: false,
@@ -148,6 +142,7 @@ pub struct DebugSelectedEntities {
     pub river_samples_show_region_bounds: bool,
     pub river_samples_show_failed_centers: bool,
 }
+
 impl Default for DebugSelectedEntities {
     fn default() -> Self {
         Self {
@@ -180,7 +175,7 @@ impl Default for DebugSelectedEntities {
 }
 
 #[derive(Resource)]
-pub struct WorldTileClickInspectorState {
+pub struct ClickInspectorState {
     pub enabled: bool,
     pub picking_enabled: bool,
     pub picker_side: usize,
@@ -194,14 +189,14 @@ pub struct WorldTileClickInspectorState {
     pub highlighted_center_tile_original_color: Option<TileColor>,
 }
 
-impl WorldTileClickInspectorState {
+impl ClickInspectorState {
     pub fn clear_picker_selection(&mut self) {
         self.clicked_dim = None;
         self.clicked_gpos = None;
     }
 }
 
-impl Default for WorldTileClickInspectorState {
+impl Default for ClickInspectorState {
     fn default() -> Self {
         Self {
             enabled: false,
@@ -218,6 +213,7 @@ impl Default for WorldTileClickInspectorState {
         }
     }
 }
+
 #[derive(Resource, Debug)]
 pub struct TileClickRemoverState {
     pub despawn_last_tile: bool,
@@ -281,45 +277,6 @@ impl Default for DebugChunkingUiState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NoiseCombineOp {
-    Add,
-    Subtract,
-    Multiply,
-    Average,
-    Max,
-    Min,
-}
-
-#[derive(Resource, Debug)]
-pub struct DebugNoiseWorkshopState {
-    pub selected_noises: Vec<Entity>,
-    pub per_noise_subtract: HashMap<Entity, f32>,
-    pub original_noises: HashMap<Entity, tilemap::terrain::terrgen_components::FnlNoiseComp>,
-    pub combine_op: NoiseCombineOp,
-    pub threshold_enabled: bool,
-    pub threshold: f32,
-    pub preview_size_px: f32,
-    pub preview_samples: usize,
-    pub preview_zoom: f32,
-}
-
-impl Default for DebugNoiseWorkshopState {
-    fn default() -> Self {
-        Self {
-            selected_noises: Vec::new(),
-            per_noise_subtract: HashMap::new(),
-            original_noises: HashMap::new(),
-            combine_op: NoiseCombineOp::Average,
-            threshold_enabled: false,
-            threshold: 0.5,
-            preview_size_px: 420.0,
-            preview_samples: 64,
-            preview_zoom: 1.0,
-        }
-    }
-}
-
 #[derive(Resource, Debug, Clone)]
 pub struct DebugUiConfig {
     pub enable_debug_menus: bool,
@@ -379,7 +336,6 @@ impl DebugUiConfigSeri {
                 v.main_menu = self.windows_open_on_start.main_menu;
                 v.hot_reload_window_open_on_start = self.windows_open_on_start.hot_reload_window_open_on_start;
                 v.all_states = self.windows_open_on_start.all_states;
-                v.terrgen_editor = self.windows_open_on_start.terrgen_editor;
                 v.terrgen_values = self.windows_open_on_start.terrgen_values;
                 v.settings_editor = self.windows_open_on_start.settings_editor;
                 v.daylight = self.windows_open_on_start.daylight;
