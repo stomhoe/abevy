@@ -4,6 +4,7 @@ use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_components::StrId;
+use modifier_shared::WallPhaser;
 use param_sets::BlockingTileParamSet;
 use common::log_targets::{BEING_SYSTEM, MOVEMENT_SYSTEM};
 use common::file_logging::file_log;
@@ -71,6 +72,7 @@ pub fn resolve_overlapping_beings(
         &mut Transform,
         Option<&mut GridLockedMovement>,
         Option<&mut GridLockedMovementVisual>,
+        Has<WallPhaser>,//use Has instead of Option
     ), With<Being>>,
     mut blocking_tiles: BlockingTileParamSet,
     mut occupied_positions: Local<HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>>,
@@ -81,7 +83,7 @@ pub fn resolve_overlapping_beings(
     duplicate_positions.clear();
     reserved_positions.clear();
 
-    for (being_ent, _, &dim_ref, _, _, _) in beings.iter_mut() {
+    for (being_ent, _, &dim_ref, ..) in beings.iter_mut() {
         let Ok(&gpos) = blocking_tiles.gpos_query.get(being_ent) else {
             continue;
         };
@@ -110,7 +112,19 @@ pub fn resolve_overlapping_beings(
     let mut corrected_beings = 0usize;
     for &((dim_ref, source_gpos), ref overlapping_beings) in duplicate_positions.iter() {
         let keeper = overlapping_beings[0];
+        let keeper_has_wallphaser = beings
+            .get(keeper)
+            .map(|(_, _, _, _, _, _, wallphaser)| wallphaser)
+            .unwrap_or(false);
         for &being_ent in overlapping_beings.iter().skip(1) {
+            let current_has_wallphaser = beings
+                .get(being_ent)
+                .map(|(_, _, _, _, _, _, wallphaser)| wallphaser)
+                .unwrap_or(false);
+            if keeper_has_wallphaser || current_has_wallphaser {
+                continue;
+            }
+
             let Some(found_gpos) = find_nearest_overlap_resolution_gpos(
                 &mut blocking_tiles,
                 &reserved_positions,
@@ -128,7 +142,7 @@ pub fn resolve_overlapping_beings(
                 continue;
             };
 
-            let Ok((_, str_id, &current_dim, mut transform, movement, movement_visual)) = beings.get_mut(being_ent) else {
+            let Ok((_, str_id, &current_dim, mut transform, movement, movement_visual, _)) = beings.get_mut(being_ent) else {
                 continue;
             };
             let Ok(&current_gpos) = blocking_tiles.gpos_query.get(being_ent) else {

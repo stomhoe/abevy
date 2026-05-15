@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_ecs_tilemap::map::TilemapId;
 use bevy_replicon::prelude::*;
 #[allow(unused_imports, )]
 use common::{common_states::*};

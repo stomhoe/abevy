@@ -1,46 +1,21 @@
 
 use bevy::prelude::*;
+use bevy_replicon::shared::backend::ClientState;
 use common::{AssetScoped, log_targets::CHUNK_ACTIVATION};
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 use tilemap_shared::*;
 use being_shared::{Being, Unloaded};
+
+#[derive(Resource, Default)]
+pub struct RecentlySpawnedChunks(pub HashMap<(DimensionRef, ChunkPos), Instant>);
 
 use super::macro_chunk_components::{BiomeDistribution, MacrochunkPendingBiomeSamples};
 use crate::chunking::MacroChunkU16IndexMatrix;
 
 
 
-#[allow(unused_parens, )]
-pub fn add_activating_chunks_to_activate_chunks_around(
-    mut cmd: Commands,
-    load_chunks_around_query: Query<(Entity, &LoadChunksAround), (Added<LoadChunksAround>, )>,
-    mut activator_query: Query<(&DimensionRef, &mut ActivatingChunks), >,
-    loaded_chunks: Res<LoadedChunks>,
-    mut removed_load_chunks_around: RemovedComponents<LoadChunksAround>,
-    mut ewriter: MessageWriter<CheckIfChunkShouldDespawn>,
-    mut to_despawn: Local<Vec<CheckIfChunkShouldDespawn>>,
-) {
-    for (ent, chunk_range) in load_chunks_around_query.iter() {
-        let Ok((_, mut activates_chunks)) = activator_query.get_mut(ent) else {
-            cmd.entity(ent).try_insert(ActivatingChunks::with_capacity(chunk_range));
-            continue;
-        };
-        *activates_chunks = ActivatingChunks::with_capacity(chunk_range);
-    }
-    for ent in removed_load_chunks_around.read() {
-        let Ok((dimension_ref, activates_chunks)) = activator_query.get_mut(ent) else {
-            cmd.entity(ent).try_remove::<ActivatingChunks>();
-            continue;
-        };
-        for &chunk_pos in activates_chunks.0.iter() {
-            let Some(&chunk_ent) = loaded_chunks.0.get(&(*dimension_ref, chunk_pos)) else {
-                continue;
-            };
-            to_despawn.push(CheckIfChunkShouldDespawn(chunk_ent));
-        }
-        cmd.entity(ent).try_remove::<ActivatingChunks>();
-    }
-    ewriter.write_batch(to_despawn.drain(..));
-}
+
 
 #[allow(unused_parens, )]
 pub fn update_activating_chunk_positions(
@@ -108,18 +83,25 @@ fn insert_border_chunk_positions(
 #[allow(unused_parens, )]
 pub fn spawn_activated_chunks(
     mut cmd: Commands,
-    query: Query<(&ActivatingChunks, &DimensionRef, ), Changed<ActivatingChunks>>,
+    query: Query<(&ActivatingChunks, &DimensionRef, Has<ClientChunkLoader>), Changed<ActivatingChunks>>,
     dimension_map: Res<DimensionEntityMap>,
     macro_chunk_holder_query: Query<&MacroChunkHolderRef>,
+    loaded_by_host_query: Query<&ChunkLoadedByHost>,
     mut loaded_chunks: ResMut<LoadedChunks>,
     mut loaded_macro_chunks: ResMut<LoadedMacroChunks>,
     mut loaded_regions: ResMut<LoadedRegions>,
+    mut recently_spawned_chunks: ResMut<RecentlySpawnedChunks>,
+    client_state: Res<State<ClientState>>,
 ) {
     let mut comps_for_macrochunk_ents = Vec::new();
     let mut comps_for_region_ents = Vec::new();
     let mut comps_for_chunk_ents = Vec::new();
 
-    for (activates_chunks, &dimension_ref, ) in query.iter() {
+    let now = Instant::now();
+    recently_spawned_chunks.0.retain(|_, &mut spawn_time| now.duration_since(spawn_time) < Duration::from_secs(60));
+
+    for (activates_chunks, &dimension_ref, client_chunk_loader) in query.iter() {
+        let is_client_controlled = client_chunk_loader;
         let Ok(dimension_ent) = dimension_map.0.get_cloned(dimension_ref.0) else {
             error!(target: CHUNK_ACTIVATION, "Dimension hash {:?} is not present in DimensionEntityMap", dimension_ref.0);
             continue;
@@ -131,66 +113,86 @@ pub fn spawn_activated_chunks(
 
         for &chunk_pos in activates_chunks.0.iter() {
             let key = (dimension_ref, chunk_pos);
-            if loaded_chunks.0.contains_key(&key) {
+            let chunk_ent = if let Some(&chunk_ent) = loaded_chunks.0.get(&key) {
+                chunk_ent
+            } else {
+                if is_client_controlled {
+                    if let Some(&spawn_time) = recently_spawned_chunks.0.get(&key) {
+                        if now.duration_since(spawn_time) < Duration::from_secs(60) {
+                            continue;
+                        }
+                    }
+                }
+
+                let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
+                let macro_chunk_key = (dimension_ref, macro_chunk_pos);
+                let macro_chunk_ent = loaded_macro_chunks.0.get(&macro_chunk_key)
+                    .copied()
+                    .unwrap_or_else(|| {
+                        let macro_chunk_ent = cmd.spawn_empty().id();
+                        comps_for_macrochunk_ents.push((macro_chunk_ent, (
+                            MacroChunk,
+                            MacroChunkU16IndexMatrix::default(),
+                            BiomeDistribution::default(),
+                            MacrochunkPendingBiomeSamples::default(),
+                            macro_chunk_pos,
+                            Name::new(format!("{:?}", macro_chunk_pos)),
+                            ChildOf(macro_chunk_holder_ref.0),
+                            dimension_ref,
+                        )));
+                        loaded_macro_chunks.0.insert(macro_chunk_key, macro_chunk_ent);
+                        macro_chunk_ent
+                    });
+    
+                let region_ent = {
+                    let region_pos = chunk_pos.to_region_pos();
+                    let region_key = (dimension_ref, region_pos);
+                    loaded_regions.0.get(&region_key)
+                    .copied()
+                    .unwrap_or_else(|| {
+                        let region_ent = cmd.spawn_empty().id();
+                        comps_for_region_ents.push((region_ent, (
+                            region_pos,
+                            Region,
+                            Name::new(format!("{:?}", region_pos)),
+                            Visibility::default(),
+                            ClaimList::default(), RegionPlannedTiles::default(), RegionState::default(), AssetScoped,
+                            Transform::default(),
+                            ChildOf(dimension_ent),
+                            dimension_ref,
+                        )));
+                        loaded_regions.0.insert(region_key, region_ent);
+                        region_ent
+                    })
+                };
+    
+                let chunk_ent = cmd.spawn_empty().id();
+                loaded_chunks.0.insert(key, chunk_ent);
+                recently_spawned_chunks.0.insert(key, now);
+                comps_for_chunk_ents.push((chunk_ent, (
+                    Chunk { region_ent, },
+                    MacroChunkRef(macro_chunk_ent),
+                    TerrGenState::Pending,
+                    Visibility::Hidden,
+                    TilesToSave::default(),
+                    Name::new(format!("{:?}", chunk_pos)),
+                    Transform::default(),
+                    chunk_pos,
+                    ChildOf(region_ent),
+                    dimension_ref,
+                )));
+                chunk_ent
+            };
+            if *client_state != ClientState::Disconnected {
                 continue;
             }
 
-            let macro_chunk_pos = chunk_pos.to_macrochunk_pos();
-            let macro_chunk_key = (dimension_ref, macro_chunk_pos);
-            let macro_chunk_ent = loaded_macro_chunks.0.get(&macro_chunk_key)
-                .copied()
-                .unwrap_or_else(|| {
-                    let macro_chunk_ent = cmd.spawn_empty().id();
-                    comps_for_macrochunk_ents.push((macro_chunk_ent, (
-                        MacroChunk,
-                        MacroChunkU16IndexMatrix::default(),
-                        BiomeDistribution::default(),
-                        MacrochunkPendingBiomeSamples::default(),
-                        macro_chunk_pos,
-                        Name::new(format!("{:?}", macro_chunk_pos)),
-                        ChildOf(macro_chunk_holder_ref.0),
-                        dimension_ref,
-                    )));
-                    loaded_macro_chunks.0.insert(macro_chunk_key, macro_chunk_ent);
-                    macro_chunk_ent
-                });
+            if !is_client_controlled {
+                cmd.entity(chunk_ent).try_insert_if_new(ChunkLoadedByHost);
+            } else if loaded_by_host_query.get(chunk_ent).is_err() {
+                cmd.entity(chunk_ent).try_remove::<ChunkLoadedByHost>();
+            }
 
-            let region_ent = {
-                let region_pos = chunk_pos.to_region_pos();
-                let region_key = (dimension_ref, region_pos);
-                loaded_regions.0.get(&region_key)
-                .copied()
-                .unwrap_or_else(|| {
-                    let region_ent = cmd.spawn_empty().id();
-                    comps_for_region_ents.push((region_ent, (
-                        region_pos,
-                        Region,
-                        Name::new(format!("{:?}", region_pos)),
-                        Visibility::default(),
-                        ClaimList::default(), RegionPlannedTiles::default(), RegionState::default(), AssetScoped,
-                        Transform::default(),
-                        ChildOf(dimension_ent),
-                        dimension_ref,
-                    )));
-                    loaded_regions.0.insert(region_key, region_ent);
-                    region_ent
-                })
-            };
-
-            let chunk_ent = cmd.spawn_empty().id();
-            loaded_chunks.0.insert(key, chunk_ent);
-            comps_for_chunk_ents.push((chunk_ent, (
-                Chunk { region_ent, },
-                MacroChunkRef(macro_chunk_ent),
-                TerrGenState::Pending,
-                Visibility::Hidden,
-                TilesToSave::default(),
-                Name::new(format!("{:?}", chunk_pos)),
-                Transform::default(),
-                chunk_pos,
-                ChildOf(region_ent),
-                dimension_ref,
-            )));
         }
     }
     cmd.try_insert_batch(comps_for_macrochunk_ents);
@@ -264,4 +266,38 @@ pub fn update_beings_within_chunk_res(
         }
     }
     chunk_beings_changed_writer.write_batch(chunk_beings_changed_msgs.drain(..));
+}
+
+
+#[allow(unused_parens, )]
+pub fn add_activating_chunks_to_activate_chunks_around(
+    mut cmd: Commands,
+    load_chunks_around_query: Query<(Entity, &LoadChunksAround), (Added<LoadChunksAround>, )>,
+    mut activator_query: Query<(&DimensionRef, &mut ActivatingChunks), >,
+    loaded_chunks: Res<LoadedChunks>,
+    mut removed_load_chunks_around: RemovedComponents<LoadChunksAround>,
+    mut ewriter: MessageWriter<CheckIfChunkShouldDespawn>,
+    mut to_despawn: Local<Vec<CheckIfChunkShouldDespawn>>,
+) {
+    for (ent, chunk_range) in load_chunks_around_query.iter() {
+        let Ok((_, mut activates_chunks)) = activator_query.get_mut(ent) else {
+            cmd.entity(ent).try_insert(ActivatingChunks::with_capacity(chunk_range));
+            continue;
+        };
+        *activates_chunks = ActivatingChunks::with_capacity(chunk_range);
+    }
+    for ent in removed_load_chunks_around.read() {
+        let Ok((dimension_ref, activates_chunks)) = activator_query.get_mut(ent) else {
+            cmd.entity(ent).try_remove::<ActivatingChunks>();
+            continue;
+        };
+        for &chunk_pos in activates_chunks.0.iter() {
+            let Some(&chunk_ent) = loaded_chunks.0.get(&(*dimension_ref, chunk_pos)) else {
+                continue;
+            };
+            to_despawn.push(CheckIfChunkShouldDespawn(chunk_ent));
+        }
+        cmd.entity(ent).try_remove::<ActivatingChunks>();
+    }
+    ewriter.write_batch(to_despawn.drain(..));
 }

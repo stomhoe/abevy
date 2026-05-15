@@ -1,7 +1,10 @@
 
+use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
-use being_shared::FaithfulSimBeing;
+use being_shared::{Being, ComputedLocally, FaithfulSimBeing};
 use bevy_replicon::shared::backend::ClientState;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 use ::tilemap_shared::*;
 use common::log_targets::{CHUNK_DESPAWN};
 
@@ -100,6 +103,62 @@ pub fn make_checked_chunks_despawn_if_unreferenced(
     }
 
     writer.write_batch(make_despawn_msgs.drain(..));
+}
+
+#[allow(unused_parens, )]
+pub fn update_host_loaded_chunk_timers(
+    mut cmd: Commands,
+    host_activator_query: Query<(&DimensionRef, &ActivatingChunks), (With<ComputedLocally>, With<Being>)>,
+    loaded_chunks: Res<LoadedChunks>,
+    mut host_chunks: Local<EntityHashSet>,
+    mut pending_host_chunk_despawns: Local<HashMap<(DimensionRef, ChunkPos), Instant>>,
+    mut remove_pending: Local<Vec<(DimensionRef, ChunkPos)>>,
+    mut despawn_msgs: Local<Vec<MakeChunkDespawn>>,
+    mut writer: MessageWriter<MakeChunkDespawn>,
+) {
+    let now = Instant::now();
+    host_chunks.clear();
+    for (&dimension_ref, activates_chunks) in host_activator_query.iter() {
+        for &chunk_pos in activates_chunks.0.iter() {
+            if let Some(&chunk_ent) = loaded_chunks.0.get(&(dimension_ref, chunk_pos)) {
+                host_chunks.insert(chunk_ent);
+            }
+        }
+    }
+
+    for &chunk_ent in host_chunks.iter() {
+        cmd.entity(chunk_ent).try_insert_if_new(ChunkLoadedByHost);
+    }
+
+    remove_pending.clear();
+    for (&key, &spawn_time) in pending_host_chunk_despawns.iter() {
+        let Some(&chunk_ent) = loaded_chunks.0.get(&key) else {
+            remove_pending.push(key);
+            continue;
+        };
+        if host_chunks.contains(&chunk_ent) {
+            remove_pending.push(key);
+            continue;
+        }
+        if now.duration_since(spawn_time) >= Duration::from_secs(2) {
+            despawn_msgs.push(MakeChunkDespawn { chunk_ent, reschedule_if_beings_present: false });
+            remove_pending.push(key);
+        }
+    }
+
+    for key in remove_pending.drain(..) {
+        pending_host_chunk_despawns.remove(&key);
+    }
+
+    for (&key, &chunk_ent) in loaded_chunks.0.iter() {
+        if host_chunks.contains(&chunk_ent) {
+            pending_host_chunk_despawns.remove(&key);
+            continue;
+        }
+        pending_host_chunk_despawns.entry(key).or_insert(now);
+    }
+
+    writer.write_batch(despawn_msgs.drain(..));
 }
 
 #[allow(unused_parens)]

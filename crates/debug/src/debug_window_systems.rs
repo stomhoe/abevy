@@ -236,104 +236,110 @@ pub fn main_menu_window(
                 window_visible.river_debug = false;
             }
             ui.separator();
-            if ui.button(egui::RichText::new("🔍 States Inspector").size(16.0)).clicked() {
-                window_visible.states = !window_visible.states;
-            }
-            if ui.button(egui::RichText::new("📚 All States").size(16.0)).clicked() {
-                window_visible.all_states = !window_visible.all_states;
-            }
-            if ui.button(egui::RichText::new("▢▢  Chunking").size(16.0)).clicked() {
-                window_visible.chunks_list = !window_visible.chunks_list;
-            }
-            if ui.button(egui::RichText::new("MacroChunks Grid").size(16.0)).clicked() {
-                window_visible.macrochunks_grid = !window_visible.macrochunks_grid;
-            }
-            if ui.button(egui::RichText::new("⬜ Regions").size(16.0)).clicked() {
-                window_visible.regions_list = !window_visible.regions_list;
-            }
-            if ui.button(egui::RichText::new("GPos Maps").size(16.0)).clicked() {
-                window_visible.gpos_maps = !window_visible.gpos_maps;
-            }
-            if ui.button(egui::RichText::new("Tile Index Map").size(16.0)).clicked() {
-                window_visible.tile_indices_map = !window_visible.tile_indices_map;
-            }
-            if ui.button(egui::RichText::new("🧭 Nav Maps").size(16.0)).clicked() {
-                window_visible.nav_maps = !window_visible.nav_maps;
-            }
-            if ui.button(egui::RichText::new("🖱️ Click Picker").size(16.0)).clicked() {
-                window_visible.click_picker = !window_visible.click_picker;
-            }
-            let tile_click_remover_label = if window_visible.tile_click_remover {
-                "🖱️❌ Stop TileClickRemover"
-            } else {
-                "🖱️❌ TileClickRemover"
-            };
-            let mut tile_click_remover_button = egui::Button::new(tile_click_remover_label);
-            if window_visible.tile_click_remover {
-                tile_click_remover_button = tile_click_remover_button.fill(egui::Color32::from_rgb(120, 80, 60));
-            }
-            ui.horizontal(|ui| {
-                if ui.add(tile_click_remover_button).clicked() {
-                    set_tile_click_remover_active(
-                        !window_visible.tile_click_remover,
-                        &mut tile_click_remover_state,
-                        &mut window_visible,
-                    );
-                }
-                ui.checkbox(&mut tile_click_remover_state.despawn_last_tile, "Despawn last tile");
+            ui.columns(2, |columns| {
+                columns[0].vertical(|ui| {
+                    if ui.button(egui::RichText::new("🔍 States Inspector").size(16.0)).clicked() {
+                        window_visible.states = !window_visible.states;
+                    }
+                    if ui.button(egui::RichText::new("📚 All States").size(16.0)).clicked() {
+                        window_visible.all_states = !window_visible.all_states;
+                    }
+                    if ui.button(egui::RichText::new("🖱️ Click Picker").size(16.0)).clicked() {
+                        window_visible.click_picker = !window_visible.click_picker;
+                    }
+                    let tile_click_remover_label = if window_visible.tile_click_remover {
+                        "🖱️❌ Stop TileClickRemover"
+                    } else {
+                        "🖱️❌ TileClickRemover"
+                    };
+                    let mut tile_click_remover_button = egui::Button::new(tile_click_remover_label);
+                    if window_visible.tile_click_remover {
+                        tile_click_remover_button = tile_click_remover_button.fill(egui::Color32::from_rgb(120, 80, 60));
+                    }
+                    ui.horizontal(|ui| {
+                        if ui.add(tile_click_remover_button).clicked() {
+                            set_tile_click_remover_active(
+                                !window_visible.tile_click_remover,
+                                &mut tile_click_remover_state,
+                                &mut window_visible,
+                            );
+                        }
+                        ui.checkbox(&mut tile_click_remover_state.despawn_last_tile, "Despawn last tile");
+                    });
+                    let being_click_remover_label = if window_visible.being_click_remover {
+                        "🖱️❌ Stop BeingClickRemover"
+                    } else {
+                        "🖱️❌ BeingClickRemover"
+                    };
+                    let mut being_click_remover_button = egui::Button::new(being_click_remover_label);
+                    if window_visible.being_click_remover {
+                        being_click_remover_button = being_click_remover_button.fill(egui::Color32::from_rgb(120, 60, 60));
+                    }
+                    if ui.add(being_click_remover_button).clicked() {
+                        set_being_click_remover_active(
+                            !window_visible.being_click_remover,
+                            &mut being_click_remover_state,
+                            &mut window_visible,
+                        );
+                    }
+                    if ui.button(egui::RichText::new("👥 Beings list").size(16.0)).clicked() {
+                        window_visible.beings_list = !window_visible.beings_list;
+                    }
+                    if ui.button(egui::RichText::new("🏰 Faction Details").size(16.0)).clicked() {
+                        window_visible.faction_details = !window_visible.faction_details;
+                    }
+                    if ui.button(egui::RichText::new("🧑 Players list").size(16.0)).clicked() {
+                        window_visible.players_list = !window_visible.players_list;
+                    }
+                    if ui.button(egui::RichText::new("DimensionChanger").size(16.0)).clicked() {
+                        window_visible.dimension_changer = !window_visible.dimension_changer;
+                    }
+                    if ui.button(egui::RichText::new("🌀 Portals").size(16.0)).clicked() {
+                        window_visible.portals_list = !window_visible.portals_list;
+                    }
+                    if ui.button(egui::RichText::new("� Sprite Configs").size(16.0)).clicked() {
+                        window_visible.sprite_configs_list = !window_visible.sprite_configs_list;
+                    }
+                    if ui.button(egui::RichText::new("▦ Terrain noise values map").size(16.0)).clicked() {
+                        window_visible.terrgen_values = !window_visible.terrgen_values;
+                    }
+                    if ui.button(egui::RichText::new("🌐 Global generation settings").size(16.0)).clicked() {
+                        window_visible.settings_editor = !window_visible.settings_editor;
+                    }
+                    if ui.button(egui::RichText::new("☀ Daylight").size(16.0)).clicked() {
+                        window_visible.daylight = !window_visible.daylight;
+                    }
+                    if ui.button(egui::RichText::new("📍 Important Tile Positions").size(16.0)).clicked() {
+                        window_visible.registered_positions = !window_visible.registered_positions;
+                    }
+                    if ui.button(egui::RichText::new("♻ Hot Reload").size(16.0)).clicked() {
+                        window_visible.hot_reload_window_open_on_start = !window_visible.hot_reload_window_open_on_start;
+                    }
+                });
+                columns[1].vertical(|ui| {
+                    if ui.button(egui::RichText::new("▢▢  Chunking").size(16.0)).clicked() {
+                        window_visible.chunks_list = !window_visible.chunks_list;
+                    }
+                    if ui.button(egui::RichText::new("⬜ Regions").size(16.0)).clicked() {
+                        window_visible.regions_list = !window_visible.regions_list;
+                    }
+                    if ui.button(egui::RichText::new("MacroChunks Grid").size(16.0)).clicked() {
+                        window_visible.macrochunks_grid = !window_visible.macrochunks_grid;
+                    }
+                    if ui.button(egui::RichText::new("GPos Maps").size(16.0)).clicked() {
+                        window_visible.gpos_maps = !window_visible.gpos_maps;
+                    }
+                    if ui.button(egui::RichText::new("u16 Tile Index Map").size(16.0)).clicked() {
+                        window_visible.tile_indices_map = !window_visible.tile_indices_map;
+                    }
+                    if ui.button(egui::RichText::new("🧭 Nav Maps").size(16.0)).clicked() {
+                        window_visible.nav_maps = !window_visible.nav_maps;
+                    }
+                    if ui.button(egui::RichText::new("⛰ Long range inlandness visualizer").size(16.0)).clicked() {
+                        window_visible.inlandness_visualizer = !window_visible.inlandness_visualizer;
+                    }
+                });
             });
-            let being_click_remover_label = if window_visible.being_click_remover {
-                "🖱️❌ Stop BeingClickRemover"
-            } else {
-                "🖱️❌ BeingClickRemover"
-            };
-            let mut being_click_remover_button = egui::Button::new(being_click_remover_label);
-            if window_visible.being_click_remover {
-                being_click_remover_button = being_click_remover_button.fill(egui::Color32::from_rgb(120, 60, 60));
-            }
-            if ui.add(being_click_remover_button).clicked() {
-                set_being_click_remover_active(
-                    !window_visible.being_click_remover,
-                    &mut being_click_remover_state,
-                    &mut window_visible,
-                );
-            }
-            if ui.button(egui::RichText::new("👥 Beings list").size(16.0)).clicked() {
-                window_visible.beings_list = !window_visible.beings_list;
-            }
-            if ui.button(egui::RichText::new("🏰 Faction Details").size(16.0)).clicked() {
-                window_visible.faction_details = !window_visible.faction_details;
-            }
-            if ui.button(egui::RichText::new("🧑 Players list").size(16.0)).clicked() {
-                window_visible.players_list = !window_visible.players_list;
-            }
-            if ui.button(egui::RichText::new("DimensionChanger").size(16.0)).clicked() {
-                window_visible.dimension_changer = !window_visible.dimension_changer;
-            }
-            if ui.button(egui::RichText::new("🌀 Portals").size(16.0)).clicked() {
-                window_visible.portals_list = !window_visible.portals_list;
-            }
-            if ui.button(egui::RichText::new("� Sprite Configs").size(16.0)).clicked() {
-                window_visible.sprite_configs_list = !window_visible.sprite_configs_list;
-            }
-            if ui.button(egui::RichText::new("▦ Terrain noise values map").size(16.0)).clicked() {
-                window_visible.terrgen_values = !window_visible.terrgen_values;
-            }
-            if ui.button(egui::RichText::new("⛰ Long range inlandness visualizer").size(16.0)).clicked() {
-                window_visible.inlandness_visualizer = !window_visible.inlandness_visualizer;
-            }
-            if ui.button(egui::RichText::new("🌐 Global generation settings").size(16.0)).clicked() {
-                window_visible.settings_editor = !window_visible.settings_editor;
-            }
-            if ui.button(egui::RichText::new("☀ Daylight").size(16.0)).clicked() {
-                window_visible.daylight = !window_visible.daylight;
-            }
-            if ui.button(egui::RichText::new("📍 Important Tile Positions").size(16.0)).clicked() {
-                window_visible.registered_positions = !window_visible.registered_positions;
-            }
-            if ui.button(egui::RichText::new("♻ Hot Reload").size(16.0)).clicked() {
-                window_visible.hot_reload_window_open_on_start = !window_visible.hot_reload_window_open_on_start;
-            }
             ui.separator();
             ui.label("F11: Toggle this menu");
         });

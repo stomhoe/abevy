@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use bevy::asset::AssetPath;
 use bevy::{render::render_resource::AsBindGroup, shader::ShaderRef};
 use bevy_ecs_tilemap::prelude::MaterialTilemap;
-use bevy_inspector_egui::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Clone, Default)]

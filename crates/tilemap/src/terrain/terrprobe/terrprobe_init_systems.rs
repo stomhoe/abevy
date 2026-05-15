@@ -199,7 +199,7 @@ pub fn init_terrain_probes(
         );
         comps.push((ent, (
             str_id,
-            Replicated,
+            ReplicateIfServerStarts,
             AssetScoped,
             SelectedForHotReload,
             templ,

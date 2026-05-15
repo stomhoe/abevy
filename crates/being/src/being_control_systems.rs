@@ -28,6 +28,9 @@ pub fn sync_being_chunk_ranges_to_resource(
         *chunk_range = *default_chunk_range_for_player_beings;
     }
 }
+
+pub type ToRemoveBundle = (HumanControlled, CameraTarget, LoadChunksAround, ActivatingChunks, ClientChunkLoader, );
+
 #[allow(unused_parens, )]
 pub fn on_control_change(
     mut commands: Commands,
@@ -41,7 +44,7 @@ pub fn on_control_change(
     default_chunk_range_for_player_beings: Res<LoadChunksAround>,
 ) {
     for being_ent in removed_controlled_by.read() {
-        commands.entity(being_ent).try_remove::<(ComputedLocally, HumanControlled, CameraTarget)>();
+        commands.entity(being_ent).try_remove::<ToRemoveBundle>();
     }
     let Ok((self_entity, am_i_host)) = self_player.single() else {
         trace_once!(target: BEING_CONTROL, "Skipping control refresh until local player is marked Mine");
@@ -52,7 +55,7 @@ pub fn on_control_change(
             input_dir.0 = Vec2::ZERO;
         }
         if controlled_by.client_ent == self_entity {
-            commands.entity(being_ent).try_insert_if_new((ComputedLocally, ));
+            commands.entity(being_ent).try_insert_if_new((ComputedLocally, )).try_remove::<ClientChunkLoader>();
             if controlled_by.human_dc_input {
                 commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), *default_chunk_range_for_player_beings, ));
                 if let Ok((mut input_speed_throttle_mult, mut input_max_speed)) = input_speed_query.get_mut(being_ent) {
@@ -60,18 +63,18 @@ pub fn on_control_change(
                     input_max_speed.0 = f32::MAX;
                 }
             } else {
-                commands.entity(being_ent).try_remove::<(CameraTarget, HumanControlled, LoadChunksAround, ActivatingChunks)>();
+                commands.entity(being_ent).try_remove::<ToRemoveBundle>();
             }
         } else {
             commands.entity(being_ent).try_remove::<(ComputedLocally, CameraTarget)>();
             if am_i_host {
                 if controlled_by.human_dc_input {
-                    commands.entity(being_ent).try_insert((HumanControlled, *default_chunk_range_for_player_beings, ));
+                    commands.entity(being_ent).try_insert((HumanControlled, *default_chunk_range_for_player_beings, ClientChunkLoader, ));
                 } else {
-                    commands.entity(being_ent).try_remove::<(HumanControlled, LoadChunksAround, ActivatingChunks)>();
+                    commands.entity(being_ent).try_remove::<ToRemoveBundle>();
                 }
             } else {
-                commands.entity(being_ent).try_remove::<(HumanControlled, LoadChunksAround, ActivatingChunks)>();
+                commands.entity(being_ent).try_remove::<ToRemoveBundle>();
             }
         }
     };

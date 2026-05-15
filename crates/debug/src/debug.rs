@@ -6,23 +6,10 @@ use bevy::ecs::schedule::common_conditions::on_message;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
-use ::being_shared::{BeingNavDebugLine, DebuggingBeingNav};
-use ::being_shared::WallPhaserOnSpawn;
+use ::being_shared::*;
 use tilemap_shared::DirectionalLight2dOverride;
 use crate::debug_messages::*;
-use debug_shared::{
-    DebugUiConfig,
-    DubugWindowsVisibility,
-    DebugSelectedEntities,
-    DebugChunkingUiState,
-    ClickInspectorState,
-    TileClickRemoverState,
-    BeingClickRemoverState,
-    DebugBeingNavUiState,
-    DebugBeingLocationEditorState,
-    DebugBeingVitalsAdjustState,
-    load_debug_ui_config,
-};
+use debug_shared::*;
 
     use crate::{
         being_details_inspector::*, beings_list_window::*, chunk_details_inspector::*,

@@ -942,7 +942,6 @@ pub fn being_details_inspector(world: &mut World) {
     };
 
     let mut selected_part = selected_entities.selected_being_bodypart;
-    let mut show_full_components = selected_entities.show_full_being_components;
     let mut selected_interaction_zone = selected_entities.selected_being_interaction_zone;
 
     let mut egui_context_query = world.query_filtered::<
@@ -1102,10 +1101,18 @@ pub fn being_details_inspector(world: &mut World) {
         .vscroll(true)
         .show(egui_context.get_mut(), |ui| {
             ui.heading(format!("Being Entity: {:?}", selected_being_entity));
-            ui.horizontal(|ui| {
-                if ui.button("Show Full Components").clicked() {
-                    show_full_components = !show_full_components;
+            ui.collapsing("All Entity Components", |ui| {
+                if world.get_entity(selected_being_entity).is_ok() {
+                    unsafe {
+                        bevy_inspector::ui_for_entity(&mut *world_ptr, selected_being_entity, ui);
+                    }
+                } else {
+                    ui.label("Selected being entity missing");
                 }
+            });
+            ui.separator();
+
+            ui.horizontal(|ui| {
                 let wallphaser_enabled = world.get::<WallPhaser>(selected_being_entity).is_some();
                 if ui.button(if wallphaser_enabled { "Disable WallPhaser" } else { "Enable WallPhaser" }).clicked() {
                     unsafe {
@@ -1264,15 +1271,6 @@ pub fn being_details_inspector(world: &mut World) {
             }
 
             ui.separator();
-
-            if show_full_components {
-                ui.label("All Components on this Being:");
-                ui.separator();
-                unsafe {
-                    bevy_inspector::ui_for_entity(&mut *world_ptr, selected_being_entity, ui);
-                }
-                return;
-            }
 
             ui.heading("Body");
             ui.label(format!("Body: {} [{:?}]", body_label, body_entity));
@@ -2046,7 +2044,6 @@ pub fn being_details_inspector(world: &mut World) {
         } else {
             selected_entities.selected_being_interaction_zone = selected_interaction_zone;
             selected_entities.selected_being_bodypart = selected_part;
-            selected_entities.show_full_being_components = show_full_components;
         }
     }
 
@@ -2121,6 +2118,41 @@ fn render_multi_being_details_column(
             ui.label(format!("Vision: {:.2}", sums.vision));
             ui.label(format!("Manip dex: {:.2}", sums.manip_dex));
             ui.label(format!("Manip str: {:.2}", sums.manip_str));
+        }
+    });
+
+    ui.collapsing("Bit", |ui| {
+        let bit_ref = bit_ref_query.get(world, selected_being_entity).ok().copied();
+        let Some(bit_ref) = bit_ref else {
+            ui.label("BitRef: missing");
+            return;
+        };
+        ui.label(format!("BitRef.0 (hash): {:?}", bit_ref.0));
+        let Some(bit_map) = world.get_resource::<BeingInstTemplateEntityMap>() else {
+            ui.label("BeingInstTemplateEntityMap: missing resource");
+            return;
+        };
+        let Ok(bit_ent) = bit_map.0.get_cloned(bit_ref.0) else {
+            ui.label("BitRef.0 is not present in BeingInstTemplateEntityMap");
+            return;
+        };
+        ui.label(format!("Bit entity: {:?}", bit_ent));
+        ui.label(format!(
+            "Bit StrId: {}",
+            str_id_query
+                .get(world, bit_ent)
+                .map_or_else(|_| "missing".to_string(), |str_id| str_id.to_string())
+        ));
+        ui.label(format!(
+            "Bit DisplayName: {}",
+            display_name_query
+                .get(world, bit_ent)
+                .map_or_else(|_| "missing".to_string(), |display_name| display_name.0.clone())
+        ));
+        ui.separator();
+        ui.label("Bit template components:");
+        unsafe {
+            bevy_inspector::ui_for_entity(&mut *world_ptr, bit_ent, ui);
         }
     });
 

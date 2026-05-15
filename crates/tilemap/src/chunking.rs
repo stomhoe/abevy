@@ -22,6 +22,7 @@ pub use chunking_components::*;
 pub use ::tilemap_shared::chunking_shared_resources::*;
 use ::tilemap_shared::*;
 
+use game_common::HostSystems;
 use crate::{ChunkSystems, };
 
 #[allow(unused_parens, )]
@@ -53,6 +54,11 @@ pub fn plugin(app: &mut App) {
     ).in_set(ChunkSystems))
 
     .add_systems(Update, (
+        update_host_loaded_chunk_timers
+            .after(spawn_activated_chunks),
+    ).in_set(HostSystems))
+
+    .add_systems(Update, (
         update_chunk_visib
             .after(detect_camera_change_pos_visib)
             .after(periodically_recheck_chunk_visibility)
@@ -66,6 +72,7 @@ pub fn plugin(app: &mut App) {
         add_activating_chunks_to_activate_chunks_around,
     ).before(make_checked_chunks_despawn_if_unreferenced))
     .init_resource::<LoadChunksAround>()
+    .init_resource::<RecentlySpawnedChunks>()
     .init_resource::<LoadedChunks>()
     .init_resource::<LoadedMacroChunks>()
     .init_resource::<BeingsInCpos>()
