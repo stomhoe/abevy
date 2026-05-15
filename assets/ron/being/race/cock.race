@@ -30,5 +30,4 @@ race cock {
         ocean: -2.5
         temp: 1.2
     }
-    spawn_pack_entity: false
 }

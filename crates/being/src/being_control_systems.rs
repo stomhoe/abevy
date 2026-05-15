@@ -89,22 +89,7 @@ pub fn on_control_change(
     }
 }
 
-#[allow(unused_parens, )]
-pub fn add_melee_target_comp_to_ai_controlled(
-    mut commands: Commands,
-    ai_controlled_beings: Query<
-        Entity,
-        (With<Being>, LocalAiControlled, Without<AiAutoMeleeTargets>, ),
-    >,
-    ceased_2b_ai_controlled: Query<Entity, Added<HumanControlled>>,
-) {
-    for being_ent in ai_controlled_beings.iter() {
-        commands.entity(being_ent).try_insert_if_new(AiAutoMeleeTargets::default());
-    }
-    for being_ent in ceased_2b_ai_controlled.iter() {
-        commands.entity(being_ent).try_remove::<AiAutoMeleeTargets>();
-    }
-}
+
 
 pub fn assign_uncomputed_beings_to_host(
     mut commands: Commands,

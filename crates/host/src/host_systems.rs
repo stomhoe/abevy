@@ -71,7 +71,7 @@ pub fn on_assets_finish_loading(
     mut game_phase: ResMut<NextState<GamePhase>>,
 ) {
     let Ok(&host_faction_hash) = host_faction_hash.single() else {
-        error!(target: "host_systems", "Failed to get host faction hash while authorizing connected clients");
+        error!(target: HOST_SYSTEMS, "Failed to get host faction hash while authorizing connected clients");
         return;
     };
 
@@ -88,7 +88,7 @@ pub fn on_assets_finish_loading(
         cmd.remove_resource::<PendingGameStart>();
     }
 
-    info!(target: "host_systems", "Host server is now accepting connections.");
+    info!(target: HOST_SYSTEMS, "Host server is now accepting connections.");
 }
 
 
@@ -105,28 +105,43 @@ pub fn host_on_player_connect(
 
     let Ok(&host_faction_hash) = host_faction_hash.single()
     else {
-        error!(target: "host_systems", "Failed to get host faction hash for assigning to connected client");
+        error!(target: HOST_SYSTEMS, "Failed to get host faction hash for assigning to connected client");
         return;
     };
 
     cmd.entity(on_connected_client.entity).insert((AuthorizedClient, Player, FactionRef(host_faction_hash)));
-    info!(target: "host_systems", "(HOST) `{}` connected", on_connected_client.entity);
+    info!(target: HOST_SYSTEMS, "(HOST) `{}` connected", on_connected_client.entity);
 
 }
 
 #[allow(unused_parens)]
-pub fn host_receive_client_name(mut on_receive_username: On<FromClient<SendUsername>>,
+pub fn host_receive_client_name(
+    mut on_receive_username: On<FromClient<SendUsername>>,
     mut cmd: Commands,
+    existing_players: Query<(Entity, &StrId), With<Player>>,
 ) {
     let username = mem::take(&mut on_receive_username.event_mut().0);
 
     let Some(entity) = on_receive_username.client_id.entity() else {
-        warn!(target: "host_systems", "Received username from server {:?}", on_receive_username.client_id);
+        warn!(target: HOST_SYSTEMS, "Received username from server {:?}", on_receive_username.client_id);
         return;
     };
 
-    cmd.entity(entity).insert(username.clone());
+    if existing_players
+        .iter()
+        .any(|(player_ent, existing_username)| player_ent != entity && *existing_username == username)
+    {
+        warn!(
+            target: HOST_SYSTEMS,
+            "Kicking connecting client {:?} because username {:?} is already taken",
+            entity,
+            username
+        );
+        cmd.entity(entity).despawn();
+        return;
+    }
 
+    cmd.entity(entity).insert(username.clone());
 }
 
 

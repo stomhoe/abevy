@@ -81,7 +81,7 @@ pub fn instance_pack_entities(
             );
             from_no_spawn_squad = queries.no_spawn_squad_query.get(source_ent).is_ok();
             let sampled_count: usize = msg
-                .override_being_count
+                .override_count
                 .map(usize::from)
                 .unwrap_or_else(|| {
                     let sampled_count: usize = queries.spawn_count_query
@@ -128,7 +128,7 @@ pub fn instance_pack_entities(
             );
             from_no_spawn_squad = queries.no_spawn_squad_query.get(source_ent).is_ok();
             let final_count = msg
-                .override_being_count
+                .override_count
                 .map(usize::from)
                 .unwrap_or_else(|| {
                     let sampled_count = queries.spawn_count_query
@@ -152,7 +152,7 @@ pub fn instance_pack_entities(
             );
             from_no_spawn_squad = queries.no_spawn_squad_query.get(source_ent).is_ok();
             let final_count = msg
-                .override_being_count
+                .override_count
                 .map(usize::from)
                 .unwrap_or_else(|| {
                     let sampled_count = queries.spawn_count_query

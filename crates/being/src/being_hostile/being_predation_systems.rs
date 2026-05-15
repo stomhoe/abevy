@@ -14,10 +14,6 @@ use common::common_tag_components::TagSet;
 use tilemap_shared::DimensionEntityMap;
 use tilemap_shared::GlobalTilePos;
 
-use crate::being_nav::being_nav_debug::*;
-
-const NAV_SYSTEM: &str = "being_hunt_systems";
-
 const HUNTERS_PER_PREY_TARGET: usize = 4;
 const HUNT_RETARGET_HYSTERESIS_TILES: f32 = 3.0;
 const PACK_HUNT_NEARBY_RADIUS_TILES: f32 = 100.0;
@@ -170,7 +166,6 @@ pub fn sync_predator_squad_marker(
     member_predator_query: Query<Has<Predator>, (With<Being>, )>,
     squad_member_of_query: Query<&SquadMemberOf, >,
     mut squads_to_process: Local<EntityHashSet>,
-    mut nav_log: BeingNavDebugLog,
 ) {
     squads_to_process.clear();
     for member_of in changed_predators.iter() {
@@ -193,22 +188,7 @@ pub fn sync_predator_squad_marker(
         } else {
             cmd.entity(squad_ent).try_remove::<Predator>();
         }
-        nav_log.push(
-            squad_ent,
-            NAV_SYSTEM,
-            BeingNavDebugKind::State,
-            if has_predator {
-                "Added Predator marker to squad"
-            } else {
-                "Removed Predator marker from squad"
-            },
-            vec![
-                BeingNavDebugField::new("member_count", squad_members.iter().count() as u32),
-                BeingNavDebugField::new("has_predator", has_predator),
-            ],
-        );
     }
-    nav_log.flush();
 }
 #[derive(SystemParam)]
 pub struct UpdatePredatorHuntingTargetsQueries<'w, 's> {
@@ -220,7 +200,7 @@ pub struct UpdatePredatorHuntingTargetsQueries<'w, 's> {
         (
             Entity,
             Option<&'static SquadMemberOf>,
-            Option<&'static Hunting>,
+            Option<&'static HostileChase>,
             &'static BodyCondition,
             Option<&'static PredatorCfg>,
         ),
@@ -248,12 +228,11 @@ pub struct UpdatePredatorHuntingTargetsLocals<'s> {
     reachable_squad_targets: Local<'s, Vec<(Entity, f32)>>,
 }
 #[allow(unused_parens, )]
-pub fn update_predator_hunting_targets(
+pub fn update_predator_hostile_chased_targets(
     mut cmd: Commands,
     params: UpdatePredatorHuntingTargetsQueries,
     grids: Res<AiNavGrids>,
     mut locals: UpdatePredatorHuntingTargetsLocals,
-    mut nav_log: BeingNavDebugLog,
 ) {
     let resolve_dim_ent = |dim_ref: &::tilemap_shared::DimensionRef| params.dim_map.0.get_opt(dim_ref.0).copied();
     locals.candidates_by_dim.clear();
@@ -302,78 +281,28 @@ pub fn update_predator_hunting_targets(
             .map(|predator_cfg| (predator_cfg.clone(), PredatorCfgSource::Being))
             .or_else(|| resolve_predator_cfg(pred_ent, bit_ref, race_ref, &params.bit_map, &params.race_map, &params.predator_cfg_query))
         else {
-            cmd.entity(pred_ent).try_remove::<Hunting>();
-            nav_log.push(
-                pred_ent,
-                NAV_SYSTEM,
-                BeingNavDebugKind::Clear,
-                "Removed hunting: missing predator cfg",
-                vec![
-                    BeingNavDebugField::new("entity", pred_ent),
-                    BeingNavDebugField::new("hunting", hunting.map(|hunting| hunting.prey)),
-                ],
-            );
+            cmd.entity(pred_ent).try_remove::<HostileChase>();
             continue;
         };
         if let Some(hunting) = hunting.filter(|hunting| hunting.retaliating) {
             let Ok((pred_dim, pred_pos)) = params.pos_dim_query.get(pred_ent) else {
-                cmd.entity(pred_ent).try_remove::<(Hunting, Chasing)>();
-                nav_log.push(
-                    pred_ent,
-                    NAV_SYSTEM,
-                    BeingNavDebugKind::Clear,
-                    "Removed retaliating hunting: missing position",
-                    vec![
-                        BeingNavDebugField::new("hunting", hunting.prey),
-                    ],
-                );
+                cmd.entity(pred_ent).try_remove::<(HostileChase, NavChasing)>();
                 continue;
             };
             let current_prey = hunting.prey;
             let Some(_pred_dim_ent) = resolve_dim_ent(pred_dim) else {
-                cmd.entity(pred_ent).try_remove::<(Hunting, Chasing)>();
-                nav_log.push(
-                    pred_ent,
-                    NAV_SYSTEM,
-                    BeingNavDebugKind::Clear,
-                    "Removed retaliating hunting: missing dimension",
-                    vec![
-                        BeingNavDebugField::new("hunting", current_prey),
-                    ],
-                );
+                cmd.entity(pred_ent).try_remove::<(HostileChase, NavChasing)>();
                 continue;
             };
             let Some((current_prey_dim, current_prey_pos)) = params.pos_dim_query.get(current_prey).ok() else {
-                cmd.entity(pred_ent).try_remove::<(Hunting, Chasing)>();
-                nav_log.push(
-                    pred_ent,
-                    NAV_SYSTEM,
-                    BeingNavDebugKind::Clear,
-                    "Removed retaliating hunting: prey position missing",
-                    vec![
-                        BeingNavDebugField::new("hunting", current_prey),
-                    ],
-                );
+                cmd.entity(pred_ent).try_remove::<(HostileChase, NavChasing)>();
                 continue;
             };
             if *current_prey_dim != *pred_dim
                 || !grids.can_pathfind_between(*pred_pos, *current_prey_pos, *pred_dim)
                 || euclidean_dist(*pred_pos, *current_prey_pos) >= hunting.retaliation_stop_distance_tiles.max(0.0)
             {
-                cmd.entity(pred_ent).try_remove::<(Hunting, Chasing)>();
-                nav_log.push(
-                    pred_ent,
-                    NAV_SYSTEM,
-                    BeingNavDebugKind::Clear,
-                    "Removed retaliating hunting: prey no longer reachable",
-                    vec![
-                        BeingNavDebugField::new("hunting", current_prey),
-                        BeingNavDebugField::new("pred_dim", format!("{:?}", pred_dim.0)),
-                        BeingNavDebugField::new("pred_gpos", *pred_pos),
-                        BeingNavDebugField::new("prey_dim", format!("{:?}", current_prey_dim.0)),
-                        BeingNavDebugField::new("prey_gpos", *current_prey_pos),
-                    ],
-                );
+                cmd.entity(pred_ent).try_remove::<(HostileChase, NavChasing)>();
             }
             continue;
         }
@@ -381,55 +310,23 @@ pub fn update_predator_hunting_targets(
         let hunger_ratio = body_condition.hunger_ratio.max(0.0);
         let min_hunger_ratio_to_hunt = predator_cfg.min_hunger_to_hunt.clamp(0.0, 1.0);
         if hunger_ratio < min_hunger_ratio_to_hunt || hp.is_some_and(|hp| hp <= predator_cfg.min_hp_ratio_to_hunt) {
-            cmd.entity(pred_ent).try_remove::<Hunting>();
-            nav_log.push(
-                pred_ent,
-                NAV_SYSTEM,
-                BeingNavDebugKind::Clear,
-                "Removed hunting: hunger or health too low",
-                vec![
-                    BeingNavDebugField::new("hunger_ratio", hunger_ratio),
-                    BeingNavDebugField::new("min_hunger_to_hunt", min_hunger_ratio_to_hunt),
-                    BeingNavDebugField::new("hp_ratio", hp),
-                    BeingNavDebugField::new("min_hp_ratio_to_hunt", predator_cfg.min_hp_ratio_to_hunt),
-                ],
-            );
+            cmd.entity(pred_ent).try_remove::<HostileChase>();
             continue;
         }
 
         let Ok((pred_dim, pred_pos)) = params.pos_dim_query.get(pred_ent) else {
-            cmd.entity(pred_ent).try_remove::<Hunting>();
-            nav_log.push(
-                pred_ent,
-                NAV_SYSTEM,
-                BeingNavDebugKind::Clear,
-                "Removed hunting: missing position",
-                vec![],
-            );
+            cmd.entity(pred_ent).try_remove::<HostileChase>();
+
             continue;
         };
         let Some(pred_dim_ent) = resolve_dim_ent(pred_dim) else {
-            cmd.entity(pred_ent).try_remove::<Hunting>();
-            nav_log.push(
-                pred_ent,
-                NAV_SYSTEM,
-                BeingNavDebugKind::Clear,
-                "Removed hunting: missing dimension",
-                vec![],
-            );
+            cmd.entity(pred_ent).try_remove::<HostileChase>();
+
             continue;
         };
         let Some(candidates) = locals.candidates_by_dim.get(&pred_dim_ent) else {
-            cmd.entity(pred_ent).try_remove::<Hunting>();
-            nav_log.push(
-                pred_ent,
-                NAV_SYSTEM,
-                BeingNavDebugKind::Clear,
-                "Removed hunting: no candidates in dimension",
-                vec![
-                    BeingNavDebugField::new("dim", format!("{:?}", pred_dim.0)),
-                ],
-            );
+            cmd.entity(pred_ent).try_remove::<HostileChase>();
+
             continue;
         };
         let pred_weight_newtons = params.body_weight_query.get(pred_ent).map(|sum| sum.0).unwrap_or_default();
@@ -461,27 +358,18 @@ pub fn update_predator_hunting_targets(
         }
 
         let Some((closest_target, closest_dist)) = closest else {
-            cmd.entity(pred_ent).try_remove::<Hunting>();
-            nav_log.push(
-                pred_ent,
-                NAV_SYSTEM,
-                BeingNavDebugKind::Clear,
-                "Removed hunting: no valid prey candidate",
-                vec![
-                    BeingNavDebugField::new("dim", format!("{:?}", pred_dim.0)),
-                    BeingNavDebugField::new("gpos", *pred_pos),
-                ],
-            );
+            cmd.entity(pred_ent).try_remove::<HostileChase>();
+
             continue;
         };
         let mut chosen_target = closest_target;
         if let Some(current_prey) = hunting.map(|hunting| hunting.prey) {
             if current_prey == pred_ent {
-                cmd.entity(pred_ent).try_remove::<Hunting>();
+                cmd.entity(pred_ent).try_remove::<HostileChase>();
                 continue;
             }
             let Some(current_prey) = find_hunt_candidate(candidates, current_prey) else {
-                cmd.entity(pred_ent).try_remove::<Hunting>();
+                cmd.entity(pred_ent).try_remove::<HostileChase>();
                 continue;
             };
             if grids.can_pathfind_between(*pred_pos, current_prey.pos, *pred_dim) {
@@ -491,22 +379,7 @@ pub fn update_predator_hunting_targets(
                 }
             }
         }
-        if hunting.is_none_or(|hunting| hunting.prey != chosen_target) {
-            nav_log.push(
-                pred_ent,
-                NAV_SYSTEM,
-                BeingNavDebugKind::Target,
-                "Updated hunting target",
-                vec![
-                    BeingNavDebugField::new("dim", format!("{:?}", pred_dim.0)),
-                    BeingNavDebugField::new("gpos", *pred_pos),
-                    BeingNavDebugField::new("target", chosen_target),
-                    BeingNavDebugField::new("previous", hunting.map(|hunting| hunting.prey)),
-                    BeingNavDebugField::new("distance", closest_dist),
-                ],
-            );
-        }
-        cmd.entity(pred_ent).try_insert(Hunting::new(chosen_target));
+        cmd.entity(pred_ent).try_insert(HostileChase::new(chosen_target));
     }
 
     for (_squad_ent, squad_members, ) in params.squad_members_query.iter() {
@@ -533,7 +406,7 @@ pub fn update_predator_hunting_targets(
                 continue;
             }
             let Some((predator_cfg, predator_cfg_source)) = resolve_predator_cfg(member_ent, member_bit_ref, member_race_ref, &params.bit_map, &params.race_map, &params.predator_cfg_query) else {
-                cmd.entity(member_ent).try_remove::<Hunting>();
+                cmd.entity(member_ent).try_remove::<HostileChase>();
                 continue;
             };
             if pack_predator_cfg.is_none() {
@@ -544,12 +417,12 @@ pub fn update_predator_hunting_targets(
             let hunger_ratio = body_condition.hunger_ratio.max(0.0);
             let min_hunger_ratio_to_hunt = predator_cfg.min_hunger_to_hunt.clamp(0.0, 1.0);
             if hunger_ratio < min_hunger_ratio_to_hunt || hp.is_some_and(|hp| hp <= predator_cfg.min_hp_ratio_to_hunt) {
-                cmd.entity(member_ent).try_remove::<Hunting>();
+                cmd.entity(member_ent).try_remove::<HostileChase>();
                 continue;
             }
 
             let Ok((member_dim, member_pos)) = params.pos_dim_query.get(member_ent) else {
-                cmd.entity(member_ent).try_remove::<Hunting>();
+                cmd.entity(member_ent).try_remove::<HostileChase>();
                 continue;
             };
             if let Some(squad_dim) = squad_dim {
@@ -586,7 +459,7 @@ pub fn update_predator_hunting_targets(
                 continue;
             };
             if current_prey == member_ent {
-                cmd.entity(member_ent).try_remove::<Hunting>();
+                cmd.entity(member_ent).try_remove::<HostileChase>();
                 continue;
             }
             let Some(_member_dim_ent) = resolve_dim_ent(&member_dim) else {
@@ -630,14 +503,8 @@ pub fn update_predator_hunting_targets(
 
         let Some(mut base_target) = base_target else {
             for member_ent in squad_members.iter() {
-                cmd.entity(member_ent).try_remove::<Hunting>();
-                nav_log.push(
-                    member_ent,
-                    NAV_SYSTEM,
-                    BeingNavDebugKind::Clear,
-                    "Removed squad hunting: no valid shared target",
-                    vec![],
-                );
+                cmd.entity(member_ent).try_remove::<HostileChase>();
+
             }
             continue;
         };
@@ -705,11 +572,11 @@ pub fn update_predator_hunting_targets(
 
         for (ix, member_ent) in squad_members.iter().enumerate() {
             let Ok((member_dim, member_pos)) = params.pos_dim_query.get(member_ent) else {
-                cmd.entity(member_ent).try_remove::<Hunting>();
+                cmd.entity(member_ent).try_remove::<HostileChase>();
                 continue;
             };
             let Some(_member_dim_ent) = resolve_dim_ent(member_dim) else {
-                cmd.entity(member_ent).try_remove::<Hunting>();
+                cmd.entity(member_ent).try_remove::<HostileChase>();
                 continue;
             };
             let mut target_ix = (ix / HUNTERS_PER_PREY_TARGET).min(locals.target_list.len().saturating_sub(1));
@@ -728,67 +595,15 @@ pub fn update_predator_hunting_targets(
                 break;
             }
             let Some(assigned_target) = assigned_target else {
-                cmd.entity(member_ent).try_remove::<Hunting>();
-                nav_log.push(
-                    member_ent,
-                    NAV_SYSTEM,
-                    BeingNavDebugKind::Clear,
-                    "Removed squad hunting: target unreachable",
-                    vec![
-                        BeingNavDebugField::new("leader_target", base_target),
-                ],
-                );
+                cmd.entity(member_ent).try_remove::<HostileChase>();
                 continue;
             };
             if assigned_target == member_ent {
-                cmd.entity(member_ent).try_remove::<Hunting>();
+                cmd.entity(member_ent).try_remove::<HostileChase>();
                 continue;
             }
-            let previous_target = locals
-                .active_member_ents
-                .iter()
-                .find(|(ent, _, _, _)| *ent == member_ent)
-                .and_then(|(_, _, _, current_prey)| *current_prey);
-            nav_log.push(
-                member_ent,
-                NAV_SYSTEM,
-                BeingNavDebugKind::Target,
-                "Assigned squad hunting target",
-                vec![
-                    BeingNavDebugField::new("target", assigned_target),
-                    BeingNavDebugField::new("previous", previous_target),
-                ],
-            );
-            cmd.entity(member_ent).try_insert(Hunting::new(assigned_target));
+            cmd.entity(member_ent).try_insert(HostileChase::new(assigned_target));
         }
     }
-    nav_log.flush();
 }
 
-#[allow(unused_parens, )]
-pub fn sync_chasing_to_hunt(
-    mut cmd: Commands,
-    hunting_predators: Query<(Entity, &Hunting, Option<&Chasing>, ), (Changed<Hunting>)>,
-    mut nav_log: BeingNavDebugLog,
-) {
-    for (pred_ent, hunting, chasing, ) in hunting_predators.iter() {
-        if chasing
-            .map(|chasing| chasing.target == hunting.prey)
-            .unwrap_or(false)
-        {
-            continue;
-        }
-        cmd.entity(pred_ent).try_insert(Chasing::new(hunting.prey, 1.5));
-        nav_log.push(
-            pred_ent,
-            NAV_SYSTEM,
-            BeingNavDebugKind::Target,
-            "Synced chasing to hunting target",
-            vec![
-                BeingNavDebugField::new("target", hunting.prey),
-                BeingNavDebugField::new("previous", chasing.map(|chasing| chasing.target)),
-            ],
-        );
-    }
-    nav_log.flush();
-}

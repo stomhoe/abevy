@@ -136,7 +136,18 @@ fn main() {
                     level: Level::TRACE,
                     ..Default::default()
                 })
-            .set(ImagePlugin::default_nearest(),),
+            .set(ImagePlugin::default_nearest(),)
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    // Immediate = No VSync, uncapped fps
+                    // Mailbox = Fast VSync, low latency
+                    present_mode: bevy::window::PresentMode::Immediate,
+                    ..default()
+                }),
+                ..default()
+            }
+        )   
+            ,
             EguiPlugin::default(),
             WorldInspectorPlugin::default().run_if(|visible: Res<InspectorVisibility>| visible.0),
             PhysicsPlugins::default().with_length_unit(GlobalTilePos::TILE_SIZE_PXS.x as f32),

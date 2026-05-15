@@ -31,7 +31,7 @@ pub struct FightOrFlightReactionQueries<'w, 's> {
     fight_or_flight_query: Query<'w, 's, &'static FightOrFlightConfig>,
     fighting_style_query: Query<'w, 's, &'static FightingStyle>,
     pack_templ_ref_query: Query<'w, 's, &'static TemplEntiRef>,
-    hunting_query: Query<'w, 's, &'static Hunting>,
+    hunting_query: Query<'w, 's, &'static HostileChase>,
     dead_query: Query<'w, 's, Has<Dead>, >,
     squad_member_of_query: Query<'w, 's, &'static SquadMemberOf>,
     squad_members_query: Query<'w, 's, &'static SquadMembers>,
@@ -263,7 +263,7 @@ fn ensure_fleeing(
         .unwrap_or_else(|| Fleeing::with_distance(attacker_ent, desired_distance_tiles));
     fleeing.add_threat(attacker_ent);
     fleeing.desired_distance_tiles = fleeing.desired_distance_tiles.max(desired_distance_tiles.max(0.0));
-    cmd.entity(being_ent).try_remove::<(Hunting, Chasing, AiAutoMeleeTargets)>();
+    cmd.entity(being_ent).try_remove::<(HostileChase, NavChasing, AutoMeleeIfInInteractionZone)>();
     cmd.entity(being_ent).insert(fleeing);
 }
 
@@ -276,9 +276,9 @@ fn ensure_counterattack(
 ) {
     cmd.entity(being_ent).try_remove::<Fleeing>();
     let hunting = if retaliating {
-        Hunting::with_retaliation(attacker_ent, retaliation_stop_distance_tiles)
+        HostileChase::with_retaliation(attacker_ent, retaliation_stop_distance_tiles)
     } else {
-        Hunting::new(attacker_ent)
+        HostileChase::new(attacker_ent)
     };
     cmd.entity(being_ent).try_insert(hunting);
 }
@@ -286,7 +286,7 @@ fn ensure_counterattack(
 fn should_preserve_current_hunt_for_reaction(
     being_ent: Entity,
     attacker_ent: Entity,
-    current_hunting: &Hunting,
+    current_hunting: &HostileChase,
     queries: &FightOrFlightReactionQueries,
     grids: &AiNavGrids,
 ) -> bool {

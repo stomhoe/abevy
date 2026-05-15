@@ -156,6 +156,5 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DebugBeingNavUiState>()
         .init_resource::<DebugBeingLocationEditorState>()
         .init_resource::<DebugBeingVitalsAdjustState>()
-        .init_resource::<DebuggingBeingNav>()
         .init_resource::<common::common_states::HotReloadSelection>();
 }

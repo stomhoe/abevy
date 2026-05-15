@@ -34,5 +34,4 @@ race wolf {
         ocean: -2.5
         temp: 1.0
     }
-    spawn_pack_entity: false
 }

@@ -114,6 +114,7 @@ pub const BEING_CONTROL: &str = "being_control";
 pub const ENTITY_MAP_SYSTEM: &str = "entity_map_system";
 pub const ITEM_SYSTEM: &str = "item_system";
 pub const WILDLIFE_SYSTEM: &str = "wildlife_system";
+pub const HOST_SYSTEMS: &str = "host_systems";
 
 
 // ============================================================================

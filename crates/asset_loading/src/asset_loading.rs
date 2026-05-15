@@ -3,7 +3,7 @@
 use bevy_replicon::prelude::ClientState;
 use bevy::ecs::schedule::common_conditions::resource_changed;
 use bevy::prelude::*;
-use common::common_states::*;
+use ::common::*;
 use bevy_asset_loader::prelude::*;
 use game_common::{GameplaySystems, };
 
@@ -23,13 +23,13 @@ pub fn plugin(app: &mut App) {
         .init_state::<AssetLoading>()
         .init_state::<AssetHotReloadState>()
         .init_resource::<HotReloadSelection>()
+        .init_resource::<RemainingInits>()
         .add_systems(Update, (
             reload_assets_while_ingame,
-            finish_asset_loading_after_delay,
             sync_hot_reload_markers.run_if(resource_changed::<HotReloadSelection>),
         ))
-        .add_observer(process_hot_reload_request)
         .add_observer(change_to_finished_asset_loading_state)
+        .add_observer(process_hot_reload_request)
         .add_systems(OnExit(AppState::StatefulGameSession),
             despawn_asset_scoped_entities
         )

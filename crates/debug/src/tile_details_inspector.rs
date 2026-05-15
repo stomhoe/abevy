@@ -131,26 +131,6 @@ pub fn tile_details_inspector(world: &mut World) {
         None
     };
 
-    let mut delete_other_tiles_here = None;
-    let mut delete_other_tiles_templ = None;
-    let mut tags_here = None;
-    let mut tags_templ = None;
-    let mut referenced_templ_entity = None;
-    let mut referenced_tilemap_entity = None;
-    if let Ok(entity_ref) = world.get_entity(selected_tile_entity) {
-        delete_other_tiles_here = entity_ref.get::<DeleteOtherTilesInSamePos>().cloned();
-        tags_here = entity_ref.get::<TagSet>().cloned();
-        if let Some(tilemap_id) = entity_ref.get::<TilemapId>() {
-            referenced_tilemap_entity = Some(tilemap_id.0);
-        }
-        if let Some(templ_ref) = entity_ref.get::<TemplEntiRef>() {
-            referenced_templ_entity = Some(templ_ref.0);
-            if let Ok(templ_entity_ref) = world.get_entity(templ_ref.0) {
-                delete_other_tiles_templ = templ_entity_ref.get::<DeleteOtherTilesInSamePos>().cloned();
-                tags_templ = templ_entity_ref.get::<TagSet>().cloned();
-            }
-        }
-    }
 
     let mut egui_context_query = world
         .query_filtered::<&bevy_inspector_egui::bevy_egui::EguiContext, With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>>();

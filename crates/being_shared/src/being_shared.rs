@@ -143,7 +143,7 @@ pub type AliveBeing = (With<Being>, Without<Dead>);
 pub struct HumanControlled;
 
 #[derive(Component, Debug, Default, Clone)]
-pub struct AiAutoMeleeTargets(pub Vec<Entity>);
+pub struct AutoMeleeIfInInteractionZone(pub Vec<Entity>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct LodLevel(pub u8);

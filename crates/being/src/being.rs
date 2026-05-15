@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use ::being_shared::being_behavior::HostileChase;
 use bevy::prelude::*;
 use bevy::ecs::schedule::common_conditions::resource_changed;
 use bevy::time::common_conditions::on_timer;
@@ -12,7 +13,6 @@ use tilemap::terrain::terrgen_messages::ChunkTerrainBuilt;
 
 use common::common_states::AssetLoading;
 use sprite_systems::AcSpriteSystems;
-use crate::being_melee_systems::*;
 use crate::being_messages::*;
 use crate::being_cleanup_systems::*;
 use crate::being_on_chunk_despawn_systems::*;
@@ -20,7 +20,6 @@ use crate::being_enable_systems::*;
 use crate::squad_build_systems::*;
 use crate::being_nav::*;
 use crate::being_simulation_systems::*;
-use crate::being_hunt_systems::*;
 use crate::being_control_systems::*;
 use crate::being_build_systems::*;
 use crate::being_portal_systems::*;
@@ -33,7 +32,6 @@ use crate::{
     being_systems::*,
     body::{self, BodySystems},
     being_nav,
-    pack::PackSystems,
     race::RaceSystems,
 };
 
@@ -47,6 +45,7 @@ pub fn plugin(app: &mut App) {
         being_nav::plugin,
         crate::being_inst_template::plugin,
         crate::pack::plugin,
+        crate::being_hostile::plugin,
     ))
     .init_resource::<BeingsAtGpos>()
     .init_resource::<AiNavGrids>()
@@ -92,28 +91,10 @@ pub fn plugin(app: &mut App) {
         Update,
         (
             on_control_change,
-            sync_predator_squad_marker,
             validate_added_beings_have_gpos.in_set(HostSystems).in_set(GameplaySystems),
         ),
     )
-    .add_systems(
-        Update,
-        (
-            add_melee_target_comp_to_ai_controlled,
-            update_predator_hunting_targets,
-            make_hunted_be_melee_targets.after(update_predator_hunting_targets),
-            sync_chasing_to_hunt.after(update_predator_hunting_targets),
-        ).in_set(SimRunningSystems),
-    )
-    .add_systems(
-        Update,
-        (
-            (
-                emit_ai_melee_attack_requests.run_if(on_timer(Duration::from_millis(30))),
-                apply_melee_attack,
-            ).in_set(HostSystems).in_set(SimRunningSystems),
-        ),
-    )
+
     .add_systems(
         Update,
         cross_portal.in_set(HostSystems),
@@ -131,7 +112,7 @@ pub fn plugin(app: &mut App) {
     .replicate::<FollowerOf>()
     .replicate::<CharacterCreatedBy>()
     .replicate::<DirectControllable>()
-    .replicate::<Chasing>()
+    .replicate::<NavChasing>()
     .replicate::<FightOrFlightConfig>()
     .replicate::<FightingStyle>()
     .replicate::<WanderState>()
@@ -153,7 +134,7 @@ pub fn plugin(app: &mut App) {
 
     .replicate::<HumanControlled>()
     .replicate::<PreventsChunkUnloading>()
-    .replicate::<Hunting>()
+    .replicate::<HostileChase>()
     .replicate::<LedBy>()
     .replicate::<JoinedGroups>()
     .register_type::<JoinedGroups>()
@@ -167,7 +148,6 @@ pub fn plugin(app: &mut App) {
 
     .add_message::<MakeChunkSnapshotForChaser>()
     .add_message::<NavOrder>()
-    .add_message::<BeingNavDebugLine>()
     .add_message::<FaithfulSimBeing>()
     .add_message::<InstantiateTemplPackEntity>()
 

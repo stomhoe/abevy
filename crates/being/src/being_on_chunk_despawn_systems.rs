@@ -41,7 +41,7 @@ pub fn on_chunk_with_beings_attempt_unload(
     mut reader: MessageReader<ChunkWithBeingsWantsDespawn>,
     chunks_query: Query<(&DimensionRef, &ChunkPos)>,
     beings_within_chunk: Res<BeingsInCpos>,
-    chaser_beings: Query<&Chasing, With<Being>>,
+    chaser_beings: Query<&NavChasing, With<Being>>,
     prevents_chunk_unloading_query: Query<(), (Or<(With<PreventsChunkUnloading>, With<LoadChunksAround>),>,)>,
     player_targets: Query<(), (BeingOfPlayerFaction)>,
     mut mcsfc_writer: MessageWriter<MakeChunkSnapshotForChaser>,

@@ -8,14 +8,14 @@ use tilemap_shared::{DimensionRef, GlobalTilePos};
 pub struct BehavorialNavState;
 
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, MapEntities)]
-#[relationship(relationship_target = Chasers)]
+#[relationship(relationship_target = NavChasers)]
 #[require(BehavorialNavState, )]
-pub struct Chasing {
+pub struct NavChasing {
     #[relationship] #[entities]
     pub target: Entity,
     pub stop_distance: f32,
 }
-impl Chasing {
+impl NavChasing {
     pub fn new(target: Entity, stop_distance: f32) -> Self {
         Self {
             target,
@@ -43,8 +43,8 @@ impl Chasing {
 }
 
 #[derive(Component, Debug, )]
-#[relationship_target(relationship = Chasing)]
-pub struct Chasers(Vec<Entity>);
+#[relationship_target(relationship = NavChasing)]
+pub struct NavChasers(Vec<Entity>);
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, MapEntities)]
 #[require(BehavorialNavState, )]

@@ -10,7 +10,9 @@ use debug_shared::*;
 
 const INLANDNESS_VISUALIZER_PROBE_ID: &str = "inlandness_visualizer_probe";
 const INLANDNESS_VISUALIZER_DEFAULT_STEP_SIZE: u16 = 160;
-const INLANDNESS_VISUALIZER_DEFAULT_REGION_MULTIPLIER: f32 = 15.0;
+const INLANDNESS_VISUALIZER_DEFAULT_TARGET_SAMPLE_POINTS: f32 = 12_000.0;
+const INLANDNESS_VISUALIZER_DEFAULT_SAMPLE_AREA: f32 = 1.0;
+const INLANDNESS_VISUALIZER_SAMPLE_AREA_RANGE: std::ops::RangeInclusive<f32> = 0.25..=25.0;
 
 #[derive(Clone, Copy)]
 pub struct ActiveTerrainProbe {
@@ -35,16 +37,61 @@ pub struct InlandnessVisualizerPreview {
 
 #[derive(Clone, Copy)]
 pub struct InlandnessVisualizerControls {
+    sampled_area: f32,
+    target_sample_points: f32,
     step_size: u16,
     region_multiplier: f32,
+    step_size_override: bool,
+    region_multiplier_override: bool,
+    auto_resample: bool,
+    settings_dirty: bool,
 }
 
 impl Default for InlandnessVisualizerControls {
     fn default() -> Self {
+        let (step_size, region_multiplier) = Self::defaults_for_sampled_area(
+            INLANDNESS_VISUALIZER_DEFAULT_SAMPLE_AREA,
+            INLANDNESS_VISUALIZER_DEFAULT_TARGET_SAMPLE_POINTS,
+        );
         Self {
-            step_size: INLANDNESS_VISUALIZER_DEFAULT_STEP_SIZE,
-            region_multiplier: INLANDNESS_VISUALIZER_DEFAULT_REGION_MULTIPLIER,
+            sampled_area: INLANDNESS_VISUALIZER_DEFAULT_SAMPLE_AREA,
+            target_sample_points: INLANDNESS_VISUALIZER_DEFAULT_TARGET_SAMPLE_POINTS,
+            step_size,
+            region_multiplier,
+            step_size_override: false,
+            region_multiplier_override: false,
+            auto_resample: true,
+            settings_dirty: false,
         }
+    }
+}
+
+impl InlandnessVisualizerControls {
+    fn defaults_for_sampled_area(sampled_area: f32, target_sample_points: f32) -> (u16, f32) {
+        let sampled_area = sampled_area.max(0.0001);
+        let target_sample_points = target_sample_points.max(1.0);
+        let base_region_width = REGION_SIZE_IN_CHUNKS.x() as f32 * ChunkPos::CHUNK_SIZE.x as f32;
+        let base_region_height = REGION_SIZE_IN_CHUNKS.y() as f32 * ChunkPos::CHUNK_SIZE.y as f32;
+        let base_region_area = base_region_width * base_region_height;
+        let base_region_multiplier = ((target_sample_points * INLANDNESS_VISUALIZER_DEFAULT_STEP_SIZE as f32 * INLANDNESS_VISUALIZER_DEFAULT_STEP_SIZE as f32) / base_region_area).sqrt();
+        (
+            (INLANDNESS_VISUALIZER_DEFAULT_STEP_SIZE as f32 * sampled_area).round().clamp(16.0, 400.0) as u16,
+            (base_region_multiplier * sampled_area).clamp(1.0, 30.0),
+        )
+    }
+
+    fn sync_linked_defaults(&mut self) -> bool {
+        let (default_step_size, default_region_multiplier) = Self::defaults_for_sampled_area(self.sampled_area, self.target_sample_points);
+        let mut changed = false;
+        if !self.step_size_override && self.step_size != default_step_size {
+            self.step_size = default_step_size;
+            changed = true;
+        }
+        if !self.region_multiplier_override && (self.region_multiplier - default_region_multiplier).abs() > f32::EPSILON {
+            self.region_multiplier = default_region_multiplier;
+            changed = true;
+        }
+        changed
     }
 }
 
@@ -71,7 +118,7 @@ pub fn inlandness_visualizer_window(
     mut cmd: Commands,
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
-    camera_dimension: Query<(&DimensionRef, &GlobalTilePos, ), (With<CameraTarget>, )>,
+    camera_dimension: Query<(Entity, &DimensionRef, &GlobalTransform, Option<&GlobalTilePos>), With<CameraTarget>>,
     terrprobe_entity_map: Res<TerrProbeTemplEntityMap>,
     terrprobe_query: Query<&TerrProbeTempl, ()>,
     mut terrprobe_writer: MessageWriter<TerrProbeJob>,
@@ -83,6 +130,7 @@ pub fn inlandness_visualizer_window(
     mut controls: Local<InlandnessVisualizerControls>,
     mut pending_probes: Local<Vec<TerrProbeJob>>,
     mut camera_region_prev: Local<Option<(DimensionRef, RegionPos)>>,
+    mut camera_tile_prev: Local<Option<GlobalTilePos>>,
 ) {
     if !window_visible.inlandness_visualizer {
         if *was_open {
@@ -94,6 +142,7 @@ pub fn inlandness_visualizer_window(
         }
         *was_open = false;
         *camera_region_prev = None;
+        *camera_tile_prev = None;
         return;
     }
 
@@ -101,17 +150,26 @@ pub fn inlandness_visualizer_window(
         return;
     };
 
-    let Ok((&camera_dim_ref, &camera_tile_pos, )) = camera_dimension.single() else {
+    let Ok((camera_entity, &camera_dim_ref, camera_transform, camera_gpos_opt)) = camera_dimension.single() else {
         return;
     };
+    let camera_tile_pos = camera_gpos_opt
+        .copied()
+        .unwrap_or_else(|| GlobalTilePos::from(camera_transform.translation().xy()));
     let camera_region_pos = camera_tile_pos.to_chunkpos().to_region_pos();
     let camera_region = (camera_dim_ref, camera_region_pos);
+    let camera_has_gpos = camera_gpos_opt.is_some();
     let opening_now = !*was_open;
+    let camera_moved = camera_tile_prev
+        .as_ref()
+        .map(|prev| *prev != camera_tile_pos)
+        .unwrap_or(false);
     let region_changed = camera_region_prev
         .as_ref()
         .map(|prev| *prev != camera_region)
         .unwrap_or(false);
     *camera_region_prev = Some(camera_region);
+    *camera_tile_prev = Some(camera_tile_pos);
 
     for sampled_values in sampled_values_reader.read() {
         if active_probe.as_ref().map(|p| p.requester) != Some(sampled_values.requester) {
@@ -155,7 +213,7 @@ pub fn inlandness_visualizer_window(
         }
     }
 
-    let mut needs_resample = opening_now || region_changed;
+    let mut needs_resample = opening_now || (controls.auto_resample && (camera_moved || region_changed));
 
     let mut open = window_visible.inlandness_visualizer;
     let screen_rect = ctx.content_rect();
@@ -165,6 +223,7 @@ pub fn inlandness_visualizer_window(
         .movable(true)
         .open(&mut open)
         .show(ctx, |ui| {
+            let mut settings_changed = false;
             ui.label(format!("Camera region: {:?} dim {:?}", camera_region_pos, camera_dim_ref.0));
             if let Some((sample_dim, sample_region)) = preview.sampled_region {
                 ui.label(format!("Preview region: {:?} dim {:?}", sample_region, sample_dim.0));
@@ -178,22 +237,74 @@ pub fn inlandness_visualizer_window(
             }
             ui.separator();
             ui.horizontal(|ui| {
-                ui.label("Step size");
-                let response = ui.add(
-                    egui::Slider::new(&mut controls.step_size, 16..=256)
-                        .clamping(egui::SliderClamping::Always)
-                        .integer(),
-                );
-                needs_resample |= response.changed();
+                if ui.checkbox(&mut controls.auto_resample, "Auto-resample on move").changed() {
+                    settings_changed = true;
+                }
+                if controls.auto_resample && controls.settings_dirty {
+                    needs_resample = true;
+                    controls.settings_dirty = false;
+                }
             });
             ui.horizontal(|ui| {
-                ui.label("Region multiplier");
+                ui.label("Area");
                 let response = ui.add(
-                    egui::Slider::new(&mut controls.region_multiplier, 1.0..=30.0)
-                        .clamping(egui::SliderClamping::Always),
+                    egui::Slider::new(&mut controls.sampled_area, INLANDNESS_VISUALIZER_SAMPLE_AREA_RANGE.clone())
+                        .clamping(egui::SliderClamping::Always)
+                        .show_value(true),
                 );
-                needs_resample |= response.changed();
+                if response.changed() {
+                    settings_changed = true;
+                }
+                let response = ui.add(
+                    egui::DragValue::new(&mut controls.target_sample_points)
+                        .range(1_000.0..=100_000.0)
+                        .speed(50.0)
+                        .suffix(" samples"),
+                );
+                if response.changed() {
+                    settings_changed = true;
+                }
             });
+            ui.horizontal(|ui| {
+                if ui.checkbox(&mut controls.step_size_override, "Override step size").changed() {
+                    settings_changed = true;
+                }
+                ui.add_enabled_ui(controls.step_size_override, |ui| {
+                    let response = ui.add(
+                        egui::Slider::new(&mut controls.step_size, 16..=400)
+                            .clamping(egui::SliderClamping::Always)
+                            .integer(),
+                    );
+                    if response.changed() {
+                        settings_changed = true;
+                    }
+                });
+            });
+            ui.horizontal(|ui| {
+                if ui.checkbox(&mut controls.region_multiplier_override, "Override region multiplier").changed() {
+                    settings_changed = true;
+                }
+                ui.add_enabled_ui(controls.region_multiplier_override, |ui| {
+                    let response = ui.add(
+                        egui::Slider::new(&mut controls.region_multiplier, 1.0..=30.0)
+                            .clamping(egui::SliderClamping::Always),
+                    );
+                    if response.changed() {
+                        settings_changed = true;
+                    }
+                });
+            });
+            if controls.sync_linked_defaults() {
+                settings_changed = true;
+            }
+            if settings_changed {
+                if controls.auto_resample {
+                    needs_resample = true;
+                    controls.settings_dirty = false;
+                } else {
+                    controls.settings_dirty = true;
+                }
+            }
             ui.separator();
             let Some(texture) = preview.texture.as_ref() else {
                 ui.label("No inlandness preview yet.");
@@ -207,7 +318,7 @@ pub fn inlandness_visualizer_window(
             } else {
                 map_h = map_w / aspect;
             }
-            let (rect, _) = ui.allocate_exact_size(egui::vec2(map_w.max(120.0), map_h.max(120.0)), egui::Sense::hover());
+            let (rect, response) = ui.allocate_exact_size(egui::vec2(map_w.max(120.0), map_h.max(120.0)), egui::Sense::click());
             let painter = ui.painter_at(rect);
             painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(18, 18, 18));
             painter.image(
@@ -223,6 +334,26 @@ pub fn inlandness_visualizer_window(
                 camera_region_pos,
                 camera_tile_pos,
             );
+            if response.clicked()
+                && let Some(pointer_pos) = response.interact_pointer_pos()
+                && rect.contains(pointer_pos)
+                && let Some((sample_dim, _sample_region)) = preview.sampled_region
+                && sample_dim == camera_dim_ref
+            {
+                let click_x = ((pointer_pos.x - rect.left()) / rect.width() * preview.image_size[0] as f32)
+                    .floor()
+                    .clamp(0.0, (preview.image_size[0].saturating_sub(1)) as f32) as usize;
+                let click_y = ((pointer_pos.y - rect.top()) / rect.height() * preview.image_size[1] as f32)
+                    .floor()
+                    .clamp(0.0, (preview.image_size[1].saturating_sub(1)) as f32) as usize;
+                let tile_x = preview.min_tile.x + (click_x as i32) * preview.sample_step.x;
+                let tile_y = preview.min_tile.y + ((preview.image_size[1].saturating_sub(1) - click_y) as i32) * preview.sample_step.y;
+                let target_gpos = GlobalTilePos(ivec2(tile_x, tile_y));
+                cmd.entity(camera_entity).insert(Transform::from_translation(target_gpos.to_pixelpos().extend(0.0)));
+                if camera_has_gpos {
+                    cmd.entity(camera_entity).insert(target_gpos);
+                }
+            }
             ui.label(format!(
                 "Legend: inlandness grayscale, robust range [{:.3}..{:.3}], raw range [{:.3}..{:.3}]",
                 preview.display_min,
@@ -233,6 +364,8 @@ pub fn inlandness_visualizer_window(
         });
     if needs_resample {
         preview.clear();
+        let step_size = controls.step_size;
+        let region_multiplier = controls.region_multiplier;
         queue_terrain_probe(
             &mut cmd,
             &terrprobe_entity_map,
@@ -242,14 +375,17 @@ pub fn inlandness_visualizer_window(
             camera_dim_ref,
             camera_region_pos,
             camera_tile_pos,
-            controls.step_size,
-            controls.region_multiplier,
+            step_size,
+            region_multiplier,
         );
         debug!(
             target: DEBUG,
-            "Terrain visualizer resampled step_size={} region_multiplier={:.3} opening_now={} region_changed={}",
-            controls.step_size,
-            controls.region_multiplier,
+            "Terrain visualizer resampled sampled_area={:.3} step_size={} region_multiplier={:.3} overrides(step={}, region={}) opening_now={} region_changed={}",
+            controls.sampled_area,
+            step_size,
+            region_multiplier,
+            controls.step_size_override,
+            controls.region_multiplier_override,
             opening_now,
             region_changed
         );

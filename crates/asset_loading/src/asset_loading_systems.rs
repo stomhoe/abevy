@@ -20,9 +20,13 @@ use tilemap::{
     },
 };
 
-#[derive(Resource, Default)]
-pub struct ChangeAssetLoadingStateToFinishedTimer(pub Timer);
-
+#[derive(Resource, )]
+pub struct RemainingInits(pub u32);
+impl Default for RemainingInits {
+    fn default() -> Self {
+        RemainingInits(2)
+    }
+}
 
 
 #[allow(unused_parens, )]
@@ -194,26 +198,15 @@ pub fn sync_hot_reload_markers(
 
 #[allow(unused_parens)]
 pub fn change_to_finished_asset_loading_state(
-    _on: On<ChangeAssetLoadingStateToFinished>,
-    mut cmd: Commands,
-) {
-    cmd.insert_resource(ChangeAssetLoadingStateToFinishedTimer(Timer::from_seconds(1., TimerMode::Once)));
-}
-
-#[allow(unused_parens)]
-pub fn finish_asset_loading_after_delay(
-    time: Res<Time>,
-    finish_timer: If<ResMut<ChangeAssetLoadingStateToFinishedTimer>>,
-    mut cmd: Commands,
+    _: On<InitDone>,
+    mut remaining_inits: ResMut<RemainingInits>,
     mut asset_loading_state: ResMut<NextState<AssetLoading>>,
+
 ) {
-    let mut finish_timer = finish_timer.into_inner();
-
-    finish_timer.0.tick(time.delta());
-    if !finish_timer.0.is_finished() {
-        return;
+    remaining_inits.0 -= 1;
+    if remaining_inits.0 == 0 {
+        asset_loading_state.set(AssetLoading::Finished);
+        remaining_inits.0 = RemainingInits::default().0;
     }
-
-    cmd.remove_resource::<ChangeAssetLoadingStateToFinishedTimer>();
-    asset_loading_state.set(AssetLoading::Finished);
 }
+

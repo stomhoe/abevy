@@ -259,6 +259,7 @@ fn summarize_mouth_fail_stats(river_info: &RiverRegionDebugInfo) -> Vec<(String,
 
 #[allow(unused_parens, )]
 pub fn regions_list_window(
+    mut commands: Commands,
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut chunking_ui: ResMut<DebugChunkingUiState>,
@@ -281,7 +282,7 @@ pub fn regions_list_window(
         Has<MessageOnTimeout>,
         Has<DespawnOnTimeout>,
     ), With<Region>>,
-    camera_dimension: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    camera_dimension: Query<(Entity, &DimensionRef, &GlobalTransform, Has<GlobalTilePos>), With<CameraTarget>>,
     dimension_map: Res<DimensionEntityMap>,
     id_query: Query<&StrId>,
     river_debug: Option<Res<RiverDebugData>>,
@@ -321,14 +322,14 @@ pub fn regions_list_window(
     }
 
     // Get camera target dimension and position
-    let (camera_dim_ref, camera_chunk_pos, camera_tile_pos, camera_region_pos) = camera_dimension.iter().next()
-        .map(|(dim_ref, transform)| {
+    let (camera_entity, camera_dim_ref, camera_chunk_pos, camera_tile_pos, camera_region_pos, camera_has_gpos) = camera_dimension.iter().next()
+        .map(|(entity, dim_ref, transform, has_gpos)| {
             let chunk_pos = ChunkPos::from(transform.translation());
             let tile_pos = GlobalTilePos::from(transform.translation().xy());
             let region_pos = chunk_pos.to_region_pos();
-            (Some(dim_ref), Some(chunk_pos), Some(tile_pos), Some(region_pos))
+            (Some(entity), Some(dim_ref), Some(chunk_pos), Some(tile_pos), Some(region_pos), Some(has_gpos))
         })
-        .unwrap_or((None, None, None, None));
+        .unwrap_or((None, None, None, None, None, None));
 
     let opening_now = window_visible.regions_list && !*regions_list_was_open;
     if opening_now
@@ -491,7 +492,7 @@ pub fn regions_list_window(
                         } else {
                             None
                         };
-                        let render_grid_panel = |ui: &mut egui::Ui,
+                        let mut render_grid_panel = |ui: &mut egui::Ui,
                                                  grid: Option<&GridOfSgcs>,
                                                  highlight_pos: Option<ChunkPos>,
                                                  region_pos: RegionPos,
@@ -500,10 +501,19 @@ pub fn regions_list_window(
                             if let Some(grid_sgcs) = grid {
                                 ui.label("GridOfSgcs:");
                                 ui.indent("grid_sgcs", |ui| {
-                                    if let Some(clicked_sgc_ent) = grid_sgcs.render_grid(ui, highlight_pos, Some(region_pos)) {
-                                        selected_entities.selected_exempted_entity = Some(clicked_sgc_ent);
-                                        selected_entities.selected_tile = None;
-                                        window_visible.tile_details = true;
+                                    if let Some((clicked_sgc_ent_opt, clicked_chunk_pos)) = grid_sgcs.render_grid(ui, highlight_pos, Some(region_pos)) {
+                                        if let Some(clicked_sgc_ent) = clicked_sgc_ent_opt {
+                                            selected_entities.selected_exempted_entity = Some(clicked_sgc_ent);
+                                            selected_entities.selected_tile = None;
+                                            window_visible.tile_details = true;
+                                        }
+                                        if let Some(camera_entity) = camera_entity {
+                                            let center_gpos = clicked_chunk_pos.center_gpos();
+                                            commands.entity(camera_entity).insert(Transform::from_translation(center_gpos.to_pixelpos().extend(0.0)));
+                                            if camera_has_gpos == Some(true) {
+                                                commands.entity(camera_entity).insert(center_gpos);
+                                            }
+                                        }
                                     }
                                 });
                             }

@@ -293,7 +293,6 @@ pub fn init_packs(
             .insert(min_dists);
     }
 
-    cmd.trigger(ChangeAssetLoadingStateToFinished);
 
 }
 

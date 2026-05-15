@@ -1016,7 +1016,7 @@ pub fn being_details_inspector(world: &mut World) {
     let mut predator_query = world.query::<&Predator>();
     let mut predator_cfg_query = world.query::<&PredatorCfg>();
     let mut go_to_query = world.query::<&GoTo>();
-    let mut chasing_query = world.query::<&Chasing>();
+    let mut chasing_query = world.query::<&NavChasing>();
     let mut fleeing_query = world.query::<&Fleeing>();
     let mut lod_level_query = world.query::<&LodLevel>();
     let mut behavorial_nav_state_query = world.query::<Has<BehavorialNavState>>();

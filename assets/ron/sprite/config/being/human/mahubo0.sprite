@@ -20,7 +20,7 @@ grounding_based false
 is_being_root_sprite true
 add_up_z_with_anim true
 baseline_move_speed 400.0
-offset 0.0 16.0
+offset 0.0 8.0
 offset4children {
     head 0.0 21.0 ""
 }

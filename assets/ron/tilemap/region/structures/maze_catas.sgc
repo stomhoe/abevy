@@ -1,37 +1,38 @@
 sgc {
-    id = maze_catas
-    structure_id = maze
-    weight = 1.0
-    tags = [dungeon]
-    whitelisted_tags = [dungeon, river]
-    max_being_count = 40
+    id: maze_catas
+    structure_id: maze
+    weight: 1.0
+    tags: [dungeon]
+    whitelisted_tags: [dungeon, river]
+    max_being_count: 40
     args {
-        floor_tile_id = ducatas
-        wall_tile_id = nw
-        lava_tile_id = lava
-        claim_square_min_side_length = 7
-        claim_square_max_side_length = 11
-        claim_square_normal_mean = 7.0
-        claim_square_normal_std_dev = 3.0
-        external_doorway_frequency = 0.018
-        external_doorway_width_min = 1
-        external_doorway_width_max = 2
-        external_doorway_wall_axis_preference = horizontal
-        room_spawn.square_room = [
-            { source_id = skeleton, pack_spawn_radius = 0, weight = 3.0 },
-            { source_id = goblin, pack_spawn_radius = 0, weight = 2.5 },
-            { source_id = ogre, pack_spawn_radius = 0, weight = 1.5 },
-            { source_id = medusa, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
-            { source_id = ghost, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
-            { source_id = golem_bronze, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+        floor_tile_id: ducatas
+        wall_tile_id: nw
+        lava_tile_id: lava
+        claim_square_min_side_length: 7
+        claim_square_max_side_length: 11
+        claim_square_normal_mean: 7.0
+        claim_square_normal_std_dev: 3.0
+        external_doorway_frequency: 0.018
+        external_doorway_width_min: 1
+        external_doorway_width_max: 2
+        external_doorway_wall_axis_preference: horizontal
+        room_spawn.square_room: [
+            skeleton, pack_spawn_radius: 0, weight: 3.0,
+            goblin, pack_spawn_radius: 0, weight: 2.5,
+            ogre, pack_spawn_radius: 0, weight: 1.5,
+            medusa, override_count: 1, pack_spawn_radius: 0, weight: 1.0,
+            golem_bronze, override_count: 1, pack_spawn_radius: 0, weight: 1.0,
+            basilisk, pack_spawn_radius: 0, weight: 2,
+
         ]
-        room_spawn.circle_room = [
-            { source_id = skeleton, pack_spawn_radius = 0, weight = 2.5 },
-            { source_id = goblin, pack_spawn_radius = 0, weight = 2.5 },
-            { source_id = beholder, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
-            { source_id = spawn, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
-            { source_id = golem_gold, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+        room_spawn.circle_room: [
+            skeleton, pack_spawn_radius: 0, weight: 2.5,
+            goblin, pack_spawn_radius: 0, weight: 2.5,
+            beholder, override_count: 1, pack_spawn_radius: 0, weight: 1.0,
+            spawn, override_count: 1, pack_spawn_radius: 0, weight: 0.75,
+            golem_gold, override_count: 1, pack_spawn_radius: 0, weight: 1.0,
         ]
-        disable_terrgen.floor_tile_id = true
+        disable_terrgen.floor_tile_id: true
     }
 }

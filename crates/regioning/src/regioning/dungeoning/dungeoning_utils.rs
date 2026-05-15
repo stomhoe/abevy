@@ -659,7 +659,7 @@ pub fn resolve_sampled_tile_entity_from_sampler(
 #[derive(Debug, Clone, PartialEq)]
 pub struct DungeonRoomPackSpawnSpec {
     pub source_template_id: String,
-    pub override_being_count: Option<u16>,
+    pub override_count: Option<u16>,
     pub pack_spawn_radius: Option<u8>,
     pub radius_min_pct: i32,
     pub radius_max_pct: i32,
@@ -676,6 +676,9 @@ fn is_room_spawn_shape_allowed(
     allowed_shapes: Option<&HashSet<String>>,
     shape_key: &str,
 ) -> bool {
+    if shape_key == "*" {
+        return true;
+    }
     if structure_id == "chamberscorridors" {
         return true;
     }
@@ -798,7 +801,7 @@ impl DungeonRoomPackSpawnConfig {
             }
             let entry = dotted_specs.entry(shape_key.to_string()).or_insert_with(|| DungeonRoomPackSpawnSpec {
                 source_template_id: String::new(),
-                override_being_count: None,
+                override_count: None,
                 pack_spawn_radius: None,
                 radius_min_pct: 0,
                 radius_max_pct: 100,
@@ -811,8 +814,8 @@ impl DungeonRoomPackSpawnConfig {
                     };
                     entry.source_template_id = source_template_id;
                 }
-                "override_being_count" | "count" => {
-                    entry.override_being_count = match value {
+                "override_count" | "count" => {
+                    entry.override_count = match value {
                         SgcArgValue::Int(raw) => u16::try_from(*raw).ok(),
                         SgcArgValue::Str(raw) => raw.parse::<u16>().ok(),
                         _ => None,
@@ -901,14 +904,24 @@ impl DungeonRoomPackSpawnSystemParams<'_, '_> {
 }
 
 fn parse_room_spawn_spec(value: &SgcArgValue) -> Option<DungeonRoomPackSpawnSpec> {
+    if let Some(source_template_id) = value.as_scalar_string() {
+        return Some(DungeonRoomPackSpawnSpec {
+            source_template_id,
+            override_count: None,
+            pack_spawn_radius: None,
+            radius_min_pct: 0,
+            radius_max_pct: 100,
+            weight: 1.0,
+        });
+    }
     let map = value.as_map()?;
     let source_template_id = map
         .get("pack_id")
         .or_else(|| map.get("source_id"))
         .or_else(|| map.get("source_template_id"))
         .and_then(SgcArgValue::as_scalar_string)?;
-    let override_being_count = map
-        .get("override_being_count")
+    let override_count = map
+        .get("override_count")
         .or_else(|| map.get("count"))
         .and_then(|value| match value {
             SgcArgValue::Int(raw) => u16::try_from(*raw).ok(),
@@ -960,7 +973,7 @@ fn parse_room_spawn_spec(value: &SgcArgValue) -> Option<DungeonRoomPackSpawnSpec
         .unwrap_or(1.0);
     Some(DungeonRoomPackSpawnSpec {
         source_template_id,
-        override_being_count,
+        override_count,
         pack_spawn_radius,
         radius_min_pct,
         radius_max_pct,
@@ -1018,18 +1031,18 @@ pub fn queue_room_spawn_instance_message(
     let Some(&source_ent) = source_lookup.get(&source_id) else {
         return false;
     };
-    let requested_being_count = room_spec.override_being_count.map(u32::from).unwrap_or(1);
+    let requested_being_count = room_spec.override_count.map(u32::from).unwrap_or(1);
     let final_being_count = requested_being_count.min(*beings_remaining);
     if final_being_count == 0 {
         return false;
     }
     *beings_remaining = beings_remaining.saturating_sub(final_being_count);
-    let override_being_count = room_spec
-        .override_being_count
+    let override_count = room_spec
+        .override_count
         .and_then(|_| u16::try_from(final_being_count).ok());
     let mut message = InstantiateTemplPackEntity::new(
         source_ent,
-        override_being_count,
+        override_count,
         None,
         room_spec.pack_spawn_radius.or(Some(0)),
         dim_ref,
@@ -1090,7 +1103,7 @@ fn sample_room_spawn_spec_with_aliases(
         return direct;
     }
 
-    let alias_key = match room_spawn_key {
+    if let Some(alias_key) = match room_spawn_key {
         "ellipse" => Some("circle"),
         "circle" => Some("ellipse"),
         "trapezoid" => Some("triangle"),
@@ -1098,14 +1111,26 @@ fn sample_room_spawn_spec_with_aliases(
         "regular_polygon" => Some("polygon"),
         "polygon" => Some("regular_polygon"),
         _ => None,
-    }?;
+    } {
+        let alias_result = match room_spawn_radius_pct {
+            Some(room_spawn_radius_pct) => room_spawn_config.sample_room_spawn_spec_for_radius_pct(
+                alias_key,
+                Some(room_spawn_radius_pct),
+                rng,
+            ),
+            None => room_spawn_config.sample_room_spawn_spec(alias_key, rng),
+        };
+        if alias_result.is_some() {
+            return alias_result;
+        }
+    }
 
     match room_spawn_radius_pct {
         Some(room_spawn_radius_pct) => room_spawn_config.sample_room_spawn_spec_for_radius_pct(
-            alias_key,
+            "*",
             Some(room_spawn_radius_pct),
             rng,
         ),
-        None => room_spawn_config.sample_room_spawn_spec(alias_key, rng),
+        None => room_spawn_config.sample_room_spawn_spec("*", rng),
     }
 }

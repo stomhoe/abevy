@@ -197,6 +197,7 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
         FactionRef(host_faction_hash),
     ));
     app_state.set(AppState::StatefulGameSession);
+    cmd.trigger(InitDone);
 }
 
 #[allow(unused_parens)]

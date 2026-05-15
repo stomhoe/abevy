@@ -11,6 +11,7 @@ pub mod terrprobe_pattern_chunk;
 pub mod terrprobe_pattern_region;
 pub mod opfilter;
 
+use bevy_replicon::shared::replication::rules::AppRuleExt;
 pub use terrprobe_components::*;
 pub use terrprobe_resources::*;
 #[allow(unused_imports)] pub use terrprobe_seris::*;
@@ -50,6 +51,7 @@ pub fn plugin(app: &mut App) {
         .add_message::<SuitablePosFound>()
         .add_message::<SampledValuesCollected>()
         .add_message::<SearchFailed>()
+        .replicate_filtered::<ChildOf, With<TerrProbeTempl>>()
 
     ;
 }

@@ -316,7 +316,7 @@ pub fn update_goto_from_fleeing(
             &avoid_tile_tags,
         ) else {
             cmd.entity(being_ent).try_remove::<Fleeing>();
-            cmd.entity(being_ent).try_insert(Hunting::new(primary_threat_ent));
+            cmd.entity(being_ent).try_insert(HostileChase::new(primary_threat_ent));
             messages.push(NavOrder::new(
                 being_ent,
                 255,

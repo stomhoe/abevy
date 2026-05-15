@@ -181,7 +181,7 @@ pub fn init_terrain_probes(
         };
 
         let ent = cmd.spawn_empty().id();
-        let templ = TerrProbeTempl::from_seri(
+        let terr_probe = TerrProbeTempl::from_seri(
             opfilter_ref,
             structuregen_whitelist,
             structuregen_blacklist,
@@ -202,7 +202,8 @@ pub fn init_terrain_probes(
             ReplicateIfServerStarts,
             AssetScoped,
             SelectedForHotReload,
-            templ,
+            terr_probe,
+            Templ,
             ChildOf(egui_ent),
         )));
     }
