@@ -9,6 +9,7 @@ use common::common_states::AssetLoading;
 use ::being_shared::*;
 use tilemap_shared::DirectionalLight2dOverride;
 use crate::debug_messages::*;
+use crate::debug_speed_systems::*;
 use debug_shared::*;
 
     use crate::{
@@ -38,8 +39,7 @@ pub fn plugin(app: &mut App) {
     let debug_enabled = |cfg: Res<DebugUiConfig>| cfg.enable_debug_menus;
 
     app.add_plugins((FpsCounterPlugin))
-        .add_mapped_client_message::<ClientDebugIncreaseSpeedRequest>(bevy_replicon::prelude::Channel::Unordered)
-        .add_mapped_client_message::<ClientDebugDecreaseSpeedRequest>(bevy_replicon::prelude::Channel::Unordered)
+        .add_mapped_client_message::<ClientDebugSetSpeedRequest>(bevy_replicon::prelude::Channel::Unordered)
         .add_mapped_client_message::<ClientDebugSetBeingDimensionRequest>(bevy_replicon::prelude::Channel::Unordered)
         .add_mapped_client_message::<ClientDebugTeleportBeingRequest>(bevy_replicon::prelude::Channel::Unordered)
         .add_mapped_client_message::<ClientDebugSetBeingCurrentHpRequest>(bevy_replicon::prelude::Channel::Unordered)
@@ -59,21 +59,15 @@ pub fn plugin(app: &mut App) {
                 capture_world_tile_click_selection,
                 capture_world_tile_click_removal,
                 capture_world_being_click_removal,
+                debug_numpad_speed_shortcuts,
             )
                 .run_if(debug_enabled),
         )
         .add_systems(
             Update,
             (
-                receive_debug_increase_speed_request
-                .run_if(on_message::<ac_input::LocalDebugIncreaseSpeedRequest>),
-                receive_debug_decrease_speed_request
-                .run_if(on_message::<ac_input::LocalDebugDecreaseSpeedRequest>),
-                receive_client_debug_increase_speed_request
-                    .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugIncreaseSpeedRequest>>)
-                    .run_if(in_state(ServerState::Running)),
-                receive_client_debug_decrease_speed_request
-                    .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugDecreaseSpeedRequest>>)
+                receive_client_debug_set_speed_request
+                    .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugSetSpeedRequest>>)
                     .run_if(in_state(ServerState::Running)),
                 receive_client_debug_set_being_dimension_request
                     .run_if(on_message::<bevy_replicon::prelude::FromClient<ClientDebugSetBeingDimensionRequest>>)

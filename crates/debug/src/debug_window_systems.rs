@@ -5,12 +5,20 @@ use bevy_replicon::prelude::{ClientState, ServerState};
 use ac_input::ac_input_actions::{
     DebugToggleHotReloadWindowAction, DebugToggleMainMenuAction, HotReloadAction,
 };
+use common::common_components::HashId;
 use common::common_states::*;
 use game_common::game_common_states::*;
 use tilemap_shared::GlobalGenSettings;
 use tilemap_shared::StructureGenerationSettings;
 
-use debug_shared::{BeingClickRemoverState, DubugWindowsVisibility, TileClickRemoverState};
+use debug_shared::{BeingClickRemoverState, DubugWindowsVisibility, DebugUiConfig, TileClickRemoverState};
+use ::being_shared::{Being, LocalHumanControlled};
+use ::modifier_shared::{AppliedModifiers, modifier_components::BaseValue, modifier_types::WalkStrength};
+use game_common::Templ;
+use crate::DEBUG_SPEED_MIN;
+use crate::debug_messages::ClientDebugSetSpeedRequest;
+use crate::debug_speed_systems::{set_speed_multiplier, DEBUG_SPEED_MAX};
+use crate::dimension_changer_window::dimension_changer_button;
 use crate::tile_click_remover::set_tile_click_remover_active;
 use crate::being_click_remover::set_being_click_remover_active;
 
@@ -173,6 +181,12 @@ pub fn main_menu_window(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut tile_click_remover_state: ResMut<TileClickRemoverState>,
     mut being_click_remover_state: ResMut<BeingClickRemoverState>,
+    debug_ui_config: Res<DebugUiConfig>,
+    client_state: Res<State<ClientState>>,
+    controlled_being_query: Query<(Entity, &AppliedModifiers), (With<Being>, LocalHumanControlled, )>,
+    mut debug_modi_query: Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkStrength>, Without<Templ>, )>,
+    mut client_request_writer: MessageWriter<ClientDebugSetSpeedRequest>,
+    mut cmd: Commands,
 ) {
     if !window_visible.main_menu {
         return;
@@ -236,6 +250,44 @@ pub fn main_menu_window(
                 window_visible.river_debug = false;
             }
             ui.separator();
+
+            if let Ok((being_ent, applied_modifiers)) = controlled_being_query.single() {
+                let debug_hash = HashId::hash("debug");
+                let mut speed_value = 1.0;
+                for modifier_ent in applied_modifiers.iter() {
+                    if let Ok((_, hash_id, base_value, )) = debug_modi_query.get(modifier_ent) {
+                        if *hash_id == debug_hash {
+                            speed_value = base_value.map(|base_value| base_value.0).unwrap_or(1.0);
+                            break;
+                        }
+                    }
+                }
+
+                let mut speed_changed = false;
+                ui.horizontal(|ui| {
+                    ui.label("Current debug speed:");
+                    let response = ui.add(egui::Slider::new(&mut speed_value, DEBUG_SPEED_MIN..=DEBUG_SPEED_MAX).clamping(egui::SliderClamping::Always).text("x"));
+                    if response.changed() {
+                        speed_changed = true;
+                    }
+                    if ui.button("Reset").clicked() {
+                        speed_value = 1.0;
+                        speed_changed = true;
+                    }
+                });
+                if speed_changed {
+                    if *client_state.get() == ClientState::Connected && debug_ui_config.client_debug {
+                        client_request_writer.write(ClientDebugSetSpeedRequest {
+                            being_ent,
+                            speed: speed_value,
+                        });
+                    } else {
+                        set_speed_multiplier(&mut cmd, being_ent, applied_modifiers, &mut debug_modi_query, speed_value);
+                    }
+                }
+                ui.separator();
+            }
+
             ui.columns(2, |columns| {
                 columns[0].vertical(|ui| {
                     if ui.button(egui::RichText::new("🔍 States Inspector").size(16.0)).clicked() {
@@ -291,9 +343,7 @@ pub fn main_menu_window(
                     if ui.button(egui::RichText::new("🧑 Players list").size(16.0)).clicked() {
                         window_visible.players_list = !window_visible.players_list;
                     }
-                    if ui.button(egui::RichText::new("DimensionChanger").size(16.0)).clicked() {
-                        window_visible.dimension_changer = !window_visible.dimension_changer;
-                    }
+                    dimension_changer_button(ui, &mut window_visible);
                     if ui.button(egui::RichText::new("🌀 Portals").size(16.0)).clicked() {
                         window_visible.portals_list = !window_visible.portals_list;
                     }

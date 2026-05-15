@@ -12,6 +12,29 @@ const TEMP_AI_MELEE_ATTACK_COOLDOWN: Duration = Duration::from_secs(1);
 
 
 #[allow(unused_parens, )]
+pub fn remove_dead_targets_from_hostile_chase(
+    mut commands: Commands,
+    dead_beings: Query<Entity, Added<Dead>>,
+    hostile_chasers: Query<(Entity, &HostileChase), With<HostileChase>>,
+    mut dead_targets: Local<EntityHashSet>,
+) {
+    dead_targets.clear();
+    for dead_ent in dead_beings.iter() {
+        dead_targets.insert(dead_ent);
+    }
+    if dead_targets.is_empty() {
+        return;
+    }
+
+    for (pred_ent, hunting) in hostile_chasers.iter() {
+        if dead_targets.contains(&hunting.prey) {
+            commands.entity(pred_ent).try_remove::<(HostileChase, NavChasing)>();
+        }
+    }
+}
+
+
+#[allow(unused_parens, )]
 pub fn sync_chasing_to_host_chase(
     mut cmd: Commands,
     hunting_predators: Query<(Entity, &HostileChase, Option<&NavChasing>, ), (Changed<HostileChase>)>,

@@ -13,15 +13,10 @@ pub struct BeingDebugSpeedApplied {
 }
 
 #[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
-pub struct ClientDebugIncreaseSpeedRequest {
+pub struct ClientDebugSetSpeedRequest {
     #[entities]
     pub being_ent: Entity,
-}
-
-#[derive(Deserialize, Message, Serialize, Clone, MapEntities)]
-pub struct ClientDebugDecreaseSpeedRequest {
-    #[entities]
-    pub being_ent: Entity,
+    pub speed: f32,
 }
 
 #[derive(Deserialize, Message, Serialize, Clone, MapEntities)]

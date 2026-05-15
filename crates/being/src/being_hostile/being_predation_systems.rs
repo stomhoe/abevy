@@ -129,9 +129,6 @@ fn find_hunt_candidate<'a>(
     candidates.iter().find(|candidate| candidate.ent == ent)
 }
 
-fn euclidean_dist(a: GlobalTilePos, b: GlobalTilePos) -> f32 {
-    (a.0 - b.0).as_vec2().length()
-}
 
 fn nearby_squad_body_weight(
     center_pos: GlobalTilePos,
@@ -148,7 +145,7 @@ fn nearby_squad_body_weight(
         if *member_dim != *center_dim {
             continue;
         }
-        if euclidean_dist(*member_pos, center_pos) > PACK_HUNT_NEARBY_RADIUS_TILES {
+        if member_pos.euclidean_tile_distance(center_pos) > PACK_HUNT_NEARBY_RADIUS_TILES {
             continue;
         }
         total_weight += body_weight_query.get(member_ent).map(|sum| sum.0).unwrap_or_default();
@@ -300,7 +297,7 @@ pub fn update_predator_hostile_chased_targets(
             };
             if *current_prey_dim != *pred_dim
                 || !grids.can_pathfind_between(*pred_pos, *current_prey_pos, *pred_dim)
-                || euclidean_dist(*pred_pos, *current_prey_pos) >= hunting.retaliation_stop_distance_tiles.max(0.0)
+                || pred_pos.euclidean_tile_distance(*current_prey_pos) >= hunting.retaliation_stop_distance_tiles.max(0.0)
             {
                 cmd.entity(pred_ent).try_remove::<(HostileChase, NavChasing)>();
             }
@@ -347,7 +344,7 @@ pub fn update_predator_hostile_chased_targets(
                 continue;
             }
 
-            let dist = euclidean_dist(prey.pos, *pred_pos);
+            let dist = prey.pos.euclidean_tile_distance(*pred_pos);
             let Some((_, curr_best)) = closest else {
                 closest = Some((prey.ent, dist));
                 continue;
@@ -373,7 +370,7 @@ pub fn update_predator_hostile_chased_targets(
                 continue;
             };
             if grids.can_pathfind_between(*pred_pos, current_prey.pos, *pred_dim) {
-                let current_dist = euclidean_dist(current_prey.pos, *pred_pos);
+                let current_dist = current_prey.pos.euclidean_tile_distance(*pred_pos);
                 if current_dist <= closest_dist + HUNT_RETARGET_HYSTERESIS_TILES {
                     chosen_target = current_prey.ent;
                 }
@@ -494,7 +491,7 @@ pub fn update_predator_hostile_chased_targets(
                     continue;
                 }
             }
-            let dist = euclidean_dist(prey.pos, anchor_pos);
+            let dist = prey.pos.euclidean_tile_distance(anchor_pos);
             if dist < best_base_dist {
                 best_base_dist = dist;
                 base_target = Some(prey.ent);
@@ -511,7 +508,7 @@ pub fn update_predator_hostile_chased_targets(
 
         if let Some((&committed_target, _)) = committed_counts.iter().max_by_key(|(_, count)| **count) {
             if let Ok((_, committed_pos)) = params.pos_dim_query.get(committed_target) {
-                let committed_dist = euclidean_dist(*committed_pos, anchor_pos);
+                let committed_dist = committed_pos.euclidean_tile_distance(anchor_pos);
                 if committed_dist <= best_base_dist + HUNT_RETARGET_HYSTERESIS_TILES {
                     base_target = committed_target;
                 }
@@ -554,7 +551,7 @@ pub fn update_predator_hostile_chased_targets(
                     if !reachable {
                         continue;
                     }
-                    let dist = euclidean_dist(*member_pos, anchor_pos);
+                    let dist = member_pos.euclidean_tile_distance(anchor_pos);
                     locals.reachable_squad_targets.push((target_member, dist));
                 }
                 locals.reachable_squad_targets.sort_by(|(_, a), (_, b)| a.total_cmp(b));

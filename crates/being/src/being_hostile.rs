@@ -22,6 +22,7 @@ pub fn plugin(app: &mut App) {
     Update,
         (
             sync_predator_squad_marker,
+            remove_dead_targets_from_hostile_chase,
             add_melee_target_comp_to_ai_controlled,
             update_predator_hostile_chased_targets,
             make_hunted_be_automeleed,

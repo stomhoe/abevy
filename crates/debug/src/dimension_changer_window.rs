@@ -16,6 +16,16 @@ fn dimension_label(name: Option<&Name>, dim_ref: DimensionRef) -> String {
         .unwrap_or_else(|| format!("{:?}", dim_ref))
 }
 
+pub fn dimension_changer_button(ui: &mut egui::Ui, window_visible: &mut DubugWindowsVisibility) {
+    let mut button = egui::Button::new(egui::RichText::new("DimensionChanger").size(18.0));
+    if window_visible.dimension_changer {
+        button = button.fill(egui::Color32::from_rgb(100, 130, 180));
+    }
+    if ui.add(button).clicked() {
+        window_visible.dimension_changer = !window_visible.dimension_changer;
+    }
+}
+
 #[allow(unused_parens, )]
 pub fn dimension_changer_window(
     mut contexts: EguiContexts,

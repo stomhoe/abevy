@@ -10,6 +10,7 @@ use regioning::natural::river::{RiverDebugData, RiverRegionDebugInfo, RiverRegio
 use tilemap_shared::*;
 
 use debug_shared::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
+use crate::dimension_changer_window::dimension_changer_button;
 
 fn region_dim_key_for_ref(
     dim_ref: &DimensionRef,
@@ -378,6 +379,7 @@ pub fn regions_list_window(
                 .inner_margin(egui::Margin::symmetric(8, 6))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
+                        dimension_changer_button(ui, &mut window_visible);
                         ui.add_sized(
                             [280.0, 32.0],
                             egui::Checkbox::new(
