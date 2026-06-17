@@ -13,6 +13,7 @@ const TEMP_AI_MELEE_ATTACK_COOLDOWN: Duration = Duration::from_secs(1);
 
 #[allow(unused_parens, )]
 pub fn make_hunted_be_automeleed(
+    mut cmd: Commands,
     mut hunting_beings: Query<
         (Entity, &HostileChase, ),
         (LocalAiControlled, Changed<HostileChase>, ),
@@ -21,8 +22,9 @@ pub fn make_hunted_be_automeleed(
 
     mut ceased_to_hunt: RemovedComponents<HostileChase>,
 ) {
-    for (_, hunting, ) in hunting_beings.iter_mut() {
-        let Ok(mut ai_melee_targets) = auto_melee_targets_query.get_mut(hunting.prey) else {
+    for (attacker_ent, hunting, ) in hunting_beings.iter_mut() {
+        let Ok(mut ai_melee_targets) = auto_melee_targets_query.get_mut(attacker_ent) else {
+            cmd.entity(attacker_ent).try_insert(AutoMeleeIfInInteractionZone(vec![hunting.prey]));
             continue;
         };
         ai_melee_targets.0.clear();

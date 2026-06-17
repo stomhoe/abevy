@@ -7,8 +7,6 @@ use std::time::Duration;
 
 use crate::{being_interaction_zone_helper::resolve_being_interaction_zone, being_messages::*};
 
-const TEMP_AI_MELEE_ATTACK_COOLDOWN: Duration = Duration::from_secs(1);
-
 
 
 #[allow(unused_parens, )]

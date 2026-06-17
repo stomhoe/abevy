@@ -1,6 +1,7 @@
 use bevy::input::ButtonInput;
 use bevy::prelude::*;
 use bevy_replicon::prelude::{ClientState, FromClient};
+use common::common_components::SettingsEntity;
 use common::HashId;
 use common::log_targets::DEBUG;
 use debug_shared::DebugUiConfig;
@@ -16,7 +17,7 @@ use ::being_shared::{Being, LocalHumanControlled};
 use crate::debug_messages::ClientDebugSetSpeedRequest;
 
 pub const DEBUG_SPEED_MIN: f32 = 0.5;
-pub const DEBUG_SPEED_MAX: f32 = 60.;
+pub const DEBUG_SPEED_MAX: f32 = 100.;
 
 pub(crate) fn set_speed_multiplier(
     cmd: &mut Commands,
@@ -52,7 +53,6 @@ pub(crate) fn set_speed_multiplier(
 }
 
 fn numpad_key_to_speed(key_code: KeyCode) -> Option<f32> {
-    let max_speed = 60.0;
     let digit = match key_code {
         KeyCode::Numpad0 => 0,
         KeyCode::Numpad1 => 1,
@@ -67,12 +67,16 @@ fn numpad_key_to_speed(key_code: KeyCode) -> Option<f32> {
         _ => return None,
     };
     match digit {
-        0 => Some(0.5),
+        0 => Some(DEBUG_SPEED_MIN),
         1 => Some(1.0),
-        2..=9 => {
-            let step = (max_speed - 1.0) / 8.0;
-            Some(1.0 + step * (digit as f32 - 1.0))
-        }
+        2 => Some(2.0),
+        3 => Some(4.0),
+        4 => Some(8.0),
+        5 => Some(16.0),
+        6 => Some(32.0),
+        7 => Some(45.0),
+        8 => Some(50.0),
+        9 => Some(DEBUG_SPEED_MAX),
         _ => None,
     }
 }
@@ -80,13 +84,16 @@ fn numpad_key_to_speed(key_code: KeyCode) -> Option<f32> {
 #[allow(unused_parens, )]
 pub fn debug_numpad_speed_shortcuts(
     keys: Res<ButtonInput<KeyCode>>,
-    debug_ui_config: Res<DebugUiConfig>,
+    debug_ui_config: Query<&DebugUiConfig, With<SettingsEntity>>,
     client_state: Res<State<ClientState>>,
     mut client_request_writer: MessageWriter<ClientDebugSetSpeedRequest>,
     mut cmd: Commands,
     local_controlled_being_query: Query<(Entity, &AppliedModifiers), (With<Being>, LocalHumanControlled, )>,
     mut debug_modi_query: Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkStrength>, Without<Templ>, )>,
 ) {
+    let Ok(debug_ui_config) = debug_ui_config.single() else {
+        return;
+    };
     if !debug_ui_config.enable_debug_menus {
         return;
     }
@@ -117,7 +124,7 @@ pub fn debug_numpad_speed_shortcuts(
         return;
     };
 
-    if *client_state.get() == ClientState::Connected && debug_ui_config.client_debug {
+    if *client_state.get() == ClientState::Connected {
         client_request_writer.write(ClientDebugSetSpeedRequest { being_ent, speed });
     } else {
         set_speed_multiplier(&mut cmd, being_ent, applied_modifiers, &mut debug_modi_query, speed);
@@ -127,10 +134,17 @@ pub fn debug_numpad_speed_shortcuts(
 #[allow(unused_parens, )]
 pub fn receive_client_debug_set_speed_request(
     mut cmd: Commands,
+    debug_ui_config: Query<&DebugUiConfig, With<SettingsEntity>>,
     mut requests: MessageReader<FromClient<ClientDebugSetSpeedRequest>>,
     controlled_beings_query: Query<(&AppliedModifiers, ), ()>,
     mut debug_modi_query: Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkStrength>, Without<Templ>, )>,
 ) {
+    let Ok(debug_ui_config) = debug_ui_config.single() else {
+        return;
+    };
+    if !debug_ui_config.client_debug {
+        return;
+    }
     for request in requests.read() {
         let being_ent = request.message.being_ent;
         let Ok((applied_modifiers, )) = controlled_beings_query.get(being_ent) else {

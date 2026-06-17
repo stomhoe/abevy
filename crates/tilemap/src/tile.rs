@@ -156,7 +156,6 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<TileStepSfx>()
     .replicate::<U16TileIndex>()
     .replicate::<TileU16IndexHashIdMapping>()
-    .replicate::<DirectionalLight2d>()
     .replicate::<LightOccluderSeri>()
 
 

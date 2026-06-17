@@ -2,6 +2,7 @@ use bevy::ecs::entity::MapEntities;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 use bevy_replicon::prelude::*;
+use common::common_components::SettingsEntity;
 use game_common::game_common_states::SimulationState;
 use debug_shared::DebugUiConfig;
 use player_shared::player_components::{Mine, Player};
@@ -21,7 +22,7 @@ pub fn toggle_simulation(
     toggle_events: Single<&ActionEvents, With<Action<ToggleSimulationAction>>>,
     current_state: Res<State<SimulationState>>,
     mut next_state: ResMut<NextState<SimulationState>>,
-    debug_ui_config: Res<DebugUiConfig>,
+    debug_ui_config: Query<&DebugUiConfig, With<SettingsEntity>>,
     client_state: Res<State<ClientState>>,
     server_state: Res<State<ServerState>>,
     mut client_toggle_request_writer: MessageWriter<ClientToggleSimulationRequest>,
@@ -36,6 +37,9 @@ pub fn toggle_simulation(
         SimulationState::Running => SimulationState::Paused,
     };
 
+    let Ok(debug_ui_config) = debug_ui_config.single() else {
+        return;
+    };
     if *client_state.get() == ClientState::Connected {
         if !debug_ui_config.client_debug {
             return;

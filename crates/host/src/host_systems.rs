@@ -4,6 +4,7 @@ use bevy_replicon_renet::{RenetServer, netcode::NetcodeServerTransport};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use ::common::*;
+use debug_shared::DebugUiConfig;
 use faction::faction_resources::FactionRef;
 use faction_shared::Faction;
 use multiplayer_shared::multiplayer_events::{SendUsername, AttemptHostServer, StartServerFailed, HostStartedGameplay};
@@ -46,10 +47,10 @@ pub fn on_enter_setup(
 ) {
     let settings_entity =
     if let Ok(settings_entity) = settings_entity.single() {
-        cmd.entity(settings_entity).insert((Replicated, SimTimeScale::default(), Name::new("Settings Entity")));
+        cmd.entity(settings_entity).insert((Replicated, SimTimeScale::default(), Name::new("Settings Entity"), DebugUiConfig::default()));
         settings_entity
     } else {
-        cmd.spawn((SettingsEntity, SimTimeScale::default(), Name::new("Settings Entity"))).id()
+        cmd.spawn((SettingsEntity, SimTimeScale::default(), Name::new("Settings Entity"), DebugUiConfig::default())).id()
     };
     
     if *server_state.get() == ServerState::Running {

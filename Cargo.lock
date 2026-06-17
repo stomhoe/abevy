@@ -2186,12 +2186,11 @@ dependencies = [
 [[package]]
 name = "bevy_lit"
 version = "0.10.0"
+source = "git+https://github.com/csandven/bevy_lit#c6d0a8cf9b8601ca4a0b44d156453eaea2ee8240"
 dependencies = [
  "bevy 0.18.1",
  "bytemuck",
  "fixedbitset 0.5.7",
- "rand 0.10.1",
- "serde",
 ]
 
 [[package]]
@@ -5805,6 +5804,7 @@ dependencies = [
  "bevy_replicon",
  "bevy_replicon_renet",
  "common",
+ "debug_shared",
  "faction",
  "faction_shared",
  "game_common",

@@ -8,6 +8,16 @@ use tilemap_shared::*;
 use super::river_components::{RiverMouthRejectReason, RiverRegionDebugInfo, RiverRegionPlan};
 use super::river_sculpting_helpers::{closest_point_on_path, maybe_add_river_delta, maybe_add_river_gravel_deposits, maybe_add_river_island_gap, path_has_nonconsecutive_overlap, path_touches_forbidden_border_chunks, plan_river_path_tiles, rebuild_claimed_chunks_from_masks, river_noise_signed, segment_reenters_visited_path, smooth_river_path};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum RiverBuildRejectReason {
+    NoMainMouth,
+    MainPathTooShort,
+    MainPathOverlap,
+    MainPathForbiddenBorder,
+    TributaryTooShort,
+    TributaryOverlap,
+}
+
 pub(super) fn generate_river_region_plan(
     inland_map: &HashMap<GlobalTilePos, f32>,
     coast_points: &HashSet<GlobalTilePos>,
@@ -95,6 +105,7 @@ pub(super) fn generate_river_region_plan(
     let river_zigzag_extra_iterations: usize = cfg.args.parse_arg("river_zigzag_extra_iterations", 1_usize).min(3);
     let river_zigzag_extra_jitter: f32 = cfg.args.parse_arg("river_zigzag_extra_jitter", 2.5_f32).max(0.0);
 
+    let mut source_reject_stats: HashMap<RiverBuildRejectReason, u32> = HashMap::default();
     let mut built_river = false;
     'source_loop: for main_source in sources.iter().copied() {
         let Some(&main_component_i) = component_of.get(&main_source) else {
@@ -119,6 +130,7 @@ pub(super) fn generate_river_region_plan(
             source_region_pos,
             spacing,
         ) else {
+            *source_reject_stats.entry(RiverBuildRejectReason::NoMainMouth).or_insert(0) += 1;
             continue;
         };
 
@@ -136,7 +148,7 @@ pub(super) fn generate_river_region_plan(
             Some(mouth_target),
         );
         if candidate_main_path.len() < 2 || !path_reaches_target(&candidate_main_path, mouth_target, spacing) {
-            error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: source {:?} and mouth {:?} did not connect", source_region_pos, dimension_ref, main_source, mouth_target);
+            *source_reject_stats.entry(RiverBuildRejectReason::MainPathTooShort).or_insert(0) += 1;
             continue;
         }
 
@@ -160,7 +172,7 @@ pub(super) fn generate_river_region_plan(
             main_source,
         );
         if path_has_nonconsecutive_overlap(&smoothed_main_path) {
-            error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: source {:?} and mouth {:?} would make the main river intersect itself", source_region_pos, dimension_ref, main_source, mouth_target);
+            *source_reject_stats.entry(RiverBuildRejectReason::MainPathOverlap).or_insert(0) += 1;
             continue;
         }
         if path_touches_forbidden_border_chunks(
@@ -169,7 +181,7 @@ pub(super) fn generate_river_region_plan(
             half_width_end,
             source_region_pos,
         ) {
-            error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: source {:?} and mouth {:?} would place river tiles on the region border", source_region_pos, dimension_ref, main_source, mouth_target);
+            *source_reject_stats.entry(RiverBuildRejectReason::MainPathForbiddenBorder).or_insert(0) += 1;
             continue;
         }
 
@@ -197,12 +209,14 @@ pub(super) fn generate_river_region_plan(
                 Some(merge_target),
             );
             if path.len() < 2 {
+                *source_reject_stats.entry(RiverBuildRejectReason::TributaryTooShort).or_insert(0) += 1;
                 continue;
             }
             let smoothed_path = smooth_river_path(&path, curve_iterations, curve_jitter_tiles, settings, dimension_ref.0, source);
             let tributary_half_start = half_width_start.saturating_sub(1).max(1);
             let tributary_half_end = half_width_end.saturating_sub(1).max(1);
             if path_has_nonconsecutive_overlap(&smoothed_path) {
+                *source_reject_stats.entry(RiverBuildRejectReason::TributaryOverlap).or_insert(0) += 1;
                 continue;
             }
             region_debug.river_source_points.insert(source);
@@ -230,7 +244,8 @@ pub(super) fn generate_river_region_plan(
 
     if !built_river {
         let mouth_fail_summary = format_top_mouth_reject_causes(&region_debug.mouth_reject_stats);
-        error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: no river was built; mouth rejection top causes: {}", source_region_pos, dimension_ref, mouth_fail_summary);
+        let build_fail_summary = format_river_build_reject_causes(&source_reject_stats);
+        error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: no river was built; mouth rejection top causes: {}; build rejection stats: {}", source_region_pos, dimension_ref, mouth_fail_summary, build_fail_summary);
         return false;
     }
 
@@ -672,6 +687,20 @@ fn format_top_mouth_reject_causes(stats: &super::river_components::RiverMouthRej
         .into_iter()
         .take(2)
         .map(|(reason, count)| format!("{:?}: {} ({:.1}%)", reason, count, (count as f32 / total) * 100.0))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn format_river_build_reject_causes(stats: &HashMap<RiverBuildRejectReason, u32>) -> String {
+    if stats.is_empty() {
+        return "none".to_string();
+    }
+
+    let mut entries = stats.iter().collect::<Vec<_>>();
+    entries.sort_unstable_by(|a, b| b.1.cmp(a.1).then_with(|| format!("{:?}", a.0).cmp(&format!("{:?}", b.0))));
+    entries
+        .into_iter()
+        .map(|(reason, count)| format!("{:?}: {}", reason, count))
         .collect::<Vec<_>>()
         .join(", ")
 }

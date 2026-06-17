@@ -19,7 +19,7 @@ grounding_based false
 is_being_root_sprite true
 add_up_z_with_anim true
 baseline_move_speed 100.0
-offset -6.0 6.0
+offset 0.0 8.0
 scale 1.2 1.2
 tags []
 }

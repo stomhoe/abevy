@@ -106,6 +106,7 @@ fn build_filter() -> String {
         (log_targets::ENTITY_MAP_SYSTEM, debug),
         (log_targets::INSPECTOR, warn),
         (log_targets::RIVER_SYSTEM, info),
+        (log_targets::RIVER_BUILD_SYSTEM, debug),
         (log_targets::ITEM_SYSTEM, debug),
         (log_targets::WILDLIFE_SYSTEM, debug),
     ] {

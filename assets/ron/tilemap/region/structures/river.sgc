@@ -8,7 +8,7 @@ sgc {
     max_being_count: 40
     max_per_region: 1
     args {
-        river_tile_id: ocean
+        river_tile_id: saltwater
         river_gravel_tile_id: gravel
         river_land_threshold: -0.05
         river_min_island_area_chunks: 170

@@ -4,7 +4,7 @@
     tags: ["humanoid"],
     distributed_totals: {
         "mass_kg": 100.0,
-        "hp_capacity": 491.0,
+        "hp_capacity": 160.0,
         "hp_regen_rate": 23.5,
         "blood_capacity": 0.0,
         "bleed_rate": 0.,

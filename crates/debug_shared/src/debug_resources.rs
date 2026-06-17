@@ -2,12 +2,14 @@ use bevy::prelude::*;
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy_ecs_tilemap::tiles::TileColor;
 use being_shared::WallPhaserOnSpawn;
-use common::common_components::HashId;
+use common::common_components::{HashId, SettingsEntity};
 use common::common_states::HotReloadSelection;
+use serde::{Deserialize, Serialize};
 use tilemap_shared::GlobalTilePos;
 use crate::debug_seris::*;
 
-#[derive(Resource, Debug, Clone)]
+#[derive(Resource, Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
 pub struct DubugWindowsVisibility {
     pub states: bool,
     pub all_states: bool,
@@ -277,7 +279,8 @@ impl Default for DebugChunkingUiState {
     }
 }
 
-#[derive(Resource, Debug, Clone)]
+#[derive(Component, Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
 pub struct DebugUiConfig {
     pub enable_debug_menus: bool,
     pub wall_phaser: bool,
@@ -287,7 +290,8 @@ pub struct DebugUiConfig {
 }
 
 pub fn load_debug_ui_config(
-    mut cfg: ResMut<DebugUiConfig>,
+    mut cmd: Commands,
+    settings_entity_query: Query<Entity, With<SettingsEntity>>,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selection: ResMut<HotReloadSelection>,
     mut wall_phaser_on_spawn: ResMut<WallPhaserOnSpawn>,
@@ -297,7 +301,11 @@ pub fn load_debug_ui_config(
         return;
     };
 
-    *cfg = def.to_config();
+    let cfg = def.to_config();
+    if let Ok(settings_entity) = settings_entity_query.single() {
+        cmd.entity(settings_entity).insert(cfg.clone());
+    }
+
     *selection = cfg.hot_reload_defaults.clone();
     *window_visible = cfg.windows_open_on_start.clone();
     wall_phaser_on_spawn.0 = cfg.wall_phaser;

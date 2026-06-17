@@ -80,6 +80,7 @@ fn being_list_entry_label(
 
 #[allow(unused_parens)]
 pub fn beings_list_window(
+    mut commands: Commands,
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
@@ -99,7 +100,7 @@ pub fn beings_list_window(
 >,
     dimension_query: Query<&Name>,
     dimension_map: Res<DimensionEntityMap>,
-    camera_query: Query<(&DimensionRef, &GlobalTransform), With<CameraTarget>>,
+    camera_query: Query<(Entity, &DimensionRef, &GlobalTransform), With<CameraTarget>>,
     bit_map: Res<BeingInstTemplateEntityMap>,
     race_map: Res<RaceEntityMap>,
     id_query: Query<&StrId>,
@@ -118,8 +119,8 @@ pub fn beings_list_window(
     let mut open = window_visible.beings_list;
 
     let camera_info = camera_query.iter().next();
-    let camera_pos = camera_info.map(|(_, transform)| transform.translation().xy());
-    let camera_dim_ref = camera_info.map(|(dim_ref, _)| dim_ref);
+    let camera_pos = camera_info.map(|(_, _, transform)| transform.translation().xy());
+    let camera_dim_ref = camera_info.map(|(_, dim_ref, _)| dim_ref);
 
     // Group beings by dimension
     let mut beings_by_dimension: BTreeMap<String, Vec<(Entity, String, GlobalTilePos, Vec2, f32)>> = BTreeMap::new();
@@ -207,20 +208,34 @@ pub fn beings_list_window(
                                 } else {
                                     selected_entities.selected_being == Some(*entity)
                                 };
-                                if ui.selectable_label(is_selected, label).clicked() {
-                                    if state.mult_being_windows {
-                                        if !selected_entities.selected_beings.insert(*entity) {
-                                            selected_entities.selected_beings.remove(entity);
+                                ui.horizontal(|ui| {
+                                    let response = ui.selectable_label(is_selected, &label);
+                                    if response.clicked() {
+                                        if state.mult_being_windows {
+                                            if !selected_entities.selected_beings.insert(*entity) {
+                                                selected_entities.selected_beings.remove(entity);
+                                            }
+                                            selected_entities.selected_being = Some(*entity);
+                                        } else {
+                                            selected_entities.selected_being = Some(*entity);
+                                            selected_entities.selected_beings.clear();
+                                            selected_entities.selected_being_bodypart = None;
+                                            selected_entities.show_full_being_components = false;
                                         }
-                                        selected_entities.selected_being = Some(*entity);
-                                    } else {
-                                        selected_entities.selected_being = Some(*entity);
-                                        selected_entities.selected_beings.clear();
-                                        selected_entities.selected_being_bodypart = None;
-                                        selected_entities.show_full_being_components = false;
+                                        window_visible.being_details = true;
                                     }
-                                    window_visible.being_details = true;
-                                }
+
+                                    if let Some((camera_entity, _, _)) = camera_info {
+                                        let mut button = egui::Button::new("⇨").min_size(egui::vec2(24.0, 20.0));
+                                        if ui.add(button).clicked() {
+                                            let target_gpos = gpos.adjacent_east();
+                                            let target_transform = Transform::from_translation(target_gpos.to_translation(0.0));
+                                            commands.entity(camera_entity).insert((target_gpos, target_transform));
+                                        }
+                                    } else {
+                                        ui.add_enabled(false, egui::Button::new("⇨").min_size(egui::vec2(24.0, 20.0)));
+                                    }
+                                });
                             }
                         });
                 }

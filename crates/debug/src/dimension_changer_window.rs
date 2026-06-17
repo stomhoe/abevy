@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use bevy_replicon::prelude::ClientState;
-use common::common_components::HashId;
+use common::common_components::{HashId, SettingsEntity};
 
 use ::being_shared::{Being, LocalHumanControlled};
 use ::tilemap_shared::{Dimension, DimensionRef};
@@ -30,13 +30,16 @@ pub fn dimension_changer_button(ui: &mut egui::Ui, window_visible: &mut DubugWin
 pub fn dimension_changer_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
-    debug_ui_config: Res<DebugUiConfig>,
+    debug_ui_config: Query<&DebugUiConfig, With<SettingsEntity>>,
     client_state: Res<State<ClientState>>,
     controlled_being_query: Query<Entity, (With<Being>, LocalHumanControlled, )>,
     mut controlled_dim_query: Query<&mut DimensionRef, (With<Being>, LocalHumanControlled, )>,
     dimension_query: Query<(Entity, &HashId, Option<&Name>, ), (With<Dimension>, )>,
     mut client_request_writer: MessageWriter<ClientDebugSetBeingDimensionRequest>,
 ) {
+    let Ok(debug_ui_config) = debug_ui_config.single() else {
+        return;
+    };
     if !window_visible.dimension_changer {
         return;
     }

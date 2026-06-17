@@ -64,7 +64,7 @@ avian2d = "0.6.1"
 bevy_northstar = "0.6.2"
 big-brain = "0.22.0"
 superstate = { path = "crates/Superstate" }
-bevy_lit = {  path = "aother/bevy_lit" }
+bevy_lit = { git = "https://github.com/csandven/bevy_lit" }
 
 #cargo upgrade --incompatible
 

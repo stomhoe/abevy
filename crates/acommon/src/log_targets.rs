@@ -96,6 +96,7 @@ pub const SGC_CHUNK_OFFER: &str = "sgc_chunk_offer";
 pub const SGC_CHUNK_CLAIM: &str = "sgc_chunk_claim";
 pub const REGION_SYSTEM: &str = "region_system";
 pub const RIVER_SYSTEM: &str = "river_system";
+pub const RIVER_BUILD_SYSTEM: &str = "river_build_system";
 
 // ============================================================================
 // RUNTIME SYSTEMS - GAMEPLAY (format: <name>_system)

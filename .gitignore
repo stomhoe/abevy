@@ -9,7 +9,6 @@
 **/*.dylib
 **/bevy-inspector-egui
 # Cargo package files
-Cargo.lock
 Cargo.toml.orig
 backup.log
 

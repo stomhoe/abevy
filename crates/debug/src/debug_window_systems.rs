@@ -11,6 +11,7 @@ use game_common::game_common_states::*;
 use tilemap_shared::GlobalGenSettings;
 use tilemap_shared::StructureGenerationSettings;
 
+use common::common_components::SettingsEntity;
 use debug_shared::{BeingClickRemoverState, DubugWindowsVisibility, DebugUiConfig, TileClickRemoverState};
 use ::being_shared::{Being, LocalHumanControlled};
 use ::modifier_shared::{AppliedModifiers, modifier_components::BaseValue, modifier_types::WalkStrength};
@@ -181,13 +182,16 @@ pub fn main_menu_window(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut tile_click_remover_state: ResMut<TileClickRemoverState>,
     mut being_click_remover_state: ResMut<BeingClickRemoverState>,
-    debug_ui_config: Res<DebugUiConfig>,
+    debug_ui_config: Query<&DebugUiConfig, With<SettingsEntity>>,
     client_state: Res<State<ClientState>>,
     controlled_being_query: Query<(Entity, &AppliedModifiers), (With<Being>, LocalHumanControlled, )>,
     mut debug_modi_query: Query<(Entity, &HashId, Option<&mut BaseValue>, ), (With<WalkStrength>, Without<Templ>, )>,
     mut client_request_writer: MessageWriter<ClientDebugSetSpeedRequest>,
     mut cmd: Commands,
 ) {
+    let Ok(debug_ui_config) = debug_ui_config.single() else {
+        return;
+    };
     if !window_visible.main_menu {
         return;
     }

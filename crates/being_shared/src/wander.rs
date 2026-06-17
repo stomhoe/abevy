@@ -23,14 +23,8 @@ pub struct WanderSeri {
     pub pack_orbit_radius: f32,
     pub pack_orbit_retarget_secs_min: f32,
     pub pack_orbit_retarget_secs_max: f32,
-    pub min_speech_length: f32,
-    pub max_speech_length: f32,
-    pub meet_cooldown_secs_min: f32,
-    pub meet_cooldown_secs_max: f32,
-    pub min_subordinate_participants: f32,
-    pub max_subordinate_participants: f32,
-    pub min_sep_tospeaker: u8,
 }
+
 impl Default for WanderSeri {
     fn default() -> Self {
         Self {
@@ -54,13 +48,6 @@ impl Default for WanderSeri {
             pack_orbit_radius: 70.0,
             pack_orbit_retarget_secs_min: 30.,
             pack_orbit_retarget_secs_max: 240.,
-            min_speech_length: 30.0,
-            max_speech_length: 60.0,
-            meet_cooldown_secs_min: 50.0,
-            meet_cooldown_secs_max: 120.0,
-            min_subordinate_participants: 2.0,
-            max_subordinate_participants: 10.0,
-            min_sep_tospeaker: 1,
         }
     }
 }
@@ -152,17 +139,6 @@ impl WanderSeri {
         self.pack_orbit_radius = self.pack_orbit_radius.max(0.0);
         self.pack_orbit_retarget_secs_min = self.pack_orbit_retarget_secs_min.max(0.0);
         self.pack_orbit_retarget_secs_max = self.pack_orbit_retarget_secs_max.max(self.pack_orbit_retarget_secs_min);
-        self.min_speech_length = self.min_speech_length.max(0.0);
-        self.max_speech_length = self.max_speech_length.max(self.min_speech_length);
-        self.meet_cooldown_secs_min = self.meet_cooldown_secs_min.max(0.0);
-        self.meet_cooldown_secs_max = self
-            .meet_cooldown_secs_max
-            .max(self.meet_cooldown_secs_min);
-        self.min_subordinate_participants = self.min_subordinate_participants.max(0.0);
-        self.max_subordinate_participants = self
-            .max_subordinate_participants
-            .max(self.min_subordinate_participants);
-        self.min_sep_tospeaker = self.min_sep_tospeaker.max(1);
         self.avoid_bit_tags = self
             .avoid_bit_tags
             .into_iter()
@@ -235,12 +211,6 @@ impl WanderSeri {
             && self.pack_orbit_radius == 0.0
             && self.pack_orbit_retarget_secs_min == 0.0
             && self.pack_orbit_retarget_secs_max == 0.0
-            && self.min_speech_length == 0.0
-            && self.max_speech_length == 0.0
-            && self.meet_cooldown_secs_min == 0.0
-            && self.meet_cooldown_secs_max == 0.0
-            && self.min_subordinate_participants == 0.0
-            && self.max_subordinate_participants == 0.0
             && !self.wander_around_leader
             && self.avoid_being_tags.is_empty()
             && !self.avoid_blacklisted_spawn_tiles
@@ -275,18 +245,6 @@ impl WanderSeri {
             return 0.0;
         }
         sample_seconds(rng, self.pack_orbit_retarget_secs_min, self.pack_orbit_retarget_secs_max)
-    }
-
-    pub fn speech_enabled(&self) -> bool {
-        self.max_speech_length > 0.0
-            && self.max_subordinate_participants > 0.0
-    }
-
-    pub fn sample_speech_length_secs(&self, rng: &mut impl Rng) -> f32 {
-        if self.max_speech_length <= 0.0 {
-            return 0.0;
-        }
-        sample_seconds(rng, self.min_speech_length, self.max_speech_length)
     }
 }
 

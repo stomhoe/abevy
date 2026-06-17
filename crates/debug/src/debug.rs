@@ -5,6 +5,7 @@ use bevy_inspector_egui::bevy_egui::EguiPrimaryContextPass;
 use bevy::ecs::schedule::common_conditions::on_message;
 #[allow(unused_imports)]
 use bevy_replicon::prelude::*;
+use common::common_components::SettingsEntity;
 use common::common_states::AssetLoading;
 use ::being_shared::*;
 use tilemap_shared::DirectionalLight2dOverride;
@@ -36,7 +37,9 @@ use debug_shared::*;
 
 #[allow(unused_parens)]
 pub fn plugin(app: &mut App) {
-    let debug_enabled = |cfg: Res<DebugUiConfig>| cfg.enable_debug_menus;
+    let debug_enabled = |cfg: Query<&DebugUiConfig, With<SettingsEntity>>| {
+        cfg.single().map_or(false, |cfg| cfg.enable_debug_menus)
+    };
 
     app.add_plugins((FpsCounterPlugin))
         .add_mapped_client_message::<ClientDebugSetSpeedRequest>(bevy_replicon::prelude::Channel::Unordered)
@@ -141,7 +144,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<DebugSelectedEntities>()
         .init_resource::<DebugChunkingUiState>()
         .init_resource::<DebugFontsInitialized>()
-        .init_resource::<DebugUiConfig>()
+        .replicate::<DebugUiConfig>()
         .init_resource::<DirectionalLight2dOverride>()
         .init_resource::<WallPhaserOnSpawn>()
         .init_resource::<ClickInspectorState>()

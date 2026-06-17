@@ -11,7 +11,7 @@ use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
 use bevy_replicon::prelude::ClientState;
-use common::common_components::{DisplayName, StrId};
+use common::common_components::{DisplayName, SettingsEntity, StrId};
 use common::common_components::HashId;
 use common::log_targets::DEBUG;
 use game_common::game_common_components::Dead;
@@ -52,6 +52,17 @@ impl StatSummary {
     }
 }
 
+fn should_route_via_client(world: &mut World) -> bool {
+    world
+        .query_filtered::<&DebugUiConfig, With<SettingsEntity>>()
+        .iter(world)
+        .next()
+        .is_some_and(|cfg| cfg.client_debug)
+        && world
+            .get_resource::<State<ClientState>>()
+            .is_some_and(|state| *state.get() == ClientState::Connected)
+}
+
 fn render_body_vitals_controls(
     ui: &mut egui::Ui,
     world: &mut World,
@@ -59,10 +70,7 @@ fn render_body_vitals_controls(
     body_entity: Entity,
     body_sums: &BodySums,
 ) {
-    let route_via_client = world
-        .get_resource::<DebugUiConfig>()
-        .is_some_and(|cfg| cfg.client_debug)
-        && world.get_resource::<State<ClientState>>().is_some_and(|state| *state.get() == ClientState::Connected);
+    let route_via_client = should_route_via_client(world);
 
     let mut hp_commit_target = None;
     let mut hp_commit_amount = 0.0;
@@ -836,7 +844,106 @@ fn render_held_sprite_entry(
             }
         }
     }
+}
 
+fn render_pack_debug_section(
+    ui: &mut egui::Ui,
+    world: &mut World,
+    world_ptr: *mut World,
+    selected_being_entity: Entity,
+    current_dim_ref: Option<DimensionRef>,
+) {
+    let pack_ent = if let Some(member_of) = world.get::<SquadMemberOf>(selected_being_entity) {
+        Some(member_of.0)
+    } else if world.get::<Pack>(selected_being_entity).is_some() {
+        Some(selected_being_entity)
+    } else {
+        None
+    };
+
+    let Some(pack_ent) = pack_ent else {
+        return;
+    };
+
+    ui.collapsing("Pack", |ui| {
+        ui.label(format!("Pack entity: {:?}", pack_ent));
+
+        if let Some(squad_members) = world.get::<SquadMembers>(pack_ent) {
+            ui.label(format!("Members: {}", squad_members.len()));
+            ui.collapsing("Pack Members", |ui| {
+                for member_ent in squad_members.iter() {
+                    let label = part_label(
+                        member_ent,
+                        world.get::<DisplayName>(member_ent),
+                        world.get::<StrId>(member_ent),
+                    );
+                    let position = world
+                        .get::<GlobalTilePos>(member_ent)
+                        .map(|gpos| format!(" @ [{}, {}]", gpos.0.x, gpos.0.y))
+                        .unwrap_or_default();
+                    ui.label(format!("{:?}: {}{}", member_ent, label, position));
+                }
+            });
+        } else {
+            ui.label("SquadMembers: missing");
+        }
+
+        if let Some(pack_center) = world.get::<SquadAvgCenterPerDim>(pack_ent) {
+            if pack_center.0.is_empty() {
+                ui.label("Pack center: empty");
+            } else {
+                ui.label("Pack center per dimension:");
+                for (dim_ref, center) in pack_center.0.iter() {
+                    let mut line = format!("  {:?} -> [{}, {}]", dim_ref, center.0.x, center.0.y);
+                    if Some(*dim_ref) == current_dim_ref {
+                        line.push_str(" (current dim)");
+                    }
+                    ui.label(line);
+                }
+            }
+        } else {
+            ui.label("SquadAvgCenterPerDim: missing");
+        }
+
+        if let Some(multiplier) = world.get::<GlobalCenterRankWeightMultiplier>(pack_ent) {
+            ui.label(format!("GlobalCenterRankWeightMultiplier: {:.3}", multiplier.0));
+        }
+        if let Some(multipliers) = world.get::<CenterWeightRankBasedMultiplier>(pack_ent) {
+            ui.collapsing("CenterWeightRankBasedMultiplier", |ui| {
+                if multipliers.0.is_empty() {
+                    ui.label("empty");
+                } else {
+                    for (entity, weight) in multipliers.0.iter() {
+                        ui.label(format!("{:?}: {:.3}", entity, weight));
+                    }
+                }
+            });
+        }
+
+        if let Some(pack_spawn_radius) = world.get::<PackSpawnRadius>(pack_ent) {
+            ui.label(format!("PackSpawnRadius: {}", pack_spawn_radius.0));
+        }
+
+        if let Some(templ_ref) = world.get::<TemplEntiRef>(pack_ent).copied() {
+            ui.label(format!("Pack template reference: {:?}", templ_ref.0));
+            ui.collapsing("Pack template entity config", |ui| {
+                if world.get_entity(templ_ref.0).is_ok() {
+                    unsafe {
+                        bevy_inspector::ui_for_entity(&mut *world_ptr, templ_ref.0, ui);
+                    }
+                } else {
+                    ui.label("Pack template entity missing");
+                }
+            });
+        } else if world.get::<Templ>(pack_ent).is_some() {
+            ui.label("Pack entity is a template entity itself.");
+            ui.collapsing("Pack template entity config", |ui| {
+                unsafe {
+                    bevy_inspector::ui_for_entity(&mut *world_ptr, pack_ent, ui);
+                }
+            });
+        }
+    });
 }
 
 #[allow(unused_parens)]
@@ -1015,6 +1122,8 @@ pub fn being_details_inspector(world: &mut World) {
     let mut body_weight_sum_query = world.query::<&BodyWeightSum>();
     let mut predator_query = world.query::<&Predator>();
     let mut predator_cfg_query = world.query::<&PredatorCfg>();
+    let mut auto_melee_if_in_interaction_zone_query = world.query::<&AutoMeleeIfInInteractionZone>();
+    let mut hostile_chase_query = world.query::<&HostileChase>();
     let mut go_to_query = world.query::<&GoTo>();
     let mut chasing_query = world.query::<&NavChasing>();
     let mut fleeing_query = world.query::<&Fleeing>();
@@ -1110,7 +1219,6 @@ pub fn being_details_inspector(world: &mut World) {
                     ui.label("Selected being entity missing");
                 }
             });
-            ui.separator();
 
             ui.horizontal(|ui| {
                 let wallphaser_enabled = world.get::<WallPhaser>(selected_being_entity).is_some();
@@ -1210,10 +1318,7 @@ pub fn being_details_inspector(world: &mut World) {
             }
 
                 if let Some((dim_ref, dimension_ent)) = pending_dimension_change {
-                    let route_via_client = world
-                        .get_resource::<DebugUiConfig>()
-                        .is_some_and(|cfg| cfg.client_debug)
-                        && world.get_resource::<State<ClientState>>().is_some_and(|state| *state.get() == ClientState::Connected);
+                    let route_via_client = should_route_via_client(world);
                     if route_via_client {
                         world
                             .resource_mut::<Messages<ClientDebugSetBeingDimensionRequest>>()
@@ -1231,10 +1336,7 @@ pub fn being_details_inspector(world: &mut World) {
                 }
 
                 if let Some(new_gpos) = pending_teleport_gpos {
-                    let route_via_client = world
-                        .get_resource::<DebugUiConfig>()
-                        .is_some_and(|cfg| cfg.client_debug)
-                        && world.get_resource::<State<ClientState>>().is_some_and(|state| *state.get() == ClientState::Connected);
+                    let route_via_client = should_route_via_client(world);
                     if route_via_client {
                         world
                             .resource_mut::<Messages<ClientDebugTeleportBeingRequest>>()
@@ -1304,10 +1406,6 @@ pub fn being_details_inspector(world: &mut World) {
                 let body_condition = body_condition_query.get(world, selected_being_entity).ok().copied();
                 let body_strength_scale = body_strength_scale_query.get(world, selected_being_entity).ok().copied();
                 let body_weight_sum = body_weight_sum_query.get(world, selected_being_entity).ok().copied();
-                let predator = predator_query.get(world, selected_being_entity).is_ok();
-                let predator_cfg = predator_cfg_query.get(world, selected_being_entity).ok().cloned().or_else(|| {
-                    race_ref_ent.and_then(|race_ent| predator_cfg_query.get(world, race_ent).ok().cloned())
-                });
 
                 if let Some(body_energy_store) = body_energy_store {
                     ui.label(format!("Baseline lean mass: {:.2} kg", body_energy_store.baseline_mass_kg));
@@ -1368,12 +1466,51 @@ pub fn being_details_inspector(world: &mut World) {
                     ui.label("BodyWeightSum: missing");
                 }
 
+            });
+            ui.separator();
+
+            ui.collapsing("AiHostile", |ui| {
+                let auto_melee = auto_melee_if_in_interaction_zone_query
+                    .get(world, selected_being_entity)
+                    .ok()
+                    .cloned();
+                let hostile_chase = hostile_chase_query.get(world, selected_being_entity).ok().cloned();
+                let nav_chasing = chasing_query.get(world, selected_being_entity).ok().cloned();
+                let predator = predator_query.get(world, selected_being_entity).is_ok();
+                let predator_cfg = predator_cfg_query.get(world, selected_being_entity).ok().cloned().or_else(|| {
+                    race_ref_ent.and_then(|race_ent| predator_cfg_query.get(world, race_ent).ok().cloned())
+                });
+
                 ui.label(format!("Predator: {}", predator));
                 if let Some(predator_cfg) = predator_cfg {
                     ui.label(format!("PredatorCfg.min_hunger_to_hunt: {:.3}", predator_cfg.min_hunger_to_hunt));
                     ui.label(format!("PredatorCfg.min_hp_ratio_to_hunt: {:.3}", predator_cfg.min_hp_ratio_to_hunt));
+                    ui.label(format!("PredatorCfg.prey_body_size_ratio_tolerance: {:.3}", predator_cfg.prey_body_size_ratio_tolerance));
+                    ui.label(format!("PredatorCfg.do_not_hunt_same_kind: {}", predator_cfg.do_not_hunt_same_kind));
                 } else {
                     ui.label("PredatorCfg: missing on being and race");
+                }
+
+                if let Some(auto_melee) = auto_melee {
+                    ui.label(format!("AutoMeleeIfInInteractionZone: {} targets", auto_melee.0.len()));
+                    ui.label(format!("Targets: {:?}", auto_melee.0));
+                } else {
+                    ui.label("AutoMeleeIfInInteractionZone: missing");
+                }
+
+                if let Some(hostile_chase) = hostile_chase {
+                    ui.label(format!("HostileChase.prey: {:?}", hostile_chase.prey));
+                    ui.label(format!("HostileChase.retaliating: {}", hostile_chase.retaliating));
+                    ui.label(format!("HostileChase.retaliation_stop_distance_tiles: {:.2}", hostile_chase.retaliation_stop_distance_tiles));
+                } else {
+                    ui.label("HostileChase: missing");
+                }
+
+                if let Some(nav_chasing) = nav_chasing {
+                    ui.label(format!("NavChasing.target: {:?}", nav_chasing.target));
+                    ui.label(format!("NavChasing.stop_distance: {:.2}", nav_chasing.stop_distance));
+                } else {
+                    ui.label("NavChasing: missing");
                 }
             });
             ui.separator();
@@ -2033,6 +2170,9 @@ pub fn being_details_inspector(world: &mut World) {
                     ui.label(line);
                 }
             });
+
+            ui.separator();
+            render_pack_debug_section(ui, unsafe { &mut *world_ptr }, world_ptr, selected_being_entity, current_dim_ref);
         });
 
     if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {

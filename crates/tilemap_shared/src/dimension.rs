@@ -124,7 +124,7 @@ impl DirectionalLight2dOverride {
             } else {
                 directional_light.color
             },
-            height: if self.height_enabled { self.height } else { directional_light.height },
+            strength: if self.height_enabled { self.height } else { directional_light.strength },
             direction: if self.direction_enabled {
                 Vec2::new(self.direction_xy[0], self.direction_xy[1]).normalize_or_zero()
             } else {
@@ -242,7 +242,7 @@ impl DimensionDaylightSeri {
                 self.directional_light_color_rgb[1],
                 self.directional_light_color_rgb[2],
             ),
-            height,
+            strength: height,
             direction: Vec2::new(x, y).normalize_or_zero(),
             tile_size: 32.0,
         }

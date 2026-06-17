@@ -3,7 +3,7 @@
     name: "Gold golem Body",
     distributed_totals: {
         "mass_kg": 20000.0,
-        "hp_capacity": 1300.0,
+        "hp_capacity": 30000.0,
         "hp_regen_rate": 1.0,
         "blood_capacity": 0.0,
         "bleed_rate": 0.0,

@@ -1201,39 +1201,6 @@ fn take_wander_seri(
     {
         out.pack_orbit_retarget_secs_max = next;
     }
-    if let Some(next) = map.get("min_speech_length").and_then(PackArgValue::as_f32) {
-        out.min_speech_length = next;
-    }
-    if let Some(next) = map.get("max_speech_length").and_then(PackArgValue::as_f32) {
-        out.max_speech_length = next;
-    }
-    if let Some(next) = map
-        .get("meet_cooldown_secs_min")
-        .and_then(PackArgValue::as_f32)
-    {
-        out.meet_cooldown_secs_min = next;
-    }
-    if let Some(next) = map
-        .get("meet_cooldown_secs_max")
-        .and_then(PackArgValue::as_f32)
-    {
-        out.meet_cooldown_secs_max = next;
-    }
-    if let Some(next) = map
-        .get("min_subordinate_participants")
-        .and_then(PackArgValue::as_f32)
-    {
-        out.min_subordinate_participants = next;
-    }
-    if let Some(next) = map
-        .get("max_subordinate_participants")
-        .and_then(PackArgValue::as_f32)
-    {
-        out.max_subordinate_participants = next;
-    }
-    if let Some(next) = map.get("min_sep_tospeaker").and_then(PackArgValue::as_u8) {
-        out.min_sep_tospeaker = next;
-    }
     if let Some(avoid_tags) = map.get("avoid_tile_tags").and_then(PackArgValue::as_list) {
         out.avoid_tile_tags.clear();
         for tag in avoid_tags {

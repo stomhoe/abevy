@@ -25,7 +25,9 @@ pub fn plugin(app: &mut App) {
                 .in_set(crate::regioning::RegioningSystems)
                 //para determinismo
                 .before(crate::regioning::claim_chunks_for_various_dungeon_types),
-            river_structure_building_system.in_set(crate::regioning::StructureBuildingSystems),
+            river_structure_building_system
+                .in_set(crate::regioning::RegioningSystems)
+                .after(crate::regioning::read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems),
         ))
         .init_resource::<RiverDebugData>();
 }
