@@ -25,7 +25,6 @@ param_sets = { path = "../param_sets" }
 
 bevy = { workspace = true }
 bevy_enhanced_input = { workspace = true }
-big-brain = { workspace = true }
 superstate = { workspace = true }
 
 serde = { workspace = true }
