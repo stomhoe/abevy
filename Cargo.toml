@@ -28,7 +28,7 @@ rand_distr = "0.6.0"
 rand_seeder = "*"
 rand_pcg = "*"
 
-bevy_ecs_tilemap = { path = "aother/tmap", features = ["serde"] }
+bevy_ecs_tilemap = { path = "crates/tmap", features = ["serde"] }
 bevy_ui_text_input = { git = "https://github.com/Elekrisk/bevy_ui_text_input/", branch = "bevy-0.18" }
 bevy_replicon = "0.40.4"
 bevy_replicon_renet = "0.16"
@@ -62,6 +62,11 @@ avian2d = "0.6.1"
 bevy_northstar = "0.6.2"
 superstate = { path = "crates/Superstate" }
 bevy_lit = { git = "https://github.com/csandven/bevy_lit" }
+
+log = "0.4"
+ldtk_rust = "0.6"
+tiled = { version = "0.15.0", default-features = false }
+thiserror = "2.0"
 
 #cargo upgrade --incompatible
 
