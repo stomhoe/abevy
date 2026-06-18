@@ -83,7 +83,7 @@ pub fn on_assets_finish_loading(
     if pending_game_start.is_some() {
         game_phase.set(GamePhase::ActiveGame);
         cmd.server_trigger(ToClients {
-            mode: SendMode::Broadcast,
+            targets: SendTargets::All,
             message: HostStartedGameplay,
         });
         cmd.remove_resource::<PendingGameStart>();

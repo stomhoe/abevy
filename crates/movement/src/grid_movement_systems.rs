@@ -314,7 +314,7 @@ pub fn start_grid_locked_steps(
                 force_resync: false,
             };
             sync_gpos_msgs.push(ToClients {
-                mode: SendMode::Broadcast,
+                targets: SendTargets::All,
                 message: message.clone(),
             });
         }

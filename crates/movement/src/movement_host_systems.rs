@@ -165,7 +165,7 @@ pub fn receive_step_request_from_client(
                 if facing_dir != step_dir {
                     let _ = blocking_tiles.set_being_direction(being_ent, step_dir);
                     messages.push(ToClients {
-                        mode: SendMode::BroadcastExcept(client_id),
+                        targets: SendTargets::AllExcept(client_id),
                         message: SyncGpos {
                             being_ent,
                             gpos: curr_tile_pos,
@@ -216,7 +216,7 @@ pub fn receive_step_request_from_client(
                     secs_per_step
                 );
                 messages.push(ToClients {
-                    mode: SendMode::Direct(client_id),
+                    targets: SendTargets::Single(client_id),
                     message: SyncGpos {
                         being_ent,
                         gpos: curr_tile_pos,
@@ -252,7 +252,7 @@ pub fn receive_step_request_from_client(
                         next_gpos
                     );
                     messages.push(ToClients {
-                        mode: SendMode::Direct(client_id),
+                        targets: SendTargets::Single(client_id),
                         message: SyncGpos {
                             being_ent,
                             gpos: curr_tile_pos,
@@ -287,7 +287,7 @@ pub fn receive_step_request_from_client(
                             curr_tile_pos
                         );
                         messages.push(ToClients {
-                            mode: SendMode::Direct(client_id),
+                            targets: SendTargets::Single(client_id),
                             message: SyncGpos {
                                 being_ent,
                                 gpos: curr_tile_pos,
@@ -306,7 +306,7 @@ pub fn receive_step_request_from_client(
                             curr_tile_pos
                         );
                         messages.push(ToClients {
-                            mode: SendMode::Direct(client_id),
+                            targets: SendTargets::Single(client_id),
                             message: SyncGpos {
                                 being_ent,
                                 gpos: curr_tile_pos,
@@ -339,7 +339,7 @@ pub fn receive_step_request_from_client(
                         curr_tile_pos
                     );
                     messages.push(ToClients {
-                        mode: SendMode::Direct(client_id),
+                        targets: SendTargets::Single(client_id),
                         message: SyncGpos {
                             being_ent,
                             gpos: curr_tile_pos,
@@ -360,7 +360,7 @@ pub fn receive_step_request_from_client(
             };
             *being_gpos = curr_tile_pos;
             messages.push(ToClients {
-                mode: SendMode::BroadcastExcept(client_id),
+                targets: SendTargets::AllExcept(client_id),
                 message: SyncGpos {
                     being_ent,
                     gpos: curr_tile_pos,

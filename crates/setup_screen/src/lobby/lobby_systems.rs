@@ -53,7 +53,7 @@ pub fn lobby_button_interaction(
                     if *asset_loading_state.get() == AssetLoading::Finished {
                         game_phase.set(GamePhase::ActiveGame);
                         cmd.server_trigger(ToClients {
-                            mode: SendMode::Broadcast,
+                            targets: SendTargets::All,
                             message: HostStartedGameplay,
                         });
                     } else {

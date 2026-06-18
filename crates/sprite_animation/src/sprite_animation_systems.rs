@@ -434,13 +434,13 @@ pub fn msg_movestate_update_to_clients_for_sprite_animation(
         let event_data = SyncMoveState {being_ent, moving, grounding: grounding.cloned(), direction: direction.cloned()};
         if let Ok(controller) = controller.get(being_ent) {
             messages_to_send.push(ToClients {
-                mode: SendMode::BroadcastExcept(ClientId::Client(controller.client_ent)),
+                targets: SendTargets::AllExcept(ClientId::Client(controller.client_ent)),
                 message: event_data,
             });
             trace!(target: SPRITE_ANIMATION_SYSTEM, "Sending moving {} for entity {:?} {} to all clients except {:?}", moving, being_ent, id.cloned().unwrap_or_default(), controller.client_ent);
         }
         else {
-            messages_to_send.push(ToClients { mode: SendMode::Broadcast, message: event_data, });
+            messages_to_send.push(ToClients { targets: SendTargets::All, message: event_data, });
             trace!(target: SPRITE_ANIMATION_SYSTEM, "Sending moving {} for entity {:?} to all clients", moving, being_ent);
         }
     }

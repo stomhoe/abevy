@@ -52,7 +52,7 @@ pub fn toggle_simulation(
     next_state.set(next_state_value.clone());
     if *server_state.get() == ServerState::Running {
         sync_state_writer.write(ToClients {
-            mode: SendMode::Broadcast,
+            targets: SendTargets::All,
             message: SyncSimulationState {
                 state: next_state_value,
             },
@@ -84,7 +84,7 @@ pub fn receive_toggle_simulation_request(
     info!("Received client toggle request, switching to {:?} state", next_state_value);
     next_state.set(next_state_value.clone());
     sync_state_writer.write(ToClients {
-        mode: SendMode::Broadcast,
+        targets: SendTargets::All,
         message: SyncSimulationState {
             state: next_state_value,
         },
