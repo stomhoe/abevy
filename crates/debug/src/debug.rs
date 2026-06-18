@@ -1,6 +1,5 @@
 #[allow(unused_imports)]
 use bevy::prelude::*;
-use bevy_fps_counter::FpsCounterPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPrimaryContextPass;
 use bevy::ecs::schedule::common_conditions::on_message;
 #[allow(unused_imports)]
@@ -41,8 +40,7 @@ pub fn plugin(app: &mut App) {
         cfg.single().map_or(false, |cfg| cfg.enable_debug_menus)
     };
 
-    app.add_plugins((FpsCounterPlugin))
-        .add_mapped_client_message::<ClientDebugSetSpeedRequest>(bevy_replicon::prelude::Channel::Unordered)
+    app.add_mapped_client_message::<ClientDebugSetSpeedRequest>(bevy_replicon::prelude::Channel::Unordered)
         .add_mapped_client_message::<ClientDebugSetBeingDimensionRequest>(bevy_replicon::prelude::Channel::Unordered)
         .add_mapped_client_message::<ClientDebugTeleportBeingRequest>(bevy_replicon::prelude::Channel::Unordered)
         .add_mapped_client_message::<ClientDebugSetBeingCurrentHpRequest>(bevy_replicon::prelude::Channel::Unordered)

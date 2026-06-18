@@ -42,4 +42,3 @@ rand = { workspace = true }
 #rand_seeder = { workspace = true }
 #rand_pcg = { workspace = true }
 #noiz = { workspace = true }
-bevy-fps-counter = { workspace = true }

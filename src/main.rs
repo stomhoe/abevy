@@ -1,6 +1,7 @@
 
 use bevy::{log::LogPlugin, prelude::*,};
 use avian2d::prelude::PhysicsPlugins;
+#[allow(unused_imports, )] use bevy_fps_counter::FpsCounterPlugin;
 use bevy_enhanced_input::prelude::*;
 use bevy_inspector_egui::{
     bevy_egui::EguiPlugin,
@@ -152,6 +153,7 @@ fn main() {
             EguiPlugin::default(),
             WorldInspectorPlugin::default().run_if(|visible: Res<InspectorVisibility>| visible.0),
             PhysicsPlugins::default().with_length_unit(GlobalTilePos::TILE_SIZE_PXS.x as f32),
+            //FpsCounterPlugin,
         ))
         .add_systems(Update, toggle_inspector_visibility)
         .add_plugins((
