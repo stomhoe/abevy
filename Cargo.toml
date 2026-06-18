@@ -11,7 +11,7 @@ edition = "2024"
 default = []
 
 [workspace.dependencies]
-bevy = { version = "0.18", features = [
+bevy = { version = "0.18.1", features = [
     "dynamic_linking",
     "track_location",
     "serialize",
