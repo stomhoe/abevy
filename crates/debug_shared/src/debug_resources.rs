@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy_ecs_tilemap::tiles::TileColor;
-use being_shared::WallPhaserOnSpawn;
+use being_shared::{WallPhaserOnSpawn, InvulnerableOnSpawn};
 use common::common_components::{HashId, SettingsEntity};
 use common::common_states::HotReloadSelection;
 use serde::{Deserialize, Serialize};
@@ -284,6 +284,7 @@ impl Default for DebugChunkingUiState {
 pub struct DebugUiConfig {
     pub enable_debug_menus: bool,
     pub wall_phaser: bool,
+    pub invulnerable: bool,
     pub client_debug: bool,
     pub hot_reload_defaults: common::common_states::HotReloadSelection,
     pub windows_open_on_start: DubugWindowsVisibility,
@@ -295,6 +296,7 @@ pub fn load_debug_ui_config(
     mut window_visible: ResMut<DubugWindowsVisibility>,
     mut selection: ResMut<HotReloadSelection>,
     mut wall_phaser_on_spawn: ResMut<WallPhaserOnSpawn>,
+    mut invulnerable_on_spawn: ResMut<InvulnerableOnSpawn>,
 ) {
     let defs = load_debug_ui_config_seri_defs();
     let Some(def) = defs.first() else {
@@ -309,6 +311,7 @@ pub fn load_debug_ui_config(
     *selection = cfg.hot_reload_defaults.clone();
     *window_visible = cfg.windows_open_on_start.clone();
     wall_phaser_on_spawn.0 = cfg.wall_phaser;
+    invulnerable_on_spawn.0 = cfg.invulnerable;
 }
 
 impl Default for DebugUiConfig {
@@ -316,6 +319,7 @@ impl Default for DebugUiConfig {
         Self {
             enable_debug_menus: true,
             wall_phaser: false,
+            invulnerable: false,
             client_debug: false,
             hot_reload_defaults: common::common_states::HotReloadSelection::default(),
             windows_open_on_start: DubugWindowsVisibility::default(),
@@ -328,6 +332,7 @@ impl DebugUiConfigSeri {
         DebugUiConfig {
             enable_debug_menus: self.enable_debug_menus,
             wall_phaser: self.wall_phaser,
+            invulnerable: self.invulnerable,
             client_debug: self.client_debug,
             hot_reload_defaults: common::common_states::HotReloadSelection {
                 tiles: self.hot_reload_defaults.tiles,

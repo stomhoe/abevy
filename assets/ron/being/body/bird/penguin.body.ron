@@ -4,7 +4,7 @@
     tags: ["bird"],
     distributed_totals: {
         "mass_kg": 25.0,
-        "hp_capacity": 38.0,
+        "hp_capacity": 114.0,
         "hp_regen_rate": 8.0,
         "blood_capacity": 60.0,
         "bleed_rate": 7.0,

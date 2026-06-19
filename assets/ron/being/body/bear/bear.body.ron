@@ -4,7 +4,7 @@
     tags: ["quadruped"],
     distributed_totals: {
         "mass_kg": 350.0,
-        "hp_capacity": 500.0,
+        "hp_capacity": 1500.0,
         "hp_regen_rate": 14.0,
         "blood_capacity": 180.0,
         "bleed_rate": 18.0,

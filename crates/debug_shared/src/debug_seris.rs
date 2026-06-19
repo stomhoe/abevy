@@ -9,6 +9,8 @@ pub struct DebugUiConfigSeri {
     #[serde(default)]
     pub wall_phaser: bool,
     #[serde(default)]
+    pub invulnerable: bool,
+    #[serde(default)]
     pub client_debug: bool,
     #[serde(default)]
     pub hot_reload_defaults: DebugHotReloadDefaultsSeri,

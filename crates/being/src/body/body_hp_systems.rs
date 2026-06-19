@@ -145,11 +145,12 @@ pub fn apply_damage(
     mut reader: MessageReader<IncHealthDamageOrHeal>,
     max_hp_by_part: Res<BodypartMaxHpMap>,
     target_body_query: Query<&HeldBody>,
-    bodies_query: Query<&Children, (With<BodyOf>, Without<Templ>)>,
+    bodies_query: Query<(&BodyOf, &Children), (Without<Templ>)>,
     parts_query: Query<
         (Option<&BodypartCoverageWeight>, ),
         (With<BodypartChildOfBodypart>, Without<Missing>, Without<Templ>),
     >,
+    invulnerable_query: Query<(), With<modifier_shared::modifier_types::Invulnerable>>,
     mut damage_query: Query<&mut AccuDamage, (Without<Templ>, )>,
     mut weighted_parts: Local<Vec<(Entity, u16)>>,
     mut body_parts: Local<Vec<Entity>>,
@@ -166,12 +167,17 @@ pub fn apply_damage(
             .get(damage_msg.target_ent)
             .map(|held_body| held_body.entity())
             .unwrap_or(damage_msg.target_ent);
-        let damage_amount = damage_msg.amount;
-        let source_ent = damage_msg.source_ent;
 
-        let Ok(parts) = bodies_query.get(body_ent) else {
+        let Ok((body_of, parts)) = bodies_query.get(body_ent) else {
             continue;
         };
+
+        if invulnerable_query.get(body_of.being).is_ok() && damage_msg.amount > 0.0 {
+            continue;
+        }
+
+        let damage_amount = damage_msg.amount;
+        let source_ent = damage_msg.source_ent;
 
         for part_ent in parts.iter() {
             let Ok((weight_opt, )) = parts_query.get(part_ent) else {
@@ -282,8 +288,26 @@ pub fn set_bodypart_as_missing_if_0_hp(
     mut missing_timers: Local<EntityHashMap<Timer>>,
     mut stale_timers: Local<Vec<Entity>>,
     mut finished_timers: Local<Vec<(Entity, bool)>>,
+    body_of_query: Query<&BodyOf>,
+    invulnerable_query: Query<(), With<modifier_shared::modifier_types::Invulnerable>>,
 ) {
     for (part_ent, damage, has_missing) in changed_bodyparts_query.iter() {
+        let mut curr = part_ent;
+        let is_invulnerable = loop {
+            if let Ok(body_of) = body_of_query.get(curr) {
+                break invulnerable_query.get(body_of.being).is_ok();
+            }
+            if let Ok(child_of) = child_of_query.get(curr) {
+                curr = child_of.parent();
+            } else {
+                break false;
+            }
+        };
+
+        if is_invulnerable {
+            continue;
+        }
+
         let max_hp = max_hp_by_part.0.get(&part_ent).copied().unwrap_or(0.0).max(0.0);
         if max_hp <= 0.0 {
             missing_timers.remove(&part_ent);
@@ -350,14 +374,17 @@ pub fn set_bodypart_as_missing_if_0_hp(
         if !is_vital {
             continue;
         }
-        let Ok(child_of) = child_of_query.get(part_ent) else {
-            continue;
-        };
-        let Ok(child_of) = child_of_query.get(child_of.parent()) else {
-            continue;
-        };
-        let being_ent = child_of.parent();
-        cmd.entity(being_ent).try_insert_if_new((Dead));
+        
+        // Robust climb to find the Being
+        let mut curr = part_ent;
+        while let Ok(child_of) = child_of_query.get(curr) {
+            let parent = child_of.parent();
+            if let Ok(body_of) = body_of_query.get(parent) {
+                cmd.entity(body_of.being).try_insert_if_new(Dead);
+                break;
+            }
+            curr = parent;
+        }
     }
 }
 
@@ -375,6 +402,7 @@ pub struct BodyHealthQueryParams<'w, 's> {
     blood_capacity_query: Query<'w, 's, (), With<BloodCapacity>>,
     consciousness_query: Query<'w, 's, (), With<Consciousness>>,
     vision_query: Query<'w, 's, (), With<Vision>>,
+    invulnerable_query: Query<'w, 's, (), With<modifier_shared::modifier_types::Invulnerable>>,
     damage_query: Query<'w, 's, &'static mut AccuDamage>,
     body_sums_query: Query<'w, 's, &'static mut BodySums>,
     curr_values_query: Query<'w, 's, &'static CurrEffectiveValue>,
@@ -680,9 +708,10 @@ pub fn update_body_health_from_parts(
             0.0
         };
         let consciousness = (base_consciousness * curr_blood_ratio).clamp(0.0, 1.0);
-
         let has_initialized_vitals = total_max_hp > 0.0 || blood_capacity > 0.0 || bleed_rate > 0.0;
-        let dead = has_initialized_vitals && !bloodless_nonbleeding && (consciousness < 0.01 || curr_blood <= 0.0);
+        let dead = has_initialized_vitals
+            && (consciousness < 0.01 || total_hp <= 0.0 || (curr_blood <= 0.0 && !bloodless_nonbleeding))
+            && queries.invulnerable_query.get(body_of.being).is_err();
         if dead {
             let being_ent = body_of.being;
             warn!(

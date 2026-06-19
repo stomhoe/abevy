@@ -21,4 +21,5 @@ common::define_marker_components!(
     ManipulationStrength,
     Vision,
     WallPhaser,
+    Invulnerable,
 );

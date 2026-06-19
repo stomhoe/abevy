@@ -12,7 +12,7 @@ default = []
 
 [workspace.dependencies]
 bevy = { version = "0.18.1", features = [
-    "dynamic_linking",
+    #"dynamic_linking",
     "track_location",
     "serialize",
     "jpeg",

@@ -4,6 +4,7 @@ use common::{common_components::HashId};
 
 use crate::{terrain::terrgen_messages::PendingOp, tile::tile_bundles::* };
 
+use ::game_common::*;
 use ::tilemap_shared::*;
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use crate::tile::{TileEntityMap, TileRef, TileWeightedSamplerEntityMap};
@@ -41,6 +42,7 @@ impl MassCollectedTiles {
             tile_bundle,
             initial_pos: InitialPos { pos: gpos, dim: dim_ref },
         };
+        cmd.entity(tile_instance).insert(TemplEntiRef(templ_ent));
         self.0.push((tile_instance, helper));
         tile_instance
     }

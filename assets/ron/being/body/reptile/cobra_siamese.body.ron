@@ -4,7 +4,7 @@
     tags: ["serpent"],
     distributed_totals: {
         "mass_kg": 12.0,
-        "hp_capacity": 18.0,
+        "hp_capacity": 54.0,
         "hp_regen_rate": 7.4,
         "blood_capacity": 85.5,
         "bleed_rate": 9.6,

@@ -13,6 +13,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<GameInitSettings>()
     .init_resource::<CommonSpawnOriginCache>()
     .init_resource::<WallPhaserOnSpawn>()
+    .init_resource::<::being_shared::InvulnerableOnSpawn>()
     .add_observer(put_player_beings_on_map)
 
     .add_systems(

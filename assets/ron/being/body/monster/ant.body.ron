@@ -4,7 +4,7 @@
     tags: ["insect"],
     distributed_totals: {
         "mass_kg": 2.0,
-        "hp_capacity": 3.0,
+        "hp_capacity": 9.0,
         "hp_regen_rate": 11.0,
         "blood_capacity": 146.4,
         "bleed_rate": 12.0,

@@ -5,7 +5,7 @@ use common::{common_states::AssetLoading };
 use common::common_resources::ImageSizeReady;
 use bevy_ecs_tilemap::prelude::*;
 use bevy::ecs::schedule::common_conditions::{any_with_component, on_message};
-use game_common::HostSystems;
+use game_common::{HostSystems, game_common_components::*};
 use sprite_systems::AcSpriteSystems;
 use bevy::prelude::*;
 use crate::terrain::terrprobe::{search_suitable_positions, terrprobe_components::AwaitingStartSearch, terrprobe_messages::{SearchFailed, SuitablePosFound}};
@@ -14,6 +14,7 @@ use crate::tile::portal_init_systems::*;
 use crate::tile::tile_init_systems::*;
 use crate::tile::tile_childrensprite_init_systems::*;
 use crate::tile::tile_sampler_init_systems::*;
+use crate::tile::corpse_systems::*;
 
 use tile_despawn_systems::*;
 use tile_flip_rotate_systems::*;
@@ -29,6 +30,7 @@ mod tile_childrensprite_init_systems;
 mod portal_init_systems;
 mod tile_sampler_init_systems;
 mod tile_init_helpers;
+mod corpse_systems;
 pub mod tile_seris;
 pub mod tile_components;
 pub mod tile_resources;
@@ -65,7 +67,9 @@ pub fn plugin(app: &mut App) {
             despawn_other_tiles_in_same_pos_if_not_excepted).in_set(PreChunkDespawnSystems),//DON'T TOUCH
         add_projectile_colliders_to_tiles,
         (snap_transform_to_gpos, 
-            apply_corpse_pose_after_gpos_change.in_set(HostSystems)
+            apply_corpse_pose_after_gpos_change.in_set(HostSystems).run_if(any_with_component::<Dead>),
+            update_corpse_transform.run_if(any_with_component::<Dead>),
+            remove_corpse_pose_on_removal_of_dead,
         ).chain(),
         sync_tile_instance_templ_enti_ref_from_map,
         emit_global_tile_pos_change,
