@@ -6,7 +6,7 @@ use ac_audio::ac_audio_components::{AnimationFrameSfxState, AnimationSeriSfxConf
 use being_shared::{Grounding, ComputedBy, ComputedLocally};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, };
-use common::{SPRITE_ANIMATION_SYSTEM, common_components::*, file_logging::file_log};
+use common::{SPRITE_ANIMATION_SYSTEM, common_components::*};
 use game_common::{game_common_components::{Directionable, TemplEntiRef, }, Templ};
 use being_shared::movement_shared_components::SpeedMagnitude;
 use player_shared::player_components::*;
@@ -142,18 +142,6 @@ pub fn switch_or_readjust_sprite_animation(
             };
 
             let Some(anim_hash) = sprite_cfg_animations_map.0.get(&anim_type) else {
-                file_log(
-                    "move",
-                    "sprite",
-                    &format!(
-                        "no_anim base={:?} sprite={ent:?} dir={:?} moving={:?} grounding={:?} state={:?}",
-                        base_holder.base,
-                        anim_type.direction,
-                        anim_type.moving,
-                        anim_type.grounding,
-                        anim_type.state_id,
-                    ),
-                );
                 if !has_fallback {
                     warn_once!(target: SPRITE_ANIMATION_SYSTEM, "No animation found for AnimType {:?} in SpriteCfgAnimationsMap for entity {:?} {}", anim_type, ent, held_sprite_strid);
                 }
@@ -163,18 +151,6 @@ pub fn switch_or_readjust_sprite_animation(
                 error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to resolve animation hash {} for sprite config {:?} {}", anim_hash, sprite_cfg_ref.0, held_sprite_strid);
                 continue;
             };
-            file_log(
-                "move",
-                "sprite",
-                &format!(
-                    "select_anim base={:?} sprite={ent:?} anim={anim_ent:?} dir={:?} moving={:?} grounding={:?} state={:?}",
-                    base_holder.base,
-                    anim_type.direction,
-                    anim_type.moving,
-                    anim_type.grounding,
-                    anim_type.state_id,
-                ),
-            );
             let Ok((anim_handle, anim_sheet)) = anim_handle_sheet_query.get(anim_ent) else {
                 let anim_strid = strid_query.get(anim_ent).ok().cloned().unwrap_or_default();
                 error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get animation data for animation entity {:?} {}", anim_ent, anim_strid);

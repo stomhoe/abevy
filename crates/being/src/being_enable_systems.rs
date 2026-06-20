@@ -4,7 +4,6 @@ use bevy::ecs::system::SystemParam;
 use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 use common::common_components::StrId;
-use common::file_logging::file_log;
 use common::log_targets::BEING_SYSTEM;
 use ::param_sets::*;
 use tilemap::{
@@ -247,11 +246,6 @@ pub fn activate_beings_in_first_time_loaded_chunks(
     if activated_beings > 0 {
         debug!(target: BEING_SYSTEM, "Natural spawn activated {} reserved wildlife beings", activated_beings);
     }
-    file_log(
-        "being",
-        "host",
-        &format!("activate touched_chunks={touched_chunks} activated_beings={activated_beings}"),
-    );
 }
 
 #[allow(unused_parens, )]

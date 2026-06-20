@@ -1,7 +1,6 @@
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
-use common::file_logging::file_log;
 use common::log_targets::BODY_HP_SYSTEM;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 use rand::RngExt;
@@ -108,24 +107,14 @@ pub fn update_bodypart_max_hp_map(
             continue;
         }
         if hp_modifiers_seen > 0 {
-            file_log(
-                BODY_HP_SYSTEM,
-                "host",
-                &format!(
-                    "part_zero_cap_with_hp_markers part={part_ent:?} templ_part={:?} hp_modifiers_seen={hp_modifiers_seen} max_hp={max_hp:.3}",
-                    part_templ_ref.map(|templ_ref| templ_ref.0),
-                ),
+            trace!(
+                target: BODY_HP_SYSTEM,
+                "Part {:?} has hp markers with zero effective capacity (templ_part={:?})",
+                part_ent,
+                part_templ_ref.map(|templ_ref| templ_ref.0),
             );
         }
         if modifiers_seen > 0 && hp_modifiers_seen == 0 {
-            file_log(
-                BODY_HP_SYSTEM,
-                "host",
-                &format!(
-                    "part_no_hp_markers part={part_ent:?} templ_part={:?} modifiers_seen={modifiers_seen}",
-                    part_templ_ref.map(|templ_ref| templ_ref.0),
-                ),
-            );
             trace!(
                 target: BODY_HP_SYSTEM,
                 "Part {:?} has {} modifier refs but no HitpointsCapacity marker found (templ_part={:?})",
@@ -668,14 +657,15 @@ pub fn update_body_health_from_parts(
         let bleed_rate = bleed_rate + locals.bleed_mod_sum.get(&body).copied().unwrap_or(0.0);
         let blood_capacity = (blood_capacity + locals.blood_capacity_mod_sum.get(&body).copied().unwrap_or(0.0)).max(0.0);
         if parts_count > 0 && total_max_hp <= 0.0 {
-            file_log(
-                BODY_HP_SYSTEM,
-                "host",
-                &format!(
-                    "body_zero_total_hp body={body:?} being={:?} templ_body={:?} parts_count={parts_count} total_hp={total_hp:.3} blood_capacity={blood_capacity:.3}",
-                    body_of.being,
-                    body_templ_ref.map(|templ| templ.0),
-                ),
+            trace!(
+                target: BODY_HP_SYSTEM,
+                "Body {:?} has zero total hp (being={:?} templ_body={:?} parts_count={} total_hp={:.3} blood_capacity={:.3})",
+                body,
+                body_of.being,
+                body_templ_ref.map(|templ| templ.0),
+                parts_count,
+                total_hp,
+                blood_capacity,
             );
         }
         let base_consciousness = (1.0 + locals.consciousness_mod_sum.get(&body).copied().unwrap_or(0.0)).max(0.0);

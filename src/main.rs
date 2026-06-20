@@ -29,7 +29,7 @@ fn build_filter() -> String {
     #[allow(unused)]const warn: &str = "warn";
     #[allow(unused)]const info: &str = "info";
     #[allow(unused)]const debug: &str = "debug";
-    #[allow(unused)]const warn: &str = "warn";
+    #[allow(unused)]const trace: &str = "trace";
     let mut filter = String::from("info");
     for (target, level) in [
         (log_targets::NAGA, error),

@@ -7,7 +7,6 @@ use common::common_components::StrId;
 use modifier_shared::WallPhaser;
 use param_sets::BlockingTileParamSet;
 use common::log_targets::{BEING_SYSTEM, MOVEMENT_SYSTEM};
-use common::file_logging::file_log;
 use ::sprite_animation_shared::*;
 
 use tilemap::tile::tile_components::Tile;
@@ -380,11 +379,6 @@ pub fn receive_gpos_from_server(
                     gpos,
                     dir
                 );
-                file_log(
-                    "move",
-                    "client",
-                    &format!("forced_resync ent={being_ent:?} gpos={gpos:?} facing={dir:?}"),
-                );
                 continue;
             }
             let delta = being_gpos.0 - gpos.0;
@@ -398,11 +392,6 @@ pub fn receive_gpos_from_server(
                 transform.translation = gpos.to_translation(transform.translation.z);
                 commands.entity(*being_ent).remove::<PendingTileCorrection>();
                 trace!(target: MOVEMENT_SYSTEM, "Immediate client burst resync for {:?}: {:?} facing {:?}", being_ent, gpos, dir);
-                file_log(
-                    "move",
-                    "client",
-                    &format!("immediate_burst_resync ent={being_ent:?} gpos={gpos:?} facing={dir:?}"),
-                );
                 continue;
             }
 
