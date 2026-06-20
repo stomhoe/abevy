@@ -1,6 +1,6 @@
 (
-    id: "croc0",
-    name: "Croc0 Body",
+    id: "croc",
+    name: "Croc Body",
     tags: ["quadruped"],
     distributed_totals: {
         "mass_kg": 400.0,

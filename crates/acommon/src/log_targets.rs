@@ -27,17 +27,13 @@ pub const OFFSET_ALLOCATOR: &str = "offset_allocator";
 pub const BEVY_ASSET_LOADER: &str = "bevy_asset_loader";
 pub const CALLOOP_LOOP_LOGIC: &str = "calloop_loop_logic";
 
-// ============================================================================
-// ASSET & RESOURCE LOADING (format: <name>_load)
-// ============================================================================
+
 pub const ASSET_LOADING: &str = "asset_loading";
 pub const TILEMAP_LOAD: &str = "tilemap_load";
 pub const DIMENSION_LOADING: &str = "dimension_loading";
 pub const DEF_VALIDATION: &str = "def_validation";
 
-// ============================================================================
-// INITIALIZATION SYSTEMS (format: <name>_init)
-// ============================================================================
+
 pub const RACE_INIT: &str = "race_init";
 pub const SPRITE_INIT: &str = "sprite_init";
 pub const SPRITE_ANIMATION_INIT: &str = "sprite_animation_init";
@@ -56,51 +52,35 @@ pub const TILE_SHADER_INIT: &str = "tile_shader_init";
 pub const GAME_INIT: &str = "game_init";
 pub const LIGHTING_INIT: &str = "lighting_init";
 
-// ============================================================================
-// BUILD & CONFIGURATION SYSTEMS (format: <name>_build)
-// ============================================================================
+
 pub const SPRITE_BUILD: &str = "sprite_build";
 pub const BEING_BUILD: &str = "being_build";
 pub const BODY_BUILD: &str = "body_build";
 pub const BODY_TEMPL_INIT: &str = "body_templ_init";
 pub const GAME_COMMON_SYSTEM: &str = "game_common_system";
 
-// ============================================================================
-// RUNTIME SYSTEMS - SPRITE & ANIMATION (format: <name>_system)
-// ============================================================================
+
 pub const SPRITE_SYSTEM: &str = "sprite_system";
 pub const SPRITE_SAMPLER_SYSTEM: &str = "sprite_sampler_system";
 pub const SPRITE_ANIMATION_SYSTEM: &str = "sprite_animation_system";
 
-// ============================================================================
-// RUNTIME SYSTEMS - TERRAIN & STRUCTURE GENERATION (format: <name>_process)
-// ============================================================================
 pub const TERRGEN_PROCESS: &str = "terrgen_process";
 pub const TERRGEN_SYSTEM: &str = "terrgen_system";
 pub const STRUCTURE_SPAWN: &str = "structure_spawn";
 pub const MACROCHUNK_BIOME: &str = "macrochunk_biome";
 
-// ============================================================================
-// RUNTIME SYSTEMS - TILEMAP & CHUNKING (format: <name>_system)
-// ============================================================================
 pub const TILEMAP_SYSTEM: &str = "tilemap_system";
 pub const CHUNK_DESPAWN: &str = "chunk_despawn";
 pub const CHUNK_VISIBILITY: &str = "chunk_visibility";
 pub const CHUNK_ACTIVATION: &str = "chunk_activation";
 pub const GPOS_MAP: &str = "gpos_map";
 
-// ============================================================================
-// RUNTIME SYSTEMS - REGIONING & STRUCTURE (format: <name>_system)
-// ============================================================================
 pub const SGC_CHUNK_OFFER: &str = "sgc_chunk_offer";
 pub const SGC_CHUNK_CLAIM: &str = "sgc_chunk_claim";
 pub const REGION_SYSTEM: &str = "region_system";
 pub const RIVER_SYSTEM: &str = "river_system";
 pub const RIVER_BUILD_SYSTEM: &str = "river_build_system";
 
-// ============================================================================
-// RUNTIME SYSTEMS - GAMEPLAY (format: <name>_system)
-// ============================================================================
 pub const BEING_SYSTEM: &str = "being_system";
 pub const BEING_SIMULATION_SYSTEMS: &str = "being_simulation_systems";
 pub const BEING_MELEE_SYSTEMS: &str = "being_melee_systems";
@@ -117,16 +97,10 @@ pub const ITEM_SYSTEM: &str = "item_system";
 pub const WILDLIFE_SYSTEM: &str = "wildlife_system";
 pub const HOST_SYSTEMS: &str = "host_systems";
 
-
-// ============================================================================
-// UTILITIES & SEARCH
-// ============================================================================
 pub const POSITION_SEARCH: &str = "position_search";
 pub const DEBUG: &str = "debug";
 pub const CONTROL: &str = "control";
 pub const INSPECTOR: &str = "inspector";
 
-// ============================================================================
-// DEBUG MARKERS (usually disabled)
-// ============================================================================
+
 pub const DEBUG_TILE: &str = "debug_tile";

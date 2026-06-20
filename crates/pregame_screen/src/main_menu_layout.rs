@@ -21,7 +21,7 @@ pub fn layout(mut commands: Commands){
         DespawnOnExit(AppState::NoSession),
 
         children![
-            main_menu_button(MainMenuButton::QuickStart, "Quick start", None),
+            main_menu_button(MainMenuButton::QuickStart, "Usar: Host -> Start para jugar directamente", None),
             main_menu_button(MainMenuButton::Host, "Host", None),
             main_menu_button(MainMenuButton::Join, "Join", None),
         ]

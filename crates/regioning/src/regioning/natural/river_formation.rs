@@ -37,7 +37,7 @@ pub(super) fn generate_river_region_plan(
     region_debug.failed_probe_points.clear();
 
     if inland_map.is_empty() {
-        error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: no inlandness points were provided", source_region_pos, dimension_ref);
+        warn!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: no inlandness points were provided", source_region_pos, dimension_ref);
         return false;
     }
 
@@ -63,7 +63,7 @@ pub(super) fn generate_river_region_plan(
         .map(|(pos, val)| (*pos, *val))
         .collect();
     if land_points.is_empty() {
-        error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: no inland land points remained after filtering ocean samples and region bounds", source_region_pos, dimension_ref);
+        warn!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: no inland land points remained after filtering ocean samples and region bounds", source_region_pos, dimension_ref);
         return false;
     }
 
@@ -88,7 +88,7 @@ pub(super) fn generate_river_region_plan(
         Some(source_region_pos),
     );
     if sources.is_empty() {
-        error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: source selection produced no river sources", source_region_pos, dimension_ref);
+        warn!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: source selection produced no river sources", source_region_pos, dimension_ref);
         return false;
     }
 
@@ -245,12 +245,12 @@ pub(super) fn generate_river_region_plan(
     if !built_river {
         let mouth_fail_summary = format_top_mouth_reject_causes(&region_debug.mouth_reject_stats);
         let build_fail_summary = format_river_build_reject_causes(&source_reject_stats);
-        error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: no river was built; mouth rejection top causes: {}; build rejection stats: {}", source_region_pos, dimension_ref, mouth_fail_summary, build_fail_summary);
+        warn!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: no river was built; mouth rejection top causes: {}; build rejection stats: {}", source_region_pos, dimension_ref, mouth_fail_summary, build_fail_summary);
         return false;
     }
 
     if plan.river_tiles.is_empty() {
-        error!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: river plan generation finished without producing any river tiles", source_region_pos, dimension_ref);
+        warn!(target: RIVER_SYSTEM, "river generation failed for region {:?} in dimension {:?}: river plan generation finished without producing any river tiles", source_region_pos, dimension_ref);
         return false;
     }
 
@@ -373,7 +373,7 @@ fn pick_river_sources(
     });
 
     if candidates.is_empty() {
-        error!(target: RIVER_SYSTEM, "river source selection produced no valid river sources after applying the inlandness, island-size, stride, and border filters; region={:?}", local_region_pos);
+        warn!(target: RIVER_SYSTEM, "river source selection produced no valid river sources after applying the inlandness, island-size, stride, and border filters; region={:?}", local_region_pos);
         return Vec::new();
     }
 
@@ -509,7 +509,7 @@ fn trace_downhill_path(
             break;
         };
         if used_reroute && segment_reenters_visited_path(curr, next, &visited) {
-            error!(target: RIVER_SYSTEM, "river trace for source {:?} would detour back through its own path at {:?} -> {:?}; cancelling", source, curr, next);
+            warn!(target: RIVER_SYSTEM, "river trace for source {:?} would detour back through its own path at {:?} -> {:?}; cancelling", source, curr, next);
             break;
         }
         if used_reroute {
@@ -600,7 +600,7 @@ fn pick_river_mouth(
         (mouth_target, ocean_target)
     });
     if result.is_none() {
-        error!(target: RIVER_SYSTEM, "river mouth selection produced no valid mouth candidates after applying the coast-adjacency and region filters; source={:?} region={:?}; lowest_val={:?}; top causes: {}", source, local_region_pos, lowest_val, format_top_mouth_reject_causes(&region_debug.mouth_reject_stats));
+        warn!(target: RIVER_SYSTEM, "river mouth selection produced no valid mouth candidates after applying the coast-adjacency and region filters; source={:?} region={:?}; lowest_val={:?}; top causes: {}", source, local_region_pos, lowest_val, format_top_mouth_reject_causes(&region_debug.mouth_reject_stats));
     }
     result
 }
