@@ -55,18 +55,13 @@ pub fn plugin(app: &mut App) {
                 process_input_direction_modifiers,
                 process_speed_potential_modifiers,
                 process_speed_magnitude
-                    .after(process_speed_potential_modifiers),
             ).run_if(on_timer(Duration::from_secs_f32(0.2)))
             .in_set(HostSystems)
             .in_set(MovementSystems),
         )
         .add_systems(
             MOVEMENT_SCHEDULE,
-            (
-                emit_move_state_on_movevecmag_speed_mag_change,
-                start_grid_locked_steps,
-                progress_tile_transition_transform,
-            )
+            (start_grid_locked_steps, progress_tile_transition_transform)
             .in_set(MovementSystems),
         )
         .add_systems(

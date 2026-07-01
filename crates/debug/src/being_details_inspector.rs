@@ -3,16 +3,18 @@ use ::being_shared::*;
 use ::being_shared::body_energy::*;
 use std::collections::BTreeMap;
 
-use being::body::{BodySums, HeldBody};
+use being::body::{BodySums, DamageDistributeMode, HeldBody, IncHealthDamageOrHeal};
 use being::being_nav::RetainedChasePathSnapshot;
 use bevy::ecs::entity::EntityHashSet;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::{Action, Actions};
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
-use common::common_components::{DisplayName, StrId};
+use bevy_replicon::prelude::{ClientState, ClientTriggerExt};
+use common::common_components::{DisplayName, SettingsEntity, StrId};
 use common::common_components::HashId;
 use common::log_targets::DEBUG;
+use game_common::game_common_components::Dead;
 use game_common::game_common_components::{Templ, TemplEntiRef};
 use ::item_shared::*;
 use ::modifier_shared::*;
@@ -20,7 +22,15 @@ use player_shared::{player_components::*, };
 use ::sprite_shared::*;
 use ::tilemap_shared::*;
 
-use crate::debug_resources::{DebugBeingLocationEditorState, DebugSelectedEntities, DubugWindowsVisibility};
+use crate::debug_messages::{
+    ClientDebugSetBeingCurrentBloodRequest, ClientDebugSetBeingCurrentHpRequest, ClientDebugSetBeingDimensionRequest,
+    ClientDebugKillBeingRequest, ClientDebugReviveBeingRequest, ClientDebugTeleportBeingRequest,
+    LocalDebugTeleportBeingRequest,
+};
+use debug_shared::{
+    DebugBeingLocationEditorState, DebugBeingVitalsAdjustState, DebugSelectedEntities,
+    DebugUiConfig, DubugWindowsVisibility,
+};
 
 #[derive(Default, Copy, Clone)]
 struct StatSummary {
@@ -39,6 +49,204 @@ impl StatSummary {
             self
         } else {
             fallback
+        }
+    }
+}
+
+fn should_route_via_client(world: &mut World) -> bool {
+    world
+        .query_filtered::<&DebugUiConfig, With<SettingsEntity>>()
+        .iter(world)
+        .next()
+        .is_some_and(|cfg| cfg.client_debug)
+        && world
+            .get_resource::<State<ClientState>>()
+            .is_some_and(|state| *state.get() == ClientState::Connected)
+}
+
+fn render_body_vitals_controls(
+    ui: &mut egui::Ui,
+    world: &mut World,
+    selected_being_entity: Entity,
+    body_entity: Entity,
+    body_sums: &BodySums,
+) {
+    let route_via_client = should_route_via_client(world);
+
+    let mut hp_commit_target = None;
+    let mut hp_commit_amount = 0.0;
+    let mut hp_commit_via_client = false;
+    let mut blood_commit_target = None;
+    let mut blood_commit_via_client = false;
+    let mut kill_requested = false;
+    let mut revive_requested = false;
+
+    {
+        let mut adjust_state = world.resource_mut::<DebugBeingVitalsAdjustState>();
+        let state = adjust_state.states.entry(body_entity).or_default();
+
+        let hp_max = body_sums.total_hp.max(0.0);
+        let live_hp = body_sums.current_hp.clamp(0.0, hp_max);
+        if let Some(target) = state.hp_pending_target {
+            if (live_hp - target).abs() <= 0.01 {
+                state.hp_pending_target = None;
+            }
+        }
+        if !state.hp_dragging && state.hp_pending_target.is_none() {
+            state.current_hp = live_hp;
+        }
+
+        let hp_response = ui.add_enabled(
+            hp_max > 0.0,
+            egui::Slider::new(&mut state.current_hp, 0.0..=hp_max).text("Current HP"),
+        );
+        if hp_response.dragged() {
+            state.hp_dragging = true;
+        }
+        if state.hp_dragging && !ui.input(|input| input.pointer.primary_down()) {
+            let target_hp = state.current_hp.clamp(0.0, hp_max);
+            if (live_hp - target_hp).abs() > 0.01 {
+                state.hp_pending_target = Some(target_hp);
+                hp_commit_target = Some(target_hp);
+                hp_commit_amount = live_hp - target_hp;
+                hp_commit_via_client = route_via_client;
+            }
+            state.hp_dragging = false;
+        }
+
+        let blood_max = body_sums.blood_capacity.max(0.0);
+        let live_blood = if body_sums.blood.is_nan() {
+            blood_max
+        } else {
+            body_sums.blood.clamp(0.0, blood_max)
+        };
+        if let Some(target) = state.blood_pending_target {
+            if (live_blood - target).abs() <= 0.01 {
+                state.blood_pending_target = None;
+            }
+        }
+        if !state.blood_dragging && state.blood_pending_target.is_none() {
+            state.blood = live_blood;
+        }
+
+        let blood_response = ui.add_enabled(
+            blood_max > 0.0,
+            egui::Slider::new(&mut state.blood, 0.0..=blood_max).text("Blood"),
+        );
+        if blood_response.dragged() {
+            state.blood_dragging = true;
+        }
+        if state.blood_dragging && !ui.input(|input| input.pointer.primary_down()) {
+            let target_blood = state.blood.clamp(0.0, blood_max);
+            if (live_blood - target_blood).abs() > 0.01 {
+                state.blood_pending_target = Some(target_blood);
+                blood_commit_target = Some(target_blood);
+                blood_commit_via_client = route_via_client;
+            }
+            state.blood_dragging = false;
+        }
+
+        ui.horizontal(|ui| {
+            if ui.button("Kill").clicked() {
+                kill_requested = true;
+            }
+            if ui.button("Revive").clicked() {
+                revive_requested = true;
+            }
+        });
+    }
+
+    if let Some(target_hp) = hp_commit_target {
+        if hp_commit_via_client {
+            world.client_trigger(ClientDebugSetBeingCurrentHpRequest {
+                being_ent: selected_being_entity,
+                current_hp: target_hp,
+            });
+        } else {
+            world
+                .resource_mut::<Messages<IncHealthDamageOrHeal>>()
+                .write(IncHealthDamageOrHeal {
+                    source_ent: selected_being_entity,
+                    target_ent: body_entity,
+                    amount: hp_commit_amount,
+                    distribute_mode: DamageDistributeMode::EquitativelyDistributedBetweenAllBasedOnRatioOverBodyTotalHitpointsCapacity,
+                });
+        }
+        debug!(
+            target: DEBUG,
+            "Committed current HP adjustment for {:?} body {:?} to {:.2}",
+            selected_being_entity,
+            body_entity,
+            target_hp,
+        );
+    }
+
+    if let Some(target_blood) = blood_commit_target {
+        if blood_commit_via_client {
+            world.client_trigger(ClientDebugSetBeingCurrentBloodRequest {
+                being_ent: selected_being_entity,
+                blood: target_blood,
+            });
+        } else if let Some(mut body_sums) = world.get_mut::<BodySums>(body_entity) {
+            body_sums.blood = target_blood.max(0.0);
+        }
+        debug!(
+            target: DEBUG,
+            "Committed blood adjustment for {:?} body {:?} to {:.2}",
+            selected_being_entity,
+            body_entity,
+            target_blood,
+        );
+    }
+
+    if kill_requested {
+        if route_via_client {
+            world.client_trigger(ClientDebugKillBeingRequest {
+                being_ent: selected_being_entity,
+            });
+        } else {
+            let current_hp = body_sums.current_hp.max(0.0);
+            world
+                .resource_mut::<Messages<IncHealthDamageOrHeal>>()
+                .write(IncHealthDamageOrHeal {
+                    source_ent: selected_being_entity,
+                    target_ent: body_entity,
+                    amount: current_hp,
+                    distribute_mode: DamageDistributeMode::EquitativelyDistributedBetweenAllBasedOnRatioOverBodyTotalHitpointsCapacity,
+                });
+            if let Some(mut body_sums) = world.get_mut::<BodySums>(body_entity) {
+                body_sums.blood = 0.0;
+            }
+            world.entity_mut(selected_being_entity).insert_if_new(Dead);
+        }
+    }
+
+    if revive_requested {
+        if route_via_client {
+            world.client_trigger(ClientDebugReviveBeingRequest {
+                being_ent: selected_being_entity,
+            });
+        } else {
+            let current_hp = body_sums.current_hp.max(0.0);
+            let total_hp = body_sums.total_hp.max(0.0);
+            world
+                .resource_mut::<Messages<IncHealthDamageOrHeal>>()
+                .write(IncHealthDamageOrHeal {
+                    source_ent: selected_being_entity,
+                    target_ent: body_entity,
+                    amount: current_hp - total_hp,
+                    distribute_mode: DamageDistributeMode::EquitativelyDistributedBetweenAllBasedOnRatioOverBodyTotalHitpointsCapacity,
+                });
+            if let Some(mut body_sums) = world.get_mut::<BodySums>(body_entity) {
+                body_sums.blood = body_sums.blood_capacity.max(0.0);
+            }
+            world.entity_mut(selected_being_entity).remove::<Dead>();
+            if let Some(gpos) = world.get::<GlobalTilePos>(selected_being_entity).copied() {
+                if let Some(mut transform) = world.get_mut::<Transform>(selected_being_entity) {
+                    let z = transform.translation.z;
+                    *transform = Transform::from_translation(gpos.to_translation(z));
+                }
+            }
         }
     }
 }
@@ -70,7 +278,7 @@ impl PartStats {
     }
 }
 
-fn part_label(entity: Entity, display_name: Option<&DisplayName>, str_id: Option<&StrId>) -> String {
+pub(crate) fn part_label(entity: Entity, display_name: Option<&DisplayName>, str_id: Option<&StrId>) -> String {
     if let Some(display_name) = display_name {
         if !display_name.0.is_empty() {
             return format!("{} ({:?})", display_name.0, entity);
@@ -440,99 +648,36 @@ fn format_resolved_acz(
 
 fn render_held_sprite_entry(
     ui: &mut egui::Ui,
-    world: &World,
+    world: &mut World,
     sprite_ent: Entity,
 ) {
-    let Ok(sprite_ref) = world.get_entity(sprite_ent) else {
-        ui.label(format!("{:?}: missing entity", sprite_ent));
-        return;
-    };
+    let highlighted_sprite_original_color = world
+        .get_entity_mut(sprite_ent)
+        .ok()
+        .and_then(|mut sprite_entity| {
+            let Some(mut sprite) = sprite_entity.get_mut::<Sprite>() else {
+                return None;
+            };
+            let original_color = sprite.color;
+            sprite.color = Color::srgb(0.0, 1.0, 1.0);
+            Some(original_color)
+        });
 
-    let Some(templ_ref) = sprite_ref.get::<TemplEntiRef>().copied() else {
-        ui.label(format!("{:?}: TemplEntiRef missing", sprite_ent));
-        return;
-    };
+    let Some((templ_ref, templ_display_name, templ_str_id, sprite_display_name, sprite_str_id, templ_add_up_anim_and_sc_acz, sprite_visibility, sprite_acz, sprite_y_sort_origin, sprite_transform, sprite_global_transform, sprite, base_holder_ref, templ_acz, templ_y_sort_origin, template_flags, template_detail_lines)) = (|| {
+        let Ok(sprite_ref) = world.get_entity(sprite_ent) else {
+            ui.label(format!("{:?}: missing entity", sprite_ent));
+            return None;
+        };
 
-    let Ok(templ_ref_entity) = world.get_entity(templ_ref.0) else {
-        ui.label(format!("{:?}: TemplEntiRef.0 entity missing", sprite_ent));
-        return;
-    };
+        let Some(templ_ref) = sprite_ref.get::<TemplEntiRef>().copied() else {
+            ui.label(format!("{:?}: TemplEntiRef missing", sprite_ent));
+            return None;
+        };
 
-    let templ_display_name = templ_ref_entity.get::<DisplayName>().cloned();
-    let templ_str_id = templ_ref_entity.get::<StrId>().cloned();
-    let templ_add_up_anim_and_sc_acz = templ_ref_entity.get::<AddUpAnimAndScAcZ>().is_some();
-
-    let sprite_label = part_label(
-        sprite_ent,
-        templ_display_name.as_ref(),
-        templ_str_id.as_ref(),
-    );
-
-    egui::CollapsingHeader::new(sprite_label)
-        .default_open(true)
-        .show(ui, |ui| {
-        let sprite_visibility = sprite_ref.get::<Visibility>().copied();
-        let sprite_acz = sprite_ref.get::<AcZ>().copied().map(|value| value.0);
-        let sprite_y_sort_origin = sprite_ref.get::<YSortOrigin>().copied().map(|value| value.0);
-        let sprite_transform = sprite_ref.get::<Transform>();
-        let sprite_global_transform = sprite_ref.get::<GlobalTransform>();
-        let sprite_flip = sprite_ref.get::<Sprite>();
-        let base_holder_ref = sprite_ref.get::<BaseHolderRef>().copied();
-        ui.label(format!(
-            "Visibility: {}",
-            sprite_visibility.map_or_else(|| "missing".to_string(), |visibility| format!("{:?}", visibility))
-        ));
-        ui.label(format!(
-            "Transform: {}",
-            sprite_transform
-                .map(|transform| format!(
-                    "x={:.1} y={:.1} z={}",
-                    transform.translation.x,
-                    transform.translation.y,
-                    transform.translation.z,
-                ))
-                .unwrap_or_else(|| "missing".to_string())
-        ));
-        ui.label(format!(
-            "GlobalTransform: {}",
-            sprite_global_transform
-                .map(|transform| format!(
-                    "x={:.1} y={:.1} z={}",
-                    transform.translation().x,
-                    transform.translation().y,
-                    transform.translation().z,
-                ))
-                .unwrap_or_else(|| "missing".to_string())
-        ));
-        ui.label(format!(
-            "flip: {}",
-            sprite_flip
-                .map(|sprite| format!("x={} y={}", sprite.flip_x, sprite.flip_y))
-                .unwrap_or_else(|| "missing".to_string())
-        ));
-        ui.label(format!(
-            "StrId: {}",
-            templ_str_id.map_or_else(|| "missing".to_string(), |str_id| str_id.to_string())
-        ));
-        ui.label(format!(
-            "DisplayName: {}",
-            templ_display_name.map_or_else(|| "missing".to_string(), |display_name| display_name.0)
-        ));
-        if let Some(base_holder_ref) = base_holder_ref {
-            ui.label(format!("BaseHolderRef.base: {:?}", base_holder_ref.base));
-        }
-        ui.label(format!("TemplEntiRef.0: {:?}", templ_ref.0));
-
-        let templ_str_id = templ_ref_entity.get::<StrId>().cloned();
-        let templ_acz = templ_ref_entity.get::<AcZ>().copied().map(|value| value.0);
-        let templ_y_sort_origin = templ_ref_entity.get::<YSortOrigin>().copied().map(|value| value.0);
-
-        ui.label(format!(
-            "TemplEntiRef.0 StrId: {}",
-            templ_str_id.map_or_else(|| "missing".to_string(), |str_id| str_id.to_string())
-        ));
-        ui.label(format_resolved_acz(sprite_acz, templ_acz, templ_add_up_anim_and_sc_acz));
-        ui.label(format_resolved_f32("YSortOrigin", sprite_y_sort_origin, templ_y_sort_origin));
+        let Ok(templ_ref_entity) = world.get_entity(templ_ref.0) else {
+            ui.label(format!("{:?}: TemplEntiRef.0 entity missing", sprite_ent));
+            return None;
+        };
 
         let mut template_flags = Vec::with_capacity(8);
         if templ_ref_entity.get::<SpriteConfig>().is_some() {
@@ -556,53 +701,240 @@ fn render_held_sprite_entry(
         if templ_ref_entity.get::<ExcludedFromNormalSizeModifier>().is_some() {
             template_flags.push("ExcludedFromNormalSizeModifier");
         }
+
+        let mut template_detail_lines = Vec::with_capacity(8);
+        if let Some(base_movement_speed) = templ_ref_entity.get::<BaseMovementSpeed>() {
+            template_detail_lines.push(format!("BaseMovementSpeed: {:.3}", base_movement_speed.0));
+        }
+        if let Some(flip_horiz_if_dir) = templ_ref_entity.get::<FlipHorizIfDir>() {
+            template_detail_lines.push(format!("FlipHorizIfDir: {:?}", flip_horiz_if_dir));
+        }
+        if let Some(color_holder) = templ_ref_entity.get::<ColorHolder>() {
+            template_detail_lines.push(format!("ColorHolder: {:?}", color_holder.0));
+        }
+        if let Some(become_child_of_sprite_with_tag) = templ_ref_entity.get::<BecomeChildOfSpriteWithTag>() {
+            template_detail_lines.push(format!("BecomeChildOfSpriteWithTag: {:?}", become_child_of_sprite_with_tag.0));
+        }
+        if let Some(offset_for_children) = templ_ref_entity.get::<OffsetForChildren>() {
+            template_detail_lines.push(format!("OffsetForChildren: {} tags", offset_for_children.0.len()));
+        }
+        if let Some(mapped_anims) = templ_ref_entity.get::<MappedAnimations>() {
+            template_detail_lines.push(format!("MappedAnimations: {} entries", mapped_anims.0.len()));
+        }
+        if let Some(sprite_anim_sfx) = templ_ref_entity.get::<SpriteAnimSfx>() {
+            template_detail_lines.push(format!("SpriteAnimSfx: {} paths, every_n_frame_changes {:.3}", sprite_anim_sfx.sound_paths.len(), sprite_anim_sfx.every_n_frame_changes));
+        }
+        if let Some(sprite_loop_sfx) = templ_ref_entity.get::<SpriteLoopSfx>() {
+            template_detail_lines.push(format!("SpriteLoopSfx: {} paths, condition {:?}", sprite_loop_sfx.sound_paths.len(), sprite_loop_sfx.condition));
+        }
+        if let Some(sprite_timed_sfx) = templ_ref_entity.get::<SpriteTimedSfx>() {
+            template_detail_lines.push(format!("SpriteTimedSfx: {} paths, condition {:?}, interval {:.3}, scale_with_animation_speed {}", sprite_timed_sfx.sound_paths.len(), sprite_timed_sfx.condition, sprite_timed_sfx.time_interval_secs, sprite_timed_sfx.scale_interval_with_animation_speed));
+        }
+
+        Some((
+            templ_ref,
+            templ_ref_entity.get::<DisplayName>().cloned(),
+            templ_ref_entity.get::<StrId>().cloned(),
+            templ_ref_entity.get::<DisplayName>().cloned(),
+            templ_ref_entity.get::<StrId>().cloned(),
+            templ_ref_entity.get::<AddUpAnimAndScAcZ>().is_some(),
+            sprite_ref.get::<Visibility>().copied(),
+            sprite_ref.get::<AcZ>().copied().map(|value| value.0),
+            sprite_ref.get::<YSortOrigin>().copied().map(|value| value.0),
+            sprite_ref.get::<Transform>().cloned(),
+            sprite_ref.get::<GlobalTransform>().copied(),
+            sprite_ref.get::<Sprite>().cloned(),
+            sprite_ref.get::<BaseHolderRef>().copied(),
+            templ_ref_entity.get::<AcZ>().copied().map(|value| value.0),
+            templ_ref_entity.get::<YSortOrigin>().copied().map(|value| value.0),
+            template_flags,
+            template_detail_lines,
+        ))
+    })() else {
+        return;
+    };
+
+    let world_ptr = world as *mut World;
+
+    let sprite_label = part_label(
+        sprite_ent,
+        sprite_display_name.as_ref(),
+        sprite_str_id.as_ref(),
+    );
+
+    egui::CollapsingHeader::new(sprite_label)
+        .default_open(false)
+        .show(ui, |ui| {
+        if let Some(visibility) = sprite_visibility {
+            ui.label(format!("Visibility: {:?}", visibility));
+        }
+        if let Some(transform) = sprite_transform {
+            ui.label(format!(
+                "Transform: x={:.1} y={:.1} z={}",
+                transform.translation.x,
+                transform.translation.y,
+                transform.translation.z,
+            ));
+        }
+        if let Some(transform) = sprite_global_transform {
+            ui.label(format!(
+                "GlobalTransform: x={:.1} y={:.1} z={}",
+                transform.translation().x,
+                transform.translation().y,
+                transform.translation().z,
+            ));
+        }
+        if let Some(sprite) = sprite {
+            ui.label(format!("Color: {:?}", sprite.color));
+            ui.label(format!("flip: x={} y={}", sprite.flip_x, sprite.flip_y));
+        }
+        if let Some(base_holder_ref) = base_holder_ref {
+            ui.label(format!("BaseHolderRef.base: {:?}", base_holder_ref.base));
+        }
+        if sprite_acz.is_some() || templ_acz.is_some() {
+            ui.label(format_resolved_acz(sprite_acz, templ_acz, templ_add_up_anim_and_sc_acz));
+        }
+        if sprite_y_sort_origin.is_some() || templ_y_sort_origin.is_some() {
+            ui.label(format_resolved_f32("YSortOrigin", sprite_y_sort_origin, templ_y_sort_origin));
+        }
+
+        let templ_str_id_label = templ_str_id
+            .as_ref()
+            .map(|str_id| str_id.as_str())
+            .unwrap_or("<no-strid>");
+        let templ_display_name_label = templ_display_name
+            .as_ref()
+            .map(|display_name| display_name.0.clone());
+        let templ_collapsing_label = if let Some(display_name) = templ_display_name_label {
+            format!("SpriteCfg {} {} {}", templ_str_id_label, templ_ref.0.index(), display_name)
+        } else {
+            format!("SpriteCfg {} {:?}", templ_str_id_label, templ_ref.0)
+        };
+
+        ui.collapsing(templ_collapsing_label, |ui| {
+            if world.get_entity(templ_ref.0).is_ok() {
+                unsafe {
+                    bevy_inspector::ui_for_entity(&mut *world_ptr, templ_ref.0, ui);
+                }
+            } else {
+                ui.label("SpriteConfigRef target entity missing");
+            }
+        });
+
         if !template_flags.is_empty() {
             ui.label(format!("Template markers: {}", template_flags.join(", ")));
         }
 
-        if let Some(base_movement_speed) = templ_ref_entity.get::<BaseMovementSpeed>() {
-            ui.label(format!("BaseMovementSpeed: {:.3}", base_movement_speed.0));
+        for line in template_detail_lines {
+            ui.label(line);
         }
-        if let Some(flip_horiz_if_dir) = templ_ref_entity.get::<FlipHorizIfDir>() {
-            ui.label(format!("FlipHorizIfDir: {:?}", flip_horiz_if_dir));
+    });
+
+    if let Some(original_color) = highlighted_sprite_original_color {
+        if let Ok(mut sprite_entity) = world.get_entity_mut(sprite_ent) {
+            if let Some(mut sprite) = sprite_entity.get_mut::<Sprite>() {
+                sprite.color = original_color;
+            }
         }
-        if let Some(color_holder) = templ_ref_entity.get::<ColorHolder>() {
-            ui.label(format!("ColorHolder: {:?}", color_holder.0));
+    }
+}
+
+fn render_pack_debug_section(
+    ui: &mut egui::Ui,
+    world: &mut World,
+    world_ptr: *mut World,
+    selected_being_entity: Entity,
+    current_dim_ref: Option<DimensionRef>,
+) {
+    let pack_ent = if let Some(member_of) = world.get::<SquadMemberOf>(selected_being_entity) {
+        Some(member_of.0)
+    } else if world.get::<Pack>(selected_being_entity).is_some() {
+        Some(selected_being_entity)
+    } else {
+        None
+    };
+
+    let Some(pack_ent) = pack_ent else {
+        return;
+    };
+
+    ui.collapsing("Pack", |ui| {
+        ui.label(format!("Pack entity: {:?}", pack_ent));
+
+        if let Some(squad_members) = world.get::<SquadMembers>(pack_ent) {
+            ui.label(format!("Members: {}", squad_members.len()));
+            ui.collapsing("Pack Members", |ui| {
+                for member_ent in squad_members.iter() {
+                    let label = part_label(
+                        member_ent,
+                        world.get::<DisplayName>(member_ent),
+                        world.get::<StrId>(member_ent),
+                    );
+                    let position = world
+                        .get::<GlobalTilePos>(member_ent)
+                        .map(|gpos| format!(" @ [{}, {}]", gpos.0.x, gpos.0.y))
+                        .unwrap_or_default();
+                    ui.label(format!("{:?}: {}{}", member_ent, label, position));
+                }
+            });
+        } else {
+            ui.label("SquadMembers: missing");
         }
-        if let Some(become_child_of_sprite_with_tag) = templ_ref_entity.get::<BecomeChildOfSpriteWithTag>() {
-            ui.label(format!(
-                "BecomeChildOfSpriteWithTag: {:?}",
-                become_child_of_sprite_with_tag.0
-            ));
+
+        if let Some(pack_center) = world.get::<SquadAvgCenterPerDim>(pack_ent) {
+            if pack_center.0.is_empty() {
+                ui.label("Pack center: empty");
+            } else {
+                ui.label("Pack center per dimension:");
+                for (dim_ref, center) in pack_center.0.iter() {
+                    let mut line = format!("  {:?} -> [{}, {}]", dim_ref, center.0.x, center.0.y);
+                    if Some(*dim_ref) == current_dim_ref {
+                        line.push_str(" (current dim)");
+                    }
+                    ui.label(line);
+                }
+            }
+        } else {
+            ui.label("SquadAvgCenterPerDim: missing");
         }
-        if let Some(offset_for_children) = templ_ref_entity.get::<OffsetForChildren>() {
-            ui.label(format!("OffsetForChildren: {} tags", offset_for_children.0.len()));
+
+        if let Some(multiplier) = world.get::<GlobalCenterRankWeightMultiplier>(pack_ent) {
+            ui.label(format!("GlobalCenterRankWeightMultiplier: {:.3}", multiplier.0));
         }
-        if let Some(mapped_anims) = templ_ref_entity.get::<MappedAnimations>() {
-            ui.label(format!("MappedAnimations: {} entries", mapped_anims.0.len()));
+        if let Some(multipliers) = world.get::<CenterWeightRankBasedMultiplier>(pack_ent) {
+            ui.collapsing("CenterWeightRankBasedMultiplier", |ui| {
+                if multipliers.0.is_empty() {
+                    ui.label("empty");
+                } else {
+                    for (entity, weight) in multipliers.0.iter() {
+                        ui.label(format!("{:?}: {:.3}", entity, weight));
+                    }
+                }
+            });
         }
-        if let Some(sprite_anim_sfx) = templ_ref_entity.get::<SpriteAnimSfx>() {
-            ui.label(format!(
-                "SpriteAnimSfx: {} paths, every_n_frame_changes {:.3}",
-                sprite_anim_sfx.sound_paths.len(),
-                sprite_anim_sfx.every_n_frame_changes
-            ));
+
+        if let Some(pack_spawn_radius) = world.get::<PackSpawnRadius>(pack_ent) {
+            ui.label(format!("PackSpawnRadius: {}", pack_spawn_radius.0));
         }
-        if let Some(sprite_loop_sfx) = templ_ref_entity.get::<SpriteLoopSfx>() {
-            ui.label(format!(
-                "SpriteLoopSfx: {} paths, condition {:?}",
-                sprite_loop_sfx.sound_paths.len(),
-                sprite_loop_sfx.condition
-            ));
-        }
-        if let Some(sprite_timed_sfx) = templ_ref_entity.get::<SpriteTimedSfx>() {
-            ui.label(format!(
-                "SpriteTimedSfx: {} paths, condition {:?}, interval {:.3}, scale_with_animation_speed {}",
-                sprite_timed_sfx.sound_paths.len(),
-                sprite_timed_sfx.condition,
-                sprite_timed_sfx.time_interval_secs,
-                sprite_timed_sfx.scale_interval_with_animation_speed
-            ));
+
+        if let Some(templ_ref) = world.get::<TemplEntiRef>(pack_ent).copied() {
+            ui.label(format!("Pack template reference: {:?}", templ_ref.0));
+            ui.collapsing("Pack template entity config", |ui| {
+                if world.get_entity(templ_ref.0).is_ok() {
+                    unsafe {
+                        bevy_inspector::ui_for_entity(&mut *world_ptr, templ_ref.0, ui);
+                    }
+                } else {
+                    ui.label("Pack template entity missing");
+                }
+            });
+        } else if world.get::<Templ>(pack_ent).is_some() {
+            ui.label("Pack entity is a template entity itself.");
+            ui.collapsing("Pack template entity config", |ui| {
+                unsafe {
+                    bevy_inspector::ui_for_entity(&mut *world_ptr, pack_ent, ui);
+                }
+            });
         }
     });
 }
@@ -619,11 +951,97 @@ pub fn being_details_inspector(world: &mut World) {
     let Some(selected_entities) = world.get_resource::<DebugSelectedEntities>() else {
         return;
     };
-    let Some(selected_being_entity) = selected_entities.selected_being else {
+
+    let multi_beings_active = world
+        .get_resource::<debug_shared::ClickInspectorState>()
+        .is_some_and(|state| state.mult_being_windows);
+
+    if multi_beings_active {
+        let mut beings: Vec<Entity> = selected_entities.selected_beings.iter().copied().collect();
+        if beings.is_empty() {
+            if let Some(selected_being_entity) = selected_entities.selected_being.or(selected_entities.selected_exempted_entity) {
+                beings.push(selected_being_entity);
+            }
+        }
+        beings.sort_unstable_by_key(|entity| entity.index());
+
+        if !beings.is_empty() {
+            let mut egui_context_query = world.query_filtered::<
+                &bevy_inspector_egui::bevy_egui::EguiContext,
+                With<bevy_inspector_egui::bevy_egui::PrimaryEguiContext>,
+            >();
+            let Some(egui_context) = egui_context_query.iter(world).next() else {
+                return;
+            };
+            let mut egui_context = egui_context.clone();
+            let screen_rect = egui_context.get_mut().content_rect();
+            let world_ptr = world as *mut World;
+            let mut is_open = true;
+            let mut remove_being_requested = None;
+            let mut clear_all_requested = false;
+
+            egui::Window::new("Selected Being Details")
+                .default_width(980.0)
+                .default_height(620.0)
+                .default_pos([screen_rect.right() - 1000.0, screen_rect.top() + 10.0])
+                .open(&mut is_open)
+                .vscroll(true)
+                .show(egui_context.get_mut(), |ui| {
+                    ui.horizontal(|ui| {
+                        ui.heading("Being Details");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.button("Clear all selections").clicked() {
+                                clear_all_requested = true;
+                            }
+                        });
+                    });
+                    ui.separator();
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        ui.spacing_mut().item_spacing.x = 0.0;
+                        ui.columns(beings.len(), |columns| {
+                            for (column, entity) in columns.iter_mut().zip(beings.iter().copied()) {
+                                column.push_id(entity, |ui| {
+                                    render_multi_being_details_column(ui, world, world_ptr, entity, &mut remove_being_requested);
+                                });
+                            }
+                        });
+                    });
+                });
+
+            if clear_all_requested {
+                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                    selected_entities.selected_beings.clear();
+                    selected_entities.selected_being = None;
+                    selected_entities.selected_exempted_entity = None;
+                }
+            }
+
+            if let Some(being_to_remove) = remove_being_requested {
+                if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
+                    selected_entities.selected_beings.remove(&being_to_remove);
+                    if selected_entities.selected_being == Some(being_to_remove) {
+                        selected_entities.selected_being = selected_entities.selected_beings.iter().next().copied();
+                    }
+                    if selected_entities.selected_beings.is_empty() {
+                        selected_entities.selected_being = None;
+                    }
+                }
+            }
+
+            if !is_open {
+                if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
+                    window_visible.being_details = false;
+                }
+            }
+            return;
+        }
+    }
+
+    let Some(selected_being_entity) = selected_entities.selected_being.or(selected_entities.selected_exempted_entity) else {
         return;
     };
+
     let mut selected_part = selected_entities.selected_being_bodypart;
-    let mut show_full_components = selected_entities.show_full_being_components;
     let mut selected_interaction_zone = selected_entities.selected_being_interaction_zone;
 
     let mut egui_context_query = world.query_filtered::<
@@ -697,8 +1115,10 @@ pub fn being_details_inspector(world: &mut World) {
     let mut body_weight_sum_query = world.query::<&BodyWeightSum>();
     let mut predator_query = world.query::<&Predator>();
     let mut predator_cfg_query = world.query::<&PredatorCfg>();
+    let mut auto_melee_if_in_interaction_zone_query = world.query::<&AutoMeleeIfInInteractionZone>();
+    let mut hostile_chase_query = world.query::<&HostileChase>();
     let mut go_to_query = world.query::<&GoTo>();
-    let mut chasing_query = world.query::<&Chasing>();
+    let mut chasing_query = world.query::<&NavChasing>();
     let mut fleeing_query = world.query::<&Fleeing>();
     let mut lod_level_query = world.query::<&LodLevel>();
     let mut behavorial_nav_state_query = world.query::<Has<BehavorialNavState>>();
@@ -772,7 +1192,6 @@ pub fn being_details_inspector(world: &mut World) {
     }
 
     let mut clear_selection = false;
-    let mut open_nav_log = false;
     let mut is_open = true;
     let world_ptr = world as *mut World;
 
@@ -784,10 +1203,17 @@ pub fn being_details_inspector(world: &mut World) {
         .vscroll(true)
         .show(egui_context.get_mut(), |ui| {
             ui.heading(format!("Being Entity: {:?}", selected_being_entity));
-            ui.horizontal(|ui| {
-                if ui.button("Show Full Components").clicked() {
-                    show_full_components = !show_full_components;
+            ui.collapsing("All Entity Components", |ui| {
+                if world.get_entity(selected_being_entity).is_ok() {
+                    unsafe {
+                        bevy_inspector::ui_for_entity(&mut *world_ptr, selected_being_entity, ui);
+                    }
+                } else {
+                    ui.label("Selected being entity missing");
                 }
+            });
+
+            ui.horizontal(|ui| {
                 let wallphaser_enabled = world.get::<WallPhaser>(selected_being_entity).is_some();
                 if ui.button(if wallphaser_enabled { "Disable WallPhaser" } else { "Enable WallPhaser" }).clicked() {
                     unsafe {
@@ -798,9 +1224,6 @@ pub fn being_details_inspector(world: &mut World) {
                             world.entity_mut(selected_being_entity).insert(WallPhaser);
                         }
                     }
-                }
-                if ui.button("NavLog").clicked() {
-                    open_nav_log = true;
                 }
                 if ui.button("Clear Selection").clicked() {
                     clear_selection = true;
@@ -887,32 +1310,40 @@ pub fn being_details_inspector(world: &mut World) {
                 }
             }
 
-            if let Some((dim_ref, dimension_ent)) = pending_dimension_change {
-                unsafe {
-                    let world = &mut *world_ptr;
-                    world.entity_mut(selected_being_entity).insert((dim_ref, ChildOf(dimension_ent)));
+                if let Some((dim_ref, dimension_ent)) = pending_dimension_change {
+                    let route_via_client = should_route_via_client(world);
+                    if route_via_client {
+                        world.client_trigger(ClientDebugSetBeingDimensionRequest {
+                            being_ent: selected_being_entity,
+                            dim_ref,
+                            dimension_ent,
+                        });
+                    } else {
+                        unsafe {
+                            let world = &mut *world_ptr;
+                            world.entity_mut(selected_being_entity).insert((dim_ref, ChildOf(dimension_ent)));
+                        }
+                    }
                 }
-            }
 
-            if let Some(new_gpos) = pending_teleport_gpos {
-                let z = unsafe { (&mut *world_ptr).get::<Transform>(selected_being_entity) }
-                    .map(|transform| transform.translation.z)
-                    .unwrap_or_default();
-                let new_transform = Transform::from_translation(new_gpos.to_translation(z));
-                unsafe {
-                    let world = &mut *world_ptr;
-                    world.entity_mut(selected_being_entity).insert((
-                        new_gpos,
-                        new_transform,
-                        GridLockedMovement::default(),
-                        GridLockedMovementVisual::default(),
-                    ));
-                    let mut location_editor_state = world.resource_mut::<DebugBeingLocationEditorState>();
-                    location_editor_state.gpos_x_text = new_gpos.0.x.to_string();
-                    location_editor_state.gpos_y_text = new_gpos.0.y.to_string();
-                    location_editor_state.teleport_error = None;
+                if let Some(new_gpos) = pending_teleport_gpos {
+                    let route_via_client = should_route_via_client(world);
+                    if route_via_client {
+                        world.client_trigger(ClientDebugTeleportBeingRequest {
+                            being_ent: selected_being_entity,
+                            gpos: new_gpos,
+                        });
+                    } else {
+                        world.trigger(LocalDebugTeleportBeingRequest {
+                            being_ent: selected_being_entity,
+                            gpos: new_gpos,
+                        });
+                        let mut location_editor_state = world.resource_mut::<DebugBeingLocationEditorState>();
+                        location_editor_state.gpos_x_text = new_gpos.0.x.to_string();
+                        location_editor_state.gpos_y_text = new_gpos.0.y.to_string();
+                        location_editor_state.teleport_error = None;
+                    }
                 }
-            }
 
             if let Some(error) = pending_teleport_error {
                 unsafe {
@@ -922,15 +1353,6 @@ pub fn being_details_inspector(world: &mut World) {
             }
 
             ui.separator();
-
-            if show_full_components {
-                ui.label("All Components on this Being:");
-                ui.separator();
-                unsafe {
-                    bevy_inspector::ui_for_entity(&mut *world_ptr, selected_being_entity, ui);
-                }
-                return;
-            }
 
             ui.heading("Body");
             ui.label(format!("Body: {} [{:?}]", body_label, body_entity));
@@ -942,8 +1364,7 @@ pub fn being_details_inspector(world: &mut World) {
                 body_templ_ref.map_or("missing".to_string(), |refe| format!("{:?}", refe.0))
             ));
             if let Some(sums) = body_sums {
-                ui.label(format!("HP: {:.2}/{:.2}", sums.current_hp, sums.total_hp));
-                ui.label(format!("Blood: {:.2}/{:.2}", sums.blood, sums.blood_capacity));
+                render_body_vitals_controls(ui, unsafe { &mut *world_ptr }, selected_being_entity, body_entity, &sums);
                 ui.label(format!("Bleed rate: {:.2}", sums.bleed_rate));
                 ui.label(format!("Consciousness: {:.2}", sums.consciousness));
                 ui.label(format!("Pain: {:.2}", sums.pain));
@@ -965,10 +1386,6 @@ pub fn being_details_inspector(world: &mut World) {
                 let body_condition = body_condition_query.get(world, selected_being_entity).ok().copied();
                 let body_strength_scale = body_strength_scale_query.get(world, selected_being_entity).ok().copied();
                 let body_weight_sum = body_weight_sum_query.get(world, selected_being_entity).ok().copied();
-                let predator = predator_query.get(world, selected_being_entity).is_ok();
-                let predator_cfg = predator_cfg_query.get(world, selected_being_entity).ok().cloned().or_else(|| {
-                    race_ref_ent.and_then(|race_ent| predator_cfg_query.get(world, race_ent).ok().cloned())
-                });
 
                 if let Some(body_energy_store) = body_energy_store {
                     ui.label(format!("Baseline lean mass: {:.2} kg", body_energy_store.baseline_mass_kg));
@@ -1029,12 +1446,51 @@ pub fn being_details_inspector(world: &mut World) {
                     ui.label("BodyWeightSum: missing");
                 }
 
+            });
+            ui.separator();
+
+            ui.collapsing("AiHostile", |ui| {
+                let auto_melee = auto_melee_if_in_interaction_zone_query
+                    .get(world, selected_being_entity)
+                    .ok()
+                    .cloned();
+                let hostile_chase = hostile_chase_query.get(world, selected_being_entity).ok().cloned();
+                let nav_chasing = chasing_query.get(world, selected_being_entity).ok().cloned();
+                let predator = predator_query.get(world, selected_being_entity).is_ok();
+                let predator_cfg = predator_cfg_query.get(world, selected_being_entity).ok().cloned().or_else(|| {
+                    race_ref_ent.and_then(|race_ent| predator_cfg_query.get(world, race_ent).ok().cloned())
+                });
+
                 ui.label(format!("Predator: {}", predator));
                 if let Some(predator_cfg) = predator_cfg {
                     ui.label(format!("PredatorCfg.min_hunger_to_hunt: {:.3}", predator_cfg.min_hunger_to_hunt));
                     ui.label(format!("PredatorCfg.min_hp_ratio_to_hunt: {:.3}", predator_cfg.min_hp_ratio_to_hunt));
+                    ui.label(format!("PredatorCfg.prey_body_size_ratio_tolerance: {:.3}", predator_cfg.prey_body_size_ratio_tolerance));
+                    ui.label(format!("PredatorCfg.do_not_hunt_same_kind: {}", predator_cfg.do_not_hunt_same_kind));
                 } else {
                     ui.label("PredatorCfg: missing on being and race");
+                }
+
+                if let Some(auto_melee) = auto_melee {
+                    ui.label(format!("AutoMeleeIfInInteractionZone: {} targets", auto_melee.0.len()));
+                    ui.label(format!("Targets: {:?}", auto_melee.0));
+                } else {
+                    ui.label("AutoMeleeIfInInteractionZone: missing");
+                }
+
+                if let Some(hostile_chase) = hostile_chase {
+                    ui.label(format!("HostileChase.prey: {:?}", hostile_chase.prey));
+                    ui.label(format!("HostileChase.retaliating: {}", hostile_chase.retaliating));
+                    ui.label(format!("HostileChase.retaliation_stop_distance_tiles: {:.2}", hostile_chase.retaliation_stop_distance_tiles));
+                } else {
+                    ui.label("HostileChase: missing");
+                }
+
+                if let Some(nav_chasing) = nav_chasing {
+                    ui.label(format!("NavChasing.target: {:?}", nav_chasing.target));
+                    ui.label(format!("NavChasing.stop_distance: {:.2}", nav_chasing.stop_distance));
+                } else {
+                    ui.label("NavChasing: missing");
                 }
             });
             ui.separator();
@@ -1694,6 +2150,9 @@ pub fn being_details_inspector(world: &mut World) {
                     ui.label(line);
                 }
             });
+
+            ui.separator();
+            render_pack_debug_section(ui, unsafe { &mut *world_ptr }, world_ptr, selected_being_entity, current_dim_ref);
         });
 
     if let Some(mut selected_entities) = world.get_resource_mut::<DebugSelectedEntities>() {
@@ -1705,21 +2164,6 @@ pub fn being_details_inspector(world: &mut World) {
         } else {
             selected_entities.selected_being_interaction_zone = selected_interaction_zone;
             selected_entities.selected_being_bodypart = selected_part;
-            selected_entities.show_full_being_components = show_full_components;
-        }
-    }
-
-    if open_nav_log {
-        let should_track = behavorial_nav_state_query
-            .get(world, selected_being_entity)
-            .unwrap_or(false);
-        if should_track {
-            if let Some(mut nav_debug) = world.get_resource_mut::<DebuggingBeingNav>() {
-                nav_debug.track_being(selected_being_entity);
-            }
-        }
-        if let Some(mut window_visible) = world.get_resource_mut::<DubugWindowsVisibility>() {
-            window_visible.being_nav_log = true;
         }
     }
 
@@ -1728,4 +2172,218 @@ pub fn being_details_inspector(world: &mut World) {
             window_visible.being_details = false;
         }
     }
+}
+
+fn render_multi_being_details_column(
+    ui: &mut egui::Ui,
+    world: &mut World,
+    world_ptr: *mut World,
+    selected_being_entity: Entity,
+    remove_being_requested: &mut Option<Entity>,
+) {
+    let mut body_query = world.query::<&HeldBody>();
+    let mut body_sums_query = world.query::<&BodySums>();
+    let mut display_name_query = world.query::<&DisplayName>();
+    let mut str_id_query = world.query::<&StrId>();
+    let mut bodyparts_query = world.query::<&BodypartChildrenBodyparts>();
+    let mut bodypart_damage_query = world.query::<&AccuDamage>();
+    let mut held_items_query = world.query::<&HeldItems>();
+    let mut held_sprites_query = world.query::<&HeldSprites>();
+    let mut slot_holder_query = world.query::<&SlottedItemHolder>();
+    let mut bit_ref_query = world.query::<&BitRef>();
+    let mut race_ref_query = world.query::<&RaceRef>();
+    let mut gpos_query = world.query::<&tilemap_shared::GlobalTilePos>();
+    let mut facing_query = world.query::<&CardinalDirection>();
+    let mut templ_refs_query = world.query::<&TemplEntiRef>();
+
+    let body = body_query.get(world, selected_being_entity).ok();
+    let body_available = body.is_some();
+    let body_entity = body.map_or(selected_being_entity, |body| body.entity());
+    let body_label = if body_available {
+        part_label(
+            body_entity,
+            display_name_query.get(world, body_entity).ok(),
+            str_id_query.get(world, body_entity).ok(),
+        )
+    } else {
+        format!("Missing body for {:?}", selected_being_entity)
+    };
+    let body_sums = body_available.then(|| body_sums_query.get(world, body_entity).ok().cloned()).flatten();
+    let body_templ_ref = body_available.then(|| templ_refs_query.get(world, body_entity).ok().copied()).flatten();
+
+    ui.horizontal(|ui| {
+        ui.heading(format!("Being: {:?}", selected_being_entity));
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui.add_sized([24.0, 24.0], egui::Button::new(egui::RichText::new("X").strong().size(18.0))).clicked() {
+                *remove_being_requested = Some(selected_being_entity);
+            }
+        });
+    });
+    ui.separator();
+
+    ui.collapsing("Body", |ui| {
+        ui.label(format!("Body: {} [{:?}]", body_label, body_entity));
+        if !body_available {
+            ui.label("HeldBody: missing on this client.");
+        }
+        ui.label(format!(
+            "Body templ ref: {}",
+            body_templ_ref.map_or("missing".to_string(), |refe| format!("{:?}", refe.0))
+        ));
+        if let Some(sums) = body_sums {
+            render_body_vitals_controls(ui, unsafe { &mut *world_ptr }, selected_being_entity, body_entity, &sums);
+            ui.label(format!("Bleed rate: {:.2}", sums.bleed_rate));
+            ui.label(format!("Consciousness: {:.2}", sums.consciousness));
+            ui.label(format!("Pain: {:.2}", sums.pain));
+            ui.label(format!("Vision: {:.2}", sums.vision));
+            ui.label(format!("Manip dex: {:.2}", sums.manip_dex));
+            ui.label(format!("Manip str: {:.2}", sums.manip_str));
+        }
+    });
+
+    ui.collapsing("Bit", |ui| {
+        let bit_ref = bit_ref_query.get(world, selected_being_entity).ok().copied();
+        let Some(bit_ref) = bit_ref else {
+            ui.label("BitRef: missing");
+            return;
+        };
+        ui.label(format!("BitRef.0 (hash): {:?}", bit_ref.0));
+        let Some(bit_map) = world.get_resource::<BeingInstTemplateEntityMap>() else {
+            ui.label("BeingInstTemplateEntityMap: missing resource");
+            return;
+        };
+        let Ok(bit_ent) = bit_map.0.get_cloned(bit_ref.0) else {
+            ui.label("BitRef.0 is not present in BeingInstTemplateEntityMap");
+            return;
+        };
+        ui.label(format!("Bit entity: {:?}", bit_ent));
+        ui.label(format!(
+            "Bit StrId: {}",
+            str_id_query
+                .get(world, bit_ent)
+                .map_or_else(|_| "missing".to_string(), |str_id| str_id.to_string())
+        ));
+        ui.label(format!(
+            "Bit DisplayName: {}",
+            display_name_query
+                .get(world, bit_ent)
+                .map_or_else(|_| "missing".to_string(), |display_name| display_name.0.clone())
+        ));
+        ui.separator();
+        ui.label("Bit template components:");
+        unsafe {
+            bevy_inspector::ui_for_entity(&mut *world_ptr, bit_ent, ui);
+        }
+    });
+
+    ui.collapsing("Race", |ui| {
+        let race_ref = race_ref_query.get(world, selected_being_entity).ok().copied();
+        let Some(race_ref) = race_ref else {
+            ui.label("RaceRef: missing");
+            return;
+        };
+        ui.label(format!("Race{:?}", race_ref.0));
+        let Some(race_map) = world.get_resource::<RaceEntityMap>() else {
+            ui.label("RaceEntityMap: missing resource");
+            return;
+        };
+        let Ok(race_ent) = race_map.0.get_cloned(race_ref.0) else {
+            ui.label("RaceRef.0 is not present in RaceEntityMap");
+            return;
+        };
+        ui.label(format!("Race entity: {:?}", race_ent));
+        ui.label(format!(
+            "Race StrId: {}",
+            str_id_query
+                .get(world, race_ent)
+                .map_or_else(|_| "missing".to_string(), |str_id| str_id.to_string())
+        ));
+        ui.label(format!(
+            "Race DisplayName: {}",
+            display_name_query
+                .get(world, race_ent)
+                .map_or_else(|_| "missing".to_string(), |display_name| display_name.0.clone())
+        ));
+        ui.separator();
+        ui.label("Race template components:");
+        unsafe {
+            bevy_inspector::ui_for_entity(&mut *world_ptr, race_ent, ui);
+        }
+    });
+
+    ui.collapsing("InteractionZones", |ui| {
+        let Some(being_gpos) = gpos_query.get(world, selected_being_entity).ok() else {
+            ui.label("Missing GlobalTilePos.");
+            return;
+        };
+        let facing = facing_query
+            .get(world, selected_being_entity)
+            .copied()
+            .unwrap_or_default();
+        ui.label(format!("Being gpos: [{}, {}]", being_gpos.0.x, being_gpos.0.y));
+        ui.label(format!("Facing: {:?}", facing));
+        ui.label("InteractionZones details are omitted in multi mode to keep the column usable.");
+    });
+
+    ui.collapsing("Inventory", |ui| {
+        for holder_entity in [selected_being_entity, body_entity] {
+            let Ok(held_items) = held_items_query.get(world, holder_entity) else {
+                continue;
+            };
+            let Ok(slot_holder) = slot_holder_query.get(world, holder_entity) else {
+                continue;
+            };
+            let holder_label = part_label(
+                holder_entity,
+                display_name_query.get(world, holder_entity).ok(),
+                str_id_query.get(world, holder_entity).ok(),
+            );
+            ui.collapsing(holder_label, |ui| {
+                let held_item_entities = held_items.iter().collect::<Vec<_>>();
+                ui.label(format!("Held items: {}", held_item_entities.len()));
+                for item_entity in held_item_entities.iter().copied() {
+                    ui.label(part_label(
+                        item_entity,
+                        display_name_query.get(world, item_entity).ok(),
+                        str_id_query.get(world, item_entity).ok(),
+                    ));
+                }
+                for (slot, (entities, limit)) in &slot_holder.0 {
+                    ui.label(format!("{} [{}/{}]", slot, entities.len(), limit));
+                }
+            });
+        }
+    });
+
+    ui.collapsing("Held Sprites", |ui| {
+        let Some(held_sprites) = held_sprites_query
+            .get(world, body_entity)
+            .ok()
+            .or_else(|| held_sprites_query.get(world, selected_being_entity).ok())
+        else {
+            ui.label("HeldSprites: missing on body and being.");
+            return;
+        };
+        if held_sprites.is_empty() {
+            ui.label("HeldSprites: empty");
+            return;
+        }
+        let held_sprite_entities: Vec<Entity> = held_sprites.iter().collect();
+        for held_sprite_ent in held_sprite_entities {
+            render_held_sprite_entry(ui, world, held_sprite_ent);
+        }
+    });
+
+    ui.collapsing("Body Part Stats", |ui| {
+        let Some(parts) = bodyparts_query.get(world, body_entity).ok() else {
+            ui.label("No body parts found.");
+            return;
+        };
+        for part_entity in parts.iter() {
+            let damage = bodypart_damage_query
+                .get(world, part_entity)
+                .map_or((0.0, 0usize), |damage| (damage.total, damage.hits.len()));
+            ui.label(format!("{:?}: {:.2} ({} hit(s))", part_entity, damage.0, damage.1));
+        }
+    });
 }

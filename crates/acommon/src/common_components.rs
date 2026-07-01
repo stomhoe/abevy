@@ -9,6 +9,9 @@ use serde::{Deserialize, Serialize};
 
 pub use crate::common_id_components::*;
 
+#[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
+pub struct SettingsEntity;
+
 #[derive(Component, Clone, Default)]
 pub struct AssetScoped;
 

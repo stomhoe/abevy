@@ -25,7 +25,6 @@ use crate::{
     tile::U16TileIndex,
     tilemap_resources::*,
     tilemap_structs::*,
-    tilemap_terrbl_systems::build_terrbl_material_for_map,
     tilemap_bundles::TilemapConfig,
 };
 use std::{collections::HashMap, mem::take};
@@ -370,77 +369,6 @@ pub fn process_tiles_pre(
         } else {
             None
         };
-        let terrbl_material = if shader.as_ref().is_some_and(|shader| matches!(shader, TileShader::TerrBlend(_))) {
-            let Some(mapstruct) = resources.tmap_map.0.get(&mapkey) else {
-                continue;
-            };
-            let storage = &mapstruct.storage;
-            let chunk_w = storage.size.x as i32;
-            let chunk_h = storage.size.y as i32;
-            build_terrbl_material_for_map(
-                &mut resources.images,
-                &tile_components.tile_ref_query,
-                &resources.tile_map,
-                &tile_components.tile_texture_index_query,
-                &locals.tile_runtime_info,
-                &params.terrbl_query,
-                storage,
-                mapstruct.tmap_ent,
-                mapkey.tile_size,
-                &mut locals.terrbl_debug_budget,
-                |x, y| {
-                    let dx = if x < 0 {
-                        -1
-                    } else if x >= chunk_w {
-                        1
-                    } else {
-                        0
-                    };
-                    let dy = if y < 0 {
-                        -1
-                    } else if y >= chunk_h {
-                        1
-                    } else {
-                        0
-                    };
-                    if dx == 0 && dy == 0 {
-                        return storage.get(&TilePos { x: x as u32, y: y as u32 });
-                    }
-                    let neighbor_key = MapKey::new(
-                        mapkey.dim_ref,
-                        mapkey.chunk_pos + IVec2::new(dx, dy),
-                        mapkey.ac_z,
-                        mapkey.tile_size,
-                        mapkey.shader_ref(),
-                    );
-                    let Some(neighbor_mapstruct) = resources.tmap_map.0.get(&neighbor_key) else {
-                        return None;
-                    };
-                    let n_storage = &neighbor_mapstruct.storage;
-                    let nx = if dx < 0 {
-                        n_storage.size.x as i32 - 1
-                    } else if dx > 0 {
-                        0
-                    } else {
-                        x
-                    };
-                    let ny = if dy < 0 {
-                        n_storage.size.y as i32 - 1
-                    } else if dy > 0 {
-                        0
-                    } else {
-                        y
-                    };
-                    if nx < 0 || ny < 0 || nx >= n_storage.size.x as i32 || ny >= n_storage.size.y as i32 {
-                        return None;
-                    }
-                    n_storage.get(&TilePos { x: nx as u32, y: ny as u32 })
-                },
-            )
-        } else {
-            None
-        };
-
         let Some(mapstruct) = resources.tmap_map.0.get_mut(&mapkey) else {
             continue;
         };
@@ -452,31 +380,13 @@ pub fn process_tiles_pre(
         if let Some(shader) = shader {
             match shader {
                 TileShader::TerrBlend(_) => {
-                    if let Some(material) = terrbl_material {
-                        if let Ok(mut terrbl_handle) = params.terrbl_handle_query.get_mut(tmap_ent) {
-                            let curr_handle = (**terrbl_handle).clone();
-                            if let Some(curr_mat) = resources.texture_overlay_mat.get_mut(&curr_handle) {
-                                *curr_mat = material;
-                            } else {
-                                **terrbl_handle = resources.texture_overlay_mat.add(material);
-                            }
-                        } else {
-                            let material = MaterialTilemapHandle::from(resources.texture_overlay_mat.add(material));
-                            terrbl_mats.push((tmap_ent, material));
-                        }
-                    } else {
-                        error!(
-                            target: TILEMAP_SYSTEM,
-                            "Failed to build terrbl material for map: tmap {:?}, dim {:?}, chunk {:?}, z {:?}, tile_size {:?}, storage {}x{}",
+                    if params.terrbl_handle_query.get_mut(tmap_ent).is_err() {
+                        terrbl_mats.push((
                             tmap_ent,
-                            mapkey.dim_ref,
-                            mapkey.chunk_pos,
-                            mapkey.ac_z,
-                            mapkey.tile_size,
-                            storage.size.x,
-                            storage.size.y
-                        );
-                        default_mats.push((tmap_ent, MaterialTilemapHandle::<StandardTilemapMaterial>::default()));
+                            MaterialTilemapHandle::from(
+                                resources.texture_overlay_mat.add(TerrBlendMat::default())
+                            ),
+                        ));
                     }
                 }
             };

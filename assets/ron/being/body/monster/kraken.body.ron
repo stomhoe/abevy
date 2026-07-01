@@ -4,7 +4,7 @@
     tags: ["tentacled"],
     distributed_totals: {
         "mass_kg": 10000.0,
-        "hp_capacity": 128.0,
+        "hp_capacity": 54000.0,
         "hp_regen_rate": 5.7,
         "blood_capacity": 67.0,
         "bleed_rate": 8.0,

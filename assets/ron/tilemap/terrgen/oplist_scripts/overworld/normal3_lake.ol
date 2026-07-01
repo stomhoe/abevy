@@ -6,7 +6,7 @@ debug: [continentness]
 
 
 let lakeness = avg(fnl.lakesmol, fnl.lakebig)
-let lakeness = *(lakeness, inlandness, 0.3)
+let lakeness = *(lakeness, inlandness, 1.3)
 
 out = idxmax(continent_min, lakeness, )
 

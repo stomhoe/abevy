@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility};
 
 #[allow(unused_parens)]
 pub fn sprite_details_inspector(world: &mut World) {

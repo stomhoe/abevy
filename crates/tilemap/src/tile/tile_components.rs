@@ -53,3 +53,9 @@ impl Default for TileStepSfxConfig {
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone)]
 pub struct BlocksProjectiles;
+
+#[derive(Component, Clone, Copy, Debug, Reflect)]
+pub struct CorpsePose {
+    pub rotation: Quat,
+    pub offset: Vec3,
+}

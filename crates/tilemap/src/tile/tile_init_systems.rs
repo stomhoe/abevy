@@ -27,7 +27,7 @@ pub fn init_tiles(
     tiling_map: Res<TileEntityMap>,
     color_map: Res<ColorSamplerEntityMap>,
     item_map: Option<Res<ItemEntityMap>>,
-    y_sort_settings: Query<&ZSettings>,
+    y_sort_settings: Query<&ZSettings, With<SettingsEntity>>,
     egui_tiles_holder_query: Query<Entity, With<EguiTilesHolder>>,
 ) {
     if !tiling_map.0.0.is_empty() {
@@ -305,7 +305,7 @@ pub fn init_tiles(
                         sprite_child_str_id,
                         Templ,
                         path_holder,
-                        Replicated,
+                        ReplicateIfServerStarts,
                         my_z.clone(),
                     )).id();
 

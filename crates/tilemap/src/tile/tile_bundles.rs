@@ -36,7 +36,7 @@ pub struct ToDenyOnTileClone(
     AssetScoped,
     SelectedForHotReload,
     WalkSpeedMultIfOnTop,
-    TileChildSprite,
+    //TileChildSprite,
     BlocksProjectiles,
     AdjRetexConfig,
 

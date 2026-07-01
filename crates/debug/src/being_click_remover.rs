@@ -6,8 +6,8 @@ use common::log_targets::DEBUG;
 use camera::camera_components::CameraTarget;
 use tilemap_shared::DimensionRef;
 
-use crate::being_tile_click_picker::cursor_being_pick_context;
-use crate::debug_resources::{BeingClickRemoverState, DubugWindowsVisibility, DebugSelectedEntities};
+use crate::click_picker_window::cursor_world_pick_context;
+use debug_shared::{BeingClickRemoverState, DubugWindowsVisibility, DebugSelectedEntities};
 
 pub(crate) fn set_being_click_remover_active(
     active: bool,
@@ -23,9 +23,9 @@ pub fn capture_world_being_click_removal(
     mut contexts: EguiContexts,
     time: Res<Time>,
     mouse: Res<ButtonInput<MouseButton>>,
-    windows: Query<&Window, (With<PrimaryWindow>, )>,
-    camera_query: Query<(&Camera, &GlobalTransform, ), (Without<CameraTarget>, )>,
-    camera_target_query: Query<&DimensionRef, (With<CameraTarget>, )>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    camera_query: Query<(&Camera, &GlobalTransform), Without<CameraTarget>>,
+    camera_target_query: Query<&DimensionRef, With<CameraTarget>>,
     beings_at_gpos: Res<tilemap_shared::BeingsAtGpos>,
     mut state: ResMut<BeingClickRemoverState>,
     mut selected_entities: ResMut<DebugSelectedEntities>,
@@ -52,7 +52,7 @@ pub fn capture_world_being_click_removal(
         return;
     }
 
-    let Some((dim_ref, clicked_gpos)) = cursor_being_pick_context(
+    let Some((dim_ref, clicked_gpos)) = cursor_world_pick_context(
         &mut contexts,
         &mouse,
         &windows,

@@ -1,5 +1,6 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, )]
 #[states(scoped_entities)]//el default es para que el despawnonexit se active al salir de ese estado
@@ -36,6 +37,9 @@ pub enum AssetLoading {
 
     /// Init systems which spawn entities are executed
     SpawnReplicatedEntities,
+
+    /// Asset loading and spawn initialization has finished
+    Finished,
 }
 
 
@@ -46,7 +50,8 @@ pub enum AssetLoading {
 #[states(scoped_entities,)]
 pub enum AssetHotReloadState {#[default]Stopped, Ongoing,}
 
-#[derive(Resource, Debug, Clone)]
+#[derive(Resource, Debug, Clone, Deserialize, Serialize)]
+#[serde(default)]
 pub struct HotReloadSelection {
     pub tiles: bool,
     pub sprite_configs_and_animations: bool,

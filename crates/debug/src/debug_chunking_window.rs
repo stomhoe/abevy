@@ -4,7 +4,7 @@ use bevy_ecs_tilemap::prelude::{TilePos, TileStorage};
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
 use std::collections::{BTreeMap, HashMap};
 
-use crate::debug_resources::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugChunkingUiState, DebugSelectedEntities, DubugWindowsVisibility};
 
 use camera::camera_components::CameraTarget;
 use common::common_components::*;
@@ -396,6 +396,7 @@ pub fn debug_chunking_window(
                                                         camera_tile_pos_for_this_dim,
                                                     ) {
                                                         selected_entities.selected_tile = Some(clicked_tile);
+                                                        selected_entities.selected_tiles.clear();
                                                         window_visible.tile_details = true;
                                                     }
                                                 });

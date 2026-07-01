@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use common::common_states::*;
+use serde::{Deserialize, Serialize};
 
 
 
@@ -8,7 +9,7 @@ use common::common_states::*;
 #[states(scoped_entities)]
 pub enum GameSetupScreen {#[default]GameSettings, CharacterCreation,}
 
-#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[source(GamePhase = GamePhase::ActiveGame)]
 #[states(scoped_entities)]
 pub enum SimulationState {#[default]Running, Paused,}

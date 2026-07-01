@@ -22,7 +22,7 @@ pub enum SquadSpawnMode {
 #[derive(Message, Debug, Clone, )]
 pub struct InstantiateTemplPackEntity {
     pub source_ent: Entity,
-    pub override_being_count: Option<u16>,
+    pub override_count: Option<u16>,
     pub sampled_count_mult: Option<f32>,
     pub pack_spawn_radius: Option<u8>,
     pub dim_ref: DimensionRef,
@@ -33,7 +33,7 @@ pub struct InstantiateTemplPackEntity {
 impl InstantiateTemplPackEntity {
     pub fn new(
         source_ent: Entity,
-        override_being_count: Option<u16>,
+        override_count: Option<u16>,
         sampled_count_multiplier: Option<f32>,
         pack_spawn_radius: Option<u8>,
         dim_ref: DimensionRef,
@@ -41,7 +41,7 @@ impl InstantiateTemplPackEntity {
     ) -> Self {
         Self {
             source_ent,
-            override_being_count,
+            override_count,
             sampled_count_mult: sampled_count_multiplier,
             pack_spawn_radius,
             dim_ref,

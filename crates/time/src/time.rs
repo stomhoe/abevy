@@ -1,8 +1,9 @@
 
 use bevy::prelude::*;
+use bevy_replicon::prelude::*;
 use game_common::{GameplaySystems, HostSystems};
 
-use crate::time_resources::*;
+use time_shared::*;
 use crate::time_systems::*;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -18,8 +19,8 @@ impl Plugin for ClockPlugin {
         .init_resource::<CurrDay>()
         .init_resource::<CurrHour>()
         .init_resource::<CurrMin>()
-        .init_resource::<SimTimeScale>()
         .init_resource::<InGameTiming>()
+        .replicate::<SimTimeScale>()
         .add_systems(
             Update,
             (

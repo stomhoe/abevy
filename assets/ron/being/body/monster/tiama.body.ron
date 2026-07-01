@@ -4,7 +4,7 @@
     tags: [""],
     distributed_totals: {
         "mass_kg": 500.0,
-        "hp_capacity": 491.0,
+        "hp_capacity": 2700.0,
         "hp_regen_rate": 23.5,
         "blood_capacity": 285.5,
         "bleed_rate": 30.4,

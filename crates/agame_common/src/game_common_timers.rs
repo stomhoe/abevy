@@ -23,7 +23,7 @@ impl Default for TimerComp {
 macro_rules! define_timer_bundles {
     ($base:ident, $mode:expr; $($component:path),* $(,)?) => {
         paste! {
-            #[derive(Bundle, Debug)]
+            #[derive(Bundle, Debug, Default)]
             pub struct $base(pub TimerComp $(, $component)*);
 
             impl $base {
@@ -31,7 +31,7 @@ macro_rules! define_timer_bundles {
                     Self(TimerComp::new_with_mode(seconds, $mode) $(, $component)*)
                 }
             }
-            #[derive(Bundle, Debug)]
+            #[derive(Bundle, Debug, Default)]
             pub struct [<Sim $base>](pub TimerComp $(, $component)*, SimRunningOnly);
 
             impl [<Sim $base>] {
@@ -46,15 +46,15 @@ macro_rules! define_timer_bundles {
         }
     };
 }
-#[derive(Component, Debug, Copy, Clone, )]
+#[derive(Component, Debug, Copy, Clone, Default)]
 #[require(TimerComp)]
 pub struct MessageOnTimeout;
 
-#[derive(Component, Debug, Copy, Clone, )]
+#[derive(Component, Debug, Copy, Clone, Default)]
 #[require(TimerComp)]
 pub struct DespawnOnTimeout;
 
-#[derive(Component, Debug, Copy, Clone, )]
+#[derive(Component, Debug, Copy, Clone, Default)]
 pub struct SimRunningOnly;
 
 define_timer_bundles!(DespawnTimer, TimerMode::Once; DespawnOnTimeout);

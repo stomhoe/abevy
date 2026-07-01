@@ -3,7 +3,7 @@
     name: "Bronze golem Body",
     distributed_totals: {
         "mass_kg": 20000.0,
-        "hp_capacity": 1200.0,
+        "hp_capacity": 90000.0,
         "hp_regen_rate": 1.0,
         "blood_capacity": 0.0,
         "bleed_rate": 0.0,

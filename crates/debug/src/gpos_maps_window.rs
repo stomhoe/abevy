@@ -10,7 +10,7 @@ use game_common::game_common_components::TemplEntiRef;
 use std::collections::HashSet;
 use tilemap_shared::{BeingsAtGpos, CardinalDirection, DimensionRef, GlobalTilePos, InteractionZone, InteractionZones, ItemsAtGpos, TileGatheringParamSet, WalkSpeedMultIfOnTop};
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility};
 
 pub struct GposMapsUiState {
     radius: i32,
@@ -349,6 +349,7 @@ pub fn gpos_maps_window_system(
                     let gpos = center + local;
                     if let Some(tile_entity) = tile_gathering.gather_tiles(dim_ref, gpos).first().copied() {
                         selected.selected_tile = Some(tile_entity);
+                        selected.selected_tiles.clear();
                         window_visible.tile_details = true;
                     }
                 }

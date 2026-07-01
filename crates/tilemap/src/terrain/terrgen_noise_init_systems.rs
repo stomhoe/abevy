@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use ::fnl::*;
-use common::common_components::{Prefix, StrId};
+use common::common_components::{Prefix, SettingsEntity, StrId};
+use common::log_targets::TERRGEN_INIT;
 use tilemap_shared::GlobalGenSettings;
 use crate::terrain::{
     TerrgenEntityMap,
@@ -14,6 +15,7 @@ pub fn init_noises(
     mut cmd: Commands,
     terrgen_map: Res<TerrgenEntityMap>,
     mut settings: Query<&mut GlobalGenSettings>,
+    settings_entity: Query<Entity, With<SettingsEntity>>,
     noise_holder: Query<Entity, With<EguiTerrgensHolder>>,
 ) {
     let settings_from_defs = load_terrgen_settings_seri_defs()
@@ -21,14 +23,17 @@ pub fn init_noises(
         .next()
         .map(|seri| seri.to_terrgen_settings());
     if settings.is_empty() {
-        let settings_to_spawn = settings_from_defs.clone().unwrap_or_default();
-        cmd.spawn((settings_to_spawn, Prefix::trunc("AA_GLOBAL_GEN_SETTINGS")));
+        let settings_to_insert = settings_from_defs.clone().unwrap_or_default();
+        if let Ok(settings_entity) = settings_entity.single() {
+            cmd.entity(settings_entity).insert(settings_to_insert);
+        } else {
+            error!(target: TERRGEN_INIT, "Failed to find SettingsEntity to insert GlobalGenSettings into");
+        }
     } else if let Some(settings_from_defs) = settings_from_defs {
         for mut existing_settings in &mut settings {
             *existing_settings = settings_from_defs.clone();
         }
     }
-    trace!(target: "terrgen_init", "Loaded Global Gen Settings");
 
     if !terrgen_map.0.is_empty() { return; }
 
@@ -45,14 +50,14 @@ pub fn init_noises(
         let str_id = match StrId::new_with_result(seri.id.clone(), 3) {
             Ok(id) => id,
             Err(e) => {
-                error!(target: "terrgen_init", "Failed to create StrId for noise {}: {}", seri.id, e);
+                error!(target: TERRGEN_INIT, "Failed to create StrId for noise {}: {}", seri.id, e);
                 continue;
             }
         };
         let mut noise = FastNoiseLite::new(str_id.clone());
 
-        if seri.frequency < 0.00000000001 {
-            error!(target: "terrgen_init", "Frequency is too small (< 0.0001) for noise {}", seri.id);
+        if seri.frequency < 0.0000000000001 {
+            error!(target: TERRGEN_INIT, "Frequency is too small (< 0.0001) for noise {}", seri.id);
         }
         noise.set_frequency(Some(seri.frequency));
 
@@ -66,7 +71,7 @@ pub fn init_noises(
             "ValueLan" | "ValueLanczos" => NoiseType::ValueLanczos,
             "River" | "RiverFlow" => NoiseType::River,
             other => {
-                error!(target: "terrgen_init", "Unknown noise_type '{other}' for noise {}", seri.id);
+                error!(target: TERRGEN_INIT, "Unknown noise_type '{other}' for noise {}", seri.id);
                 continue;
             }
         };
@@ -78,7 +83,7 @@ pub fn init_noises(
             "DomainWarpProgressive" => FractalType::DomainWarpProgressive,
             "DomainWarpIndependent" => FractalType::DomainWarpIndependent,
             other => {
-                error!(target: "terrgen_init", "Unknown fractal_type '{other}' for noise {}", seri.id);
+                error!(target: TERRGEN_INIT, "Unknown fractal_type '{other}' for noise {}", seri.id);
                 continue;
             }
         };
@@ -88,7 +93,7 @@ pub fn init_noises(
             "Manhattan" => CellularDistanceFunction::Manhattan,
             "Hybrid" => CellularDistanceFunction::Hybrid,
             other => {
-                error!(target: "terrgen_init", "Unknown cellular_distance_function '{other}' for noise {}", seri.id);
+                error!(target: TERRGEN_INIT, "Unknown cellular_distance_function '{other}' for noise {}", seri.id);
                 continue;
             }
         };
@@ -101,7 +106,7 @@ pub fn init_noises(
             "Distance2Mul" => CellularReturnType::Distance2Mul,
             "Distance2Div" => CellularReturnType::Distance2Div,
             other => {
-                error!(target: "terrgen_init", "Unknown cellular_return_type '{other}' for noise {}", seri.id);
+                error!(target: TERRGEN_INIT, "Unknown cellular_return_type '{other}' for noise {}", seri.id);
                 continue;
             }
         };
@@ -110,7 +115,7 @@ pub fn init_noises(
             "OpenSimplex2Reduced" => DomainWarpType::OpenSimplex2Reduced,
             "BasicGrid" => DomainWarpType::BasicGrid,
             other => {
-                error!(target: "terrgen_init", "Unknown domain_warp_type '{other}' for noise {}", seri.id);
+                error!(target: TERRGEN_INIT, "Unknown domain_warp_type '{other}' for noise {}", seri.id);
                 continue;
             }
         };
@@ -129,7 +134,7 @@ pub fn init_noises(
         noise.set_domain_warp_amp(Some(seri.domain_warp_amp));
 
         if let Ok(existing) = terrgen_map.0.get_cloned(&str_id) {
-            error!(target: "terrgen_init", "{} already in TerrgenEntityMap : {:?}", str_id, existing);
+            error!(target: TERRGEN_INIT, "{} already in TerrgenEntityMap : {:?}", str_id, existing);
             continue;
         }
         let noise_ent = cmd.spawn_empty().id();

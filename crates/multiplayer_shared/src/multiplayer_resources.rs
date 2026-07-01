@@ -1,10 +1,14 @@
 use bevy::prelude::*;
 use std::net::Ipv4Addr;
+
 #[derive(Resource, Debug)]
 pub struct TargetJoinServer {
     ip: Ipv4Addr,
     port: Option<u16>,
 }
+
+#[derive(Resource)]
+pub struct PendingGameStart;
 
 impl TargetJoinServer {
     pub fn new(ip_port: String) -> Result<Self, BevyError> {

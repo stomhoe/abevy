@@ -8,7 +8,7 @@ use faction_shared::*;
 use game_common::Templ;
 use player_shared::player_components::Mine;
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility};
 
 fn entity_label(entity: Entity, display_name: Option<&DisplayName>, str_id: Option<&StrId>) -> String {
     if let Some(display_name) = display_name {

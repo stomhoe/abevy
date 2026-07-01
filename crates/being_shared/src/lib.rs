@@ -1,11 +1,6 @@
-pub use being_shared::*;
-#[allow(unused_imports, )]pub use being_inst_templ_shared::*;
-pub use being_shared_messages::*;
-pub use being_shared_nav_debug::*;
-pub use being_shared_resources::*;
-pub use common::common_components::Grounding;
 
 pub mod being_shared;
+pub mod being_behavior;
 pub mod body_energy;
 pub mod predator;
 pub mod wander;
@@ -16,13 +11,18 @@ pub mod movement_shared_components;
 pub mod movement_shared_bundles;
 pub mod being_inst_templ_shared;
 pub mod being_shared_messages;
-pub mod being_shared_nav_debug;
 pub mod being_shared_resources;
 pub mod being_shared_audio;
 pub mod fight_or_flight;
 pub mod race_shared;
 pub mod being_shared_group;
 pub mod being_shared_nav_states;
+pub use being_shared::*;
+
+#[allow(unused_imports, )]pub use being_inst_templ_shared::*;
+pub use being_shared_messages::*;
+pub use being_shared_resources::*;
+pub use common::common_components::Grounding;
 pub use body_shared::*;
 pub use bodyparts_shared::*;
 pub use movement_shared_components::*;
@@ -35,3 +35,4 @@ pub use wander::*;
 pub use race_shared::*;
 pub use being_shared_group::*;
 pub use being_shared_nav_states::*;
+pub use being_behavior::*;

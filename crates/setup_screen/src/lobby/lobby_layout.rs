@@ -187,7 +187,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
 
     let _create_character_button = commands.spawn((
         ChildOf(rightsplit_bottom_hbox),
-        lobby_button(LobbyButtonId::CreateCharacter, "Create character"),
+        lobby_button(LobbyButtonId::CreateCharacter, "Create character (no pulsar)"),
     )).id();
 
     let _chat_input = commands.spawn((

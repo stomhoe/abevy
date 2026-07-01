@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use game_common::{HostSystems, game_common::ModifierSystems};
+use game_common::{HostSystems, Templ, game_common::ModifierSystems};
 use {
     crate::modifier_hp_systems::*,
     crate::modifier_manip_systems::*,
@@ -49,5 +49,5 @@ pub fn plugin(app: &mut App) {
     .replicate::<CopyFracOfOthersIntoSelf>()
     .replicate::<MinForDamage>()
     .replicate::<ConvertsDamageOnNonPenetration>()
-    .replicate_filtered::<ChildOf, With<ModifierTarget>>();
+    .replicate_filtered::<ChildOf, (With<ModifierTarget>, Without<Templ>)>();
 }

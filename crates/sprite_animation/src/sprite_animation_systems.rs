@@ -1,12 +1,12 @@
 
 
-use bevy::{ecs::{entity::EntityHashSet, system::SystemParam}, platform::collections::HashSet};
+use bevy::{ecs::{entity::EntityHashSet, system::SystemParam}, };
 use bevy_replicon::prelude::*;
 use ac_audio::ac_audio_components::{AnimationFrameSfxState, AnimationSeriSfxConfig, AnimationSeriSfxState};
 use being_shared::{Grounding, ComputedBy, ComputedLocally};
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_spritesheet_animation::{prelude::*, };
-use common::{SPRITE_ANIMATION_SYSTEM, common_components::*, file_logging::file_log};
+use common::{SPRITE_ANIMATION_SYSTEM, common_components::*};
 use game_common::{game_common_components::{Directionable, TemplEntiRef, }, Templ};
 use being_shared::movement_shared_components::SpeedMagnitude;
 use player_shared::player_components::*;
@@ -37,11 +37,14 @@ pub struct SpriteAnimationQueries<'w, 's> {
     pub animation_seri_query: Query<'w, 's, &'static AnimationSeri>,
 }
 
+
+
+pub type HoldersChangeFilter = (Without<Templ>, Or<(Changed<HeldSprites>, Changed<Grounding>, Changed<MoveAnimActive>, Changed<CardinalDirection>, Changed<SpeedMagnitude>)>);
+
 #[allow(unused_parens, )]
 pub fn switch_or_readjust_sprite_animation(
     mut cmd: Commands, asset_server: Res<AssetServer>,
-    mut move_anims_changed: MessageReader<MirrorHolderStateForSprite>,
-    changers: Query<Entity, (Or<(Changed<HeldSprites>, Changed<Grounding>, )>, Without<Templ>)>,
+    changed_entities: Query<Entity, (HoldersChangeFilter)>,
     changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<TemplEntiRef>, Without<SpriteConfig>, Without<Templ>)>,
     animation_map: Res<AcAnimationEntityMap>,
     queries: SpriteAnimationQueries,
@@ -86,15 +89,13 @@ pub fn switch_or_readjust_sprite_animation(
         animation_seri_query,
     } = queries;
 
-    let changers_iter = changers.iter();
+    let changed_entities_iter = changed_entities.iter();
     let cfg_refs_iter = changed_sprite_cfg_refs.iter();
     sprite_entis_to_iter.reserve(
-        changers_iter.size_hint().1.unwrap_or(changers_iter.size_hint().0)
-            + move_anims_changed.len()
+        changed_entities_iter.size_hint().1.unwrap_or(changed_entities_iter.size_hint().0)
             + cfg_refs_iter.size_hint().1.unwrap_or(cfg_refs_iter.size_hint().0)
     );
-    sprite_entis_to_iter.extend(changers_iter);
-    sprite_entis_to_iter.extend(move_anims_changed.read().map(|f| f.0));
+    sprite_entis_to_iter.extend(changed_entities_iter);
     sprite_entis_to_iter.extend(cfg_refs_iter.map(|base_holder| base_holder.base));
 
     for (held_sprites, direction, moving, grounding) in base.iter_many(sprite_entis_to_iter.drain()) {
@@ -141,18 +142,6 @@ pub fn switch_or_readjust_sprite_animation(
             };
 
             let Some(anim_hash) = sprite_cfg_animations_map.0.get(&anim_type) else {
-                file_log(
-                    "move",
-                    "sprite",
-                    &format!(
-                        "no_anim base={:?} sprite={ent:?} dir={:?} moving={:?} grounding={:?} state={:?}",
-                        base_holder.base,
-                        anim_type.direction,
-                        anim_type.moving,
-                        anim_type.grounding,
-                        anim_type.state_id,
-                    ),
-                );
                 if !has_fallback {
                     warn_once!(target: SPRITE_ANIMATION_SYSTEM, "No animation found for AnimType {:?} in SpriteCfgAnimationsMap for entity {:?} {}", anim_type, ent, held_sprite_strid);
                 }
@@ -162,18 +151,6 @@ pub fn switch_or_readjust_sprite_animation(
                 error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to resolve animation hash {} for sprite config {:?} {}", anim_hash, sprite_cfg_ref.0, held_sprite_strid);
                 continue;
             };
-            file_log(
-                "move",
-                "sprite",
-                &format!(
-                    "select_anim base={:?} sprite={ent:?} anim={anim_ent:?} dir={:?} moving={:?} grounding={:?} state={:?}",
-                    base_holder.base,
-                    anim_type.direction,
-                    anim_type.moving,
-                    anim_type.grounding,
-                    anim_type.state_id,
-                ),
-            );
             let Ok((anim_handle, anim_sheet)) = anim_handle_sheet_query.get(anim_ent) else {
                 let anim_strid = strid_query.get(anim_ent).ok().cloned().unwrap_or_default();
                 error_once!(target: SPRITE_ANIMATION_SYSTEM, "Failed to get animation data for animation entity {:?} {}", anim_ent, anim_strid);
@@ -316,7 +293,7 @@ pub fn switch_or_readjust_sprite_animation(
                     sprite_comp.rect = rect;
                     sprite_comp.image_mode = image_mode;
                 } else {
-                    cmd.entity(ent).insert(Sprite {
+                    cmd.entity(ent).try_insert(Sprite {
                         image,
                         texture_atlas,
                         color,
@@ -334,7 +311,7 @@ pub fn switch_or_readjust_sprite_animation(
                     prev_animation.playing = playing;
                     prev_animation.speed_factor = speed_factor;
                 } else {
-                    cmd.entity(ent).insert(SpritesheetAnimation {
+                    cmd.entity(ent).try_insert(SpritesheetAnimation {
                         animation,
                         progress,
                         playing,
@@ -397,7 +374,6 @@ pub fn switch_or_readjust_sprite_animation(
                         }
                     }
                 }
-                // Update alternating state after using it
                 if should_update_alternating_state {
                     if let Some(alt_state) = alternating_state.as_mut() {
                         if !alt_state.0.is_empty() {
@@ -412,10 +388,10 @@ pub fn switch_or_readjust_sprite_animation(
 #[allow(unused_parens)]
 pub fn msg_movestate_update_to_clients_for_sprite_animation(
     connected: Query<&Player, Without<Mine>>,
-    mut move_anims_changed: MessageReader<MirrorHolderStateForSprite>,
-    changers: Query<Entity, Or<(Changed<HeldSprites>, Changed<Grounding>, )>>,
+    changed_entities: Query<Entity, (HoldersChangeFilter, )>,
+    bases_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&CardinalDirection>, Option<&StrId>), (HoldersChangeFilter)>,
+    changed_sprite_cfg_refs: Query<&BaseHolderRef, (Changed<TemplEntiRef>, Without<SpriteConfig>, Without<Templ>)>,
 
-    bases_query: Query<(Entity, &MoveAnimActive, Option<&Grounding>, Option<&CardinalDirection>, Option<&StrId>)>,
     controller: Query<&ComputedBy>,
     mut mwriter: MessageWriter<ToClients<SyncMoveState>>,
     mut messages_to_send: Local<Vec<ToClients<SyncMoveState>>>,
@@ -423,23 +399,24 @@ pub fn msg_movestate_update_to_clients_for_sprite_animation(
 ){
     if connected.is_empty() { return; }
     entis_to_iter.clear();
-    let changers_iter = changers.iter();
-    entis_to_iter.reserve(changers_iter.size_hint().1.unwrap_or(changers_iter.size_hint().0) + move_anims_changed.len());
-    entis_to_iter.extend(changers_iter);
-    entis_to_iter.extend(move_anims_changed.read().map(|f| f.0));
+    let changed_entities_iter = changed_entities.iter();
+    let cfg_refs_iter = changed_sprite_cfg_refs.iter();
+    entis_to_iter.reserve(changed_entities_iter.size_hint().1.unwrap_or(changed_entities_iter.size_hint().0) + cfg_refs_iter.size_hint().1.unwrap_or(cfg_refs_iter.size_hint().0));
+    entis_to_iter.extend(changed_entities_iter);
+    entis_to_iter.extend(cfg_refs_iter.map(|base_holder| base_holder.base));
 
     for (being_ent, &moving, grounding, direction, id) in bases_query.iter_many(entis_to_iter.iter()) {
         let moving = moving.get();
         let event_data = SyncMoveState {being_ent, moving, grounding: grounding.cloned(), direction: direction.cloned()};
         if let Ok(controller) = controller.get(being_ent) {
             messages_to_send.push(ToClients {
-                mode: SendMode::BroadcastExcept(ClientId::Client(controller.client_ent)),
+                targets: SendTargets::AllExcept(ClientId::Client(controller.client_ent)),
                 message: event_data,
             });
             trace!(target: SPRITE_ANIMATION_SYSTEM, "Sending moving {} for entity {:?} {} to all clients except {:?}", moving, being_ent, id.cloned().unwrap_or_default(), controller.client_ent);
         }
         else {
-            messages_to_send.push(ToClients { mode: SendMode::Broadcast, message: event_data, });
+            messages_to_send.push(ToClients { targets: SendTargets::All, message: event_data, });
             trace!(target: SPRITE_ANIMATION_SYSTEM, "Sending moving {} for entity {:?} to all clients", moving, being_ent);
         }
     }
@@ -448,19 +425,14 @@ pub fn msg_movestate_update_to_clients_for_sprite_animation(
 #[allow(unused_parens, )]
 pub fn client_receive_moving_anim(
     mut mreader: MessageReader<SyncMoveState>,
-    mut beings_changed_move_state_writer: MessageWriter<MirrorHolderStateForSprite>,
-    mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut CardinalDirection, Has<ComputedLocally>)>,
-    mut being_changed_state_set: Local<HashSet<MirrorHolderStateForSprite>>
+    mut query: Query<(&mut MoveAnimActive, &mut Grounding, &mut CardinalDirection), Without<ComputedLocally>>,
 ) {
     for message in mreader.par_read() {
         let SyncMoveState { being_ent, moving, grounding, direction } = message.0;
         trace!(target: SPRITE_ANIMATION_SYSTEM, "Received moving {} for entity {:?}", moving, being_ent);
 
-        if let Ok((mut move_anim, mut grounding_comp, mut direction_comp, computed_locally)) = query.get_mut(*being_ent) {
-            if computed_locally {
-                continue;
-            }
-            move_anim.set(*moving, *being_ent, &mut being_changed_state_set);
+        if let Ok((mut move_anim, mut grounding_comp, mut direction_comp)) = query.get_mut(*being_ent) {
+            move_anim.set(*moving);
             if let Some(grounding) = grounding {
                 *grounding_comp = *grounding;
             }
@@ -471,5 +443,4 @@ pub fn client_receive_moving_anim(
             warn_once!("Received moving state for entity {:?} that does not exist in this client.", being_ent);
         }
     }
-    beings_changed_move_state_writer.write_batch(being_changed_state_set.drain());
 }

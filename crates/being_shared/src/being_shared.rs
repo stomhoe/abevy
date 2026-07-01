@@ -143,13 +143,13 @@ pub type AliveBeing = (With<Being>, Without<Dead>);
 pub struct HumanControlled;
 
 #[derive(Component, Debug, Default, Clone)]
-pub struct AiAutoMeleeTargets(pub Vec<Entity>);
+pub struct AutoMeleeIfInInteractionZone(pub Vec<Entity>);
 
 #[derive(Component, Debug, Default, Deserialize, Serialize, Copy, Clone)]
 pub struct LodLevel(pub u8);
 
-pub type LocalAiControlled = (With<ComputedLocally>, Without<HumanControlled>);
-pub type LocalHumanControlled = (With<ComputedLocally>, With<HumanControlled>);
+pub type LocalAiControlled = (With<ComputedLocally>, Without<HumanControlled>, Without<Dead>);
+pub type LocalHumanControlled = (With<ComputedLocally>, With<HumanControlled>, Without<Dead>);
 
 //CAN BE A BOT RUN IN THE CLIENT'S COMPUTER (P.EJ PATHFINDING)
 
@@ -157,7 +157,6 @@ pub type LocalHumanControlled = (With<ComputedLocally>, With<HumanControlled>);
 #[derive(Component, Debug, Clone)]
 #[relationship_target(relationship = ComputedBy)]
 pub struct ComputedBeings(Vec<Entity>);
-impl ComputedBeings {pub fn being_ents(&self) -> &[Entity] {&self.0}}
 
 
 #[derive(Component, Debug, Deserialize, Serialize, MapEntities, Clone)]

@@ -21,8 +21,6 @@ pub struct ModifierTarget(
 #[relationship_target(relationship = ModifierTarget)]
 pub struct AppliedModifiers(Vec<Entity>);
 
-// BORRÉ TODOS LOS Reflect PORQUE QUIERO QUE SE IMPLEMENTEN DEBUG WINDOWS PARA VER ESTOS COMPONENTES COMODAMENTE
-
 #[derive(Component, Debug, Default, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct ModifierTags(pub HashSet<HashId>);
 impl ModifierTags {

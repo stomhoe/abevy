@@ -4,12 +4,15 @@ use std::collections::BTreeMap;
 
 use ::being_shared::{Being, LocalHumanControlled};
 use camera::camera_components::CameraTarget;
+use common::common_components::SettingsEntity;
 use game_common::game_common_components::{Templ, TemplEntiRef};
+use bevy_replicon::prelude::{ClientState, ClientTriggerExt};
 use tilemap::tile::tile_components::{TileStrId};
 use ::tilemap_shared::*;
 
+use crate::debug_messages::ClientDebugTeleportBeingRequest;
 use crate::debug_ui_helpers::direction_arrow;
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugSelectedEntities, DebugUiConfig, DubugWindowsVisibility};
 
 fn dimension_name_for_ref(
     dim_ref: &DimensionRef,
@@ -33,15 +36,22 @@ pub fn portals_list_window(
     portal_query: Query<(Entity, Option<&TemplEntiRef>, &PortalTo), With<PortalTo>>,
     mut location_query: Query<(&mut DimensionRef, &mut GlobalTilePos), >,
     local_human_controlled_query: Query<Entity, (With<Being>, LocalHumanControlled)>,
+    debug_ui_config: Query<&DebugUiConfig, With<SettingsEntity>>,
+    client_state: Res<State<ClientState>>,
     dimension_query: Query<&Name>,
     dimension_map: Res<DimensionEntityMap>,
     camera_query: Query<Entity, With<CameraTarget>>,
     templ_query: Query<&TileStrId, With<Templ>>,
     target_query: Query<Entity>,
+    mut cmd: Commands,
 ) {
     if !window_visible.portals_list {
         return;
     }
+
+    let Ok(debug_ui_config) = debug_ui_config.single() else {
+        return;
+    };
 
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -165,17 +175,25 @@ pub fn portals_list_window(
                                         window_visible.tile_details = true;
                                     }
 
-                                    if ui.button("⇣").clicked() 
-                                    && let Ok(local_human_controlled_entity) = local_human_controlled_query.single() {
+                                    if ui.button("⇣").clicked()
+                                        && let Ok(local_human_controlled_entity) = local_human_controlled_query.single()
+                                    {
                                         let target_gpos = GlobalTilePos(global_pos.0 + IVec2::new(0, -5));
-                                   
-                                        match location_query.get_mut(local_human_controlled_entity) {
-                                            Ok((mut human_dim_ref, mut human_global_pos)) => {
-                                                *human_dim_ref = *dim_ref;
-                                                *human_global_pos = target_gpos;
-                                            }
-                                            Err(_) => {
-                                                warn!(target: "debug", "Cannot teleport local human-controlled being because its location component is missing");
+
+                                        if *client_state.get() == ClientState::Connected && debug_ui_config.client_debug {
+                                            cmd.client_trigger(ClientDebugTeleportBeingRequest {
+                                                being_ent: local_human_controlled_entity,
+                                                gpos: target_gpos,
+                                            });
+                                        } else {
+                                            match location_query.get_mut(local_human_controlled_entity) {
+                                                Ok((mut human_dim_ref, mut human_global_pos)) => {
+                                                    *human_dim_ref = *dim_ref;
+                                                    *human_global_pos = target_gpos;
+                                                }
+                                                Err(_) => {
+                                                    warn!(target: "debug", "Cannot teleport local human-controlled being because its location component is missing");
+                                                }
                                             }
                                         }
                                     }

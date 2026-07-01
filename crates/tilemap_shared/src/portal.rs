@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{ecs::entity::MapEntities, prelude::*};
 use bevy_replicon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -35,9 +35,11 @@ pub struct PortalRecipe {
     pub sampler: GlobalTilePosWeightedSampler,
 }
 
-#[derive(Component, Debug, Clone, )]
+#[derive(Component, Debug, Clone, Deserialize, Serialize, MapEntities)]
 pub struct PortalTo {
+    #[entities]
     pub dest_tile: Entity,
+    #[serde(skip)]
     pub offset_pos_destinations: GlobalTilePosWeightedSampler
 }
 impl PortalTo {

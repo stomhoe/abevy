@@ -104,11 +104,12 @@ pub fn client_on_disconnect(
 }
 
 #[allow(unused_parens)]
-pub fn client_on_game_started(_: On<HostStartedGameplay>, mut state: ResMut<NextState<GamePhase>>, ) {
-
+pub fn client_on_game_started(
+    _: On<HostStartedGameplay>,
+    mut state: ResMut<NextState<GamePhase>>,
+) {
     info!(target: "lobby", "Host started game event received, transitioning to GamePhase::ActiveGame");
     state.set(GamePhase::ActiveGame);
-
 }
 
 

@@ -323,10 +323,34 @@ impl SgcParser {
         };
         match &token.kind {
             SgcTokenKind::String(value) => {
+                if let Some(SgcToken { kind: SgcTokenKind::Comma, .. }) = self.tokens.get(self.cursor + 1)
+                {
+                    if let Some(next_token) = self.tokens.get(self.cursor + 2) {
+                        if matches!(&next_token.kind, SgcTokenKind::Ident(_) | SgcTokenKind::String(_)) {
+                            if let Some(next_next_token) = self.tokens.get(self.cursor + 3) {
+                                if matches!(next_next_token.kind, SgcTokenKind::Eq | SgcTokenKind::Colon) {
+                                    return self.parse_inline_map_with_source_id(value.clone());
+                                }
+                            }
+                        }
+                    }
+                }
                 self.cursor += 1;
                 Ok(SgcArgValue::Str(value.clone()))
             }
             SgcTokenKind::Ident(value) => {
+                if let Some(SgcToken { kind: SgcTokenKind::Comma, .. }) = self.tokens.get(self.cursor + 1)
+                {
+                    if let Some(next_token) = self.tokens.get(self.cursor + 2) {
+                        if matches!(&next_token.kind, SgcTokenKind::Ident(_) | SgcTokenKind::String(_)) {
+                            if let Some(next_next_token) = self.tokens.get(self.cursor + 3) {
+                                if matches!(next_next_token.kind, SgcTokenKind::Eq | SgcTokenKind::Colon) {
+                                    return self.parse_inline_map_with_source_id(value.clone());
+                                }
+                            }
+                        }
+                    }
+                }
                 self.cursor += 1;
                 Ok(SgcArgValue::Str(value.clone()))
             }
@@ -355,6 +379,40 @@ impl SgcParser {
             SgcTokenKind::LBrace => Ok(SgcArgValue::Map(self.parse_object()?)),
             _ => Err(self.error_here("Expected value")),
         }
+    }
+
+    fn parse_inline_map_with_source_id(&mut self, source_id: String) -> Result<SgcArgValue, String> {
+        self.cursor += 1; // consume the source id token
+        let mut map = HashMap::default();
+        map.insert("source_id".to_string(), SgcArgValue::Str(source_id));
+        loop {
+            if !self.peek_kind(&SgcTokenKind::Comma) {
+                break;
+            }
+            let assignable = self.tokens.get(self.cursor + 1).and_then(|token| match &token.kind {
+                SgcTokenKind::Ident(key) => Some(key.clone()),
+                SgcTokenKind::String(key) => Some(key.clone()),
+                _ => None,
+            });
+            let has_assignment = match self.tokens.get(self.cursor + 2) {
+                Some(SgcToken { kind: SgcTokenKind::Eq, .. }) | Some(SgcToken { kind: SgcTokenKind::Colon, .. }) => true,
+                _ => false,
+            };
+            if assignable.is_none() || !has_assignment {
+                break;
+            }
+            self.cursor += 1; // consume comma
+            let key = match self.tokens.get(self.cursor) {
+                Some(SgcToken { kind: SgcTokenKind::Ident(key), .. }) => key.clone(),
+                Some(SgcToken { kind: SgcTokenKind::String(key), .. }) => key.clone(),
+                _ => break,
+            };
+            self.cursor += 1; // consume key token
+            self.expect_eq_or_colon()?;
+            let value = self.parse_value()?;
+            map.insert(key, value);
+        }
+        Ok(SgcArgValue::Map(map))
     }
 
     fn consume_if_kind(&mut self, expected: &SgcTokenKind) -> bool {

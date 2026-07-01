@@ -7,6 +7,8 @@ use tilemap_shared::*;
 #[require(Prefix::trunc("Pack"), AssetScoped, SelectedForHotReload)]
 pub struct Pack;
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct PackSystems;
 
 #[derive(Component, Debug, Clone, Default)]
 pub struct PackRaceOrBitSampler(pub HashIdWeightedSampler);

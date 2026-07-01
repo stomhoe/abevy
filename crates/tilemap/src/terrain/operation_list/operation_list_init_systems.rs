@@ -3,6 +3,7 @@
 
 use bevy::{ecs::entity::EntityHashSet, platform::collections::HashSet, prelude::*};
 
+use bevy_replicon::shared::replication::Replicated;
 use common::{common_components::*, common_tag_components::TagSet};
 
 use crate::{
@@ -46,7 +47,7 @@ pub fn init_oplists_from_assets(
         let egui_oplist_holder_ent = cmd.spawn(EguiOperationListsHolder).id();
         egui_oplist_holder_ent
     };
-    cmd.spawn((FailedSearchOplistFilterHolder, ChildOf(egui_oplist_holder_ent)));
+    cmd.spawn((FailedSearchOplistFilterHolder, (Name::new("FailedPosSearches"), AssetScoped, ), ChildOf(egui_oplist_holder_ent)));
 
     let mut oplist_comps = Vec::new();
     let mut tags_to_insert = Vec::new();

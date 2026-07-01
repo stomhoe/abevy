@@ -1,29 +1,29 @@
 sgc {
-    id = dw_catas
-    structure_id = drunkwalk
-    weight = 1.0
-    tags = [dungeon]
-    whitelisted_tags = [dungeon, river]
-    max_being_count = 40
+    id: dw_catas
+    structure_id: drunkwalk
+    weight: 1.0
+    tags: [dungeon]
+    whitelisted_tags: [dungeon, river]
+    max_being_count: 40
     args {
-        floor_tile_id = ducatas
-        wall_tile_id = nw
-        lava_tile_id = lava
-        boulder_sampler_id = boulder_sampler
-        boulder_frequency = 0.02
-        external_doorway_frequency = 0.02
-        external_doorway_width_min = 1
-        external_doorway_width_max = 2
-        external_doorway_wall_axis_preference = any
-        room_spawn.chamber_circle = [
-            { source_id = goblin, pack_spawn_radius = 0, weight = 3.0 },
-            { source_id = skeleton, pack_spawn_radius = 0, weight = 3.0 },
-            { source_id = ogre, pack_spawn_radius = 0, weight = 2.0 },
-            { source_id = medusa, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
-            { source_id = ghost, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
-            { source_id = beholder, override_being_count = 1, pack_spawn_radius = 0, weight = 0.5 },
-            { source_id = golem_infernal, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
+        floor_tile_id: ducatas
+        wall_tile_id: nw
+        lava_tile_id: lava
+        boulder_sampler_id: boulder_sampler
+        boulder_frequency: 0.02
+        external_doorway_frequency: 0.02
+        external_doorway_width_min: 1
+        external_doorway_width_max: 2
+        external_doorway_wall_axis_preference: any
+        room_spawn.chamber_circle: [
+            goblin, pack_spawn_radius: 0, weight: 3.0,
+            skeleton, pack_spawn_radius: 0, weight: 3.0,
+            ogre, pack_spawn_radius: 0, weight: 2.0,
+            medusa, override_count: 1, pack_spawn_radius: 0, weight: 1.5,
+            basilisk, pack_spawn_radius: 0, weight: 2,
+            beholder, override_count: 1, pack_spawn_radius: 0, weight: 0.5,
+            golem_infernal, override_count: 1, pack_spawn_radius: 0, weight: 0.75,
         ]
-        disable_terrgen.floor_tile_id = true
+        disable_terrgen.floor_tile_id: true
     }
 }

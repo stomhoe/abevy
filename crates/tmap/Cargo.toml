@@ -1,0 +1,35 @@
+[package]
+name = "bevy_ecs_tilemap"
+description = "A tilemap rendering plugin for bevy which is more ECS friendly by having an entity per tile."
+version = "0.17.0"
+authors = ["John Mitchell"]
+homepage = "https://github.com/StarArawn/bevy_ecs_tilemap"
+repository = "https://github.com/StarArawn/bevy_ecs_tilemap"
+license = "MIT"
+edition = "2024"
+exclude = ["assets/*", "screenshots/*"]
+
+[features]
+default = ["render"]
+atlas = []
+render = []
+serde = ["dep:serde", "bevy/serialize"]
+
+[dependencies]
+bevy = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+ldtk_rust = { workspace = true }
+rand = { workspace = true }
+serde_json = { workspace = true }
+tiled = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies.bevy]
+workspace = true
+
+[target.'cfg(unix)'.dev-dependencies.bevy]
+workspace = true
+

@@ -94,7 +94,7 @@ pub fn claim_chunks_for_river_structures(
         } = result;
 
         if plan.river_tiles.is_empty() {
-            error!(target: RIVER_SYSTEM, "River plan task for region {:?} offer {} finished without producing any river tiles", region_ent, offer_i);
+            warn!(target: RIVER_SYSTEM, "River plan task for region {:?} offer {} finished without producing any river tiles", region_ent, offer_i);
                 if let Ok(mut claimlist) = claim_queries.claimlists.get_mut(region_ent) {
                 claimlist.clear_pending_i(offer_i as usize);
                 claimlist.skipped_is.insert(offer_i as usize);
@@ -120,7 +120,7 @@ pub fn claim_chunks_for_river_structures(
                 .try_remove::<RiverPendingOffer>();
             claims_emitted = claims_emitted.saturating_add(1);
         } else {
-            error!(target: RIVER_SYSTEM, "River plan for region {:?} offer {} generated tiles but no claim chunks could be emitted", region_ent, offer_i);
+            warn!(target: RIVER_SYSTEM, "River plan for region {:?} offer {} generated tiles but no claim chunks could be emitted", region_ent, offer_i);
             if let Ok(mut claimlist) = claim_queries.claimlists.get_mut(region_ent) {
                 claimlist.clear_pending_i(offer_i as usize);
                 claimlist.skipped_is.insert(offer_i as usize);
@@ -142,15 +142,15 @@ pub fn claim_chunks_for_river_structures(
     }
 
     let Some(settings) = claim_queries.settings_q.single().ok() else {
-        error!(target: RIVER_SYSTEM, "Missing GlobalGenSettings for river claim pass");
+        warn!(target: RIVER_SYSTEM, "Missing GlobalGenSettings for river claim pass");
         return;
     };
     let Ok(region_probe_templ_ent) = terrprobe_entity_map.0.get_cloned(RIVER_REGION_PROBE_ID) else {
-        error!(target: RIVER_SYSTEM, "Missing terrprobe template '{}'", RIVER_REGION_PROBE_ID);
+        warn!(target: RIVER_SYSTEM, "Missing terrprobe template '{}'", RIVER_REGION_PROBE_ID);
         return;
     };
     let Ok(region_probe_templ) = claim_queries.terrprobe_query.get(region_probe_templ_ent) else {
-        error!(target: RIVER_SYSTEM, "Terrprobe '{}' missing TerrProbeTempl", RIVER_REGION_PROBE_ID);
+        warn!(target: RIVER_SYSTEM, "Terrprobe '{}' missing TerrProbeTempl", RIVER_REGION_PROBE_ID);
         return;
     };
 
@@ -159,7 +159,7 @@ pub fn claim_chunks_for_river_structures(
             continue;
         };
         let Ok((dimension_ref, region_pos)) = claim_queries.region_info.get(req.region_ent) else {
-            error!(target: RIVER_SYSTEM, "Probe failure for unknown region entity {:?}", req.region_ent);
+            warn!(target: RIVER_SYSTEM, "Probe failure for unknown region entity {:?}", req.region_ent);
             cmd.entity(req.region_ent).try_remove::<RiverPendingOffer>();
             cmd.entity(failed.0).try_despawn();
             continue;
@@ -183,17 +183,17 @@ pub fn claim_chunks_for_river_structures(
     for sampled_values in sampled_values_reader.read() {
         sampled_events = sampled_events.saturating_add(1);
         let Ok(req) = claim_queries.probe_requests.get(sampled_values.requester) else {
-            error!(target: RIVER_SYSTEM, "SampledValuesCollected for unknown requester {:?}", sampled_values.requester);
+            warn!(target: RIVER_SYSTEM, "SampledValuesCollected for unknown requester {:?}", sampled_values.requester);
             continue;
         };
         let Ok(mut pending) = claim_queries.pending_offers.get_mut(req.region_ent) else {
-            error!(target: RIVER_SYSTEM, "SampledValuesCollected for {:?} had no pending RiverPendingOffer on region {:?}", sampled_values.requester, req.region_ent);
+            warn!(target: RIVER_SYSTEM, "SampledValuesCollected for {:?} had no pending RiverPendingOffer on region {:?}", sampled_values.requester, req.region_ent);
             cmd.entity(sampled_values.requester).try_despawn();
             continue;
         };
         let region_ent = pending.region_ent;
         let Ok((dimension_ref, region_pos)) = claim_queries.region_info.get(region_ent) else {
-            error!(target: RIVER_SYSTEM, "SampledValuesCollected for request with unknown region {:?}", region_ent);
+            warn!(target: RIVER_SYSTEM, "SampledValuesCollected for request with unknown region {:?}", region_ent);
             cmd.entity(sampled_values.requester).try_despawn();
             continue;
         };
@@ -202,7 +202,7 @@ pub fn claim_chunks_for_river_structures(
         if matrix.values.iter().all(|value| value.is_none()) {
             {
                 let info = river_debug.region_mut(*dimension_ref, *region_pos);
-                error!(target: RIVER_SYSTEM, "River probe for region {:?} offer {} produced no sampled values", region_ent, pending.offer_i);
+                warn!(target: RIVER_SYSTEM, "River probe for region {:?} offer {} produced no sampled values", region_ent, pending.offer_i);
                 info.failure_count = info.failure_count.saturating_add(1);
                 info.failed_chunks.insert(req.start_chunk);
                 info.failed_probe_points.insert(req.start_chunk.center_gpos());
@@ -241,7 +241,7 @@ pub fn claim_chunks_for_river_structures(
         let _ = pending;
 
         let Some(cfg) = claim_queries.structured_gens.get(sgc_ent).ok() else {
-            error!(target: RIVER_SYSTEM, "Missing StructuredGenConfig {:?} for river offer {}", sgc_ent, offer_i);
+            warn!(target: RIVER_SYSTEM, "Missing StructuredGenConfig {:?} for river offer {}", sgc_ent, offer_i);
             clear_claimlist_pending_offer_i(&mut claim_queries.claimlists, region_ent, offer_i);
             skipped_offers.push((region_ent, offer_i as usize));
             offers_skipped = offers_skipped.saturating_add(1);
@@ -258,7 +258,7 @@ pub fn claim_chunks_for_river_structures(
             inland_map.insert(pos, val);
         }
         if inland_map.is_empty() {
-            error!(target: RIVER_SYSTEM, "River probe for region {:?} offer {} produced inland samples but no usable inland_map entries", region_ent, offer_i);
+            warn!(target: RIVER_SYSTEM, "River probe for region {:?} offer {} produced inland samples but no usable inland_map entries", region_ent, offer_i);
             clear_claimlist_pending_offer_i(&mut claim_queries.claimlists, region_ent, offer_i);
             skipped_offers.push((region_ent, offer_i as usize));
             offers_skipped = offers_skipped.saturating_add(1);
@@ -318,7 +318,7 @@ pub fn claim_chunks_for_river_structures(
         }
 
         let Ok((dimension_ref, _)) = claim_queries.region_info.get(offer.region_ent) else {
-            error!(target: RIVER_SYSTEM, "Offer {} missing region metadata on entity {:?}", offer.i, offer.region_ent);
+            warn!(target: RIVER_SYSTEM, "Offer {} missing region metadata on entity {:?}", offer.i, offer.region_ent);
             claimlist.skipped_is.insert(offer_i);
             skipped_offers.push((offer.region_ent, offer_i));
             offers_skipped = offers_skipped.saturating_add(1);

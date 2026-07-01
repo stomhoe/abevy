@@ -22,6 +22,8 @@ tilemap_shared = { path = "../tilemap_shared" }
 sprite_shared = { path = "../sprite_shared" }
 wildlife = { path = "../wildlife" }
 time = { path = "../time" }
+debug_shared = { path = "../debug_shared" }
+time_shared = { path = "../time_shared" }
 
 fnl = { path = "../fnl" }
 param_sets = { path = "../param_sets" }
@@ -40,4 +42,3 @@ rand = { workspace = true }
 #rand_seeder = { workspace = true }
 #rand_pcg = { workspace = true }
 #noiz = { workspace = true }
-bevy-fps-counter = { workspace = true }

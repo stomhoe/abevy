@@ -32,7 +32,7 @@ pub fn plugin(app: &mut App) {
             init_animation_sheet_and_handle,
         ).in_set(SpriteAnimationSystems),
     ))
-    .configure_sets(Update, (SpriteAnimationSystems.in_set(SimRunningSystems).after(AcAudioSystems),))
+    .configure_sets(Update, (SpriteAnimationSystems.in_set(SimRunningSystems).after(AcAudioSystems)))
 
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities), (
         SpriteAnimationSystems.before(AcSpriteSystems)
@@ -44,11 +44,8 @@ pub fn plugin(app: &mut App) {
 
     .add_mapped_server_message::<SyncMoveState>(Channel::Ordered)
 
-    .add_message::<MirrorHolderStateForSprite>()
-
     .replicate_once::<AnimExtraState>()
     .replicate_once::<MoveAnimActive>()
-    .replicate_filtered::<ChildOf, With<AcAnimation>>()
     .replicate::<AnimationSeri>()
     .replicate::<ClipStartFrames>()
     .replicate::<AlternatingStartFramesConfig>()

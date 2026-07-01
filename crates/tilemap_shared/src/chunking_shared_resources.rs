@@ -74,6 +74,13 @@ impl BeingsInCpos {
 
 pub type EntiSmallVec = SmallVec<[Entity; 4]>;
 
+#[derive(Component, Debug, Default, Copy, Clone)]
+pub struct ClientChunkLoader;
+
+#[derive(Component, Debug, Default, Copy, Clone)]
+pub struct ChunkLoadedByHost;
+
+
 #[derive(Resource, Component, Clone, Copy, Debug, )]
 pub struct LoadChunksAround {
     pub chunk_visib_max_dist: f32,

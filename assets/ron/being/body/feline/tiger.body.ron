@@ -3,8 +3,8 @@
     name: "Tiger Body",
     tags: ["quadruped"],
     distributed_totals: {
-        "mass_kg": 90.0,
-        "hp_capacity": 516.0,
+        "mass_kg": 150.0,
+        "hp_capacity": 675.0,
         "hp_regen_rate": 24.2,
         "blood_capacity": 301.5,
         "bleed_rate": 31.3,

@@ -4,7 +4,7 @@ use bevy::ecs::schedule::common_conditions::on_message;
 use bevy_replicon::prelude::AppRuleExt;
 use ac_input::player_action_requests::LocalItemPickupRequest;
 use common::common_states::AssetLoading;
-use game_common::HostSystems;
+use game_common::{HostSystems, Templ};
 use game_common::game_common::{GameplaySystems, SimRunningSystems};
 use ::item_shared::*;
 
@@ -45,6 +45,6 @@ pub fn plugin(app: &mut App) {
         .replicate::<ItemHeldIn>()
         .replicate::<DropHeldItemsOnDowned>()
         .replicate::<SlotableIn>()
-        .replicate_filtered::<ChildOf, With<Item>>()
+        .replicate_filtered::<ChildOf, (With<Item>, Without<Templ>)>()
     ;
 }

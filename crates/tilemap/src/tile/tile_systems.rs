@@ -10,6 +10,7 @@ use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, };
 #[allow(unused_imports, )]use bevy_replicon::prelude::*;
 use game_common::game_common_components::*;
 use ::tilemap_shared::*;
+use std::mem::take;
 
 pub type ExcludedComps = (Without<Templ>, Without<TilemapAnchor>, Without<TilePos>);
 
@@ -17,19 +18,20 @@ pub type ExcludedComps = (Without<Templ>, Without<TilemapAnchor>, Without<TilePo
 /// WARNING: BORRA DISABLED ANTE CAMBIO DE GLOBALTILEPOS, TemplEntiRef O CHILDOF, O SI SE AGREGA REPLICATED
 pub fn snap_transform_to_gpos(
     mut cmd: Commands,
-    mut main_query: Query<
-        (Entity, Option<&mut Transform>, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, ),
-        (With<SnapTransformToGpos>, common::AnyDisabling, ExcludedComps),
-    >,
     gpos_state_query: Query<
         (Entity, Ref<GlobalTilePos>, &SnapTransformToGpos, ),
         (common::AnyDisabling, Changed<GlobalTilePos>, ExcludedComps),
     >,
+    mut main_query: Query<
+        (Entity, Option<&mut Transform>, &GlobalTilePos, Option<&mut Visibility>, Option<&ChildOf>, Has<Dead>, ),
+        (With<SnapTransformToGpos>, common::AnyDisabling, ExcludedComps),
+    >,
     parent_query: Query<&GlobalTransform, common::AnyDisabling>,
     mut ents_to_process: Local<EntityHashSet>,
+    mut corpse_query: Query<&mut CorpsePose, (With<Dead>, ExcludedComps)>,
 ) {
     //TODO HACER UN SISTEMA PARA SALVAGUARDAR LOS OFFSETS
-    for (ent, gpos, snap_on_gpos, ) in gpos_state_query {
+    for (ent, gpos, snap_on_gpos) in gpos_state_query {
         let should_snap = match snap_on_gpos {
             SnapTransformToGpos::OnChange => gpos.is_changed(),
             SnapTransformToGpos::OnAdd => gpos.is_added(),
@@ -45,6 +47,7 @@ pub fn snap_transform_to_gpos(
         global_pos,
         visibility,
         child_of,
+        is_dead,
     )) = iter.fetch_next() {
         let z = transform.as_ref().map(|t| t.translation.z).unwrap_or_default();
         let transl_from_global_pos = global_pos.to_translation(z);
@@ -55,8 +58,14 @@ pub fn snap_transform_to_gpos(
             .unwrap_or(Vec3::ZERO);
 
         let local_translation = transl_from_global_pos - parent_global_transl;
+
         if let Some(mut transform) = transform {
             transform.translation = local_translation;
+            if is_dead {
+                if let Ok(mut pose) = corpse_query.get_mut(ent) {
+                    pose.set_changed();
+                }
+            }
         } else {
             cmd.entity(ent).try_insert(Transform::from_translation(local_translation));
         }

@@ -1,7 +1,6 @@
 use bevy::{ecs::entity::EntityHashMap, platform::collections::HashMap, prelude::*};
 use ::being_shared::*;
-use common::common_components::StrId;
-use common::common_id_components::HashId;
+use ::common::*;
 use game_common::{
     game_common_components::Templ,
 };
@@ -293,4 +292,9 @@ pub fn init_packs(
         cmd.entity(pack_ent)
             .insert(min_dists);
     }
+
+
 }
+
+
+

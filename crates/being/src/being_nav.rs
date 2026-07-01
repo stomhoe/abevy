@@ -16,7 +16,6 @@ pub mod being_nav_structs;
 pub mod being_nav_chase_structs;
 pub mod being_nav_components;
 pub mod being_nav_helpers;
-pub mod being_nav_debug;
 pub mod being_nav_lod_systems;
 pub mod being_nav_flee_systems;
 pub mod being_nav_systems;
@@ -28,7 +27,6 @@ pub use being_nav_structs::*;
 pub use being_nav_chase_structs::*;
 pub use being_nav_components::*;
 pub use being_nav_helpers::*;
-pub use being_nav_debug::*;
 pub use being_nav_lod_systems::*;
 pub use being_nav_flee_systems::*;
 pub use being_nav_systems::*;
@@ -38,7 +36,7 @@ pub use being_nav_chase_systems::*;
 #[allow(unused_parens)]
 pub fn plugin(app: &mut App) {
     app
-    .add_plugins(superstate_plugin::<BehavorialNavState, (WanderState, Chasing, Fleeing)>)
+    .add_plugins(superstate_plugin::<BehavorialNavState, (WanderState, NavChasing, Fleeing)>)
     .add_systems(
         Update,
         (

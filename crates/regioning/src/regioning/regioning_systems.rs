@@ -746,13 +746,13 @@ pub fn failsafe_timeout_pending_chunks(
             if let Some(order) = planned.take_pending_build_order(order_i) {
                 for chunk_pos in order.chunks {
                     planned.mark_chunk_timed_out(chunk_pos);
-                    error!(target: "structure_spawn", "Timed out waiting for StructureBuildCompliance for chunk {:?} in region {:?}, marking as empty and continuing", chunk_pos, region_pos);
+                    error!(target: "structure_spawn", "Timed out waiting for BuildCompliance for {:?} in {:?}, marking as empty", chunk_pos, region_pos);
                 }
             }
         }
 
         if planned.pending_build_orders_iter().next().is_none() {
-            error!(target: "structure_spawn", "Region at {} has timed out remaining pending build orders, marking as RegionPlanningFinished", region_pos);
+            error!(target: "structure_spawn", "{} has timed out remaining pending build orders, marking as RegionPlanningFinished", region_pos);
             cmd.entity(region_ent).try_insert(RegionState::AllTilesPrepared);
         }
     });

@@ -9,7 +9,7 @@ let bush_feature = idxmax(hp82, 0.10)
 let bush_feature = *(bush_feature, pd12)
 let bush_feature = +(bush_feature, -0.0)
 
-let lucky_tree = idxmax(hp81, 0.02)
+let lucky_tree = idxmax(hp81, 0.04)
 let tree_feature = max(fnl.forest_lf, lucky_tree)
 
 let tree_feature = lerp(tree_feature, inlandness, 0.2)

@@ -25,12 +25,13 @@ race ant {
     )
     body_or_sampler: ant
     size_variation: (min_dev: 0.251 max_dev: 0.251 mean: 1.0 std_dev: 0.1)
-    spawn_pack_size_normal_dist: (min_dev: 2.0 max_dev: 2.0 mean: 7.0 std_dev: 3.0)
     biome_affinity: {
         ocean: -2.5
         temp: 1.2
         desert: 1.0
         elf: 1.0
     }
-    spawn_pack_entity: false
+    pack: {
+        spawn_being_count_normal_dist: (min_dev: 2.0 max_dev: 2.0 mean: 7.0 std_dev: 3.0)
+    }
 }

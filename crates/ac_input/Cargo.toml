@@ -11,6 +11,7 @@ common = { path = "../acommon" }
 being_shared = { path = "../being_shared" }
 game_common = { path = "../agame_common" }
 player_shared = { path = "../player_shared" }
+debug_shared = { path = "../debug_shared" }
 serde = { workspace = true }
 paste = { workspace = true }
 tilemap_shared = { path = "../tilemap_shared" }

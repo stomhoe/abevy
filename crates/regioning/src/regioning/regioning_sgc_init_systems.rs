@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use bevy::{platform::collections::HashSet, prelude::*};
-use common::{common_components::*, common_tag_components::TagSet, log_targets::SGC_INIT};
+use common::{InitDone, common_components::*, common_tag_components::TagSet, log_targets::SGC_INIT};
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use ::tilemap_shared::*;
 use tilemap::terrain::terrprobe::opfilter::opfilter_resources::OpFilterEntityMap;
@@ -122,7 +122,6 @@ pub fn init_structured_gen_configs(
     dimension_entity_map: Res<DimensionEntityMap>,
     dimension_hash_query: Query<&HashId, With<Dimension>>,
     egui_holder_query: Query<Entity, With<EguiSgcsHolder>>,
-    _opfilter_entity_map: Res<OpFilterEntityMap>,
 ) {
     if !map.0.is_empty() {
         return;
@@ -235,4 +234,6 @@ pub fn init_structured_gen_configs(
     cmd.insert_batch(sgcs_comps);
     cmd.spawn((PrioritizedSgs(prioritized_hash_ids), ReplicateIfServerStarts, Name::new("PrioritizedSgs"), ChildOf(egui_ent)));
     cmd.spawn((SgcsWeightedSampler, ReplicateIfServerStarts, hashid_sampler, ChildOf(egui_ent)));
+    
+    cmd.trigger(InitDone);
 }

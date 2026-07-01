@@ -25,18 +25,19 @@ race frog {
     )
     body_or_sampler: frog
     size_variation: (min_dev: 0.251 max_dev: 0.251 mean: 1.0 std_dev: 0.1)
-    spawn_pack_size_normal_dist: (min_dev: 3.0 max_dev: 7.0 mean: 6.0 std_dev: 3.0)
     biome_affinity: {
         ocean: -2.5
         beach: 1.0
         temp: 0.8
     }
-    fight_or_flight_config: (
-        reaction: flee
-    )
+    pack: {
+        spawn_being_count_normal_dist: (min_dev: 3.0 max_dev: 7.0 mean: 6.0 std_dev: 3.0)
+        fight_or_flight_config: (
+            reaction: flee
+        )
+    }
     predator: (
         do_not_hunt_tags: [frog]
         min_hunger_to_hunt: 0.0
     )
-    spawn_pack_entity: false
 }

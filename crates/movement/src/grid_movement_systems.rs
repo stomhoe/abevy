@@ -4,9 +4,9 @@ use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::common_components::StrId;
+use modifier_shared::WallPhaser;
 use param_sets::BlockingTileParamSet;
 use common::log_targets::{BEING_SYSTEM, MOVEMENT_SYSTEM};
-use common::file_logging::file_log;
 use ::sprite_animation_shared::*;
 
 use tilemap::tile::tile_components::Tile;
@@ -19,7 +19,25 @@ use crate::movement_messages::*;
 
 const TILE_CORRECTION_INTERVAL_SECS: f32 = 2.0;
 
-
+fn apply_gpos_sync(
+    being_gpos: Option<&mut GlobalTilePos>,
+    transform: Option<&mut Transform>,
+    glm: Option<&mut GridLockedMovement>,
+    glm_visual: Option<&mut GridLockedMovementVisual>,
+    gpos: GlobalTilePos,
+) {
+    if let Some(being_gpos) = being_gpos {
+        *being_gpos = gpos;
+    }
+    if let Some(glm) = glm {
+        if let Some(glm_visual) = glm_visual {
+            glm.clear_step(glm_visual, gpos);
+        }
+    }
+    if let Some(transform) = transform {
+        transform.translation = gpos.to_translation(transform.translation.z);
+    }
+}
 
 #[allow(unused_parens)]
 pub fn sync_occupancy_for_beings_at_gpos_res(
@@ -71,6 +89,7 @@ pub fn resolve_overlapping_beings(
         &mut Transform,
         Option<&mut GridLockedMovement>,
         Option<&mut GridLockedMovementVisual>,
+        Has<WallPhaser>,//use Has instead of Option
     ), With<Being>>,
     mut blocking_tiles: BlockingTileParamSet,
     mut occupied_positions: Local<HashMap<(DimensionRef, GlobalTilePos), Vec<Entity>>>,
@@ -81,7 +100,7 @@ pub fn resolve_overlapping_beings(
     duplicate_positions.clear();
     reserved_positions.clear();
 
-    for (being_ent, _, &dim_ref, _, _, _) in beings.iter_mut() {
+    for (being_ent, _, &dim_ref, ..) in beings.iter_mut() {
         let Ok(&gpos) = blocking_tiles.gpos_query.get(being_ent) else {
             continue;
         };
@@ -110,7 +129,19 @@ pub fn resolve_overlapping_beings(
     let mut corrected_beings = 0usize;
     for &((dim_ref, source_gpos), ref overlapping_beings) in duplicate_positions.iter() {
         let keeper = overlapping_beings[0];
+        let keeper_has_wallphaser = beings
+            .get(keeper)
+            .map(|(_, _, _, _, _, _, wallphaser)| wallphaser)
+            .unwrap_or(false);
         for &being_ent in overlapping_beings.iter().skip(1) {
+            let current_has_wallphaser = beings
+                .get(being_ent)
+                .map(|(_, _, _, _, _, _, wallphaser)| wallphaser)
+                .unwrap_or(false);
+            if keeper_has_wallphaser || current_has_wallphaser {
+                continue;
+            }
+
             let Some(found_gpos) = find_nearest_overlap_resolution_gpos(
                 &mut blocking_tiles,
                 &reserved_positions,
@@ -128,7 +159,7 @@ pub fn resolve_overlapping_beings(
                 continue;
             };
 
-            let Ok((_, str_id, &current_dim, mut transform, movement, movement_visual)) = beings.get_mut(being_ent) else {
+            let Ok((_, str_id, &current_dim, mut transform, movement, movement_visual, _)) = beings.get_mut(being_ent) else {
                 continue;
             };
             let Ok(&current_gpos) = blocking_tiles.gpos_query.get(being_ent) else {
@@ -300,7 +331,7 @@ pub fn start_grid_locked_steps(
                 force_resync: false,
             };
             sync_gpos_msgs.push(ToClients {
-                mode: SendMode::Broadcast,
+                targets: SendTargets::All,
                 message: message.clone(),
             });
         }
@@ -318,8 +349,6 @@ pub fn progress_tile_transition_transform(
         &mut GridLockedMovement,
         &mut GridLockedMovementVisual,
     )>,
-    mut writer: MessageWriter<MirrorHolderStateForSprite>,
-    mut messages: Local<HashSet<MirrorHolderStateForSprite>>,
 ) {
     for (being_ent, tile_pos, mut transform, mut move_anim, mut glm, mut glm_visual) in query.iter_mut() {
         let had_motion_this_tick = glm_visual.consume_recent_motion();
@@ -330,14 +359,9 @@ pub fn progress_tile_transition_transform(
         if transform.translation != new_translation {
             transform.translation = new_translation;
         }
-        move_anim_changed(
-            being_ent,
-            &mut move_anim,
-            glm.is_stepping() || was_stepping || had_motion_this_tick,
-            &mut messages,
-        );
+        let _ = being_ent;
+        move_anim.set(glm.is_stepping() || was_stepping || had_motion_this_tick);
     }
-    writer.write_batch(messages.drain());
 }
 
 pub fn receive_gpos_from_server(
@@ -345,82 +369,119 @@ pub fn receive_gpos_from_server(
     mut commands: Commands,
     mut reader: MessageReader<SyncGpos>,
     mut beings: Query<(
-        &mut GlobalTilePos,
-        &mut CardinalDirection,
-        &mut Transform,
-        &mut GridLockedMovement,
-        &mut GridLockedMovementVisual,
-        &SpeedMagnitude,
+        Option<&mut GlobalTilePos>,
+        Option<&mut CardinalDirection>,
+        Option<&mut Transform>,
+        Option<&mut GridLockedMovement>,
+        Option<&mut GridLockedMovementVisual>,
+        Option<&SpeedMagnitude>,
         Has<ComputedLocally>,
     ), With<Being>>,
 ) {
     for message in reader.read() {
         let SyncGpos { being_ent, gpos, dir, force_resync } = message;
-        let Ok((mut being_gpos, mut facing_dir, mut transform, mut glm, mut glm_visual, speed_magnitude, computed_locally)) = beings.get_mut(*being_ent) else {
+        let Ok((mut being_gpos, facing_dir, mut transform, mut glm, mut glm_visual, speed_magnitude, computed_locally)) = beings.get_mut(*being_ent) else {
+            error!(
+                target: MOVEMENT_SYSTEM,
+                "Received SyncGpos for unknown being {:?}: {:?} facing {:?}",
+                being_ent,
+                gpos,
+                dir
+            );
             continue;
         };
-        *facing_dir = *dir;
+        if let Some(mut facing_dir) = facing_dir {
+            *facing_dir = *dir;
+        }
+        if *force_resync {
+            apply_gpos_sync(
+                being_gpos.as_mut().map(|being_gpos| &mut **being_gpos),
+                transform.as_mut().map(|transform| &mut **transform),
+                glm.as_mut().map(|glm| &mut **glm),
+                glm_visual.as_mut().map(|glm_visual| &mut **glm_visual),
+                *gpos,
+            );
+            if being_gpos.is_none() {
+                commands.entity(*being_ent).insert(*gpos);
+            }
+            commands.entity(*being_ent).remove::<PendingTileCorrection>();
+            warn!(
+                target: MOVEMENT_SYSTEM,
+                "Forced client resync for {:?}: {:?} facing {:?}",
+                being_ent,
+                gpos,
+                dir
+            );
+            info!(
+                target: MOVEMENT_SYSTEM,
+                "Forced client resync applied for {:?}",
+                being_ent
+            );
+            continue;
+        }
         if computed_locally {
-            if *force_resync {
-                *being_gpos = *gpos;
-                glm.clear_step(&mut glm_visual, *gpos);
-                transform.translation = gpos.to_translation(transform.translation.z);
-                commands.entity(*being_ent).remove::<PendingTileCorrection>();
-                trace!(
-                    target: MOVEMENT_SYSTEM,
-                    "Forced client resync for {:?}: {:?} facing {:?}",
-                    being_ent,
-                    gpos,
-                    dir
-                );
-                file_log(
-                    "move",
-                    "client",
-                    &format!("forced_resync ent={being_ent:?} gpos={gpos:?} facing={dir:?}"),
-                );
-                continue;
-            }
-            let delta = being_gpos.0 - gpos.0;
-            if delta.x.abs().max(delta.y.abs()) < 1 {
-                commands.entity(*being_ent).remove::<PendingTileCorrection>();
-                continue;
-            }
-            if delta.x.abs().max(delta.y.abs()) > 1 {
-                *being_gpos = *gpos;
-                glm.clear_step(&mut glm_visual, *gpos);
-                transform.translation = gpos.to_translation(transform.translation.z);
-                commands.entity(*being_ent).remove::<PendingTileCorrection>();
-                trace!(target: MOVEMENT_SYSTEM, "Immediate client burst resync for {:?}: {:?} facing {:?}", being_ent, gpos, dir);
-                file_log(
-                    "move",
-                    "client",
-                    &format!("immediate_burst_resync ent={being_ent:?} gpos={gpos:?} facing={dir:?}"),
-                );
+            if let Some(being_gpos) = being_gpos.as_mut() {
+                let delta = (**being_gpos).0 - gpos.0;
+                if delta.x.abs().max(delta.y.abs()) < 1 {
+                    commands.entity(*being_ent).remove::<PendingTileCorrection>();
+                    continue;
+                }
+                if delta.x.abs().max(delta.y.abs()) > 1 {
+                    apply_gpos_sync(
+                        Some(&mut **being_gpos),
+                        transform.as_mut().map(|transform| &mut **transform),
+                        glm.as_mut().map(|glm| &mut **glm),
+                        glm_visual.as_mut().map(|glm_visual| &mut **glm_visual),
+                        *gpos,
+                    );
+                    commands.entity(*being_ent).remove::<PendingTileCorrection>();
+                    trace!(target: MOVEMENT_SYSTEM, "Immediate client burst resync for {:?}: {:?} facing {:?}", being_ent, gpos, dir);
+                    continue;
+                }
+            } else {
+                commands.entity(*being_ent).insert(*gpos);
                 continue;
             }
 
-            let _ = (&mut transform, &mut glm);
             commands.entity(*being_ent).insert(PendingTileCorrection {
                 gpos: *gpos,
                 secs_left: TILE_CORRECTION_INTERVAL_SECS,
             });
             continue;
         }
-        let prev_gpos = *being_gpos;
-        *being_gpos = *gpos;
-        let dir = gpos.0 - prev_gpos.0;
-        if dir.x.abs() + dir.y.abs() == 1 {
-            glm.step_dir = dir;
-            glm.progress_ticks = 0;
-            glm.step_ticks_total =
-                ticks_per_tile(speed_magnitude.0, fixed_time.delta_secs(), dir).max(1);
-            glm_visual.visual_origin_tile = prev_gpos.0;
-            transform.translation = prev_gpos.to_translation(transform.translation.z);
+        if let Some(being_gpos) = being_gpos.as_mut() {
+            let prev_gpos = **being_gpos;
+            **being_gpos = *gpos;
+            let delta = gpos.0 - prev_gpos.0;
+            if delta.x.abs() + delta.y.abs() == 1 {
+                if let Some(mut glm) = glm.as_mut() {
+                    glm.step_dir = delta;
+                    glm.progress_ticks = 0;
+                    glm.step_ticks_total = if let Some(speed_magnitude) = speed_magnitude {
+                        ticks_per_tile(speed_magnitude.0, fixed_time.delta_secs(), delta).max(1)
+                    } else {
+                        1
+                    };
+                }
+                if let Some(mut glm_visual) = glm_visual.as_mut() {
+                    glm_visual.visual_origin_tile = prev_gpos.0;
+                }
+                if let Some(mut transform) = transform.as_mut() {
+                    transform.translation = prev_gpos.to_translation(transform.translation.z);
+                }
+            } else {
+                apply_gpos_sync(
+                    Some(&mut **being_gpos),
+                    transform.as_mut().map(|transform| &mut **transform),
+                    glm.as_mut().map(|glm| &mut **glm),
+                    glm_visual.as_mut().map(|glm_visual| &mut **glm_visual),
+                    *gpos,
+                );
+            }
+            trace!(target: MOVEMENT_SYSTEM, "Received gpos {:?} facing {:?} for {:?}", gpos, delta, being_ent);
         } else {
-            glm.clear_step(&mut glm_visual, *gpos);
-            transform.translation = gpos.to_translation(transform.translation.z);
+            commands.entity(*being_ent).insert(*gpos);
         }
-        trace!(target: MOVEMENT_SYSTEM, "Received gpos {:?} facing {:?} for {:?}", gpos, dir, being_ent);
     }
 }
 

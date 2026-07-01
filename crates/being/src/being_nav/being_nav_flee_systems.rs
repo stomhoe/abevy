@@ -238,7 +238,7 @@ pub fn update_goto_from_fleeing(
     mut cmd: Commands,
     mut writer: MessageWriter<NavOrder>,
     mut blocking_tiles: BlockingTileParamSet,
-    flee_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, Has<DoAvoidBlacklistedSpawnTilesForWander>, ), (With<Being>, LocalAiControlled, )>,
+    flee_query: Query<(Entity, &::tilemap_shared::DimensionRef, &Fleeing, Option<&SquadMemberOf>, Has<DoAvoidBlacklistedSpawnTilesForWander>, ), (LocalAiControlled, )>,
     body_weight_query: Query<&BodyWeightSum>,
     held_body_query: Query<&HeldBody>,
     body_sums_query: Query<&BodySums>,
@@ -316,7 +316,7 @@ pub fn update_goto_from_fleeing(
             &avoid_tile_tags,
         ) else {
             cmd.entity(being_ent).try_remove::<Fleeing>();
-            cmd.entity(being_ent).try_insert(Hunting::new(primary_threat_ent));
+            cmd.entity(being_ent).try_insert(HostileChase::new(primary_threat_ent));
             messages.push(NavOrder::new(
                 being_ent,
                 255,

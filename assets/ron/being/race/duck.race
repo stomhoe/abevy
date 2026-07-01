@@ -25,13 +25,14 @@ race duck {
     )
     body_or_sampler: duck
     size_variation: (min_dev: 0.251 max_dev: 0.251 mean: 1.0 std_dev: 0.1)
-    spawn_pack_size_normal_dist: (min_dev: 3.0 max_dev: 3.0 mean: 5.0 std_dev: 2.0)
     biome_affinity: {
         ocean: -2.5
         temp: 0.6
     }
-    fight_or_flight_config: (
-        reaction: flee
-    )
-    spawn_pack_entity: false
+    pack: {
+        spawn_being_count_normal_dist: (min_dev: 3.0 max_dev: 3.0 mean: 5.0 std_dev: 2.0)
+        fight_or_flight_config: (
+            reaction: flee
+        )
+    }
 }

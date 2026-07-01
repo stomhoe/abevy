@@ -8,7 +8,7 @@ use game_common::game_common_components::TemplEntiRef;
 use sprite_shared::AcZ;
 use tilemap_shared::{DimensionRef, GlobalTilePos, SafeDespawn, TileGatheringParamSet};
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility, TileClickRemoverState};
+use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility, TileClickRemoverState};
 
 fn cursor_tile_pick_context(
     contexts: &mut EguiContexts,
@@ -130,6 +130,7 @@ pub fn capture_world_tile_click_removal(
 
     if selected_entities.selected_tile == Some(tile_ent) {
         selected_entities.selected_tile = None;
+        selected_entities.selected_tiles.clear();
     }
     if selected_entities.selected_exempted_entity == Some(tile_ent) {
         selected_entities.selected_exempted_entity = None;

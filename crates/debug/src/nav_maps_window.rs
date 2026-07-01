@@ -4,7 +4,7 @@ use camera::camera_components::CameraTarget;
 use being::being_nav::AiNavGrids;
 use tilemap_shared::{AiNavTileBlockedGposCounts, DimensionRef, GlobalTilePos};
 
-use crate::debug_resources::DubugWindowsVisibility;
+use debug_shared::DubugWindowsVisibility;
 
 pub struct NavMapsUiState {
     pub radius: i32,

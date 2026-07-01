@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use game_common::game_common_components::TemplEntiRef;
 use ::sprite_shared::*;
+use common::common_components::SettingsEntity;
 use tilemap_shared::{GlobalTilePos, ZSettings};
 
 pub type Ysortable = (Or<(With<Sprite>, With<TilemapAnchor>, With<Mesh2d>/*Or-END*/)>, With<Visibility>, Without<HeldSprites>, 
@@ -14,7 +15,7 @@ pub type Ysortable = (Or<(With<Sprite>, With<TilemapAnchor>, With<Mesh2d>/*Or-EN
 
 #[allow(unused_parens, )]
 pub fn y_sort_system(
-    y_sort_settings: Query<&ZSettings>,
+    y_sort_settings: Query<&ZSettings, With<SettingsEntity>>,
     sprite_holders: Query<&HeldSprites, Changed<GlobalTilePos>, >,
     changed_query: Query<Entity,
         (Or<(Changed<TemplEntiRef>, Changed<GlobalTilePos>, Changed<YSortOrigin>, Changed<AcZ>,

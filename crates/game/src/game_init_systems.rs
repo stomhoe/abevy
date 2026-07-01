@@ -197,14 +197,18 @@ pub fn server_or_singleplayer_setup(mut cmd: Commands,
         FactionRef(host_faction_hash),
     ));
     app_state.set(AppState::StatefulGameSession);
+    cmd.trigger(InitDone);
 }
 
 #[allow(unused_parens)]
+//TODO chequear el estado actual de la partida (new game o loaded (cargar su character si ya tiene)) y los Res<State<GamePhase>> antes de hacer esto
+
 pub fn host_on_player_added(mut cmd: Commands,
-    query: Query<(Entity, &StrId, Has<HostPlayer>),(Added<StrId>, With<Player>)>,
+    query: Query<(Entity, &StrId, Has<HostPlayer>),(With<Player>, Or<(Added<StrId>, Added<Player>)>, )>,
     player_query: Query<(&CreatedCharacters)>,
     ________settings: Res<GameInitSettings>,
     wall_phaser_on_spawn: Res<::being_shared::WallPhaserOnSpawn>,
+    invulnerable_on_spawn: Res<::being_shared::InvulnerableOnSpawn>,
     host_player_faction_ref: Query<&FactionRef, (With<HostPlayer>, With<Mine>, )>,
     host_faction_query: Query<Entity, (With<Faction>, With<Mine>, Without<Templ>, )>,
     faction_map: Res<FactionEntityMap>,
@@ -238,6 +242,9 @@ pub fn host_on_player_added(mut cmd: Commands,
             )).id();
             if wall_phaser_on_spawn.0 && is_host_player {
                 cmd.entity(created_character).insert(WallPhaser);
+            }
+            if invulnerable_on_spawn.0 && is_host_player {
+                cmd.entity(created_character).insert(::modifier_shared::Invulnerable);
             }
             //cmd.spawn(SpeedModifier::new(created_character, created_character, 1000.0, ApplyMode::Add));
 

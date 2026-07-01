@@ -11,12 +11,9 @@ use bevy::{
 use common::common_tag_components::TagSet;
 use common::log_targets::WANDER_SYSTEM;
 use ::being_shared::movement_shared_components::FinalNormMoveDir;
-use sprite_animation_shared::MirrorHolderStateForSprite;
 use ::param_sets::*;
 use std::time::Duration;
 use ::tilemap_shared::*;
-
-use super::being_nav_debug::*;
 
 fn wander_lod_interval_for_level(level: u8) -> Duration {
     match level {
@@ -362,17 +359,14 @@ pub struct WanderBehaviorLocals<'s> {
     seen_wanderers: Local<'s, EntityHashSet>,
     pack_members_by_squad: Local<'s, EntityHashMap<Vec<(Entity, DimensionRef, bool)>>>,
     messages: Local<'s, Vec<NavOrder>>,
-    facing_messages: Local<'s, Vec<MirrorHolderStateForSprite>>,
 }
 
 #[allow(unused_parens, )]
 pub fn wander_behavior(
     mut writer: MessageWriter<NavOrder>,
-    mut facing_writer: MessageWriter<MirrorHolderStateForSprite>,
     time: Res<Time>,
     queries: WanderBehaviorQueryParams,
     locals: WanderBehaviorLocals,
-    mut nav_log: BeingNavDebugLog,
 ) {
     let WanderBehaviorQueryParams {
         mut blocking_tiles,
@@ -393,7 +387,6 @@ pub fn wander_behavior(
         mut seen_wanderers,
         mut pack_members_by_squad,
         mut messages,
-        mut facing_messages,
     } = locals;
 
     let mut rng = rand::rng();
@@ -627,8 +620,8 @@ pub fn wander_behavior(
         let axis = FinalNormMoveDir(input_dir).normalize_to_axis_dir();
         if axis == IVec2::ZERO {
             if lod_level <= 1 && state.should_adjust_halt_facing_once() {
-                if let Ok(facing_dir) = blocking_tiles.cardinal_direction_query().get_mut(pred_ent) {
-                    let current_facing = *facing_dir;
+                if let Ok(current_facing) = blocking_tiles.cardinal_direction_query().get(pred_ent) {
+                    let current_facing = *current_facing;
                     let facing_gpos = GlobalTilePos(gpos.0 + current_facing.to_dir_vec());
                     if !can_phase && blocking_tiles.is_blocked_at_tiles_only(dim_ref, facing_gpos, pred_ent) {
                         let next_facing = pick_clear_cardinal_dir(
@@ -640,11 +633,8 @@ pub fn wander_behavior(
                             Some(current_facing),
                         )
                         .unwrap_or(current_facing);
-                        if next_facing != current_facing {
-                            if let Ok(mut facing_dir) = blocking_tiles.cardinal_direction_query().get_mut(pred_ent) {
-                                *facing_dir = next_facing;
-                                facing_messages.push(MirrorHolderStateForSprite(pred_ent));
-                            }
+                        if let Ok(mut facing_dir) = blocking_tiles.cardinal_direction_query().get_mut(pred_ent) {
+                            *facing_dir = next_facing;
                         }
                     }
                 }
@@ -686,18 +676,7 @@ pub fn wander_behavior(
             Some(GoTo::new(farthest_target, 0.0)),
             throttle,
         ));
-        nav_log.push(
-            pred_ent,
-            NAV_SYSTEM,
-            BeingNavDebugKind::Decision,
-            "Wander selected movement target",
-            vec![
-                BeingNavDebugField::new("dim", format!("{:?}", dim_ref.0)),
-                BeingNavDebugField::new("gpos", gpos),
-                BeingNavDebugField::new("target", farthest_target),
-                BeingNavDebugField::new("throttle", throttle),
-            ],
-        );
+
     }
     lod_secs_left_by_ent.retain(|being_ent, _| seen_wanderers.contains(being_ent));
     lod_accum_secs_by_ent.retain(|being_ent, _| seen_wanderers.contains(being_ent));
@@ -711,6 +690,4 @@ pub fn wander_behavior(
         );
     }
     writer.write_batch(messages.drain(..));
-    facing_writer.write_batch(facing_messages.drain(..));
-    nav_log.flush();
 }

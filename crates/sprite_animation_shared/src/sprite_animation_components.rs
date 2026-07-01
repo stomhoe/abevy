@@ -1,9 +1,8 @@
-use bevy::platform::collections::{HashMap, HashSet};
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use bevy_spritesheet_animation::prelude::{Animation, AnimationProgress, Spritesheet};
 use common::{common_components::*, };
 use serde::{Deserialize, Serialize};
-use crate::sprite_animation_messages::MirrorHolderStateForSprite;
 
 
 
@@ -26,10 +25,12 @@ pub struct AcAnimationProgresses(
 #[derive(Component, Debug, Deserialize, Serialize, Copy, Clone, Hash, PartialEq, Eq, Default)]
 pub struct MoveAnimActive(bool);
 impl MoveAnimActive {
-    pub fn set(&mut self, state: bool, being_ent: Entity, hash_set: &mut HashSet<MirrorHolderStateForSprite>) {
+    pub fn set(&mut self, state: bool) -> bool {
         if self.0 != state {
             self.0 = state;
-            hash_set.insert(MirrorHolderStateForSprite(being_ent));
+            true
+        } else {
+            false
         }
     }
     pub fn get(&self) -> bool {

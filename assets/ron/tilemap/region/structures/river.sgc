@@ -1,40 +1,40 @@
 sgc {
-    id = river
-    structure_id = river
-    weight = 1.0
-    priority = 1000.0
-    tags = [river]
-    whitelisted_tags = [river, dungeon]
-    max_being_count = 40
-    max_per_region = 1
+    id: river
+    structure_id: river
+    weight: 1.0
+    priority: 1000.0
+    tags: [river]
+    whitelisted_tags: [river, dungeon]
+    max_being_count: 40
+    max_per_region: 1
     args {
-        river_tile_id = ocean
-        river_gravel_tile_id = gravel
-        river_land_threshold = -0.05
-        river_min_island_area_chunks = 170
-        river_source_min_inlandness = 0.3
-        river_source_hash_stride = 11
-        river_source_mouth_min_distance = 400
-        river_source_min_separation_steps = 24
-        river_main_half_width_start = 2
-        river_main_half_width_end = 4
-        river_main_half_width_normal_dist = {
-            min = 3
-            max = 22
-            mean = 8
-            std_dev = 4.5
+        river_tile_id: saltwater
+        river_gravel_tile_id: gravel
+        river_land_threshold: -0.05
+        river_min_island_area_chunks: 170
+        river_source_min_inlandness: 0.3
+        river_source_hash_stride: 11
+        river_source_mouth_min_distance: 400
+        river_source_min_separation_steps: 24
+        river_main_half_width_start: 2
+        river_main_half_width_end: 4
+        river_main_half_width_normal_dist: {
+            min: 3
+            max: 22
+            mean: 8
+            std_dev: 4.5
         }
-        river_mouth_exempt_chunk_radius = 6
-        river_worm_length = 760
-        river_max_sources = 2
-        river_max_tributaries = 3
-        river_trace_neighbor_radius = 2
-        river_directional_inertia = 0.75
-        river_downhill_weight = 3.0
-        river_uphill_penalty = 2.5
-        river_curve_iterations = 2
-        river_curve_jitter_tiles = 3.0
-        river_max_low_sample_chunks = 16
-        disable_terrgen.floor_tile_id = true
+        river_mouth_exempt_chunk_radius: 6
+        river_worm_length: 760
+        river_max_sources: 2
+        river_max_tributaries: 3
+        river_trace_neighbor_radius: 2
+        river_directional_inertia: 0.75
+        river_downhill_weight: 3.0
+        river_uphill_penalty: 2.5
+        river_curve_iterations: 2
+        river_curve_jitter_tiles: 3.0
+        river_max_low_sample_chunks: 16
+        disable_terrgen.floor_tile_id: true
     }
 }

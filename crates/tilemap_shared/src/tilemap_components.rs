@@ -1,13 +1,12 @@
 use bevy::prelude::*;
-use bevy_replicon::prelude::*;
-use common::common_components::*;
+#[allow(unused_imports, )]
+use ::common::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct PreChunkDespawnSystems;
 
 #[derive(Component, Debug, Deserialize, Serialize, Clone, )]
-#[require(Replicated, Prefix::trunc("GlobalGenSettings"), AssetScoped, SelectedForHotReload)]
 pub struct GlobalGenSettings {
 
     pub seed: i32,

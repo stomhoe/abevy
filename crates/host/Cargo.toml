@@ -10,9 +10,12 @@ game_common = { path = "../agame_common" }
 multiplayer_shared = { path = "../multiplayer_shared" }
 #sprite_shared = { path = "../sprite_shared" }
 #tilemap = { path = "../tilemap" }
+time_shared = { path = "../time_shared" }
 faction = { path = "../faction" }
 faction_shared = { path = "../faction_shared" }
 player_shared = { path = "../player_shared" }
+debug_shared = { path = "../debug_shared" }
+being_shared = { path = "../being_shared" }
 #being = { path = "../being" }
 
 bevy = { workspace = true }

@@ -2,25 +2,44 @@ use std::collections::BTreeMap;
 
 use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::{egui, EguiContexts};
-use common::common_components::HashId;
+use bevy_replicon::prelude::{ClientState, ClientTriggerExt};
+use common::common_components::{HashId, SettingsEntity};
 
 use ::being_shared::{Being, LocalHumanControlled};
 use ::tilemap_shared::{Dimension, DimensionRef};
 
-use crate::debug_resources::DubugWindowsVisibility;
+use crate::debug_messages::ClientDebugSetBeingDimensionRequest;
+use debug_shared::{DebugUiConfig, DubugWindowsVisibility};
 
 fn dimension_label(name: Option<&Name>, dim_ref: DimensionRef) -> String {
     name.map(|name| name.to_string())
         .unwrap_or_else(|| format!("{:?}", dim_ref))
 }
 
+pub fn dimension_changer_button(ui: &mut egui::Ui, window_visible: &mut DubugWindowsVisibility) {
+    let mut button = egui::Button::new(egui::RichText::new("DimensionChanger").size(18.0));
+    if window_visible.dimension_changer {
+        button = button.fill(egui::Color32::from_rgb(100, 130, 180));
+    }
+    if ui.add(button).clicked() {
+        window_visible.dimension_changer = !window_visible.dimension_changer;
+    }
+}
+
 #[allow(unused_parens, )]
 pub fn dimension_changer_window(
     mut contexts: EguiContexts,
     mut window_visible: ResMut<DubugWindowsVisibility>,
+    debug_ui_config: Query<&DebugUiConfig, With<SettingsEntity>>,
+    client_state: Res<State<ClientState>>,
+    controlled_being_query: Query<Entity, (With<Being>, LocalHumanControlled, )>,
     mut controlled_dim_query: Query<&mut DimensionRef, (With<Being>, LocalHumanControlled, )>,
-    dimension_query: Query<(&HashId, Option<&Name>, ), (With<Dimension>, )>,
+    dimension_query: Query<(Entity, &HashId, Option<&Name>, ), (With<Dimension>, )>,
+    mut cmd: Commands,
 ) {
+    let Ok(debug_ui_config) = debug_ui_config.single() else {
+        return;
+    };
     if !window_visible.dimension_changer {
         return;
     }
@@ -43,7 +62,7 @@ pub fn dimension_changer_window(
 
     let current_dim_ref = *controlled_dim_ref;
     let mut dimensions_by_label: BTreeMap<String, DimensionRef> = BTreeMap::default();
-    for (hash_id, name, ) in dimension_query.iter() {
+    for (_, hash_id, name, ) in dimension_query.iter() {
         let dim_ref = DimensionRef(*hash_id);
         let label = format!("{} ({:?})", dimension_label(name, dim_ref), dim_ref);
         dimensions_by_label.insert(label, dim_ref);
@@ -69,7 +88,20 @@ pub fn dimension_changer_window(
                     let is_current = *dim_ref == current_dim_ref;
                     let response = ui.selectable_label(is_current, label);
                     if response.clicked() {
-                        *controlled_dim_ref = *dim_ref;
+                        if *client_state.get() == ClientState::Connected && debug_ui_config.client_debug {
+                            let Ok(controlled_being_entity) = controlled_being_query.single() else {
+                                continue;
+                            };
+                            if let Some((dimension_ent, _, _, )) = dimension_query.iter().find(|(_, hash_id, _, )| DimensionRef(**hash_id) == *dim_ref) {
+                                cmd.client_trigger(ClientDebugSetBeingDimensionRequest {
+                                    being_ent: controlled_being_entity,
+                                    dim_ref: *dim_ref,
+                                    dimension_ent,
+                                });
+                            }
+                        } else {
+                            *controlled_dim_ref = *dim_ref;
+                        }
                     }
                 }
             });

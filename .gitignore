@@ -9,7 +9,6 @@
 **/*.dylib
 **/bevy-inspector-egui
 # Cargo package files
-Cargo.lock
 Cargo.toml.orig
 backup.log
 
@@ -48,3 +47,6 @@ tools/__pycache__/
 .dual-graph-context/
 
 AC_TODO_**
+
+assets/sound/music**
+assets/sound/taunt**

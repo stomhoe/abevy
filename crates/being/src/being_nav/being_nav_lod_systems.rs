@@ -76,7 +76,7 @@ pub fn update_being_lod_levels_from_camera(
             &GlobalTilePos,
             Option<&mut LodLevel>,
         ),
-        (With<Being>, LocalAiControlled),
+        (LocalAiControlled, ),
     >,
     dim_map: Res<DimensionEntityMap>,
     mut cameras_by_dim: Local<EntityHashMap<Vec<GlobalTilePos>>>,

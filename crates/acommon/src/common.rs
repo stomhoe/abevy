@@ -1,6 +1,7 @@
 pub use crate::common_components::*;
 pub use crate::common_id_components::*;
 pub use crate::common_resources::*;
+pub use crate::common_events::*;
 pub use crate::common_states::*;
 pub use crate::common_tag_components::*;
 pub use crate::common_types::*;
@@ -60,6 +61,7 @@ pub fn plugin(app: &mut App) {
         .replicate::<RemoveReplicatedAfterClone>()
         .add_mapped_client_message::<RemoveReplicated>(Channel::Unordered)
         .add_message::<ImageSizeReady>()
+        .replicate::<SettingsEntity>()
 
 
 

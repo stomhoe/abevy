@@ -7,7 +7,7 @@ use tilemap::terrain::operation_list_components::OperationList;
 use tilemap::terrain::terrgen_resources::{TerrGenDebugGrid, TerrGenTileDebugInfo};
 use ::tilemap_shared::*;
 
-use crate::debug_resources::DubugWindowsVisibility;
+use debug_shared::DubugWindowsVisibility;
 
 const OUT_METRIC: HashId = HashId::hash("out");
 

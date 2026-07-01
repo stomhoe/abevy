@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use ::being_shared::*;
 #[allow(unused_imports, )]
 use bevy_replicon::prelude::*;
 use common::common_states::AssetLoading;
@@ -8,16 +9,15 @@ use bevy::{prelude::*, time::common_conditions::on_timer};
 
 use crate::pack::{pack_init_systems::*, pack_systems::*};
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct PackSystems;
+
 
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
     app
-        .add_plugins((being_shared::plugin_pack,))
+        .add_plugins((plugin_pack,))
         .add_systems(
             OnEnter(AssetLoading::SpawnReplicatedEntities),
-            ((init_packs, being_shared::map_pack_id_to_entity).chain()).in_set(PackSystems),
+            ((init_packs, map_pack_id_to_entity).chain()).in_set(PackSystems),
         )
         .add_systems(
             Update,

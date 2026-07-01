@@ -318,7 +318,7 @@ impl GridOfSgcs {
         self.0.get_value(gpos.to_chunkpos(), region_pos)
     }
 
-    pub fn render_grid(&self, ui: &mut egui::Ui, current_position: Option<ChunkPos>, region_pos: Option<RegionPos>) -> Option<Entity> {
+    pub fn render_grid(&self, ui: &mut egui::Ui, current_position: Option<ChunkPos>, region_pos: Option<RegionPos>) -> Option<(Option<Entity>, ChunkPos)> {
         let width = REGION_SIZE_IN_CHUNKS.x() as usize;
         let height = REGION_SIZE_IN_CHUNKS.y() as usize;
         let cell_side = (ui.available_width() / width.max(1) as f32).clamp(1.0, 28.0);
@@ -327,7 +327,7 @@ impl GridOfSgcs {
         let grid_size = egui::vec2(width as f32 * cell_w, height as f32 * cell_h);
         let (rect, response) = ui.allocate_exact_size(grid_size, egui::Sense::click());
         let painter = ui.painter_at(rect);
-        let mut clicked_entity: Option<Entity> = None;
+        let mut clicked_entity: Option<(Option<Entity>, ChunkPos)> = None;
         if response.clicked()
             && let Some(pointer_pos) = response.interact_pointer_pos()
             && rect.contains(pointer_pos)
@@ -336,9 +336,13 @@ impl GridOfSgcs {
             let display_y = ((pointer_pos.y - rect.top()) / cell_h).floor() as usize;
             if cell_x < width && display_y < height {
                 let grid_y = (height - 1) - display_y;
-                if let Some(cell) = self.0.cell_opt(cell_x, grid_y) && !cell.is_empty() {
-                    clicked_entity = Some(cell[0]);
-                }
+                let local_chunk_pos = ChunkPos::new(cell_x as i32, grid_y as i32);
+                let clicked_chunk_pos = if let Some(region_pos) = region_pos {
+                    region_pos.to_chunkpos() + local_chunk_pos
+                } else {
+                    local_chunk_pos
+                };
+                clicked_entity = Some((self.0.cell_opt(cell_x, grid_y).and_then(|cell| cell.first().copied()), clicked_chunk_pos));
             }
         }
 

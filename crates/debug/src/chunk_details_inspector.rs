@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_inspector_egui::bevy_egui::egui;
 use bevy_inspector_egui::bevy_inspector;
 
-use crate::debug_resources::{DebugSelectedEntities, DubugWindowsVisibility};
+use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility};
 use ::tilemap_shared::*;
 
 #[allow(unused_parens)]

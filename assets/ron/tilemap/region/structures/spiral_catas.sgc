@@ -1,41 +1,42 @@
 sgc {
-    id = spiral_catas
-    structure_id = spiral
-    weight = 1.0
-    tags = [dungeon]
-    whitelisted_tags = [dungeon, river]
-    max_being_count = 40
+    id: spiral_catas
+    structure_id: spiral
+    weight: 1.0
+    tags: [dungeon]
+    whitelisted_tags: [dungeon, river]
+    max_being_count: 40
     args {
-        floor_tile_id = ducatas
-        wall_tile_id = nw
-        lava_tile_id = lava
-        claim_square_min_side_length = 6
-        claim_square_max_side_length = 10
-        claim_square_normal_mean = 19.0
-        claim_square_normal_std_dev = 3.0
-        spiral_corridor_width_min = 3
-        spiral_corridor_width_max = 5
-        spiral_room_radius = 6
-        external_doorway_frequency = 0.02
-        external_doorway_width_min = 1
-        external_doorway_width_max = 2
-        external_doorway_wall_axis_preference = vertical
-        room_spawn.center_circle = [
-            { source_id = dragon, override_being_count = 1, pack_spawn_radius = 0, weight = 2.0 },
-            { source_id = golem_infernal, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+        floor_tile_id: ducatas
+        wall_tile_id: nw
+        lava_tile_id: lava
+        claim_square_min_side_length: 6
+        claim_square_max_side_length: 10
+        claim_square_normal_mean: 19.0
+        claim_square_normal_std_dev: 3.0
+        spiral_corridor_width_min: 3
+        spiral_corridor_width_max: 5
+        spiral_room_radius: 6
+        external_doorway_frequency: 0.02
+        external_doorway_width_min: 1
+        external_doorway_width_max: 2
+        external_doorway_wall_axis_preference: vertical
+        room_spawn.center_circle: [
+            dragon, override_count: 1, pack_spawn_radius: 0, weight: 1.0,
+            golem_infernal, override_count: 1, pack_spawn_radius: 0, weight: 1.0,
         ]
-        room_spawn.arm_inner = [
-            { source_id = demon, pack_spawn_radius = 0, weight = 2.0 },
-            { source_id = lich, override_being_count = 1, pack_spawn_radius = 0, weight = 1.25 },
-            { source_id = golem_gold, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
-            { source_id = medusa, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
+        room_spawn.arm_inner: [
+            demon, pack_spawn_radius: 0, weight: 2.0,
+            lich, override_count: 1, pack_spawn_radius: 0, weight: 1.25,
+            golem_gold, override_count: 1, pack_spawn_radius: 0, weight: 0.5,
+            medusa, override_count: 1, pack_spawn_radius: 0, weight: 0.75,
+            basilisk, pack_spawn_radius: 0, weight: 2,
         ]
-        room_spawn.arm_outer = [
-            { source_id = skeleton, pack_spawn_radius = 0, weight = 2.5 },
-            { source_id = goblin, pack_spawn_radius = 0, weight = 2.0 },
-            { source_id = ogre, pack_spawn_radius = 0, weight = 1.25 },
-            { source_id = ghost, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+        room_spawn.arm_outer: [
+            skeleton, pack_spawn_radius: 0, weight: 2.5,
+            goblin, pack_spawn_radius: 0, weight: 2.0,
+            ogre, pack_spawn_radius: 0, weight: 1.25,
+            ghost, override_count: 1, pack_spawn_radius: 0, weight: 1.0,
         ]
-        disable_terrgen.floor_tile_id = true
+        disable_terrgen.floor_tile_id: true
     }
 }

@@ -1,3 +1,4 @@
+use being_shared::PackSystems;
 use bevy::prelude::*;
 use bevy_replicon::prelude::AppRuleExt;
 use common::common_states::*;
@@ -61,7 +62,7 @@ pub fn plugin(app: &mut App) {
         ).chain().in_set(RegioningSystems)
     )
     .configure_sets(OnEnter(AssetLoading::SpawnReplicatedEntities),
-        (RegioningSystems.after(TerrainGenSystems))
+        (RegioningSystems.after(TerrainGenSystems).after(PackSystems))
     )
     .add_observer(on_region_despawn_remove_from_loaded_regions)
 

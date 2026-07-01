@@ -6,7 +6,7 @@ use common::{
     common_states::{AssetLoading}
 };
 use game_common::{
-    StatefulSessionSystems, game_common::GameplaySystems,
+    StatefulSessionSystems, Templ, game_common::GameplaySystems
 };
 use ::tilemap_shared::*;
 
@@ -95,10 +95,9 @@ pub fn plugin(app: &mut App) {
     .replicate_once::<GroundingBased>()
     .replicate_once::<ExcludedFromNormalSizeModifier>()
 
-    .replicate_filtered::<ChildOf, With<SpriteConfig>>()
     .replicate_filtered::<Transform, With<SpriteConfig>>()
 
-    .replicate_filtered::<ChildOf, With<BaseHolderRef>>()
+    .replicate_filtered::<ChildOf, (With<BaseHolderRef>, Without<Templ>)>()
     .register_type::<YSortOrigin>()
 
     .add_message::<SpriteChangedScaleOrOffsetOrParent>()

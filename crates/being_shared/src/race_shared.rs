@@ -87,6 +87,7 @@ pub struct RaceSeri {
     pub biome_affinity: HashMap<String, f32>,
     pub whitelisted_spawn_tile_tags: HashSet<String>,
     pub blacklisted_spawn_tile_tags: HashSet<String>,
+
     pub spawn_pack_entity: bool,
 }
 

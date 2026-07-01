@@ -2,7 +2,7 @@ use bevy::{
     platform::collections::{HashMap, HashSet},
     prelude::*,
 };
-use common::{common_components::HashId, log_targets::RIVER_SYSTEM};
+use common::{common_components::HashId, log_targets::RIVER_BUILD_SYSTEM};
 use ::tilemap_shared::*;
 
 use tilemap::tile::tile_resources::{TileEntityMap, TileRef};
@@ -30,14 +30,14 @@ pub fn river_structure_building_system(
     for order in reader.read() {
         total_orders = total_orders.saturating_add(1);
         let Ok(cfg) = structured_gens.get(order.structured_gen_cfg_ent) else {
-            error!(target: RIVER_SYSTEM, "Order {}: missing StructuredGenConfig {:?}", order.i, order.structured_gen_cfg_ent);
+            error!(target: RIVER_BUILD_SYSTEM, "Order {}: missing StructuredGenConfig {:?}", order.i, order.structured_gen_cfg_ent);
             continue;
         };
         if cfg.structure_hash_id() != RIVER {
             continue;
         }
         river_orders = river_orders.saturating_add(1);
-        info!(target: RIVER_SYSTEM, "Order {}: river build start for region {:?} dim {:?}, claimed chunks={}", order.i, order.region_pos, order.dimension_ref, order.chunks_pos.len());
+        info!(target: RIVER_BUILD_SYSTEM, "Order {}: river build start for region {:?} dim {:?}, claimed chunks={}", order.i, order.region_pos, order.dimension_ref, order.chunks_pos.len());
 
         let mut compliance = StructureBuildCompliance {
             i: order.i,
@@ -54,7 +54,7 @@ pub fn river_structure_building_system(
             .map(|s| HashId::hash(s))
             .unwrap_or_else(|| HashId::hash("blue"));
         let Ok(_river_tile_ent) = tiles_map.0.get_cloned(river_tile_id) else {
-            error!(target: RIVER_SYSTEM, "Missing river_tile_id {:?} for cfg {:?}", river_tile_id, order.structured_gen_cfg_ent);
+            error!(target: RIVER_BUILD_SYSTEM, "CRITICAL!!!!: MISSING river_tile_id {:?} for cfg {:?}", river_tile_id, order.structured_gen_cfg_ent);
             compliances_to_emit.push(compliance);
             continue;
         };
@@ -68,12 +68,12 @@ pub fn river_structure_building_system(
         let gravel_tile_ref = tiles_map.0.get_cloned(gravel_tile_id).ok().map(|_| TileRef(gravel_tile_id));
 
         let Some(&region_ent) = loaded_regions.0.get(&(order.dimension_ref, order.region_pos)) else {
-            error!(target: RIVER_SYSTEM, "Order {}: no loaded region entity for region {:?} dim {:?}", order.i, order.region_pos, order.dimension_ref);
+            error!(target: RIVER_BUILD_SYSTEM, "Order {}: no loaded region entity for region {:?} dim {:?}", order.i, order.region_pos, order.dimension_ref);
             compliances_to_emit.push(compliance);
             continue;
         };
         let Ok(plan) = region_plans.get(region_ent) else {
-            error!(target: RIVER_SYSTEM, "Order {}: no cached RiverRegionPlan for region {:?} dim {:?}", order.i, order.region_pos, order.dimension_ref);
+            error!(target: RIVER_BUILD_SYSTEM, "Order {}: no cached RiverRegionPlan for region {:?} dim {:?}", order.i, order.region_pos, order.dimension_ref);
             compliances_to_emit.push(compliance);
             continue;
         };
@@ -118,9 +118,9 @@ pub fn river_structure_building_system(
         emitted_chunks_total = emitted_chunks_total.saturating_add(emitted_chunk_count);
         emitted_tiles_total = emitted_tiles_total.saturating_add(emitted_tile_count);
         if emitted_chunk_count == 0 {
-            error!(target: RIVER_SYSTEM, "Order {}: generated {} river tiles and {} gravel tiles but emitted 0 chunks (claimed chunks={}, outside_claimed_river_tiles={}, outside_claimed_gravel_tiles={})", order.i, generated_count, gravel_generated_count, claimed_chunks.len(), tiles_outside_claimed, gravel_tiles_outside_claimed);
+            error!(target: RIVER_BUILD_SYSTEM, "Order {}: generated {} river tiles and {} gravel tiles but emitted 0 chunks (claimed chunks={}, outside_claimed_river_tiles={}, outside_claimed_gravel_tiles={})", order.i, generated_count, gravel_generated_count, claimed_chunks.len(), tiles_outside_claimed, gravel_tiles_outside_claimed);
         } else {
-            info!(target: RIVER_SYSTEM, "Order {}: emitted {} chunks and {} river tiles plus {} gravel tiles (generated before clip: river={}, gravel={}, outside_claimed_river_tiles={}, outside_claimed_gravel_tiles={})", order.i, emitted_chunk_count, emitted_river_tile_count, emitted_gravel_tile_count, generated_count, gravel_generated_count, tiles_outside_claimed, gravel_tiles_outside_claimed);
+            info!(target: RIVER_BUILD_SYSTEM, "Order {}: emitted {} chunks and {} river tiles plus {} gravel tiles (generated before clip: river={}, gravel={}, outside_claimed_river_tiles={}, outside_claimed_gravel_tiles={})", order.i, emitted_chunk_count, emitted_river_tile_count, emitted_gravel_tile_count, generated_count, gravel_generated_count, tiles_outside_claimed, gravel_tiles_outside_claimed);
         }
         compliance.chunk_tiles = chunks.into_iter().flat_map(|(_, tiles)| tiles).collect();
         compliance.terrgen_disabled_gpos_for_chunks = terrgen_disabled_gpos_for_chunks;
@@ -128,7 +128,7 @@ pub fn river_structure_building_system(
         compliances_to_emit.push(compliance);
     }
     if river_orders > 0 {
-        info!(target: RIVER_SYSTEM, "river build summary: total_orders={}, river_orders={}, generated_tiles_total={}, emitted_chunks_total={}, emitted_tiles_total={}, blocked_gpos_total={}", total_orders, river_orders, generated_tiles_total, emitted_chunks_total, emitted_tiles_total, blocked_gpos_total);
+        info!(target: RIVER_BUILD_SYSTEM, "river build summary: total_orders={}, river_orders={}, generated_tiles_total={}, emitted_chunks_total={}, emitted_tiles_total={}, blocked_gpos_total={}", total_orders, river_orders, generated_tiles_total, emitted_chunks_total, emitted_tiles_total, blocked_gpos_total);
     }
     writer.write_batch(compliances_to_emit);
 }

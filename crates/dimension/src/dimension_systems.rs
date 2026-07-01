@@ -127,9 +127,12 @@ pub fn add_childof_for_enti_with_dimension_rer(
 #[allow(unused_parens, )]
 pub fn advance_daylight(
     time: Res<Time>,
-    sim_timescale: Res<SimTimeScale>,
+    sim_timescale_query: Query<&SimTimeScale, With<SettingsEntity>>,
     mut daylight_query: Query<(&DimensionDaylightSeri, &mut DimensionDaylightRuntime)>,
 ) {
+    let Ok(sim_timescale) = sim_timescale_query.single() else {
+        return;
+    };
     let daylight_delta_minutes = time.delta_secs() * sim_timescale.0 / 60.0;
 
     for (daylight, mut daylight_runtime) in daylight_query.iter_mut() {

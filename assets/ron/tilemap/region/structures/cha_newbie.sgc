@@ -1,83 +1,87 @@
 sgc {
-    id = cha_newbie
-    structure_id = chamberscorridors
-    weight = 1.0
-    tags = [dungeon]
-    whitelisted_tags = [dungeon, river]
-    max_being_count = 40
+    id: cha_newbie
+    structure_id: chamberscorridors
+    weight: 1.0
+    tags: [dungeon]
+    whitelisted_tags: [dungeon, river]
+    max_being_count: 40
     args {
-        floor_tile_id = dunewbie
-        floor_b_tile_id = dublack
-        wall_tile_id = nw
-        lava_tile_id = lava
-        rectangle_weight = 1.0
-        ellipse_weight = 1.0
-        trapezoid_weight = 1.0
-        regular_polygon_weight = 1.0
-        pentacle_weight = 0.5
-        random_chamber_weight = 2.0
-        room_size.pentacle.width.min = 12
-        room_size.pentacle.height.min = 12
-        room_size.random_chamber.width.min = 8
-        room_size.random_chamber.height.min = 8
-        room_same_shape_chance = 0.25
-        room_same_shape_weight_rectangle = 1.0
-        room_same_shape_weight_ellipse = 1.0
-        room_same_shape_weight_trapezoid = 1.0
-        room_same_shape_weight_regular_polygon = 1.0
-        room_same_shape_weight_pentacle = 0.0
-        room_polygon_min_sides = 4
-        room_polygon_max_sides = 12
-        room_polygon_rotation_min_deg = 0.0
-        room_polygon_rotation_max_deg = 360.0
-        corridor_radius = 2
-        corridor_wiggle_chance = 0.05
-        corridor_wiggle_step_max = 1
-        corridor_detour_chance = 0.0
-        corridor_detour_max_offset = 0
-        corridor_dead_end_chance = 0.10
-        external_doorway_frequency = 0.018
-        external_doorway_width_min = 1
-        external_doorway_width_max = 2
-        external_doorway_wall_axis_preference = horizontal
-        room_spawn.rectangle = [
-            { source_id = goblin, override_being_count = 1, pack_spawn_radius = 0, weight = 3.0 },
-            { source_id = skeleton, override_being_count = 1, pack_spawn_radius = 0, weight = 2.5 },
-            { source_id = golem_bronze, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
-            { source_id = ghost, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+        floor_tile_id: dunewbie
+        floor_b_tile_id: dublack
+        wall_tile_id: nw
+        lava_tile_id: lava
+        rectangle_weight: 1.0
+        ellipse_weight: 1.0
+        trapezoid_weight: 1.0
+        regular_polygon_weight: 1.0
+        pentacle_weight: 0.5
+        random_chamber_weight: 2.0
+        room_size.pentacle.width.min: 12
+        room_size.pentacle.height.min: 12
+        room_size.random_chamber.width.min: 8
+        room_size.random_chamber.height.min: 8
+        room_same_shape_chance: 0.25
+        room_same_shape_weight_rectangle: 1.0
+        room_same_shape_weight_ellipse: 1.0
+        room_same_shape_weight_trapezoid: 1.0
+        room_same_shape_weight_regular_polygon: 1.0
+        room_same_shape_weight_pentacle: 0.0
+        room_polygon_min_sides: 4
+        room_polygon_max_sides: 12
+        room_polygon_rotation_min_deg: 0.0
+        room_polygon_rotation_max_deg: 360.0
+        corridor_radius: 2
+        corridor_wiggle_chance: 0.05
+        corridor_wiggle_step_max: 1
+        corridor_detour_chance: 0.0
+        corridor_detour_max_offset: 0
+        corridor_dead_end_chance: 0.10
+        external_doorway_frequency: 0.018
+        external_doorway_width_min: 1
+        external_doorway_width_max: 2
+        external_doorway_wall_axis_preference: horizontal
+        room_spawn.rectangle: [
+            goblin, override_count: 1, pack_spawn_radius: 0, weight: 3.0,
+            skeleton, override_count: 1, pack_spawn_radius: 0, weight: 2.5,
+            golem_bronze, override_count: 1, pack_spawn_radius: 0, weight: 0.75,
+            basilisk, pack_spawn_radius: 0, weight: 2,
         ]
-        room_spawn.ellipse = [
-            { source_id = medusa, override_being_count = 1, pack_spawn_radius = 0, weight = 2.0 },
-            { source_id = goblin, override_being_count = 1, pack_spawn_radius = 0, weight = 2.0 },
-            { source_id = skeleton, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
+        room_spawn.ellipse: [
+            medusa, override_count: 1, pack_spawn_radius: 0, weight: 2.0,
+            goblin, override_count: 1, pack_spawn_radius: 0, weight: 2.0,
+            skeleton, override_count: 1, pack_spawn_radius: 0, weight: 1.5,
+            basilisk, pack_spawn_radius: 0, weight: 2,
         ]
-        room_spawn.trapezoid = [
-            { source_id = ogre, override_being_count = 1, pack_spawn_radius = 0, weight = 2.0 },
-            { source_id = spawn, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
-            { source_id = golem_gold, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
+        room_spawn.trapezoid: [
+            ogre, override_count: 1, pack_spawn_radius: 0, weight: 2.0,
+            spawn, override_count: 1, pack_spawn_radius: 0, weight: 1.0,
+            golem_gold, override_count: 1, pack_spawn_radius: 0, weight: 0.75,
+            basilisk, pack_spawn_radius: 0, weight: 2,
         ]
-        room_spawn.regular_polygon = [
-            { source_id = beholder, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
-            { source_id = golem, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
-            { source_id = cyclops, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+        room_spawn.regular_polygon: [
+            beholder, override_count: 1, pack_spawn_radius: 0, weight: 1.5,
+            golem, override_count: 1, pack_spawn_radius: 0, weight: 1.5,
+            cyclops, override_count: 1, pack_spawn_radius: 0, weight: 1.0,
+            basilisk, pack_spawn_radius: 0, weight: 2,
         ]
-        room_spawn.pentacle = [
-            { source_id = beholder, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
-            { source_id = golem_infernal, pack_spawn_radius = 0, weight = 0.25 },
-            { source_id = demon, pack_spawn_radius = 0, weight = 0.25 },
+        room_spawn.pentacle: [
+            beholder, override_count: 1, pack_spawn_radius: 0, weight: 1.5,
+            golem_infernal, pack_spawn_radius: 0, weight: 0.25,
+            demon, pack_spawn_radius: 0, weight: 0.25,
         ]
-        room_spawn.random_chamber = [
-            { source_id = goblin, pack_spawn_radius = 0, weight = 3.0 },
-            { source_id = skeleton, pack_spawn_radius = 0, weight = 2.5 },
-            { source_id = medusa, override_being_count = 1, pack_spawn_radius = 0, weight = 1.25 },
-            { source_id = ghost, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
-            { source_id = spawn, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
-            { source_id = golem, override_being_count = 1, pack_spawn_radius = 0, weight = 0.75 },
+        room_spawn.random_chamber: [
+            goblin, pack_spawn_radius: 0, weight: 3.0,
+            skeleton, pack_spawn_radius: 0, weight: 2.5,
+            medusa, override_count: 1, pack_spawn_radius: 0, weight: 1.25,
+            basilisk, pack_spawn_radius: 0, weight: 2,
+            spawn, override_count: 1, pack_spawn_radius: 0, weight: 0.75,
+            golem, override_count: 1, pack_spawn_radius: 0, weight: 0.75,
         ]
-        room_spawn.corridor = [
-            { source_id = goblin, override_being_count = 1, pack_spawn_radius = 0, weight = 1.5 },
-            { source_id = skeleton, override_being_count = 1, pack_spawn_radius = 0, weight = 1.0 },
+        room_spawn.corridor: [
+            goblin, override_count: 1, pack_spawn_radius: 0, weight: 1.5,
+            skeleton, override_count: 1, pack_spawn_radius: 0, weight: 1.0,
+            basilisk, pack_spawn_radius: 0, weight: 2,
         ]
-        disable_terrgen.floor_tile_id = true
+        disable_terrgen.floor_tile_id: true
     }
 }

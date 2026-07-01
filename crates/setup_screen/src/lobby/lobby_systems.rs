@@ -5,7 +5,7 @@ use bevy::{prelude::*};
 
 use common::{common_components::StrId, common_states::*};
 use game_common::game_common_states::GameSetupScreen;
-use multiplayer_shared::multiplayer_events::{HostStartedGameplay, AttemptHostServer};
+use multiplayer_shared::{multiplayer_events::{HostStartedGameplay, AttemptHostServer}, multiplayer_resources::PendingGameStart};
 use player_shared::{player_components::*, player_resources::PlayerData};
 use crate::lobby::lobby_components::*;
 
@@ -33,6 +33,7 @@ pub fn remove_player_name_ui_entry(mut commands: Commands, query: Query<(Entity)
 pub fn lobby_button_interaction(
     mut cmd: Commands,
     interaction_query: Query<(&Interaction, &LobbyButtonId), Changed<Interaction>,>,
+    asset_loading_state: Res<State<AssetLoading>>,
     mut game_setup_screen: ResMut<NextState<GameSetupScreen>>,
     mut app_state: ResMut<NextState<AppState>>,
     mut game_phase:  ResMut<NextState<GamePhase>>,
@@ -49,11 +50,16 @@ pub fn lobby_button_interaction(
                 LobbyButtonId::Start =>  {
                     //todo chequear si todos están listos
                     info!("Starting game");
-                    game_phase.set(GamePhase::ActiveGame);
-                    cmd.server_trigger(ToClients {
-                        mode: SendMode::Broadcast,
-                        message: HostStartedGameplay,
-                    });
+                    if *asset_loading_state.get() == AssetLoading::Finished {
+                        game_phase.set(GamePhase::ActiveGame);
+                        cmd.server_trigger(ToClients {
+                            targets: SendTargets::All,
+                            message: HostStartedGameplay,
+                        });
+                    } else {
+                        cmd.insert_resource(PendingGameStart);
+                        info!("Deferring game start until asset loading finishes");
+                    }
                 },
                 LobbyButtonId::CreateCharacter => {
                     game_setup_screen.set(GameSetupScreen::CharacterCreation);
@@ -67,22 +73,14 @@ pub fn lobby_button_interaction(
 
 pub fn on_player_disconnect(
     trigger: On<Despawn, Player>,
-    //state:
-    //created_character_query: Query<(&CreatedCharacter, ), ()>,
     players: Query<(&StrId, &LobbyPlayerUiNode), With<Player>>,
     mut commands: Commands)
 {
-    //let created_character = created_character_query.get(trigger.event());
-
     if let Ok((player_name, player_name_entry)) = players.get(trigger.entity) {
         info!("Client `{}` disconnected", player_name);
         commands.entity(player_name_entry.0).try_despawn();
-
-        //TODO MARCAR SU BEING PARA DESPAWN PARA CUANDO EMPEIZA LA PARTIDA
-        //ASI SI SE REUNE PUEDE RECUPERARLO EN SU ESTADO ORIGINAL
     } else {
         info!("Failed to get player name for disconnected client: {}", trigger.entity);
-        return;
     }
 
 }
