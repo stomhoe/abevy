@@ -129,7 +129,7 @@ pub fn copy_client_move_input_to_controlled_beings(
     }
     for (actions, computed_beings) in player_query.iter() {
         found_player = true;
-        let Some(move_action) = move_action_query.iter_many(actions).next() else {
+        let Some(Ok(move_action)) = move_action_query.iter_many(actions).next() else {
             error_once!(
                 target: MOVEMENT_SYSTEM,
                 "copy_client_move_input_to_controlled_beings: Mine+Player entity missing linked Action<BeingMoveAction>"

@@ -1,8 +1,7 @@
 use ::being_shared::*;
 use ::tilemap_shared::*;
-use bevy::{ecs::entity::{EntityHashMap, EntityHashSet}, prelude::*};
-use common::log_targets::BEING_MELEE_SYSTEMS;
-use game_common::{Dead, game_common_components::TemplEntiRef};
+use bevy::{ecs::entity::EntityHashMap, prelude::*};
+use game_common::Dead;
 use std::time::Duration;
 
 use crate::{being_interaction_zone_helper::resolve_being_interaction_zone, being_messages::*};

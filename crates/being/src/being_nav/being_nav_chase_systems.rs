@@ -373,6 +373,7 @@ fn choose_shared_chase_goal(
     flow_field: &SharedChaseFlowField,
     cache: &AiNavGridCache,
     chaser_ent: Entity,
+    chaser_pos: GlobalTilePos,
     reserved_goal: Option<GlobalTilePos>,
     reserved_goals: &HashMap<GlobalTilePos, Entity>,
 ) -> Option<GlobalTilePos> {
@@ -383,13 +384,17 @@ fn choose_shared_chase_goal(
         let Some(local) = cache.local_from_gpos(slot_tile) else {
             return false;
         };
-        !cache.occupied.contains_key(&local)
+        if cache.occupied.get(&local).is_some_and(|&occupant| occupant != chaser_ent) { return false; }
+        let Some((start, goal)) = cache.local_path_points(chaser_pos, slot_tile) else { return false; };
+        let mut req = PathfindArgs::new(start, goal).astar();
+        cache.grid.pathfind(&mut req).is_some_and(|path| !path.is_partial())
     };
     let open_goal_tile = flow_field
         .goal_tiles
         .iter()
         .copied()
-        .find(|&goal_tile| is_open_slot(goal_tile));
+        .filter(|&goal_tile| is_open_slot(goal_tile))
+        .min_by_key(|goal| chaser_pos.taxicab_tile_distance(*goal) as u32);
 
     if let Some(reserved_goal) = reserved_goal.filter(|goal| flow_field.is_slot_tile(*goal)) {
         let reserved_owned_by_other = reserved_goals
@@ -400,7 +405,11 @@ fn choose_shared_chase_goal(
                 .local_from_gpos(reserved_goal)
                 .and_then(|local| cache.occupied.get(&local).copied())
                 .is_some_and(|occupant| occupant != chaser_ent);
-            if !reserved_blocked_by_other {
+            let reserved_reachable = cache.local_path_points(chaser_pos, reserved_goal).is_some_and(|(start, goal)| {
+                let mut req = PathfindArgs::new(start, goal).astar();
+                cache.grid.pathfind(&mut req).is_some_and(|path| !path.is_partial())
+            });
+            if !reserved_blocked_by_other && reserved_reachable {
                 let reserved_is_goal_tile = flow_field.is_goal_tile(reserved_goal);
                 if reserved_is_goal_tile || open_goal_tile.is_none() {
                     return Some(reserved_goal);
@@ -437,6 +446,7 @@ fn rebuild_shared_chase_plan_for_job(
         flow_field,
         cache,
         job.chaser_ent,
+        job.chaser_gpos,
         plan.reserved_shared_goal,
         reserved_goals,
     ) else {

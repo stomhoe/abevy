@@ -166,7 +166,7 @@ pub fn refresh_terrbl_tilemaps(
                 };
                 trace!(target: TILEMAP_SYSTEM, "terrbl debug: refreshed marked material for tmap {:?}", tmap_ent);
                 let curr_handle = (**material_handle).clone();
-                if let Some(curr_mat) = params.texture_overlay_mat.get_mut(&curr_handle) {
+                if let Some(mut curr_mat) = params.texture_overlay_mat.get_mut(&curr_handle) {
                     *curr_mat = material;
                 } else {
                     **material_handle = params.texture_overlay_mat.add(material);

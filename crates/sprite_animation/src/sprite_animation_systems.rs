@@ -98,7 +98,8 @@ pub fn switch_or_readjust_sprite_animation(
     sprite_entis_to_iter.extend(changed_entities_iter);
     sprite_entis_to_iter.extend(cfg_refs_iter.map(|base_holder| base_holder.base));
 
-    for (held_sprites, direction, moving, grounding) in base.iter_many(sprite_entis_to_iter.drain()) {
+    for result in base.iter_many(sprite_entis_to_iter.drain()) {
+        let Ok((held_sprites, direction, moving, grounding)) = result else { continue };
         for held_sprite in held_sprites.iter() {
             let held_sprite_strid = strid_query.get(held_sprite).ok().cloned().unwrap_or_default();
             let Ok((ent, base_holder, sprite_cfg_ref)) = sprite_entities_query.get(held_sprite)
@@ -228,6 +229,7 @@ pub fn switch_or_readjust_sprite_animation(
                 custom_size,
                 rect,
                 image_mode,
+                alpha_mode,
             } = new_sprite;
             let animation = anim_handle.0.clone();
             let mut progress = AnimationProgress {
@@ -292,6 +294,7 @@ pub fn switch_or_readjust_sprite_animation(
                     sprite_comp.custom_size = custom_size;
                     sprite_comp.rect = rect;
                     sprite_comp.image_mode = image_mode;
+                    sprite_comp.alpha_mode = alpha_mode;
                 } else {
                     cmd.entity(ent).try_insert(Sprite {
                         image,
@@ -302,6 +305,7 @@ pub fn switch_or_readjust_sprite_animation(
                         custom_size,
                         rect,
                         image_mode,
+                        alpha_mode,
                     });
                 }
 
@@ -405,7 +409,8 @@ pub fn msg_movestate_update_to_clients_for_sprite_animation(
     entis_to_iter.extend(changed_entities_iter);
     entis_to_iter.extend(cfg_refs_iter.map(|base_holder| base_holder.base));
 
-    for (being_ent, &moving, grounding, direction, id) in bases_query.iter_many(entis_to_iter.iter()) {
+    for result in bases_query.iter_many(entis_to_iter.iter()) {
+        let Ok((being_ent, &moving, grounding, direction, id)) = result else { continue };
         let moving = moving.get();
         let event_data = SyncMoveState {being_ent, moving, grounding: grounding.cloned(), direction: direction.cloned()};
         if let Ok(controller) = controller.get(being_ent) {

@@ -10,7 +10,6 @@ use crate::terrain::{
     terrgen_components::FailedSearchOplistFilterHolder,
     terrgen_messages::PendingOp,
 };
-use ::tilemap_shared::*;
 use crate::tile::tile_resources::*;
 
 #[derive(Clone)]

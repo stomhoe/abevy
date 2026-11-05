@@ -12,7 +12,6 @@ faction_shared = { path = "../faction_shared" }
 
 tilemap = { path = "../tilemap" }
 camera = { path = "../camera" }
-movement = { path = "../movement" }
 ac_input = { path = "../ac_input" }
 being_shared = { path = "../being_shared" }
 item_shared = { path = "../item_shared" }

@@ -4,7 +4,7 @@ use bevy::math::U16Vec2;
 #[allow(unused_imports)] use bevy::prelude::*;
 use bevy_asset_loader::dynamic_asset::{DynamicAssetCollection, DynamicAssets};
 use bevy_asset_loader::standard_dynamic_asset::StandardDynamicAsset;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
 
@@ -234,10 +234,14 @@ fn infer_dynamic_key_from_path(path: &str, rules: &[SeriAutoRoutingRule]) -> Opt
 
 fn load_single_seri_manifest(path: &str) -> Result<HashMap<String, Vec<StandardDynamicAsset>>> {
     let full_path = format!("assets/{path}");
-    let content = std::fs::read_to_string(&full_path)
-        .with_context(|| format!("Failed reading seri manifest at '{path}'"))?;
-    ron::from_str::<HashMap<String, Vec<StandardDynamicAsset>>>(&content)
-        .with_context(|| format!("Failed parsing seri manifest RON at '{path}'"))
+    let content = anyhow::Context::with_context(
+        std::fs::read_to_string(&full_path),
+        || format!("Failed reading seri manifest at '{path}'"),
+    )?;
+    anyhow::Context::with_context(
+        ron::from_str::<HashMap<String, Vec<StandardDynamicAsset>>>(&content),
+        || format!("Failed parsing seri manifest RON at '{path}'"),
+    )
 }
 
 fn find_seri_manifest_paths() -> Vec<String> {

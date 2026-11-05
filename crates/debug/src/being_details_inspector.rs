@@ -1548,7 +1548,7 @@ pub fn being_details_inspector(world: &mut World) {
                 }
                 if is_human_input {
                     if let Some(player_actions) = player_actions_query.iter(world).next() {
-                        if let Some(player_move_action) =
+                        if let Some(Ok(player_move_action)) =
                             player_move_action_query.iter_many(world, player_actions).next()
                         {
                             ui.label(format!(

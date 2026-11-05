@@ -691,7 +691,7 @@ pub fn despawn_empty_regions(
 }
 #[allow(unused_parens)]
 pub fn on_region_despawn_remove_from_loaded_regions(
-    trig: On<Despawn, Region>,
+    trig: On<Despawn<Region>>,
     region_query: Query<(&DimensionRef, &RegionPos), (common::AnyDisabling)>,
     mut loaded_regions: ResMut<LoadedRegions>,
     mut prioritized_per_region: ResMut<PrioritizedPerRegion>,

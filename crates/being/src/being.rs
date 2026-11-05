@@ -67,7 +67,7 @@ pub fn plugin(app: &mut App) {
         (
             add_activates_chunks,
             activate_beings_in_first_time_loaded_chunks.run_if(on_message::<ChunkTerrainBuilt>),
-            sync_being_chunk_ranges_to_resource.run_if(resource_changed::<LoadChunksAround>),
+            sync_being_chunk_ranges_to_resource.run_if(resource_changed::<DefaultLoadChunksAround>),
             assign_uncomputed_beings_to_host,
             sync_group_members_from_member_of,
             assign_member_ranks_on_joined_squad,

@@ -1,8 +1,7 @@
 use bevy::prelude::*;
-use bevy_enhanced_input::prelude::*;
 use bevy_lit::prelude::*;
+use bevy_enhanced_input::prelude::*;
 use bevy_kira_audio::SpatialAudioReceiver;
-use common::log_targets::LIGHTING_INIT;
 use ac_input::ac_input_actions::CameraZoomAction;
 use ::tilemap_shared::*;
 
@@ -11,22 +10,13 @@ use crate::lighting_systems::Sun;
 
 #[allow(unused_parens, )]
 pub fn spawn_camera(mut commands: Commands, ) {
-    debug!(target: LIGHTING_INIT, "Spawning 2D camera without lighting so UI can keep rendering outside ActiveGame");
-
     commands.spawn((
         Camera2d::default(),
         SpatialAudioReceiver,
         GlobalTilePos::default(),
         Transform::default(),
     ));
-    commands.spawn((
-        DirectionalLight2d {
-            tile_size: 32.0,
-            ..default()
-        },
-        Name::new("Daylight"),
-        Sun,
-    ));
+    commands.spawn((DirectionalLight2d { tile_size: 32.0, ..default() }, Name::new("Daylight"), Sun));
 }
 
 

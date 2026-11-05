@@ -73,7 +73,7 @@ macro_rules! define_player_action_request_module {
                 mut local_msgs_to_write_out: bevy::prelude::Local<Vec<[<Local $base Request>]>>,
             ) {
                 for (actions, computed_beings) in player_query.iter() {
-                    let Some((action, action_events)) = action_query.iter_many(actions).next() else {
+                    let Some(Ok((action, action_events))) = action_query.iter_many(actions).next() else {
                         continue;
                     };
                     let should_send = if $continuous {

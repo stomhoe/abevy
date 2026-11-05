@@ -80,7 +80,7 @@ pub fn map_terr_probe_templ_id_to_entity(
 
 #[allow(unused_parens, )]
 pub fn remove_terr_probe_templ_from_entity_map_on_despawn(
-    trigger: On<Despawn, TerrProbeTempl>,
+    trigger: On<Despawn<TerrProbeTempl>>,
     query: Query<(&StrId, ), (With<TerrProbeTempl>, ),>,
     mut map: ResMut<TerrProbeTemplEntityMap>,
 ) {

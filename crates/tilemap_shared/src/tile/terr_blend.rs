@@ -169,7 +169,7 @@ impl Default for TerrBlendMat {
 }
 impl MaterialTilemap for TerrBlendMat {
     fn fragment_shader() -> ShaderRef {
-        "shader_wgsl/terrbl.wgsl".into()
+        "shader_wgsl/terrbl.wesl".into()
     }
 }
 

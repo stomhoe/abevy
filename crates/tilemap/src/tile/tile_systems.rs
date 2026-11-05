@@ -10,7 +10,6 @@ use bevy_ecs_tilemap::{anchor::TilemapAnchor, map::TilemapId, };
 #[allow(unused_imports, )]use bevy_replicon::prelude::*;
 use game_common::game_common_components::*;
 use ::tilemap_shared::*;
-use std::mem::take;
 
 pub type ExcludedComps = (Without<Templ>, Without<TilemapAnchor>, Without<TilePos>);
 
@@ -41,14 +40,17 @@ pub fn snap_transform_to_gpos(
         }
     }
     let mut iter = main_query.iter_many_mut(ents_to_process.drain());
-    while let Some((
+    loop {
+        let Some(Ok((
         ent,
         transform,
         global_pos,
         visibility,
         child_of,
         is_dead,
-    )) = iter.fetch_next() {
+        ))) = iter.fetch_next() else {
+            break;
+        };
         let z = transform.as_ref().map(|t| t.translation.z).unwrap_or_default();
         let transl_from_global_pos = global_pos.to_translation(z);
 

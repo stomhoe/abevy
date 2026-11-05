@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use common::DEBUG;
 use game_common::game_common_components::Dead;
 use bevy_replicon::prelude::*;
-use ::being_shared::{Being, GridLockedMovement, GridLockedMovementVisual};
+use ::being_shared::Being;
 use being::body::{BodySums, DamageDistributeMode, HeldBody, IncHealthDamageOrHeal};
 use movement::movement_messages::SyncGpos;
 use tilemap_shared::{CardinalDirection, DimensionRef, GlobalTilePos};

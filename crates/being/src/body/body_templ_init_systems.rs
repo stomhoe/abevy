@@ -9,7 +9,6 @@ use game_common::game_common_components::Templ;
 use modifier_shared::modifier_components::{ApplyMode, BaseValue, CurrEffectiveValue, ModifierSynergies, ModifierTarget};
 use modifier_shared::modifier_item_types::MassKg;
 use modifier_shared::modifier_types::*;
-use ::being_shared::*;
 use crate::being_interaction_zone_helper::build_being_interaction_zones;
 
 use crate::body::{

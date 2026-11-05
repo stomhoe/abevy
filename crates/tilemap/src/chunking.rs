@@ -71,7 +71,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         add_activating_chunks_to_activate_chunks_around,
     ).before(make_checked_chunks_despawn_if_unreferenced))
-    .init_resource::<LoadChunksAround>()
+    .init_resource::<DefaultLoadChunksAround>()
     .init_resource::<RecentlySpawnedChunks>()
     .init_resource::<LoadedChunks>()
     .init_resource::<LoadedMacroChunks>()

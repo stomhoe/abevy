@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use bevy_ui_text_input::*;
+use bevy::ui_widgets::TextInput;
+use bevy::text::EditableText;
 
 use crate::ui_styles::{BUTTON_BG_HOVERED, BUTTON_BG_NORMAL, BUTTON_BG_PRESSED};
 
@@ -8,7 +9,7 @@ use crate::ui_styles::{BUTTON_BG_HOVERED, BUTTON_BG_NORMAL, BUTTON_BG_PRESSED};
 pub struct ButtonStyle {}
 
 #[derive(Component, Clone)]
-#[require(Node, CurrentText, BackgroundColor(BUTTON_BG_NORMAL), TextInputNode, TextInputPrompt, TextInputContents)]//Outline
+#[require(Node, CurrentText, BackgroundColor(BUTTON_BG_NORMAL), TextInput, EditableText)]//Outline
 pub struct LineEdit;
 
 #[derive(Component, Debug, Default, Clone)]
@@ -61,3 +62,6 @@ impl Default for ButtonBackgroundStyle {
         }
     }
 }
+
+#[derive(Message)]
+pub struct SubmitText { pub entity: Entity, pub text: String }

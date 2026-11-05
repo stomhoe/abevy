@@ -1,4 +1,5 @@
 use being_shared::{Being, ComputedLocally};
+use game_common::Dead;
 use bevy::ecs::entity::EntityHashMap;
 use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
@@ -217,7 +218,7 @@ pub fn start_grid_locked_steps(
         &SpeedMagnitude,
         &mut GridLockedMovement,
         &mut GridLockedMovementVisual,
-    ), (With<ComputedLocally>, Without<Tile>)>,
+    ), (With<ComputedLocally>, Without<Tile>, Without<Dead>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut sync_gpos_msgs: Local<Vec<ToClients<SyncGpos>>>,
     mut req_step_msgs: Local<Vec<SendStepRequest>>,
@@ -348,9 +349,15 @@ pub fn progress_tile_transition_transform(
         &mut MoveAnimActive,
         &mut GridLockedMovement,
         &mut GridLockedMovementVisual,
+        Has<Dead>,
     )>,
 ) {
-    for (being_ent, tile_pos, mut transform, mut move_anim, mut glm, mut glm_visual) in query.iter_mut() {
+    for (being_ent, tile_pos, mut transform, mut move_anim, mut glm, mut glm_visual, dead) in query.iter_mut() {
+        if dead {
+            glm.clear_step(&mut glm_visual, *tile_pos);
+            move_anim.set(false);
+            continue;
+        }
         let had_motion_this_tick = glm_visual.consume_recent_motion();
         glm.ensure_grid_anchor(&mut glm_visual, *tile_pos);
         let was_stepping = glm.is_stepping();
@@ -454,7 +461,7 @@ pub fn receive_gpos_from_server(
             **being_gpos = *gpos;
             let delta = gpos.0 - prev_gpos.0;
             if delta.x.abs() + delta.y.abs() == 1 {
-                if let Some(mut glm) = glm.as_mut() {
+                if let Some(glm) = glm.as_mut() {
                     glm.step_dir = delta;
                     glm.progress_ticks = 0;
                     glm.step_ticks_total = if let Some(speed_magnitude) = speed_magnitude {
@@ -463,10 +470,10 @@ pub fn receive_gpos_from_server(
                         1
                     };
                 }
-                if let Some(mut glm_visual) = glm_visual.as_mut() {
+                if let Some(glm_visual) = glm_visual.as_mut() {
                     glm_visual.visual_origin_tile = prev_gpos.0;
                 }
-                if let Some(mut transform) = transform.as_mut() {
+                if let Some(transform) = transform.as_mut() {
                     transform.translation = prev_gpos.to_translation(transform.translation.z);
                 }
             } else {

@@ -2,7 +2,7 @@
 use crate::being_messages::NavOrder;
 use ::being_shared::*;
 use ::tilemap_shared::*;
-use std::{f32, ops::{Deref, DerefMut}};
+use std::ops::{Deref, DerefMut};
 use bevy::{
     ecs::entity::EntityHashMap,
     ecs::system::SystemParam,

@@ -9,11 +9,11 @@ pub fn add_activates_chunks(
     mut cmd: Commands,
     query: Query<Entity, (With<Being>, Added<HumanControlled>)>,
     mut removed: RemovedComponents<HumanControlled>,
-    chunk_range: Res<LoadChunksAround>,
+    chunk_range: Res<DefaultLoadChunksAround>,
 ) {
     let iter = query.iter();
     let mut activates_chunks = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
-    iter.for_each(|ent| activates_chunks.push((ent, (*chunk_range, ))));
+    iter.for_each(|ent| activates_chunks.push((ent, (chunk_range.0, ))));
     for ent in removed.read() {
         cmd.entity(ent).try_remove::<(LoadChunksAround, ActivatingChunks)>();
     }
@@ -21,11 +21,11 @@ pub fn add_activates_chunks(
 }
 
 pub fn sync_being_chunk_ranges_to_resource(
-    default_chunk_range_for_player_beings: Res<LoadChunksAround>,
-    mut query: Query<&mut LoadChunksAround, With<Being>>,
+    default_chunk_range_for_player_beings: Res<DefaultLoadChunksAround>,
+    mut query: Query<&mut LoadChunksAround, (With<Being>, )>,
 ) {
     for mut chunk_range in query.iter_mut() {
-        *chunk_range = *default_chunk_range_for_player_beings;
+        *chunk_range = default_chunk_range_for_player_beings.0;
     }
 }
 
@@ -41,7 +41,7 @@ pub fn on_control_change(
     mut input_dirs: Query<&mut InputMoveDir>,
     mut input_speed_query: Query<(&mut InputSpeedThrottleMult, &mut InputMaxSpeed, ), (), >,
     mut removed_controlled_by: RemovedComponents<ComputedBy>,
-    default_chunk_range_for_player_beings: Res<LoadChunksAround>,
+    default_chunk_range_for_player_beings: Res<DefaultLoadChunksAround>,
 ) {
     for being_ent in removed_controlled_by.read() {
         commands.entity(being_ent).try_remove::<ToRemoveBundle>();
@@ -57,7 +57,7 @@ pub fn on_control_change(
         if controlled_by.client_ent == self_entity {
             commands.entity(being_ent).try_insert_if_new((ComputedLocally, )).try_remove::<ClientChunkLoader>();
             if controlled_by.human_dc_input {
-                commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), *default_chunk_range_for_player_beings, ));
+                commands.entity(being_ent).try_insert((HumanControlled, CameraTarget::default(), default_chunk_range_for_player_beings.0, ));
                 if let Ok((mut input_speed_throttle_mult, mut input_max_speed)) = input_speed_query.get_mut(being_ent) {
                     input_speed_throttle_mult.0 = 1.0;
                     input_max_speed.0 = f32::MAX;
@@ -69,7 +69,7 @@ pub fn on_control_change(
             commands.entity(being_ent).try_remove::<(ComputedLocally, CameraTarget)>();
             if am_i_host {
                 if controlled_by.human_dc_input {
-                    commands.entity(being_ent).try_insert((HumanControlled, *default_chunk_range_for_player_beings, ClientChunkLoader, ));
+                    commands.entity(being_ent).try_insert((HumanControlled, default_chunk_range_for_player_beings.0, ClientChunkLoader, ));
                 } else {
                     commands.entity(being_ent).try_remove::<ToRemoveBundle>();
                 }

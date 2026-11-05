@@ -192,7 +192,7 @@ pub fn despawn_chunks(//DEJARLO DE ESTA FORMA PARA CENTRALIZAR EL SISTEMA DONDE 
 }
 #[allow(unused_parens)]
 pub fn on_chunk_despawn(
-    trig: On<Despawn, (Chunk, )>,
+    trig: On<Despawn<Chunk>>,
     chunk_query: Query<(&DimensionRef, &ChunkPos), ()>,
     mut loaded_chunks: ResMut<LoadedChunks>,
     beings_within_chunk: Res<BeingsInCpos>,

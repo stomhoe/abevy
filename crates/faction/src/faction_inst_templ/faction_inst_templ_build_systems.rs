@@ -99,7 +99,7 @@ pub fn track_spawned_faction_instances(
 }
 
 pub fn remove_faction_instance_from_pool_on_despawn(
-    trigger: On<Despawn, Faction>,
+    trigger: On<Despawn<Faction>>,
     query: Query<&FactionInstanceTemplateId>,
     mut pool: ResMut<FactionInstTemplatePool>,
 ) {

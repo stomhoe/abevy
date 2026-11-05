@@ -56,7 +56,10 @@ pub fn y_sort_system(
         ents_to_process.extend(all_ysortable_query.iter());
     }
     let mut iter = process_query.iter_many_mut(ents_to_process.drain());
-    while let Some((ent, mut transform, global_transform, templ_ref, is_tilemap, child_of)) = iter.fetch_next() {
+    loop {
+        let Some(Ok((ent, mut transform, global_transform, templ_ref, is_tilemap, child_of))) = iter.fetch_next() else {
+            break;
+        };
         let has_parent_sprite = parent_sprite_query.get(child_of.parent()).is_ok();
         let ent_ysort_origin = y_sort_query.get(ent).ok();
         let anim_ac_z = acz_query.get(ent).ok();

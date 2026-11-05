@@ -226,7 +226,7 @@ pub fn beings_list_window(
                                     }
 
                                     if let Some((camera_entity, _, _)) = camera_info {
-                                        let mut button = egui::Button::new("⇨").min_size(egui::vec2(24.0, 20.0));
+                                        let button = egui::Button::new("⇨").min_size(egui::vec2(24.0, 20.0));
                                         if ui.add(button).clicked() {
                                             let target_gpos = gpos.adjacent_east();
                                             let target_transform = Transform::from_translation(target_gpos.to_translation(0.0));

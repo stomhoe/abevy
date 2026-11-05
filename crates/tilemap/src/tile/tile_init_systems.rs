@@ -422,7 +422,7 @@ pub fn map_min_dist_tiles(
 }
 #[allow(unused_parens)]
 pub fn on_templ_tile_despawn(
-    on_despawn: On<Despawn, (Tile, Templ, TagSet)>,
+    on_despawn: On<Despawn<(Tile, Templ, TagSet)>>,
     query: Query<(&TagSet), (AnyDisabling)>,
     mut tile_ents_within_tag: If<ResMut<TemplTileEntsWithinTag>>
 ) {

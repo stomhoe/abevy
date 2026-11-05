@@ -77,7 +77,6 @@ fn load_shader(
 ) -> Handle<Shader> {
     // In Bevy 0.16+, Shader::from_wgsl requires a second `path` argument. Use the
     // shader name as the path and add the shader into the Assets with `add`.
-    let mut shader = Shader::from_wgsl(shader_str, name.to_string());
-    shader.set_import_path(format!("bevy_shader_utils::{}", name));
+    let shader = Shader::from_wgsl(shader_str, name.to_string());
     shaders.add(shader)
 }

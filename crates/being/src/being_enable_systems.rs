@@ -70,7 +70,6 @@ pub fn activate_beings_in_first_time_loaded_chunks(
     mut locals: ActivateFirstLoadLocals,
 ) {
     let mut activated_beings = 0usize;
-    let mut touched_chunks = 0usize;
     for built_chunk in built_chunks.read() {
         let dim_ref = built_chunk.dimension_ref;
         let chunk_pos = built_chunk.chunk_pos;
@@ -78,7 +77,6 @@ pub fn activate_beings_in_first_time_loaded_chunks(
             trace!(target: BEING_SYSTEM, "Natural spawn unfreeze got built chunk {:?} in {:?} but no pending wildlife reservation existed", chunk_pos, dim_ref);
             continue;
         };
-        touched_chunks += 1;
         let mut pending_entities = std::mem::take(being_ents);
         locals.grouped_entities_by_key.clear();
         locals.ungrouped_entities.clear();

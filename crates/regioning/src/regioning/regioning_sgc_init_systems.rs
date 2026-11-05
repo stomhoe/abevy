@@ -4,7 +4,6 @@ use bevy::{platform::collections::HashSet, prelude::*};
 use common::{InitDone, common_components::*, common_tag_components::TagSet, log_targets::SGC_INIT};
 use tilemap_shared::tilemap_shared_samplers::HashIdWeightedSampler;
 use ::tilemap_shared::*;
-use tilemap::terrain::terrprobe::opfilter::opfilter_resources::OpFilterEntityMap;
 use crate::regioning::regioning_sgc_seris::load_sgc_seri_defs;
 
 struct PrioritySgcDef {

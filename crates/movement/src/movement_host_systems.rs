@@ -3,6 +3,7 @@ use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use common::log_targets::MOVEMENT_SYSTEM;
+use game_common::Dead;
 use serde::Deserialize;
 use std::collections::VecDeque;
 use param_sets::BlockingTileParamSet;
@@ -96,7 +97,7 @@ pub fn receive_step_request_from_client(
         &SpeedMagnitude,
         &mut GridLockedMovement,
         &mut GridLockedMovementVisual,
-    ), (With<Being>, Without<ComputedLocally>, Without<Tile>)>,
+    ), (With<Being>, Without<ComputedLocally>, Without<Tile>, Without<Dead>)>,
     mut writer: MessageWriter<ToClients<SyncGpos>>,
     mut messages: Local<Vec<ToClients<SyncGpos>>>,
     mut rate_states: Local<EntityHashMap<ClientStepRateState>>,

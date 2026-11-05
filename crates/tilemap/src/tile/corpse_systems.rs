@@ -58,8 +58,13 @@ pub fn update_corpse_transform(
 pub fn remove_corpse_pose_on_removal_of_dead(
     mut cmd: Commands,
     mut removed: RemovedComponents<Dead>,
+    mut corpses: Query<(&CorpsePose, &mut Transform)>,
 ) {
     for entity in removed.read() {
+        if let Ok((pose, mut transform)) = corpses.get_mut(entity) {
+            transform.translation -= pose.offset;
+            transform.rotation = Quat::IDENTITY;
+        }
         cmd.entity(entity).try_remove::<CorpsePose>();
     }
 }

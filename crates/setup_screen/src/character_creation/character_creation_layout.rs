@@ -1,6 +1,5 @@
 #[allow(unused_imports)] use bevy::prelude::*;
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
-use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt};
 use game_common::game_common_states::GameSetupScreen;
 #[allow(unused_imports, )]use ui_shared::{ui_components::*, ui_functions::*, };
 
@@ -84,8 +83,8 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         Text::new("Character Creation"),
         TextFont {
-            font_size: 49.,
-            font: asset_server.load("fonts/Exocet2.ttf"),
+            font_size: FontSize::Px(49.),
+            font: FontSource::Handle(asset_server.load("fonts/Exocet2.ttf")),
             ..default()
         },
         TextColor(Color::srgb(0.13, 0.13, 0.13)),
@@ -93,7 +92,7 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
             color: Color::srgb(0.99, 0.1, 0.1).into(),
             offset: Vec2::new(0.0, 0.0),
         },
-        TextLayout::new_with_justify(Justify::Center)
+        TextLayout::new(Justify::Center, LineBreak::WordBoundary)
     )).id();
 
     let lineedit_control = commands.spawn((
@@ -143,23 +142,14 @@ pub fn do_layout(mut commands: Commands, asset_server: Res<AssetServer>) {
             flex_direction: FlexDirection::Row,
             ..default()
         },
-        TextInputPrompt::new("Name"),
-        TextInputNode {
-            mode: TextInputMode::SingleLine,
-            clear_on_submit: false,
-            unfocus_on_submit: true,
-            max_chars: Some(28),
-            justification: Justify::Center,
-            ..Default::default()
-        },
         LineEdit,
         TextFont {
-            font_size: charname_font_size,
-            font: asset_server.load("fonts/Exocet2.ttf"),//cambiarla despues proq no se distinguen mayus de minus
+            font_size: FontSize::Px(charname_font_size),
+            font: FontSource::Handle(asset_server.load("fonts/Exocet2.ttf")),//cambiarla despues proq no se distinguen mayus de minus
             ..default()
         },
         TextColor(Color::srgba(0.72, 0.71, 0.43, 1.)),
-        TextLayout::new_with_justify(Justify::Center),
+        TextLayout::new(Justify::Center, LineBreak::WordBoundary),
         CurrentText::new(""),
     )).id();
 

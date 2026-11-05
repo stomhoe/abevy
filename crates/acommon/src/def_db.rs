@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use bevy::prelude::*;
 use serde::de::{
     value::Error as ValueDeError,
@@ -439,7 +439,7 @@ impl<T: DeserializeOwned> DefDatabase<T> {
         let Some(value) = resolve_def_ref(def_type, id).map(|record| record.value) else {
             return Ok(None);
         };
-        Ok(Some(def_value_into_typed(value).with_context(|| {
+        Ok(Some(anyhow::Context::with_context(def_value_into_typed(value), || {
             format!("Failed to deserialize resolved ref '{}:{}'", def_type, id)
         })?))
     }
@@ -460,10 +460,10 @@ impl<T: DeserializeOwned> DefDatabase<T> {
         let mut overrides = Vec::new();
 
         for (source, abs_path) in discovered {
-            let content = std::fs::read_to_string(&abs_path).with_context(|| {
+            let content = anyhow::Context::with_context(std::fs::read_to_string(&abs_path), || {
                 format!("Failed reading def file '{}'", abs_path.to_string_lossy())
             })?;
-            let parsed = parse_def_values(&content).with_context(|| {
+            let parsed = anyhow::Context::with_context(parse_def_values(&content), || {
                 format!("Failed parsing RON def file '{}'", abs_path.to_string_lossy())
             })?;
             for mut raw_value in parsed.into_vec() {
@@ -504,7 +504,7 @@ impl<T: DeserializeOwned> DefDatabase<T> {
 
         for id in &db.ordered_ids {
             let Some(record) = raw_by_id.get(id) else { continue };
-            let value = def_value_into_typed::<T>(record.value.clone()).with_context(|| {
+            let value = anyhow::Context::with_context(def_value_into_typed::<T>(record.value.clone()), || {
                 format!(
                     "Failed deserializing patched '{}:{}' from '{}'",
                     def_type, id, record.source.rel_path
@@ -1178,9 +1178,10 @@ fn parse_path(path: &str) -> Result<Vec<PathToken>> {
             let idx_str = segment
                 .trim_start_matches(&format!("{}[", key))
                 .trim_end_matches(']');
-            let index = idx_str
-                .parse::<usize>()
-                .with_context(|| format!("Invalid index in path '{}'", path))?;
+            let index = anyhow::Context::with_context(
+                idx_str.parse::<usize>(),
+                || format!("Invalid index in path '{}'", path),
+            )?;
             out.push(PathToken::Index(index));
         } else {
             out.push(PathToken::Key(segment.to_string()));
@@ -1374,8 +1375,10 @@ pub fn discover_assets_files_matching(
     let mut out = Vec::new();
 
     while let Some(dir) = stack.pop() {
-        let entries = std::fs::read_dir(&dir)
-            .with_context(|| format!("Failed reading directory '{}'", dir.to_string_lossy()))?;
+        let entries = anyhow::Context::with_context(
+            std::fs::read_dir(&dir),
+            || format!("Failed reading directory '{}'", dir.to_string_lossy()),
+        )?;
         for entry in entries.flatten() {
             let path = entry.path();
             let meta = match entry.metadata() {

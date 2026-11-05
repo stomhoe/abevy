@@ -1,7 +1,6 @@
 use bevy::ecs::{
     entity::{Entity, MapEntities},
     event::Event,
-    message::Message,
 };
 use tilemap_shared::{DimensionRef, GlobalTilePos};
 use serde::{Deserialize, Serialize};

@@ -7,7 +7,7 @@ pub fn text_button<T: Into<String>>(base: impl Bundle, text: T, other_children: 
 {
 
     let implicit_children = (
-        TextLayout::new_with_justify(Justify::Center),
+        TextLayout::new(Justify::Center, LineBreak::WordBoundary),
         BackgroundColor(Color::srgb(0.99, 0.1, 0.1)),
     );
 
@@ -21,7 +21,7 @@ pub fn button(
 ) -> impl Bundle {
     (
         base,
-        Button,
+        bevy::ui_widgets::Button::default(),
         BackgroundColor(style.unwrap_or_default().normal()),
         children![children],
     )

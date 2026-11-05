@@ -81,13 +81,22 @@ pub struct ClientChunkLoader;
 pub struct ChunkLoadedByHost;
 
 
-#[derive(Resource, Component, Clone, Copy, Debug, )]
+#[derive(Component, Clone, Copy, Debug, )]
 pub struct LoadChunksAround {
     pub chunk_visib_max_dist: f32,
     /// range in which already generated chunks are kept active
     pub chunk_active_max_dist: f32,
     /// half side of square in which chunks get generated (not shown)
     pub discovery_range: u8,
+}
+
+#[derive(Resource, Clone, Copy, Debug, )]
+pub struct DefaultLoadChunksAround(pub LoadChunksAround);
+
+impl Default for DefaultLoadChunksAround {
+    fn default() -> Self {
+        Self(LoadChunksAround::default())
+    }
 }
 
 impl Default for LoadChunksAround {
@@ -178,7 +187,7 @@ fn default_discovery_range() -> u8 {
     ONE_CHUNK_RANGE_SETTINGS.discovery_range
 }
 
-pub fn load_chunking_settings(mut settings: ResMut<LoadChunksAround>) {
+pub fn load_chunking_settings(mut settings: ResMut<DefaultLoadChunksAround>) {
     let db = match common::def_db::DefDatabase::<ChunkingSettingsSeri>::load_from_assets_dir_with_type(
         stringify!(ChunkingSettingsSeri),
         &["chunking.settings.ron"],
@@ -193,5 +202,5 @@ pub fn load_chunking_settings(mut settings: ResMut<LoadChunksAround>) {
     let Some(first) = db.into_records().into_iter().next() else {
         return;
     };
-    *settings = first.value.to_settings();
+    settings.0 = first.value.to_settings();
 }

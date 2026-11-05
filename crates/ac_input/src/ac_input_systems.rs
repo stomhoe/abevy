@@ -103,28 +103,32 @@ pub fn receive_simulation_state_from_server(
 
 pub fn spawn_input_contexts(mut commands: Commands) {
     let holder = commands.spawn(InputContextsHolder).id();
-    commands.spawn((
-        DebugInputContext,
-        ChildOf(holder),
-        actions!(DebugInputContext[
-            (Action::<ToggleSimulationAction>::new(), bindings![KeyCode::Space]),
-            (
-                Action::<DebugToggleHotReloadWindowAction>::new(),
-                bindings![KeyCode::F12],
-            ),
-            (
-                Action::<DebugToggleMainMenuAction>::new(),
-                bindings![KeyCode::F11],
-            ),
-            (Action::<HotReloadAction>::new(), bindings![KeyCode::KeyR]),
-            (Action::<AssetReloadAction>::new(), bindings![KeyCode::F6]),
-            (Action::<ToggleInspectorAction>::new(), bindings![KeyCode::Escape]),
-            (
-                Action::<CameraZoomAction>::new(),
-                Bindings::spawn(Spawn((Binding::mouse_wheel(), SwizzleAxis::YXZ))),
-            ),
-        ]),
-    ));
+    commands.spawn_scene(bsn! {
+        DebugInputContext
+        ChildOf(holder)
+        Actions<DebugInputContext> [
+            Action::<ToggleSimulationAction>::new()
+            Bindings [ Binding(KeyCode::Space) ]
+            --
+            Action::<DebugToggleHotReloadWindowAction>::new()
+            Bindings [ Binding(KeyCode::F12) ]
+            --
+            Action::<DebugToggleMainMenuAction>::new()
+            Bindings [ Binding(KeyCode::F11) ]
+            --
+            Action::<HotReloadAction>::new()
+            Bindings [ Binding(KeyCode::KeyR) ]
+            --
+            Action::<AssetReloadAction>::new()
+            Bindings [ Binding(KeyCode::F6) ]
+            --
+            Action::<ToggleInspectorAction>::new()
+            Bindings [ Binding(KeyCode::Escape) ]
+            --
+            Action::<CameraZoomAction>::new()
+            Bindings [ Binding::mouse_wheel() ~SwizzleAxis::YXZ ]
+        ]
+    });
 }
 
 pub fn add_being_input_context(
@@ -134,10 +138,31 @@ pub fn add_being_input_context(
     mut removed_mine_query: RemovedComponents<Mine>,
 ) {
     for player_ent in my_player_query.iter() {
-        commands.entity(player_ent).try_insert((
-            BeingDirectControlInputContext,
-            ::bevy::prelude::related!(bevy_enhanced_input::prelude::Actions<BeingDirectControlInputContext>[(Action::<DcWasdAction>::new(),DeadZone::default(),Bindings::spawn((Cardinal::wasd_keys(),Cardinal::arrows(),Cardinal::dpad(),Axial::left_stick(),)),),(Action::<DcMeleeAttackAction>::new(),bindings![KeyCode::ControlLeft],),(Action::<DcItemPickupAction>::new(),bindings![KeyCode::KeyQ],),(Action::<DcDebugIncreaseSpeedAction>::new(),bindings![KeyCode::NumpadAdd,KeyCode::Equal],),(Action::<DcDebugDecreaseSpeedAction>::new(),bindings![KeyCode::NumpadSubtract],)]),
-        ));
+        commands.entity(player_ent).queue_apply_scene(bsn! {
+            BeingDirectControlInputContext
+            Actions<BeingDirectControlInputContext> [
+                Action::<DcWasdAction>::new()
+                DeadZone
+                Bindings [
+                    {preset::cardinal::wasd_keys()}
+                    -- {preset::cardinal::arrows()}
+                    -- {preset::cardinal::dpad()}
+                    -- {preset::axial::left_stick()}
+                ]
+                --
+                Action::<DcMeleeAttackAction>::new()
+                Bindings [ Binding(KeyCode::ControlLeft) ]
+                --
+                Action::<DcItemPickupAction>::new()
+                Bindings [ Binding(KeyCode::KeyQ) ]
+                --
+                Action::<DcDebugIncreaseSpeedAction>::new()
+                Bindings [ Binding(KeyCode::NumpadAdd) -- Binding(KeyCode::Equal) ]
+                --
+                Action::<DcDebugDecreaseSpeedAction>::new()
+                Bindings [ Binding(KeyCode::NumpadSubtract) ]
+            ]
+        });
     }
     for removed_mine in removed_mine_query.read() {
         let Ok(player_ent) = players_query.get(removed_mine) else {

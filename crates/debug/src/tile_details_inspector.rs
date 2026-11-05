@@ -113,7 +113,7 @@ pub fn tile_details_inspector(world: &mut World) {
     }
 
     // Try to get the TileStrId from the referenced EntityZero
-    let tile_str_id = if let Ok(entity_ref) = world.get_entity(selected_tile_entity) {
+    let _tile_str_id = if let Ok(entity_ref) = world.get_entity(selected_tile_entity) {
         if let Some(templ_ref) = entity_ref.get::<TemplEntiRef>() {
             if let Ok(templ_entity) = world.get_entity(templ_ref.0) {
                 if let Some(str_id) = templ_entity.get::<TileStrId>() {

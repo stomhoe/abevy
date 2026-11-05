@@ -96,7 +96,7 @@ pub fn on_assets_finish_loading(
 
 #[allow(unused_parens, )]
 pub fn host_on_player_connect(
-    on_connected_client: On<Add, ConnectedClient>,
+    on_connected_client: On<Add<ConnectedClient>>,
     mut cmd: Commands,
     host_faction_hash: Query<&HashId, (With<Faction>, With<Mine>)>,
     asset_loading_state: Res<State<AssetLoading>>,

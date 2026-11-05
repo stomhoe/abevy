@@ -23,7 +23,7 @@ fn stop_spatial_audio_instances(
     spatial_emitter: &mut SpatialAudioEmitter,
 ) {
     for handle in spatial_emitter.instances.drain(..) {
-        let Some(instance) = audio_instances.get_mut(&handle) else {
+        let Some(mut instance) = audio_instances.get_mut(&handle) else {
             continue;
         };
         instance.stop(AudioTween::default());
@@ -244,7 +244,7 @@ pub fn sync_sprite_loop_sfx(
         let Ok(loop_cfg) = sprite_cfgs.get(sprite_cfg_ref.0) else {
             if let Some(loop_state) = loop_state {
                 for handle in loop_state.instances.iter() {
-                    let Some(instance) = audio_instances.get_mut(handle) else { continue };
+                    let Some(mut instance) = audio_instances.get_mut(handle) else { continue };
                     instance.stop(AudioTween::default());
                 }
                 cmd.entity(ent).remove::<SpriteLoopSfxState>();
@@ -254,7 +254,7 @@ pub fn sync_sprite_loop_sfx(
         if loop_cfg.sound_paths.is_empty() {
             if let Some(loop_state) = loop_state {
                 for handle in loop_state.instances.iter() {
-                    let Some(instance) = audio_instances.get_mut(handle) else { continue };
+                    let Some(mut instance) = audio_instances.get_mut(handle) else { continue };
                     instance.stop(AudioTween::default());
                 }
                 cmd.entity(ent).remove::<SpriteLoopSfxState>();
@@ -268,7 +268,7 @@ pub fn sync_sprite_loop_sfx(
         if !should_play {
             if let Some(loop_state) = loop_state {
                 for handle in loop_state.instances.iter() {
-                    let Some(instance) = audio_instances.get_mut(handle) else { continue };
+                    let Some(mut instance) = audio_instances.get_mut(handle) else { continue };
                     instance.stop(AudioTween::default());
                 }
                 cmd.entity(ent).remove::<SpriteLoopSfxState>();

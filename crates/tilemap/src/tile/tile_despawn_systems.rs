@@ -37,7 +37,7 @@ pub struct SafeDespawnTileLocals<'s> {
 }
 
 pub fn on_spritetile_despawn(
-    trig: On<Despawn, (Tile, Transform, SpriteTile)>,
+    trig: On<Despawn<(Tile, Transform, SpriteTile)>>,
     query: Query<(&DimensionRef, &GlobalTilePos, &TileRef), (Without<TilemapId>, Without<TilePos>, Without<Templ>, AnyDisabling)>,
     tile_map: Res<TileEntityMap>,
     interaction_zones_query: Query<&InteractionZones, common::AnyDisabling>,

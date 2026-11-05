@@ -40,7 +40,7 @@ pub fn plugin(app: &mut App) {
             read_chunk_claims_for_region_and_emit_build_orders_to_dungeoning_systems
                 .after(claim_chunks_for_various_dungeon_types)
                 .after(claim_chunks_for_river_structures)
-                .run_if(on_message::<ChunksClaim>.or(on_message::<RecheckRegion>)),
+                .run_if(on_message::<ChunksClaim>.or_else(on_message::<RecheckRegion>)),
             failsafe_timeout_pending_chunks,
             add_planned_tiles_to_region,
             mark_as_building_started_timed_out.run_if(on_message::<TimedOut>),

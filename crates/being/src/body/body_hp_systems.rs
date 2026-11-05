@@ -7,7 +7,6 @@ use rand::RngExt;
 use modifier_shared::resolve_modifier_component;
 use modifier_shared::{collect_applied_modifier_entities, modifier_has_marker};
 use modifier_shared::{modifier_components::*, modifier_types::*};
-use ::being_shared::*;
 use game_common::game_common_components::Dead;
 
 use crate::body::{body_components::*, };

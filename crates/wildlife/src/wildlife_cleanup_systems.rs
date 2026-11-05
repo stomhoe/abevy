@@ -5,7 +5,7 @@ use ::tilemap_shared::*;
 
 #[allow(unused_parens, )]
 pub fn on_pending_natural_spawn_unfreeze_despawn(
-    trigger: On<Despawn, (Being, Disabled, NaturalSpawnOrigin)>,
+    trigger: On<Despawn<(Being, Disabled, NaturalSpawnOrigin)>>,
     being_query: Query<((&DimensionRef, &NaturalSpawnOrigin, ), )>,
     mut pending_wildlife_by_chunk: ResMut<BeingsToEnableOnChunkLoad>,
 ) {

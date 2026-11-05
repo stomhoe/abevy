@@ -1,6 +1,6 @@
 
 
-use bevy::{prelude::*};
+use bevy::{prelude::*, ui::Pressed};
 #[allow(unused_imports)] use bevy_replicon::prelude::*;
 
 use common::{common_components::StrId, common_states::*};
@@ -32,16 +32,14 @@ pub fn remove_player_name_ui_entry(mut commands: Commands, query: Query<(Entity)
 
 pub fn lobby_button_interaction(
     mut cmd: Commands,
-    interaction_query: Query<(&Interaction, &LobbyButtonId), Changed<Interaction>,>,
+    interaction_query: Query<(&LobbyButtonId,), (Changed<Pressed>, With<Pressed>, )>,
     asset_loading_state: Res<State<AssetLoading>>,
     mut game_setup_screen: ResMut<NextState<GameSetupScreen>>,
     mut app_state: ResMut<NextState<AppState>>,
     mut game_phase:  ResMut<NextState<GamePhase>>,
 )
 {
-    for (interaction, menu_button_action) in &interaction_query {
-
-        if *interaction == Interaction::Pressed {
+    for (menu_button_action, ) in &interaction_query {
             match menu_button_action {
                 LobbyButtonId::Leave => {
                     app_state.set(AppState::NoSession);
@@ -67,12 +65,11 @@ pub fn lobby_button_interaction(
                 LobbyButtonId::Ready => {},
                 LobbyButtonId::LobbyJoinability => {},
             }
-        }
     }
 }
 
 pub fn on_player_disconnect(
-    trigger: On<Despawn, Player>,
+    trigger: On<Despawn<Player>>,
     players: Query<(&StrId, &LobbyPlayerUiNode), With<Player>>,
     mut commands: Commands)
 {
@@ -112,7 +109,7 @@ pub fn all_on_player_added(mut cmd: Commands,
                 ..default()
             },
             Text::new(username.to_string()),
-            TextLayout::new_with_justify(Justify::Center),
+            TextLayout::new(Justify::Center, LineBreak::WordBoundary),
         )).id();
 
 

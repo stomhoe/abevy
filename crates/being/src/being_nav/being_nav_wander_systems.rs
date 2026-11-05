@@ -24,8 +24,6 @@ fn wander_lod_interval_for_level(level: u8) -> Duration {
     }
 }
 
-const NAV_SYSTEM: &str = "being_nav_wander_systems";
-
 fn advance_wander_lod_tick(
     being_ent: Entity,
     dt: f32,

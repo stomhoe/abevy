@@ -1,6 +1,5 @@
 
 #[allow(unused_imports)] use bevy::prelude::*;
-use bevy_replicon::prelude::*;
 use fnl::{FastNoiseLite, NoiseSampleRange};
 
 use noiz::DynamicConfigurableSampleable;

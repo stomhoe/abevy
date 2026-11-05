@@ -3,12 +3,12 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, )]
-#[states(scoped_entities)]//el default es para que el despawnonexit se active al salir de ese estado
+//el default es para que el despawnonexit se active al salir de ese estado
 pub enum AppState {NoSession, #[default]StatefulGameSession, }
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, )]
 #[source(AppState = AppState::NoSession)]
-#[states(scoped_entities)]
+
 pub enum PreGameState {
     #[default]
     MainMenu,
@@ -17,16 +17,16 @@ pub enum PreGameState {
 
 #[derive(SubStates, Debug, Clone, PartialEq, Eq, Hash, Default, )]
 #[source(AppState = AppState::StatefulGameSession)]
-#[states(scoped_entities)]
+
 pub enum GamePhase {#[default]Setup, ActiveGame,}
 
 // #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, Reflect, )]
-// #[states(scoped_entities)]
+// 
 // pub enum ConnectionAttempt {#[default]Not, Triggered, PostAttempt,}
 
 #[allow(unused_parens, dead_code)]
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, )]
-#[states(scoped_entities,)]
+
 pub enum AssetLoading {
     #[default]
     NotStarted,
@@ -47,7 +47,7 @@ pub enum AssetLoading {
 
 #[allow(unused_parens, dead_code)]
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default, )]
-#[states(scoped_entities,)]
+
 pub enum AssetHotReloadState {#[default]Stopped, Ongoing,}
 
 #[derive(Resource, Debug, Clone, Deserialize, Serialize)]

@@ -23,7 +23,7 @@ fn cursor_tile_pick_context(
     let Ok(ctx) = contexts.ctx_mut() else {
         return None;
     };
-    if ctx.wants_pointer_input() {
+    if ctx.egui_wants_pointer_input() {
         return None;
     }
     let Ok(window) = windows.single() else {

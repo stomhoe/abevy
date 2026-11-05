@@ -12,7 +12,6 @@ game_common = { path = "../agame_common" }
 player_shared = { path = "../player_shared" }
 
 bevy = { workspace = true }
-bevy_ui_text_input = { workspace = true }
 bevy_replicon = { workspace = true }
 #bevy_replicon_renet = { workspace = true }
 serde = { workspace = true }

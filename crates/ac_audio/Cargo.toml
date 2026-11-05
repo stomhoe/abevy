@@ -14,7 +14,6 @@ common = { path = "../acommon" }
 sprite_shared = { path = "../sprite_shared" }
 sprite_animation_shared = { path = "../sprite_animation_shared" }
 game_common = { path = "../agame_common" }
-being = { path = "../being" }
 being_shared = { path = "../being_shared" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }

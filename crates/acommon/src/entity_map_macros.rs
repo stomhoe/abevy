@@ -125,7 +125,7 @@ macro_rules! __entity_map_emit_shared_items {
             }
 
             pub fn [<remove_ $main_component:snake _from_ $main_component:snake _on_despawn>](
-                trigger: On<bevy::prelude::Despawn, $despawn_trigger>,
+                trigger: On<bevy::prelude::Despawn<$despawn_trigger>>,
                 query: Query<(&$id_type), $with_filters>,
                 mut map: ResMut<[<$main_component EntityMap>]>,
             ) {

@@ -43,10 +43,10 @@ pub fn plugin(app: &mut App) {
                 all_on_player_added,
             ).run_if(
                 in_state(GamePhase::Setup)
-                .and(in_state(AppState::StatefulGameSession))
-                .and(
+                .and_then(in_state(AppState::StatefulGameSession))
+                .and_then(
                     not(in_state(ClientState::Disconnected))//is client
-                    .or(in_state(ServerState::Running))//is host
+                    .or_else(in_state(ServerState::Running))//is host
                 ),
             ),
         )

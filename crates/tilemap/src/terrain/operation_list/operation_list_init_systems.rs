@@ -3,7 +3,6 @@
 
 use bevy::{ecs::entity::EntityHashSet, platform::collections::HashSet, prelude::*};
 
-use bevy_replicon::shared::replication::Replicated;
 use common::{common_components::*, common_tag_components::TagSet};
 
 use crate::{

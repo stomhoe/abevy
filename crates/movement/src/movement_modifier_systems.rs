@@ -1,5 +1,3 @@
-use core::f32;
-
 use being_shared::{HeldBody, BodypartChildrenBodyparts, BodyWeightSum, ComputedLocally};
 use being_shared::body_energy::BodyStrengthScale;
 use bevy::ecs::entity::EntityHashSet;

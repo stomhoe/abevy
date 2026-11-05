@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy::{color::palettes::css::LIGHT_GOLDENROD_YELLOW};
-use bevy_ui_text_input::{TextInputMode, TextInputNode, TextInputPrompt};
 use common::common_states::{AppState, GamePhase};
 use ui_shared::ui_components::LineEdit;
 use ui_shared::ui_functions::text_button;
@@ -80,15 +79,6 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             ..default()
         },
         LineEdit,
-        TextInputNode {
-            mode: TextInputMode::SingleLine,
-            max_chars: Some(50),
-            clear_on_submit: false,
-            unfocus_on_submit: true,
-            justification: Justify::Center,
-            ..Default::default()
-        },
-        TextInputPrompt::new("Lobby name"),
         LobbyLineEdit::LobbyName,
         Outline {
             color: LIGHT_GOLDENROD_YELLOW.into(),
@@ -96,7 +86,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             offset: Val::Px(0.),
         },
         TextFont {
-            font_size: 25.,
+            font_size: FontSize::Px(25.),
             ..Default::default()
         },
     )).id();
@@ -198,12 +188,6 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             ..default()
         },
         LineEdit,
-        TextInputNode {
-            mode: TextInputMode::SingleLine,
-            //max_chars: Some(36),
-            ..Default::default()
-        },
-        TextInputPrompt::new("Type your message here..."),
         LobbyLineEdit::Chat,
         Outline {
             color: LIGHT_GOLDENROD_YELLOW.into(),
@@ -211,7 +195,7 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
             offset: Val::Px(0.),
         },
         TextFont {
-            font_size: 25.,
+            font_size: FontSize::Px(25.),
             ..Default::default()
         },
     )).id();
@@ -274,9 +258,13 @@ pub fn layout_for_client(mut commands: Commands) {
 
     commands.spawn(ready_button).insert(ChildOf(rightsplit_bottom_hbox));
 
-    commands.entity(lobby_name).remove::<(TextInputNode, TextInputPrompt)>();
+    commands.entity(lobby_name).remove::<bevy::ui_widgets::TextInput>();
 
-    commands.entity(lobby_visibility).remove::<(Button, Interaction)>();
+    commands.entity(lobby_visibility).remove::<(
+        bevy::ui_widgets::Button,
+        bevy::ui::Pressed,
+        bevy::picking::hover::Hovered,
+    )>();
 
 }
 

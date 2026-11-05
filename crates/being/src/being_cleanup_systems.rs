@@ -67,7 +67,7 @@ pub fn cull_loaded_beings_far_from_humans(
 
 #[allow(unused_parens, non_snake_case)]
 pub fn cleanup_being_from_BeingsInCpos_on_despawn(
-    trigger: On<Despawn, Being>,
+    trigger: On<Despawn<Being>>,
     chunk_query: Query<(&DimensionRef, &ChunkPos), common::AnyDisabling>,
     mut beings_within_chunk: ResMut<BeingsInCpos>,
 ) {
@@ -86,7 +86,7 @@ pub fn cleanup_being_from_BeingsInCpos_on_despawn(
 
 #[allow(unused_parens, nonstandard_style)]
 pub fn cleanup_being_from_BeingsAtGpos_on_despawn(
-    trigger: On<Despawn, Being>,
+    trigger: On<Despawn<Being>>,
     mut beings_at_gpos: ResMut<BeingsAtGpos>,
 ) {
     let _ = beings_at_gpos.remove_being_ent_entries(trigger.entity);
@@ -94,7 +94,7 @@ pub fn cleanup_being_from_BeingsAtGpos_on_despawn(
 
 #[allow(unused_parens, )]
 pub fn remove_being_hash_id_from_map_on_despawn(
-    trigger: On<Despawn, Being>,
+    trigger: On<Despawn<Being>>,
     hash_id_query: Query<&HashId, With<Being>>,
     mut being_entity_map: ResMut<BeingEntityMap>,
 ) {

@@ -1,4 +1,3 @@
-use bevy_lit::directional_light::DirectionalLight2d;
 use bevy_replicon::prelude::*;
 use color_sampler::ColorSampleSystems;
 use common::{common_states::AssetLoading };
@@ -95,7 +94,7 @@ pub fn plugin(app: &mut App) {
     .add_systems(Update, (
         handler_portals_search_results
             .run_if(in_state(ClientState::Disconnected))
-            .run_if(on_message::<SuitablePosFound>.or(on_message::<SearchFailed>))
+            .run_if(on_message::<SuitablePosFound>.or_else(on_message::<SearchFailed>))
             .after(search_suitable_positions),
         sync_cardinal_dir_at_gpos_on_gpos_change
             .after(emit_global_tile_pos_change)

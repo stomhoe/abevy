@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::ecs::schedule::common_conditions::on_message;
 use common::common_states::*;
-use bevy_ui_text_input::SubmitText;
+use ui_shared::SubmitText;
 
 use crate::{main_menu_layout::*, main_menu_systems::*};
 

@@ -1,5 +1,4 @@
 use crate::being_nav::AiNavGrids;
-use ::being_shared::*;
 use bevy::{ecs::system::SystemParam, prelude::*};
 use common::log_targets::BEING_SYSTEM;
 use game_common::Dead;

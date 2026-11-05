@@ -4,8 +4,8 @@ use bevy::prelude::*;
 #[require(Name::new("InputContextsHolder"))]
 pub struct InputContextsHolder;
 
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 pub struct BeingDirectControlInputContext;
 
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 pub struct DebugInputContext;

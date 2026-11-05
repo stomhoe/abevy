@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 
 
-use bevy_ui_text_input::{*,
-};
+use ui_shared::SubmitText;
 use common::common_states::*;
 use multiplayer_shared::{multiplayer_events::{AttemptHostServer, JoinServer}, multiplayer_resources::TargetJoinServer};
 use ui_shared::ui_components::CurrentText;
@@ -13,16 +12,16 @@ use crate::main_menu_components::{MainMenuButton, MainMenuIpLineEdit};
 
 
 
+#[allow(unused_parens, )]
 pub fn menu_button_interaction(
     mut cmd: Commands,
-    interaction_query: Query<(&Interaction, &MainMenuButton),
-    Changed<Interaction>,>,
+    interaction_query: Query<(Has<bevy::ui::Pressed>, &MainMenuButton, ), (Changed<bevy::ui::Pressed>, )>,
 
     mut pregame_state: ResMut<NextState<PreGameState>>,
     mut ____________game_phase: ResMut<NextState<GamePhase>>,
 ) {
-    for (interaction, menu_button_action) in &interaction_query {
-        if *interaction == Interaction::Pressed {
+    for (pressed, menu_button_action) in &interaction_query {
+        if pressed {
             match menu_button_action {
                 MainMenuButton::QuickStart => {
                     //assets_loading_state.set(AssetsLoadingState::LoadingReplicatedCollections);
@@ -48,11 +47,11 @@ pub fn menu_button_interaction(
 pub fn handle_line_edits_interaction(
     mut cmd: Commands,
     mut events: MessageReader<SubmitText>,
-    mut line_edit_query: Query<(&mut CurrentText, &mut TextInputPrompt, &mut Outline), With<MainMenuIpLineEdit>>,
+    mut line_edit_query: Query<(&mut CurrentText, &mut Outline), With<MainMenuIpLineEdit>>,
 
 ) {
     for event in events.read() {
-        if let Ok((mut curr_text, mut input_prompt, mut outline)) = line_edit_query.get_mut(event.entity) {
+        if let Ok((mut curr_text, mut outline)) = line_edit_query.get_mut(event.entity) {
 
             let (valid, prompt) = if event.text.contains(':') {
                 (
@@ -75,7 +74,7 @@ pub fn handle_line_edits_interaction(
                 cmd.insert_resource(target);
 
             } else {
-                input_prompt.text = prompt.to_string();
+                let _ = prompt;
                 outline.color = bevy::color::palettes::css::DARK_RED.into();
 
                 cmd.remove_resource::<TargetJoinServer>();

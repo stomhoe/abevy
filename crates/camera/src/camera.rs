@@ -1,15 +1,15 @@
 use bevy::prelude::*;
-use bevy_lit::{prelude::Lighting2dPlugin};
+use bevy_lit::prelude::Lighting2dPlugin;
 use common::common_states::GamePhase;
-
-use crate::{camera_systems::*, lighting_systems::*};
+use crate::camera_systems::*;
+use crate::lighting_systems::*;
 use game_common::game_common::GameplaySystems;
 
 
 
 pub fn plugin(app: &mut App) {
     app
-    .add_plugins((Lighting2dPlugin, ))
+    .add_plugins(Lighting2dPlugin)
     .add_systems(Startup, spawn_camera)
     .add_systems(OnExit(GamePhase::ActiveGame), disable_lighting)
     .add_systems(Update, (enable_lighting, sync_dir_light_angle).in_set(GameplaySystems))

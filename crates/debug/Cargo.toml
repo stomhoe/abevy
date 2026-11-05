@@ -20,7 +20,6 @@ regioning = { path = "../regioning" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 sprite_shared = { path = "../sprite_shared" }
-wildlife = { path = "../wildlife" }
 time = { path = "../time" }
 debug_shared = { path = "../debug_shared" }
 time_shared = { path = "../time_shared" }
