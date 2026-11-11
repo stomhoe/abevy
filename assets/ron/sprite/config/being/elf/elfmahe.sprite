@@ -1,0 +1,261 @@
+sprite elfmahe0 extends static_head {
+name "elf head 0"
+mapped_anims {
+    south idle g _ = elfmahe0_s_idle
+    west idle g _ = elfmahe0_w_idle
+    east idle g _ = elfmahe0_e_idle
+    north idle g _ = elfmahe0_n_idle
+}
+}
+sprite elfmahe1 extends static_head {
+name "elf head 1"
+mapped_anims {
+    south idle g _ = elfmahe1_s_idle
+    west idle g _ = elfmahe1_w_idle
+    east idle g _ = elfmahe1_e_idle
+    north idle g _ = elfmahe1_n_idle
+}
+}
+sprite elfmahe2 extends static_head {
+name "elf head 2"
+mapped_anims {
+    south idle g _ = elfmahe2_s_idle
+    west idle g _ = elfmahe2_w_idle
+    east idle g _ = elfmahe2_e_idle
+    north idle g _ = elfmahe2_n_idle
+}
+}
+sprite elfmahe3 extends static_head {
+name "elf head 3"
+mapped_anims {
+    south idle g _ = elfmahe3_s_idle
+    west idle g _ = elfmahe3_w_idle
+    east idle g _ = elfmahe3_e_idle
+    north idle g _ = elfmahe3_n_idle
+}
+}
+sprite elfmahe4 extends static_head {
+name "elf head 4"
+mapped_anims {
+    south idle g _ = elfmahe4_s_idle
+    west idle g _ = elfmahe4_w_idle
+    east idle g _ = elfmahe4_e_idle
+    north idle g _ = elfmahe4_n_idle
+}
+}
+sprite elfmahe5 extends static_head {
+name "elf head 5"
+mapped_anims {
+    south idle g _ = elfmahe5_s_idle
+    west idle g _ = elfmahe5_w_idle
+    east idle g _ = elfmahe5_e_idle
+    north idle g _ = elfmahe5_n_idle
+}
+}
+sprite elfmahe6 extends static_head {
+name "elf head 6"
+mapped_anims {
+    south idle g _ = elfmahe6_s_idle
+    west idle g _ = elfmahe6_w_idle
+    east idle g _ = elfmahe6_e_idle
+    north idle g _ = elfmahe6_n_idle
+}
+}
+sprite elfmahe7 extends static_head {
+name "elf head 7"
+mapped_anims {
+    south idle g _ = elfmahe7_s_idle
+    west idle g _ = elfmahe7_w_idle
+    east idle g _ = elfmahe7_e_idle
+    north idle g _ = elfmahe7_n_idle
+}
+}
+sprite elfmahe8 extends static_head {
+name "elf head 8"
+mapped_anims {
+    south idle g _ = elfmahe8_s_idle
+    west idle g _ = elfmahe8_w_idle
+    east idle g _ = elfmahe8_e_idle
+    north idle g _ = elfmahe8_n_idle
+}
+}
+sprite elfmahe9 extends static_head {
+name "elf head 9"
+mapped_anims {
+    south idle g _ = elfmahe9_s_idle
+    west idle g _ = elfmahe9_w_idle
+    east idle g _ = elfmahe9_e_idle
+    north idle g _ = elfmahe9_n_idle
+}
+}
+sprite elfmahe10 extends static_head {
+name "elf head 10"
+mapped_anims {
+    south idle g _ = elfmahe10_s_idle
+    west idle g _ = elfmahe10_w_idle
+    east idle g _ = elfmahe10_e_idle
+    north idle g _ = elfmahe10_n_idle
+}
+}
+sprite elfmahe11 extends static_head {
+name "elf head 11"
+mapped_anims {
+    south idle g _ = elfmahe11_s_idle
+    west idle g _ = elfmahe11_w_idle
+    east idle g _ = elfmahe11_e_idle
+    north idle g _ = elfmahe11_n_idle
+}
+}
+sprite elfmahe12 extends static_head {
+name "elf head 12"
+mapped_anims {
+    south idle g _ = elfmahe12_s_idle
+    west idle g _ = elfmahe12_w_idle
+    east idle g _ = elfmahe12_e_idle
+    north idle g _ = elfmahe12_n_idle
+}
+}
+sprite elfmahe13 extends static_head {
+name "elf head 13"
+mapped_anims {
+    south idle g _ = elfmahe13_s_idle
+    west idle g _ = elfmahe13_w_idle
+    east idle g _ = elfmahe13_e_idle
+    north idle g _ = elfmahe13_n_idle
+}
+}
+sprite elfmahe14 extends static_head {
+name "elf head 14"
+mapped_anims {
+    south idle g _ = elfmahe14_s_idle
+    west idle g _ = elfmahe14_w_idle
+    east idle g _ = elfmahe14_e_idle
+    north idle g _ = elfmahe14_n_idle
+}
+}
+sprite elfmahe15 extends static_head {
+name "elf head 15"
+mapped_anims {
+    south idle g _ = elfmahe15_s_idle
+    west idle g _ = elfmahe15_w_idle
+    east idle g _ = elfmahe15_e_idle
+    north idle g _ = elfmahe15_n_idle
+}
+}
+sprite elfmahe16 extends static_head {
+name "elf head 16"
+mapped_anims {
+    south idle g _ = elfmahe16_s_idle
+    west idle g _ = elfmahe16_w_idle
+    east idle g _ = elfmahe16_e_idle
+    north idle g _ = elfmahe16_n_idle
+}
+}
+sprite elfmahe17 extends static_head {
+name "elf head 17"
+mapped_anims {
+    south idle g _ = elfmahe17_s_idle
+    west idle g _ = elfmahe17_w_idle
+    east idle g _ = elfmahe17_e_idle
+    north idle g _ = elfmahe17_n_idle
+}
+}
+sprite elfmahe18 extends static_head {
+name "elf head 18"
+mapped_anims {
+    south idle g _ = elfmahe18_s_idle
+    west idle g _ = elfmahe18_w_idle
+    east idle g _ = elfmahe18_e_idle
+    north idle g _ = elfmahe18_n_idle
+}
+}
+sprite elfmahe19 extends static_head {
+name "elf head 19"
+mapped_anims {
+    south idle g _ = elfmahe19_s_idle
+    west idle g _ = elfmahe19_w_idle
+    east idle g _ = elfmahe19_e_idle
+    north idle g _ = elfmahe19_n_idle
+}
+}
+sprite elfmahe20 extends static_head {
+name "elf head 20"
+mapped_anims {
+    south idle g _ = elfmahe20_s_idle
+    west idle g _ = elfmahe20_w_idle
+    east idle g _ = elfmahe20_e_idle
+    north idle g _ = elfmahe20_n_idle
+}
+}
+sprite elfmahe21 extends static_head {
+name "elf head 21"
+mapped_anims {
+    south idle g _ = elfmahe21_s_idle
+    west idle g _ = elfmahe21_w_idle
+    east idle g _ = elfmahe21_e_idle
+    north idle g _ = elfmahe21_n_idle
+}
+}
+sprite elfmahe22 extends static_head {
+name "elf head 22"
+mapped_anims {
+    south idle g _ = elfmahe22_s_idle
+    west idle g _ = elfmahe22_w_idle
+    east idle g _ = elfmahe22_e_idle
+    north idle g _ = elfmahe22_n_idle
+}
+}
+sprite elfmahe23 extends static_head {
+name "elf head 23"
+mapped_anims {
+    south idle g _ = elfmahe23_s_idle
+    west idle g _ = elfmahe23_w_idle
+    east idle g _ = elfmahe23_e_idle
+    north idle g _ = elfmahe23_n_idle
+}
+}
+sprite elfmahe24 extends static_head {
+name "elf head 24"
+mapped_anims {
+    south idle g _ = elfmahe24_s_idle
+    west idle g _ = elfmahe24_w_idle
+    east idle g _ = elfmahe24_e_idle
+    north idle g _ = elfmahe24_n_idle
+}
+}
+sprite elfmahe25 extends static_head {
+name "elf head 25"
+mapped_anims {
+    south idle g _ = elfmahe25_s_idle
+    west idle g _ = elfmahe25_w_idle
+    east idle g _ = elfmahe25_e_idle
+    north idle g _ = elfmahe25_n_idle
+}
+}
+sprite elfmahe26 extends static_head {
+name "elf head 26"
+mapped_anims {
+    south idle g _ = elfmahe26_s_idle
+    west idle g _ = elfmahe26_w_idle
+    east idle g _ = elfmahe26_e_idle
+    north idle g _ = elfmahe26_n_idle
+}
+}
+sprite elfmahe27 extends static_head {
+name "elf head 27"
+mapped_anims {
+    south idle g _ = elfmahe27_s_idle
+    west idle g _ = elfmahe27_w_idle
+    east idle g _ = elfmahe27_e_idle
+    north idle g _ = elfmahe27_n_idle
+}
+}
+sprite elfmahe28 extends static_head {
+name "elf head 28"
+mapped_anims {
+    south idle g _ = elfmahe28_s_idle
+    west idle g _ = elfmahe28_w_idle
+    east idle g _ = elfmahe28_e_idle
+    north idle g _ = elfmahe28_n_idle
+}
+}

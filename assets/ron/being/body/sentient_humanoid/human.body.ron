@@ -3,7 +3,7 @@
     name: "Human Body",
     tags: ["humanoid"],
     distributed_totals: {
-        "mass_kg": 70.0,
+        "mass_kg": 72.0,
         "hp_capacity": 3015.0,
         "hp_regen_rate": 18.8,
         "blood_capacity": 225.0,

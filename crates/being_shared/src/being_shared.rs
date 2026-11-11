@@ -13,7 +13,7 @@ use crate::{RaceEntityMap, RaceRef};
 pub struct ComputedLocally;
 
 #[derive(Component, Debug, Copy, Clone, Default, Deserialize, Serialize)]
-#[require(Prefix::trunc("Being"),)]
+#[require(Prefix::trunc("Being"), Transform, Visibility, )]
 pub struct Being;
 impl Being {
     pub const Z_LEVEL: f32 = 1_000.;

@@ -1,0 +1,14 @@
+class warrior {
+    name: "Warrior"
+    description: "A disciplined front-line fighter."
+    stats_description: "High health and melee damage, with limited ranged options."
+    player_selectable: true
+    pet_set: basic
+    tags: [martial]
+    allowed_race_tags: []
+    starting_abilities: [basic_attack]
+    starting_loadout: [(iron_sword 1)]
+    starting_followers: []
+    race_loadouts: {}
+    progression: [(2 [power_strike])]
+}

@@ -1,0 +1,135 @@
+sprite dwmahe0 extends static_head {
+name "Dwarven head 0"
+mapped_anims {
+    south idle g _ = dwmahe0_s_idle
+    west idle g _ = dwmahe0_w_idle
+    east idle g _ = dwmahe0_e_idle
+    north idle g _ = dwmahe0_n_idle
+}
+}
+sprite dwmahe1 extends static_head {
+name "Dwarven head 1"
+mapped_anims {
+    south idle g _ = dwmahe1_s_idle
+    west idle g _ = dwmahe1_w_idle
+    east idle g _ = dwmahe1_e_idle
+    north idle g _ = dwmahe1_n_idle
+}
+}
+sprite dwmahe2 extends static_head {
+name "Dwarven head 2"
+mapped_anims {
+    south idle g _ = dwmahe2_s_idle
+    west idle g _ = dwmahe2_w_idle
+    east idle g _ = dwmahe2_e_idle
+    north idle g _ = dwmahe2_n_idle
+}
+}
+sprite dwmahe3 extends static_head {
+name "Dwarven head 3"
+mapped_anims {
+    south idle g _ = dwmahe3_s_idle
+    west idle g _ = dwmahe3_w_idle
+    east idle g _ = dwmahe3_e_idle
+    north idle g _ = dwmahe3_n_idle
+}
+}
+sprite dwmahe4 extends static_head {
+name "Dwarven head 4"
+mapped_anims {
+    south idle g _ = dwmahe4_s_idle
+    west idle g _ = dwmahe4_w_idle
+    east idle g _ = dwmahe4_e_idle
+    north idle g _ = dwmahe4_n_idle
+}
+}
+sprite dwmahe5 extends static_head {
+name "Dwarven head 5"
+mapped_anims {
+    south idle g _ = dwmahe5_s_idle
+    west idle g _ = dwmahe5_w_idle
+    east idle g _ = dwmahe5_e_idle
+    north idle g _ = dwmahe5_n_idle
+}
+}
+sprite dwmahe6 extends static_head {
+name "Dwarven head 6"
+mapped_anims {
+    south idle g _ = dwmahe6_s_idle
+    west idle g _ = dwmahe6_w_idle
+    east idle g _ = dwmahe6_e_idle
+    north idle g _ = dwmahe6_n_idle
+}
+}
+sprite dwmahe7 extends static_head {
+name "Dwarven head 7"
+mapped_anims {
+    south idle g _ = dwmahe7_s_idle
+    west idle g _ = dwmahe7_w_idle
+    east idle g _ = dwmahe7_e_idle
+    north idle g _ = dwmahe7_n_idle
+}
+}
+sprite dwmahe8 extends static_head {
+name "Dwarven head 8"
+mapped_anims {
+    south idle g _ = dwmahe8_s_idle
+    west idle g _ = dwmahe8_w_idle
+    east idle g _ = dwmahe8_e_idle
+    north idle g _ = dwmahe8_n_idle
+}
+}
+sprite dwmahe9 extends static_head {
+name "Dwarven head 9"
+mapped_anims {
+    south idle g _ = dwmahe9_s_idle
+    west idle g _ = dwmahe9_w_idle
+    east idle g _ = dwmahe9_e_idle
+    north idle g _ = dwmahe9_n_idle
+}
+}
+sprite dwmahe10 extends static_head {
+name "Dwarven head 10"
+mapped_anims {
+    south idle g _ = dwmahe10_s_idle
+    west idle g _ = dwmahe10_w_idle
+    east idle g _ = dwmahe10_e_idle
+    north idle g _ = dwmahe10_n_idle
+}
+}
+sprite dwmahe11 extends static_head {
+name "Dwarven head 11"
+mapped_anims {
+    south idle g _ = dwmahe11_s_idle
+    west idle g _ = dwmahe11_w_idle
+    east idle g _ = dwmahe11_e_idle
+    north idle g _ = dwmahe11_n_idle
+}
+}
+sprite dwmahe12 extends static_head {
+name "Dwarven head 12"
+mapped_anims {
+    south idle g _ = dwmahe12_s_idle
+    west idle g _ = dwmahe12_w_idle
+    east idle g _ = dwmahe12_e_idle
+    north idle g _ = dwmahe12_n_idle
+}
+}
+sprite dwmahe13 extends static_head {
+name "Dwarven head 13"
+mapped_anims {
+    south idle g _ = dwmahe13_s_idle
+    west idle g _ = dwmahe13_w_idle
+    east idle g _ = dwmahe13_e_idle
+    north idle g _ = dwmahe13_n_idle
+}
+}
+sprite dwmahe14 extends static_head {
+name "Dwarven head 14"
+mapped_anims {
+    south idle g _ = dwmahe14_s_idle
+    west idle g _ = dwmahe14_w_idle
+    east idle g _ = dwmahe14_e_idle
+    north idle g _ = dwmahe14_n_idle
+}
+}

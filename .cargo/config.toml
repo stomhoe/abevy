@@ -1,3 +1,6 @@
+[build]
+rustc = "/home/stefan/.cargo/bin/rustc"
+
 [target.x86_64-pc-windows-msvc]
  # Use LLD Linker
 rustflags = [

@@ -13,6 +13,27 @@ use ::item_shared::*;
 use std::collections::HashMap;
 use common::log_targets::ITEM_SYSTEM;
 
+fn load_item_seri_defs() -> Vec<ItemSeri> {
+    let Ok(mut files) = common::def_db::discover_assets_files_by_suffixes(&[".item"]) else {
+        error!(target: ITEM_SYSTEM, "Failed discovering .item definitions");
+        return Vec::new();
+    };
+    files.sort_by(|(a, _), (b, _)| a.precedence_rank().cmp(&b.precedence_rank()).then_with(|| a.rel_path.cmp(&b.rel_path)));
+    files.into_iter().filter_map(|(_, path)| {
+        let Ok(content) = std::fs::read_to_string(&path) else {
+            error!(target: ITEM_SYSTEM, "Failed reading item definition '{}'", path.display());
+            return None;
+        };
+        match being::being_def_parser::parse_typed_def::<ItemSeri>(&content) {
+            Ok(definition) => Some(definition),
+            Err(err) => {
+                error!(target: ITEM_SYSTEM, "Failed parsing item definition '{}': {err}", path.display());
+                None
+            }
+        }
+    }).collect()
+}
+
 #[allow(unused_parens)]
 pub fn init_items(
     mut cmd: Commands,
@@ -30,7 +51,7 @@ pub fn init_items(
         cmd.spawn((EguiItemsHolder,)).id()
     };
 
-    for seri in load_item_seri_defs() {
+    for seri in ItemSeri::resolve_inheritance(load_item_seri_defs()) {
         let str_id = match StrId::new_with_result(seri.id.clone(), Item::MIN_ID_LENGTH) {
             Ok(str_id) => str_id,
             Err(err) => {

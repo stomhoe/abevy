@@ -1,0 +1,17 @@
+race elf {
+    name: "Elf"
+    icon_path: ""
+    description: "Elves are graceful and perceptive, carrying the old wisdom of the forest into every adventure."
+    stats_description: "High agility and perception; lower physical durability."
+    demonym: "elven"
+    singular: "elf"
+    plural: "elves"
+    sentient: true
+    player_selectable: true
+    fallback_sprites_to_sample: [humabo0 elfmahe0]
+    sets_of_choosable_sprites: [
+        (Head [elfmahe0 "" "" elfmahe1 "" "" elfmahe2 "" "" elfmahe3 "" "" elfmahe4 "" "" elfmahe5 "" "" elfmahe6 "" "" elfmahe7 "" "" elfmahe8 "" "" elfmahe9 "" "" elfmahe10 "" "" elfmahe11 "" "" elfmahe12 "" "" elfmahe13 "" "" elfmahe14 "" "" elfmahe15 "" "" elfmahe16 "" "" elfmahe17 "" "" elfmahe18 "" "" elfmahe19 "" "" elfmahe20 "" "" elfmahe21 "" "" elfmahe22 "" "" elfmahe23 "" "" elfmahe24 "" "" elfmahe25 "" "" elfmahe26 "" "" elfmahe27 "" "" elfmahe28 "" ""])
+        (Body [humabo0 "" ""])
+    ]
+    body_or_sampler: elf
+}

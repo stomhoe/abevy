@@ -1,0 +1,27 @@
+sprite gnmabo0 {
+name "Gnome body 0"
+mapped_anims {
+    south idle g _ = gnmabo0_s_idle
+    west idle g _ = gnmabo0_w_idle
+    east idle g _ = gnmabo0_e_idle
+    north idle g _ = gnmabo0_n_idle
+    south move g _ = gnmabo0_s_move
+    west move g _ = gnmabo0_w_move
+    east move g _ = gnmabo0_e_move
+    north move g _ = gnmabo0_n_move
+}
+parent_cat ""
+tags body
+children_sprites []
+shares_tag []
+directionable true
+movement_based true
+grounding_based false
+is_being_root_sprite true
+add_up_z_with_anim true
+baseline_move_speed 400.0
+offset 0.0 8.0
+offset4children {
+    head 0.0 10.0 ""
+}
+}

@@ -7,6 +7,9 @@ pub fn plugin (app: &mut App) {
     app
         .init_resource::<InputFocus>()
         .add_message::<SubmitText>()
-        .add_systems(Update, (update_line_edits_text.run_if(resource_changed::<InputFocus>), button_change_color_on_mouse_action, submit_line_edit))
+        .add_systems(Update, apply_retro_font)
+        .add_systems(Update, fit_menu_backgrounds)
+        .add_observer(focus_line_edit_on_pointer_press)
+        .add_systems(Update, (focus_line_edit_on_press, update_line_edits_text.run_if(resource_changed::<InputFocus>), button_change_color_on_mouse_action, submit_line_edit))
     ;
 }

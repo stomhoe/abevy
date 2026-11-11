@@ -1,0 +1,28 @@
+abstract anim static_head_s_idle {
+    rows_cols: 1 4
+    paused: true
+    clips {
+        col 0
+    }
+}
+abstract anim static_head_w_idle {
+    rows_cols: 1 4
+    paused: true
+    clips {
+        col 2
+    }
+}
+abstract anim static_head_e_idle {
+    rows_cols: 1 4
+    paused: true
+    clips {
+        col 1
+    }
+}
+abstract anim static_head_n_idle {
+    rows_cols: 1 4
+    paused: true
+    clips {
+        col 3
+    }
+}

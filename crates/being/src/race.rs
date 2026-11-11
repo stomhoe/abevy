@@ -17,6 +17,9 @@ pub fn plugin(app: &mut App) {
             plugin_race,
         ))
         .replicate::<Race>()
+        .replicate::<PlayerSelectableRace>()
+        .replicate::<StatsDescription>()
+        .replicate::<SetsOfPlayerMonoChoosableSprites>()
         .replicate::<EguiRacesHolder>()
         .replicate::<RaceRef>()
         .replicate_filtered_as::<Visibility, common::common_components::VisibilityGameState, (With<EguiRacesHolder>,)>()

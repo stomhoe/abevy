@@ -1,0 +1,6 @@
+ability basic_attack {
+    name: "Basic Attack"
+    description: "A basic weapon attack."
+    tags: [combat]
+    effects: [(effect_id: deal_damage, parameters: [(multiplier "1.0")])]
+}

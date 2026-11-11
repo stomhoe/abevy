@@ -31,6 +31,8 @@ use crate::{
     being_portal_resources::*,
     being_systems::*,
     body::{self, BodySystems},
+    class,
+    pet,
     being_nav,
     race::RaceSystems,
 };
@@ -42,6 +44,8 @@ pub fn plugin(app: &mut App) {
         crate::race::plugin,
         crate::sex::plugin,
         body::plugin,
+            class::plugin,
+            pet::plugin,
         being_nav::plugin,
         crate::being_inst_template::plugin,
         crate::pack::plugin,

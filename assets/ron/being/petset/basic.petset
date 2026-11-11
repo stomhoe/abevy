@@ -1,0 +1,11 @@
+petset basic {
+    name: "Basic Companions"
+    description: "The standard companion choices available to new characters."
+    max_selected: 2
+    budget: 4
+    per_race_max: {}
+    pets: [
+        (id: Wolf, race_id: wolf, cost: 2)
+        (id: familiar_fire, race_id: familiar_fire, cost: 2)
+    ]
+}

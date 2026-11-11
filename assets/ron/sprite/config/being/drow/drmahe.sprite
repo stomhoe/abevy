@@ -1,0 +1,234 @@
+sprite drmahe0 extends static_head {
+name "drow head 0"
+mapped_anims {
+    south idle g _ = drmahe0_s_idle
+    west idle g _ = drmahe0_w_idle
+    east idle g _ = drmahe0_e_idle
+    north idle g _ = drmahe0_n_idle
+}
+}
+sprite drmahe1 extends static_head {
+name "drow head 1"
+mapped_anims {
+    south idle g _ = drmahe1_s_idle
+    west idle g _ = drmahe1_w_idle
+    east idle g _ = drmahe1_e_idle
+    north idle g _ = drmahe1_n_idle
+}
+}
+sprite drmahe2 extends static_head {
+name "drow head 2"
+mapped_anims {
+    south idle g _ = drmahe2_s_idle
+    west idle g _ = drmahe2_w_idle
+    east idle g _ = drmahe2_e_idle
+    north idle g _ = drmahe2_n_idle
+}
+}
+sprite drmahe3 extends static_head {
+name "drow head 3"
+mapped_anims {
+    south idle g _ = drmahe3_s_idle
+    west idle g _ = drmahe3_w_idle
+    east idle g _ = drmahe3_e_idle
+    north idle g _ = drmahe3_n_idle
+}
+}
+sprite drmahe4 extends static_head {
+name "drow head 4"
+mapped_anims {
+    south idle g _ = drmahe4_s_idle
+    west idle g _ = drmahe4_w_idle
+    east idle g _ = drmahe4_e_idle
+    north idle g _ = drmahe4_n_idle
+}
+}
+sprite drmahe5 extends static_head {
+name "drow head 5"
+mapped_anims {
+    south idle g _ = drmahe5_s_idle
+    west idle g _ = drmahe5_w_idle
+    east idle g _ = drmahe5_e_idle
+    north idle g _ = drmahe5_n_idle
+}
+}
+sprite drmahe6 extends static_head {
+name "drow head 6"
+mapped_anims {
+    south idle g _ = drmahe6_s_idle
+    west idle g _ = drmahe6_w_idle
+    east idle g _ = drmahe6_e_idle
+    north idle g _ = drmahe6_n_idle
+}
+}
+sprite drmahe7 extends static_head {
+name "drow head 7"
+mapped_anims {
+    south idle g _ = drmahe7_s_idle
+    west idle g _ = drmahe7_w_idle
+    east idle g _ = drmahe7_e_idle
+    north idle g _ = drmahe7_n_idle
+}
+}
+sprite drmahe8 extends static_head {
+name "drow head 8"
+mapped_anims {
+    south idle g _ = drmahe8_s_idle
+    west idle g _ = drmahe8_w_idle
+    east idle g _ = drmahe8_e_idle
+    north idle g _ = drmahe8_n_idle
+}
+}
+sprite drmahe9 extends static_head {
+name "drow head 9"
+mapped_anims {
+    south idle g _ = drmahe9_s_idle
+    west idle g _ = drmahe9_w_idle
+    east idle g _ = drmahe9_e_idle
+    north idle g _ = drmahe9_n_idle
+}
+}
+sprite drmahe10 extends static_head {
+name "drow head 10"
+mapped_anims {
+    south idle g _ = drmahe10_s_idle
+    west idle g _ = drmahe10_w_idle
+    east idle g _ = drmahe10_e_idle
+    north idle g _ = drmahe10_n_idle
+}
+}
+sprite drmahe11 extends static_head {
+name "drow head 11"
+mapped_anims {
+    south idle g _ = drmahe11_s_idle
+    west idle g _ = drmahe11_w_idle
+    east idle g _ = drmahe11_e_idle
+    north idle g _ = drmahe11_n_idle
+}
+}
+sprite drmahe12 extends static_head {
+name "drow head 12"
+mapped_anims {
+    south idle g _ = drmahe12_s_idle
+    west idle g _ = drmahe12_w_idle
+    east idle g _ = drmahe12_e_idle
+    north idle g _ = drmahe12_n_idle
+}
+}
+sprite drmahe13 extends static_head {
+name "drow head 13"
+mapped_anims {
+    south idle g _ = drmahe13_s_idle
+    west idle g _ = drmahe13_w_idle
+    east idle g _ = drmahe13_e_idle
+    north idle g _ = drmahe13_n_idle
+}
+}
+sprite drmahe14 extends static_head {
+name "drow head 14"
+mapped_anims {
+    south idle g _ = drmahe14_s_idle
+    west idle g _ = drmahe14_w_idle
+    east idle g _ = drmahe14_e_idle
+    north idle g _ = drmahe14_n_idle
+}
+}
+sprite drmahe15 extends static_head {
+name "drow head 15"
+mapped_anims {
+    south idle g _ = drmahe15_s_idle
+    west idle g _ = drmahe15_w_idle
+    east idle g _ = drmahe15_e_idle
+    north idle g _ = drmahe15_n_idle
+}
+}
+sprite drmahe16 extends static_head {
+name "drow head 16"
+mapped_anims {
+    south idle g _ = drmahe16_s_idle
+    west idle g _ = drmahe16_w_idle
+    east idle g _ = drmahe16_e_idle
+    north idle g _ = drmahe16_n_idle
+}
+}
+sprite drmahe17 extends static_head {
+name "drow head 17"
+mapped_anims {
+    south idle g _ = drmahe17_s_idle
+    west idle g _ = drmahe17_w_idle
+    east idle g _ = drmahe17_e_idle
+    north idle g _ = drmahe17_n_idle
+}
+}
+sprite drmahe18 extends static_head {
+name "drow head 18"
+mapped_anims {
+    south idle g _ = drmahe18_s_idle
+    west idle g _ = drmahe18_w_idle
+    east idle g _ = drmahe18_e_idle
+    north idle g _ = drmahe18_n_idle
+}
+}
+sprite drmahe19 extends static_head {
+name "drow head 19"
+mapped_anims {
+    south idle g _ = drmahe19_s_idle
+    west idle g _ = drmahe19_w_idle
+    east idle g _ = drmahe19_e_idle
+    north idle g _ = drmahe19_n_idle
+}
+}
+sprite drmahe20 extends static_head {
+name "drow head 20"
+mapped_anims {
+    south idle g _ = drmahe20_s_idle
+    west idle g _ = drmahe20_w_idle
+    east idle g _ = drmahe20_e_idle
+    north idle g _ = drmahe20_n_idle
+}
+}
+sprite drmahe21 extends static_head {
+name "drow head 21"
+mapped_anims {
+    south idle g _ = drmahe21_s_idle
+    west idle g _ = drmahe21_w_idle
+    east idle g _ = drmahe21_e_idle
+    north idle g _ = drmahe21_n_idle
+}
+}
+sprite drmahe22 extends static_head {
+name "drow head 22"
+mapped_anims {
+    south idle g _ = drmahe22_s_idle
+    west idle g _ = drmahe22_w_idle
+    east idle g _ = drmahe22_e_idle
+    north idle g _ = drmahe22_n_idle
+}
+}
+sprite drmahe23 extends static_head {
+name "drow head 23"
+mapped_anims {
+    south idle g _ = drmahe23_s_idle
+    west idle g _ = drmahe23_w_idle
+    east idle g _ = drmahe23_e_idle
+    north idle g _ = drmahe23_n_idle
+}
+}
+sprite drmahe24 extends static_head {
+name "drow head 24"
+mapped_anims {
+    south idle g _ = drmahe24_s_idle
+    west idle g _ = drmahe24_w_idle
+    east idle g _ = drmahe24_e_idle
+    north idle g _ = drmahe24_n_idle
+}
+}
+sprite drmahe25 extends static_head {
+name "drow head 25"
+mapped_anims {
+    south idle g _ = drmahe25_s_idle
+    west idle g _ = drmahe25_w_idle
+    east idle g _ = drmahe25_e_idle
+    north idle g _ = drmahe25_n_idle
+}
+}

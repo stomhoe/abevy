@@ -23,6 +23,9 @@ pub fn plugin(app: &mut App) {
     .add_server_event::<HostStartedGameplay>(Channel::Unordered)
 
     .add_client_event::<SendUsername>(Channel::Unordered)
+    .add_client_message::<CharacterCreationRequest>(Channel::Ordered)
+    .add_server_message::<CharacterCreationRejected>(Channel::Ordered)
+    .add_server_message::<CharacterCreationAccepted>(Channel::Ordered)
 
 
 

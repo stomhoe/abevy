@@ -1,0 +1,6 @@
+ability power_strike {
+    name: "Power Strike"
+    description: "A stronger weapon attack."
+    tags: [combat]
+    effects: [(effect_id: deal_damage, parameters: [(multiplier "1.5")])]
+}

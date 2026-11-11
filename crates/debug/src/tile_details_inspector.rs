@@ -8,6 +8,7 @@ use bevy_ecs_tilemap::map::TilemapId;
 use tilemap::tile::tile_components::{TileStrId};
 use tilemap_shared::DeleteOtherTilesInSamePos;
 use tilemap_shared::SafeDespawn;
+use ::sprite_shared::*;
 
 use debug_shared::{DebugSelectedEntities, DubugWindowsVisibility};
 
@@ -239,6 +240,23 @@ fn render_tile_details_column(
     ui.separator();
 
     ui.label("Manual component details");
+    ui.collapsing("Held Sprites", |ui| {
+        let Some(held_sprites) = world.get::<HeldSprites>(selected_tile_entity) else {
+            ui.label("HeldSprites: missing on tile.");
+            return;
+        };
+        let sprites: Vec<_> = held_sprites.iter().collect();
+        if let Some(transform) = world.get::<GlobalTransform>(selected_tile_entity) {
+            let position = transform.translation();
+            ui.label(format!("SpriteHolder: x={:.1} y={:.1} z={:.9}", position.x, position.y, position.z));
+        }
+        if sprites.is_empty() {
+            ui.label("HeldSprites: empty");
+        }
+        for sprite in sprites {
+            crate::being_details_inspector::render_held_sprite_entry(ui, world, sprite);
+        }
+    });
     render_tagset_section(ui, "TagSet on selected entity", tags_here.as_ref());
     render_delete_other_tiles_section(
         ui,

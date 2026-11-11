@@ -54,6 +54,7 @@ pub fn disable_held_sprites_of_disabled(
     templ_bases: Query<(&HeldSprites),(With<Templ>, Added<Disabled>)>,
     non_templ_bases: Query<(&HeldSprites),(Without<Templ>,)>,
     mut removed: RemovedComponents<Disabled>,
+    mut visibility_query: Query<(&mut Visibility, ), ()>,
 ) {
     let iter = templ_bases.iter();
     let mut disableds = Vec::with_capacity(iter.size_hint().1.unwrap_or(iter.size_hint().0));
@@ -63,6 +64,11 @@ pub fn disable_held_sprites_of_disabled(
         }
     }
     for ent in removed.read() {
+        // Visibility propagation skips Disabled entities. Their visibility
+        // must be reconsidered when they return, even if its value is unchanged.
+        if let Ok((mut visibility, )) = visibility_query.get_mut(ent) {
+            visibility.set_changed();
+        }
         if let Ok((held_sprites)) = non_templ_bases.get(ent) {
             for sprite_ent in held_sprites.iter() {
                 cmd.entity(sprite_ent).try_remove::<Disabled>();
@@ -70,4 +76,27 @@ pub fn disable_held_sprites_of_disabled(
         }
     }
     cmd.try_insert_batch(std::mem::take(&mut disableds));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn enabling_a_being_restores_inherited_sprite_visibility() {
+        let mut app = App::new();
+        app.init_resource::<Assets<Mesh>>()
+            .init_resource::<Assets<bevy::mesh::skinning::SkinnedMeshInverseBindposes>>()
+            .add_plugins(bevy::camera::visibility::VisibilityPlugin)
+            .add_systems(Update, disable_held_sprites_of_disabled);
+        let being = app.world_mut().spawn((being_shared::Being, Disabled)).id();
+        app.update();
+        assert!(!app.world().get::<InheritedVisibility>(being).unwrap().get());
+
+        app.world_mut().entity_mut(being).remove::<Disabled>();
+        let sprite = app.world_mut().spawn((Visibility::Inherited, ChildOf(being), BaseHolderRef { base: being })).id();
+        app.update();
+        assert!(app.world().get::<InheritedVisibility>(being).unwrap().get());
+        assert!(app.world().get::<InheritedVisibility>(sprite).unwrap().get());
+    }
 }

@@ -249,7 +249,14 @@ impl DefParser {
     }
 
     fn parse_root(&mut self) -> Result<DefValue, String> {
-        let header_id = self.try_parse_header_id()?;
+        let abstract_header = matches!(
+            self.tokens.first().map(|token| &token.kind),
+            Some(DefTokenKind::Ident(value)) if value == "abstract"
+        );
+        if abstract_header {
+            self.pos += 1;
+        }
+        let (header_id, parent_id) = self.try_parse_header_id()?;
         let mut value = self.parse_value()?;
         if let Some(header_id) = header_id {
             if let DefValue::Map(entries) = &mut value {
@@ -257,31 +264,54 @@ impl DefParser {
                 if !has_id {
                     entries.push((DefValue::String("id".to_string()), DefValue::String(header_id)));
                 }
+                if abstract_header {
+                    entries.push((DefValue::String("abstract".to_string()), DefValue::Bool(true)));
+                }
+                if let Some(parent_id) = parent_id {
+                    entries.push((DefValue::String("extends".to_string()), DefValue::String(parent_id)));
+                }
             }
         }
         Ok(value)
     }
 
-    fn try_parse_header_id(&mut self) -> Result<Option<String>, String> {
+    fn try_parse_header_id(&mut self) -> Result<(Option<String>, Option<String>), String> {
         let Some(token) = self.tokens.get(self.pos) else {
-            return Ok(None);
+            return Ok((None, None));
         };
         let DefTokenKind::Ident(_header) = &token.kind else {
-            return Ok(None);
+            return Ok((None, None));
         };
 
         let Some(id_token) = self.tokens.get(self.pos + 1) else {
-            return Ok(None);
+            return Ok((None, None));
         };
         match &id_token.kind {
             DefTokenKind::Ident(id) | DefTokenKind::String(id) => {
-                if !matches!(self.tokens.get(self.pos + 2).map(|token| &token.kind), Some(DefTokenKind::LBrace)) {
-                    return Ok(None);
+                if matches!(self.tokens.get(self.pos + 2).map(|token| &token.kind), Some(DefTokenKind::LBrace)) {
+                    self.pos += 2;
+                    return Ok((Some(id.clone()), None));
                 }
-                self.pos += 2;
-                Ok(Some(id.clone()))
+                let Some(DefTokenKind::Ident(keyword)) = self.tokens.get(self.pos + 2).map(|token| &token.kind) else {
+                    return Ok((None, None));
+                };
+                if keyword != "extends" {
+                    return Ok((None, None));
+                }
+                let Some(parent_token) = self.tokens.get(self.pos + 3) else {
+                    return Err("Missing parent item ID after extends".to_string());
+                };
+                let parent_id = match &parent_token.kind {
+                    DefTokenKind::Ident(parent) | DefTokenKind::String(parent) => parent.clone(),
+                    _ => return Err("Expected parent item ID after extends".to_string()),
+                };
+                if !matches!(self.tokens.get(self.pos + 4).map(|token| &token.kind), Some(DefTokenKind::LBrace)) {
+                    return Err("Expected '{' after item parent".to_string());
+                }
+                self.pos += 4;
+                Ok((Some(id.clone()), Some(parent_id)))
             }
-            _ => Ok(None),
+            _ => Ok((None, None)),
         }
     }
 
@@ -481,11 +511,11 @@ fn parse_root_def_value(content: &str) -> Result<DefValue, String> {
     parser.parse_root()
 }
 
-pub(crate) fn parse_def_value(content: &str) -> Result<DefValue, String> {
+pub fn parse_def_value(content: &str) -> Result<DefValue, String> {
     parse_root_def_value(content)
 }
 
-pub(crate) fn def_value_to_map(def_value: DefValue) -> Result<HashMap<String, DefValue>, String> {
+pub fn def_value_to_map(def_value: DefValue) -> Result<HashMap<String, DefValue>, String> {
     let DefValue::Map(entries) = def_value else {
         return Err("Expected map/object at root".to_string());
     };
@@ -499,7 +529,7 @@ pub(crate) fn def_value_to_map(def_value: DefValue) -> Result<HashMap<String, De
     Ok(out)
 }
 
-pub(crate) fn parse_typed_def<T: serde::de::DeserializeOwned>(content: &str) -> Result<T, String> {
+pub fn parse_typed_def<T: serde::de::DeserializeOwned>(content: &str) -> Result<T, String> {
     let def_value = parse_root_def_value(content)?;
     T::deserialize(def_value).map_err(|err| err.to_string())
 }

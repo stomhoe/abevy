@@ -1,0 +1,36 @@
+sprite gnmahe0 extends static_head {
+name "Gnome head 0"
+mapped_anims {
+    south idle g _ = gnmahe0_s_idle
+    west idle g _ = gnmahe0_w_idle
+    east idle g _ = gnmahe0_e_idle
+    north idle g _ = gnmahe0_n_idle
+}
+}
+sprite gnmahe1 extends static_head {
+name "Gnome head 1"
+mapped_anims {
+    south idle g _ = gnmahe1_s_idle
+    west idle g _ = gnmahe1_w_idle
+    east idle g _ = gnmahe1_e_idle
+    north idle g _ = gnmahe1_n_idle
+}
+}
+sprite gnmahe2 extends static_head {
+name "Gnome head 2"
+mapped_anims {
+    south idle g _ = gnmahe2_s_idle
+    west idle g _ = gnmahe2_w_idle
+    east idle g _ = gnmahe2_e_idle
+    north idle g _ = gnmahe2_n_idle
+}
+}
+sprite gnmahe3 extends static_head {
+name "Gnome head 3"
+mapped_anims {
+    south idle g _ = gnmahe3_s_idle
+    west idle g _ = gnmahe3_w_idle
+    east idle g _ = gnmahe3_e_idle
+    north idle g _ = gnmahe3_n_idle
+}
+}

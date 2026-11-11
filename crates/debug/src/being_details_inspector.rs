@@ -646,11 +646,15 @@ fn format_resolved_acz(
     }
 }
 
-fn render_held_sprite_entry(
+pub(crate) fn render_held_sprite_entry(
     ui: &mut egui::Ui,
     world: &mut World,
     sprite_ent: Entity,
 ) {
+    let sort_settings = world.query_filtered::<&tilemap_shared::ZSettings, With<common::common_components::SettingsEntity>>()
+        .iter(world).next().copied();
+    let camera_y = world.query_filtered::<&tilemap_shared::GlobalTilePos, With<Camera>>()
+        .iter(world).next().map(|position| position.to_pixelpos().y).unwrap_or(0.);
     let highlighted_sprite_original_color = world
         .get_entity_mut(sprite_ent)
         .ok()
@@ -770,7 +774,7 @@ fn render_held_sprite_entry(
         }
         if let Some(transform) = sprite_transform {
             ui.label(format!(
-                "Transform: x={:.1} y={:.1} z={}",
+                "Transform: x={:.1} y={:.1} z={:.9}",
                 transform.translation.x,
                 transform.translation.y,
                 transform.translation.z,
@@ -778,11 +782,19 @@ fn render_held_sprite_entry(
         }
         if let Some(transform) = sprite_global_transform {
             ui.label(format!(
-                "GlobalTransform: x={:.1} y={:.1} z={}",
+                "GlobalTransform: x={:.1} y={:.1} z={:.9}",
                 transform.translation().x,
                 transform.translation().y,
                 transform.translation().z,
             ));
+            if let Some(settings) = sort_settings {
+                let origin = sprite_y_sort_origin.or(templ_y_sort_origin);
+                let parent_is_sprite = world.get::<ChildOf>(sprite_ent).is_some_and(|parent| world.get::<Sprite>(parent.parent()).is_some());
+                let ground_y = transform.translation().y - origin.unwrap_or_default();
+                let base_z = sprite_acz.filter(|z| z.is_finite()).or(templ_acz).unwrap_or_default() * settings.y_mult;
+                let offset = if origin.is_some() && !parent_is_sprite { (camera_y - ground_y) * settings.y_sort_mult } else { 0. };
+                ui.label(format!("Y-sort: camera Y={camera_y:.3}, ground Y={ground_y:.3}, offset={offset:.9}, expected local Z={:.9}, sprite parent={parent_is_sprite}", base_z + offset));
+            }
         }
         if let Some(sprite) = sprite {
             ui.label(format!("Color: {:?}", sprite.color));

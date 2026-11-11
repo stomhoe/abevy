@@ -12,8 +12,15 @@ use tilemap_shared::*;
 #[require(Replicated, Prefix::trunc("Race"), AssetScoped, SelectedForHotReload)]
 pub struct Race;
 
+#[derive(Component, Debug, Default, Clone, Copy, Serialize, Deserialize)]
+#[require(Replicated)]
+pub struct PlayerSelectableRace;
+
+#[derive(Component, Debug, Default, Clone, Serialize, Deserialize)]
+pub struct StatsDescription(pub String);
+
 /// do not insert this into beings
-#[derive(Component, Debug, Default, Clone)]
+#[derive(Component, Debug, Default, Clone, Serialize, Deserialize)]
 #[component(map_entities)]
 pub struct SetsOfPlayerMonoChoosableSprites(#[entities] pub Vec<(StrId, EntityHashSet)>);
 
@@ -62,6 +69,9 @@ pub struct RaceSeri {
     pub name_generator: Option<String>,
     pub icon_path: String,
     pub description: String,
+    #[serde(default)]
+    pub stats_description: String,
+    pub player_selectable: bool,
     pub demonym: String,
     pub singular: String,
     pub plural: String,
@@ -106,6 +116,8 @@ impl Default for RaceSeri {
             name_generator: None,
             icon_path: String::default(),
             description: String::default(),
+            stats_description: String::default(),
+            player_selectable: false,
             demonym: String::default(),
             singular: String::default(),
             plural: String::default(),

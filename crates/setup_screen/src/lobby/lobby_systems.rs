@@ -13,6 +13,17 @@ pub fn host_setup(_: On<AttemptHostServer>, _cmd: Commands, ) {
 
 }
 
+#[allow(unused_parens, )]
+pub fn toggle_lobby_visibility(
+    screen: Res<State<GameSetupScreen>>,
+    mut lobby_roots: Query<&mut Visibility, (With<LobbyRoot>, )>,
+) {
+    let visibility = if *screen.get() == GameSetupScreen::CharacterCreation { Visibility::Hidden } else { Visibility::Visible };
+    for mut root_visibility in &mut lobby_roots {
+        *root_visibility = visibility;
+    }
+}
+
 
 
 #[allow(unused_parens, dead_code)]

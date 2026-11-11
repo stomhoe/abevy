@@ -21,3 +21,6 @@ pub enum LobbyLineEdit {Chat, LobbyName}
 
 #[derive(Component, Clone)]
 pub enum LobbySlider {ChatHistory, Settings}
+
+#[derive(Component, Clone, Copy)]
+pub struct LobbyRoot;

@@ -5509,10 +5509,11 @@ dependencies = [
  "faction_shared",
  "game_common",
  "modifier_shared",
- "movement",
+ "multiplayer_shared",
  "player_shared",
  "rand",
  "serde",
+ "sprite_shared",
  "tilemap",
  "tilemap_shared",
 ]
@@ -6245,6 +6246,7 @@ name = "item_systems"
 version = "0.1.0"
 dependencies = [
  "ac_input",
+ "being",
  "being_shared",
  "bevy 0.20.1",
  "bevy_enhanced_input",
@@ -8620,13 +8622,18 @@ dependencies = [
 name = "setup_screen"
 version = "0.1.0"
 dependencies = [
+ "being_shared",
  "bevy 0.20.1",
  "bevy_replicon",
  "common",
  "game_common",
  "multiplayer_shared",
  "player_shared",
+ "rand",
  "serde",
+ "sprite_animation_shared",
+ "sprite_shared",
+ "tilemap_shared",
  "ui_shared",
 ]
 

@@ -101,6 +101,13 @@ pub fn sample_from_sprite_entities(
         let Ok((sample_sprites, has_scs_to_build)) = being_query.get(*ent) else {
             continue;
         };
+        if has_scs_to_build {
+            // An explicit sprite selection is authoritative. A race may have
+            // supplied a default sampler in the same frame, but it must not
+            // replace the selected head/body configs.
+            cmd.entity(*ent).try_remove::<SampleSpritesamplers>();
+            continue;
+        }
         let is_reenabled_only = changed_beings.get(*ent).is_err();
         if is_reenabled_only && has_scs_to_build {
             continue;

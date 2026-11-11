@@ -1,0 +1,171 @@
+sprite humahe0 extends static_head {
+name "Human head 0"
+mapped_anims {
+    south idle g _ = humahe0_s_idle
+    west idle g _ = humahe0_w_idle
+    east idle g _ = humahe0_e_idle
+    north idle g _ = humahe0_n_idle
+}
+}
+sprite humahe1 extends static_head {
+name "Human head 1"
+mapped_anims {
+    south idle g _ = humahe1_s_idle
+    west idle g _ = humahe1_w_idle
+    east idle g _ = humahe1_e_idle
+    north idle g _ = humahe1_n_idle
+}
+}
+sprite humahe2 extends static_head {
+name "Human head 2"
+mapped_anims {
+    south idle g _ = humahe2_s_idle
+    west idle g _ = humahe2_w_idle
+    east idle g _ = humahe2_e_idle
+    north idle g _ = humahe2_n_idle
+}
+}
+sprite humahe3 extends static_head {
+name "Human head 3"
+mapped_anims {
+    south idle g _ = humahe3_s_idle
+    west idle g _ = humahe3_w_idle
+    east idle g _ = humahe3_e_idle
+    north idle g _ = humahe3_n_idle
+}
+}
+sprite humahe4 extends static_head {
+name "Human head 4"
+mapped_anims {
+    south idle g _ = humahe4_s_idle
+    west idle g _ = humahe4_w_idle
+    east idle g _ = humahe4_e_idle
+    north idle g _ = humahe4_n_idle
+}
+}
+sprite humahe5 extends static_head {
+name "Human head 5"
+mapped_anims {
+    south idle g _ = humahe5_s_idle
+    west idle g _ = humahe5_w_idle
+    east idle g _ = humahe5_e_idle
+    north idle g _ = humahe5_n_idle
+}
+}
+sprite humahe6 extends static_head {
+name "Human head 6"
+mapped_anims {
+    south idle g _ = humahe6_s_idle
+    west idle g _ = humahe6_w_idle
+    east idle g _ = humahe6_e_idle
+    north idle g _ = humahe6_n_idle
+}
+}
+sprite humahe7 extends static_head {
+name "Human head 7"
+mapped_anims {
+    south idle g _ = humahe7_s_idle
+    west idle g _ = humahe7_w_idle
+    east idle g _ = humahe7_e_idle
+    north idle g _ = humahe7_n_idle
+}
+}
+sprite humahe8 extends static_head {
+name "Human head 8"
+mapped_anims {
+    south idle g _ = humahe8_s_idle
+    west idle g _ = humahe8_w_idle
+    east idle g _ = humahe8_e_idle
+    north idle g _ = humahe8_n_idle
+}
+}
+sprite humahe9 extends static_head {
+name "Human head 9"
+mapped_anims {
+    south idle g _ = humahe9_s_idle
+    west idle g _ = humahe9_w_idle
+    east idle g _ = humahe9_e_idle
+    north idle g _ = humahe9_n_idle
+}
+}
+sprite humahe10 extends static_head {
+name "Human head 10"
+mapped_anims {
+    south idle g _ = humahe10_s_idle
+    west idle g _ = humahe10_w_idle
+    east idle g _ = humahe10_e_idle
+    north idle g _ = humahe10_n_idle
+}
+}
+sprite humahe11 extends static_head {
+name "Human head 11"
+mapped_anims {
+    south idle g _ = humahe11_s_idle
+    west idle g _ = humahe11_w_idle
+    east idle g _ = humahe11_e_idle
+    north idle g _ = humahe11_n_idle
+}
+}
+sprite humahe12 extends static_head {
+name "Human head 12"
+mapped_anims {
+    south idle g _ = humahe12_s_idle
+    west idle g _ = humahe12_w_idle
+    east idle g _ = humahe12_e_idle
+    north idle g _ = humahe12_n_idle
+}
+}
+sprite humahe13 extends static_head {
+name "Human head 13"
+mapped_anims {
+    south idle g _ = humahe13_s_idle
+    west idle g _ = humahe13_w_idle
+    east idle g _ = humahe13_e_idle
+    north idle g _ = humahe13_n_idle
+}
+}
+sprite humahe14 extends static_head {
+name "Human head 14"
+mapped_anims {
+    south idle g _ = humahe14_s_idle
+    west idle g _ = humahe14_w_idle
+    east idle g _ = humahe14_e_idle
+    north idle g _ = humahe14_n_idle
+}
+}
+sprite humahe15 extends static_head {
+name "Human head 15"
+mapped_anims {
+    south idle g _ = humahe15_s_idle
+    west idle g _ = humahe15_w_idle
+    east idle g _ = humahe15_e_idle
+    north idle g _ = humahe15_n_idle
+}
+}
+sprite humahe16 extends static_head {
+name "Human head 16"
+mapped_anims {
+    south idle g _ = humahe16_s_idle
+    west idle g _ = humahe16_w_idle
+    east idle g _ = humahe16_e_idle
+    north idle g _ = humahe16_n_idle
+}
+}
+sprite humahe17 extends static_head {
+name "Human head 17"
+mapped_anims {
+    south idle g _ = humahe17_s_idle
+    west idle g _ = humahe17_w_idle
+    east idle g _ = humahe17_e_idle
+    north idle g _ = humahe17_n_idle
+}
+}
+sprite humahe18 extends static_head {
+name "Human head 18"
+mapped_anims {
+    south idle g _ = humahe18_s_idle
+    west idle g _ = humahe18_w_idle
+    east idle g _ = humahe18_e_idle
+    north idle g _ = humahe18_n_idle
+}
+}

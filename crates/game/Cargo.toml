@@ -14,13 +14,14 @@ game_common = { path = "../agame_common" }
 tilemap = { path = "../tilemap" }
 tilemap_shared = { path = "../tilemap_shared" }
 modifier_shared = { path = "../modifier_shared" }
-movement = { path = "../movement" }
 #dimension = { path = "../dimension" }
 faction = { path = "../faction" }
 player_shared = { path = "../player_shared" }
 being = { path = "../being" }
 being_shared = { path = "../being_shared" }
+sprite_shared = { path = "../sprite_shared" }
 faction_shared = { path = "../faction_shared" }
+multiplayer_shared = { path = "../multiplayer_shared" }
 
 bevy = { workspace = true }
 

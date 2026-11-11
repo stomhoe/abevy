@@ -1,0 +1,4 @@
+abstract item material_base {
+    tags: [material]
+    stack_limit: 100
+}

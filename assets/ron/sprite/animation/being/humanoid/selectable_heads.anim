@@ -1,0 +1,1116 @@
+anim humahe0_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe0.png"
+}
+anim humahe0_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe0.png"
+}
+anim humahe0_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe0.png"
+}
+anim humahe0_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe0.png"
+}
+anim humahe1_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe1.png"
+}
+anim humahe1_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe1.png"
+}
+anim humahe1_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe1.png"
+}
+anim humahe1_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe1.png"
+}
+anim humahe2_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe2.png"
+}
+anim humahe2_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe2.png"
+}
+anim humahe2_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe2.png"
+}
+anim humahe2_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe2.png"
+}
+anim humahe3_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe3.png"
+}
+anim humahe3_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe3.png"
+}
+anim humahe3_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe3.png"
+}
+anim humahe3_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe3.png"
+}
+anim humahe4_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe4.png"
+}
+anim humahe4_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe4.png"
+}
+anim humahe4_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe4.png"
+}
+anim humahe4_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe4.png"
+}
+anim humahe5_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe5.png"
+}
+anim humahe5_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe5.png"
+}
+anim humahe5_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe5.png"
+}
+anim humahe5_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe5.png"
+}
+anim humahe6_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe6.png"
+}
+anim humahe6_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe6.png"
+}
+anim humahe6_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe6.png"
+}
+anim humahe6_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe6.png"
+}
+anim humahe7_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe7.png"
+}
+anim humahe7_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe7.png"
+}
+anim humahe7_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe7.png"
+}
+anim humahe7_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe7.png"
+}
+anim humahe8_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe8.png"
+}
+anim humahe8_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe8.png"
+}
+anim humahe8_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe8.png"
+}
+anim humahe8_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe8.png"
+}
+anim humahe9_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe9.png"
+}
+anim humahe9_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe9.png"
+}
+anim humahe9_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe9.png"
+}
+anim humahe9_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe9.png"
+}
+anim humahe10_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe10.png"
+}
+anim humahe10_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe10.png"
+}
+anim humahe10_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe10.png"
+}
+anim humahe10_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe10.png"
+}
+anim humahe11_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe11.png"
+}
+anim humahe11_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe11.png"
+}
+anim humahe11_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe11.png"
+}
+anim humahe11_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe11.png"
+}
+anim humahe12_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe12.png"
+}
+anim humahe12_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe12.png"
+}
+anim humahe12_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe12.png"
+}
+anim humahe12_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe12.png"
+}
+anim humahe13_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe13.png"
+}
+anim humahe13_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe13.png"
+}
+anim humahe13_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe13.png"
+}
+anim humahe13_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe13.png"
+}
+anim humahe14_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe14.png"
+}
+anim humahe14_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe14.png"
+}
+anim humahe14_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe14.png"
+}
+anim humahe14_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe14.png"
+}
+anim humahe15_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe15.png"
+}
+anim humahe15_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe15.png"
+}
+anim humahe15_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe15.png"
+}
+anim humahe15_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe15.png"
+}
+anim humahe16_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe16.png"
+}
+anim humahe16_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe16.png"
+}
+anim humahe16_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe16.png"
+}
+anim humahe16_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe16.png"
+}
+anim humahe17_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe17.png"
+}
+anim humahe17_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe17.png"
+}
+anim humahe17_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe17.png"
+}
+anim humahe17_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe17.png"
+}
+anim humahe18_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe18.png"
+}
+anim humahe18_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe18.png"
+}
+anim humahe18_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe18.png"
+}
+anim humahe18_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe18.png"
+}
+anim drmahe0_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe0.png"
+}
+anim drmahe0_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe0.png"
+}
+anim drmahe0_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe0.png"
+}
+anim drmahe0_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe0.png"
+}
+anim drmahe1_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe1.png"
+}
+anim drmahe1_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe1.png"
+}
+anim drmahe1_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe1.png"
+}
+anim drmahe1_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe1.png"
+}
+anim drmahe2_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe2.png"
+}
+anim drmahe2_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe2.png"
+}
+anim drmahe2_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe2.png"
+}
+anim drmahe2_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe2.png"
+}
+anim drmahe3_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe3.png"
+}
+anim drmahe3_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe3.png"
+}
+anim drmahe3_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe3.png"
+}
+anim drmahe3_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe3.png"
+}
+anim drmahe4_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe4.png"
+}
+anim drmahe4_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe4.png"
+}
+anim drmahe4_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe4.png"
+}
+anim drmahe4_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe4.png"
+}
+anim drmahe5_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe5.png"
+}
+anim drmahe5_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe5.png"
+}
+anim drmahe5_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe5.png"
+}
+anim drmahe5_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe5.png"
+}
+anim drmahe6_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe6.png"
+}
+anim drmahe6_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe6.png"
+}
+anim drmahe6_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe6.png"
+}
+anim drmahe6_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe6.png"
+}
+anim drmahe7_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe7.png"
+}
+anim drmahe7_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe7.png"
+}
+anim drmahe7_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe7.png"
+}
+anim drmahe7_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe7.png"
+}
+anim drmahe8_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe8.png"
+}
+anim drmahe8_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe8.png"
+}
+anim drmahe8_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe8.png"
+}
+anim drmahe8_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe8.png"
+}
+anim drmahe9_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe9.png"
+}
+anim drmahe9_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe9.png"
+}
+anim drmahe9_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe9.png"
+}
+anim drmahe9_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe9.png"
+}
+anim drmahe10_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe10.png"
+}
+anim drmahe10_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe10.png"
+}
+anim drmahe10_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe10.png"
+}
+anim drmahe10_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe10.png"
+}
+anim drmahe11_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe11.png"
+}
+anim drmahe11_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe11.png"
+}
+anim drmahe11_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe11.png"
+}
+anim drmahe11_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe11.png"
+}
+anim drmahe12_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe12.png"
+}
+anim drmahe12_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe12.png"
+}
+anim drmahe12_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe12.png"
+}
+anim drmahe12_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe12.png"
+}
+anim drmahe13_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe13.png"
+}
+anim drmahe13_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe13.png"
+}
+anim drmahe13_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe13.png"
+}
+anim drmahe13_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe13.png"
+}
+anim drmahe14_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe14.png"
+}
+anim drmahe14_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe14.png"
+}
+anim drmahe14_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe14.png"
+}
+anim drmahe14_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe14.png"
+}
+anim drmahe15_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe15.png"
+}
+anim drmahe15_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe15.png"
+}
+anim drmahe15_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe15.png"
+}
+anim drmahe15_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe15.png"
+}
+anim drmahe16_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe16.png"
+}
+anim drmahe16_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe16.png"
+}
+anim drmahe16_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe16.png"
+}
+anim drmahe16_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe16.png"
+}
+anim drmahe17_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe17.png"
+}
+anim drmahe17_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe17.png"
+}
+anim drmahe17_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe17.png"
+}
+anim drmahe17_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe17.png"
+}
+anim drmahe18_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe18.png"
+}
+anim drmahe18_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe18.png"
+}
+anim drmahe18_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe18.png"
+}
+anim drmahe18_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe18.png"
+}
+anim drmahe19_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe19.png"
+}
+anim drmahe19_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe19.png"
+}
+anim drmahe19_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe19.png"
+}
+anim drmahe19_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe19.png"
+}
+anim drmahe20_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe20.png"
+}
+anim drmahe20_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe20.png"
+}
+anim drmahe20_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe20.png"
+}
+anim drmahe20_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe20.png"
+}
+anim drmahe21_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe21.png"
+}
+anim drmahe21_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe21.png"
+}
+anim drmahe21_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe21.png"
+}
+anim drmahe21_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe21.png"
+}
+anim drmahe22_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe22.png"
+}
+anim drmahe22_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe22.png"
+}
+anim drmahe22_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe22.png"
+}
+anim drmahe22_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe22.png"
+}
+anim drmahe23_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe23.png"
+}
+anim drmahe23_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe23.png"
+}
+anim drmahe23_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe23.png"
+}
+anim drmahe23_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe23.png"
+}
+anim drmahe24_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe24.png"
+}
+anim drmahe24_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe24.png"
+}
+anim drmahe24_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe24.png"
+}
+anim drmahe24_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe24.png"
+}
+anim drmahe25_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/drow/drmahe25.png"
+}
+anim drmahe25_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/drow/drmahe25.png"
+}
+anim drmahe25_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/drow/drmahe25.png"
+}
+anim drmahe25_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/drow/drmahe25.png"
+}
+anim dwmahe0_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe0.png"
+}
+anim dwmahe0_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe0.png"
+}
+anim dwmahe0_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe0.png"
+}
+anim dwmahe0_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe0.png"
+}
+anim dwmahe1_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe1.png"
+}
+anim dwmahe1_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe1.png"
+}
+anim dwmahe1_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe1.png"
+}
+anim dwmahe1_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe1.png"
+}
+anim dwmahe2_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe2.png"
+}
+anim dwmahe2_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe2.png"
+}
+anim dwmahe2_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe2.png"
+}
+anim dwmahe2_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe2.png"
+}
+anim dwmahe3_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe3.png"
+}
+anim dwmahe3_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe3.png"
+}
+anim dwmahe3_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe3.png"
+}
+anim dwmahe3_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe3.png"
+}
+anim dwmahe4_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe4.png"
+}
+anim dwmahe4_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe4.png"
+}
+anim dwmahe4_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe4.png"
+}
+anim dwmahe4_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe4.png"
+}
+anim dwmahe5_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe5.png"
+}
+anim dwmahe5_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe5.png"
+}
+anim dwmahe5_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe5.png"
+}
+anim dwmahe5_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe5.png"
+}
+anim dwmahe6_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe6.png"
+}
+anim dwmahe6_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe6.png"
+}
+anim dwmahe6_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe6.png"
+}
+anim dwmahe6_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe6.png"
+}
+anim dwmahe7_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe7.png"
+}
+anim dwmahe7_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe7.png"
+}
+anim dwmahe7_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe7.png"
+}
+anim dwmahe7_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe7.png"
+}
+anim dwmahe8_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe8.png"
+}
+anim dwmahe8_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe8.png"
+}
+anim dwmahe8_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe8.png"
+}
+anim dwmahe8_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe8.png"
+}
+anim dwmahe9_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe9.png"
+}
+anim dwmahe9_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe9.png"
+}
+anim dwmahe9_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe9.png"
+}
+anim dwmahe9_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe9.png"
+}
+anim dwmahe10_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe10.png"
+}
+anim dwmahe10_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe10.png"
+}
+anim dwmahe10_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe10.png"
+}
+anim dwmahe10_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe10.png"
+}
+anim dwmahe11_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe11.png"
+}
+anim dwmahe11_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe11.png"
+}
+anim dwmahe11_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe11.png"
+}
+anim dwmahe11_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe11.png"
+}
+anim dwmahe12_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe12.png"
+}
+anim dwmahe12_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe12.png"
+}
+anim dwmahe12_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe12.png"
+}
+anim dwmahe12_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe12.png"
+}
+anim dwmahe13_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe13.png"
+}
+anim dwmahe13_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe13.png"
+}
+anim dwmahe13_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe13.png"
+}
+anim dwmahe13_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe13.png"
+}
+anim dwmahe14_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/dwarf/dwmahe14.png"
+}
+anim dwmahe14_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/dwarf/dwmahe14.png"
+}
+anim dwmahe14_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/dwarf/dwmahe14.png"
+}
+anim dwmahe14_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/dwarf/dwmahe14.png"
+}
+anim elfmahe0_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe0.png"
+}
+anim elfmahe0_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe0.png"
+}
+anim elfmahe0_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe0.png"
+}
+anim elfmahe0_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe0.png"
+}
+anim elfmahe1_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe1.png"
+}
+anim elfmahe1_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe1.png"
+}
+anim elfmahe1_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe1.png"
+}
+anim elfmahe1_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe1.png"
+}
+anim elfmahe2_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe2.png"
+}
+anim elfmahe2_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe2.png"
+}
+anim elfmahe2_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe2.png"
+}
+anim elfmahe2_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe2.png"
+}
+anim elfmahe3_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe3.png"
+}
+anim elfmahe3_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe3.png"
+}
+anim elfmahe3_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe3.png"
+}
+anim elfmahe3_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe3.png"
+}
+anim elfmahe4_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe4.png"
+}
+anim elfmahe4_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe4.png"
+}
+anim elfmahe4_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe4.png"
+}
+anim elfmahe4_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe4.png"
+}
+anim elfmahe5_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe5.png"
+}
+anim elfmahe5_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe5.png"
+}
+anim elfmahe5_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe5.png"
+}
+anim elfmahe5_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe5.png"
+}
+anim elfmahe6_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe6.png"
+}
+anim elfmahe6_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe6.png"
+}
+anim elfmahe6_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe6.png"
+}
+anim elfmahe6_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe6.png"
+}
+anim elfmahe7_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe7.png"
+}
+anim elfmahe7_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe7.png"
+}
+anim elfmahe7_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe7.png"
+}
+anim elfmahe7_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe7.png"
+}
+anim elfmahe8_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe8.png"
+}
+anim elfmahe8_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe8.png"
+}
+anim elfmahe8_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe8.png"
+}
+anim elfmahe8_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe8.png"
+}
+anim elfmahe9_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe9.png"
+}
+anim elfmahe9_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe9.png"
+}
+anim elfmahe9_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe9.png"
+}
+anim elfmahe9_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe9.png"
+}
+anim elfmahe10_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe10.png"
+}
+anim elfmahe10_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe10.png"
+}
+anim elfmahe10_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe10.png"
+}
+anim elfmahe10_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe10.png"
+}
+anim elfmahe11_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe11.png"
+}
+anim elfmahe11_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe11.png"
+}
+anim elfmahe11_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe11.png"
+}
+anim elfmahe11_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe11.png"
+}
+anim elfmahe12_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe12.png"
+}
+anim elfmahe12_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe12.png"
+}
+anim elfmahe12_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe12.png"
+}
+anim elfmahe12_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe12.png"
+}
+anim elfmahe13_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe13.png"
+}
+anim elfmahe13_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe13.png"
+}
+anim elfmahe13_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe13.png"
+}
+anim elfmahe13_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe13.png"
+}
+anim elfmahe14_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe14.png"
+}
+anim elfmahe14_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe14.png"
+}
+anim elfmahe14_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe14.png"
+}
+anim elfmahe14_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe14.png"
+}
+anim elfmahe15_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe15.png"
+}
+anim elfmahe15_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe15.png"
+}
+anim elfmahe15_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe15.png"
+}
+anim elfmahe15_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe15.png"
+}
+anim elfmahe16_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe16.png"
+}
+anim elfmahe16_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe16.png"
+}
+anim elfmahe16_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe16.png"
+}
+anim elfmahe16_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe16.png"
+}
+anim elfmahe17_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe17.png"
+}
+anim elfmahe17_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe17.png"
+}
+anim elfmahe17_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe17.png"
+}
+anim elfmahe17_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe17.png"
+}
+anim elfmahe18_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe18.png"
+}
+anim elfmahe18_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe18.png"
+}
+anim elfmahe18_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe18.png"
+}
+anim elfmahe18_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe18.png"
+}
+anim elfmahe19_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe19.png"
+}
+anim elfmahe19_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe19.png"
+}
+anim elfmahe19_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe19.png"
+}
+anim elfmahe19_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe19.png"
+}
+anim elfmahe20_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe20.png"
+}
+anim elfmahe20_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe20.png"
+}
+anim elfmahe20_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe20.png"
+}
+anim elfmahe20_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe20.png"
+}
+anim elfmahe21_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe21.png"
+}
+anim elfmahe21_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe21.png"
+}
+anim elfmahe21_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe21.png"
+}
+anim elfmahe21_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe21.png"
+}
+anim elfmahe22_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe22.png"
+}
+anim elfmahe22_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe22.png"
+}
+anim elfmahe22_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe22.png"
+}
+anim elfmahe22_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe22.png"
+}
+anim elfmahe23_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe23.png"
+}
+anim elfmahe23_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe23.png"
+}
+anim elfmahe23_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe23.png"
+}
+anim elfmahe23_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe23.png"
+}
+anim elfmahe24_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe24.png"
+}
+anim elfmahe24_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe24.png"
+}
+anim elfmahe24_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe24.png"
+}
+anim elfmahe24_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe24.png"
+}
+anim elfmahe25_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe25.png"
+}
+anim elfmahe25_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe25.png"
+}
+anim elfmahe25_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe25.png"
+}
+anim elfmahe25_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe25.png"
+}
+anim elfmahe26_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe26.png"
+}
+anim elfmahe26_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe26.png"
+}
+anim elfmahe26_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe26.png"
+}
+anim elfmahe26_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe26.png"
+}
+anim elfmahe27_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe27.png"
+}
+anim elfmahe27_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe27.png"
+}
+anim elfmahe27_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe27.png"
+}
+anim elfmahe27_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe27.png"
+}
+anim elfmahe28_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/elf/elfmahe28.png"
+}
+anim elfmahe28_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/elf/elfmahe28.png"
+}
+anim elfmahe28_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/elf/elfmahe28.png"
+}
+anim elfmahe28_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/elf/elfmahe28.png"
+}
+anim gnmahe0_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/gnome/gnmahe0.png"
+}
+anim gnmahe0_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/gnome/gnmahe0.png"
+}
+anim gnmahe0_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/gnome/gnmahe0.png"
+}
+anim gnmahe0_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/gnome/gnmahe0.png"
+}
+anim gnmahe1_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/gnome/gnmahe1.png"
+}
+anim gnmahe1_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/gnome/gnmahe1.png"
+}
+anim gnmahe1_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/gnome/gnmahe1.png"
+}
+anim gnmahe1_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/gnome/gnmahe1.png"
+}
+anim gnmahe2_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/gnome/gnmahe2.png"
+}
+anim gnmahe2_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/gnome/gnmahe2.png"
+}
+anim gnmahe2_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/gnome/gnmahe2.png"
+}
+anim gnmahe2_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/gnome/gnmahe2.png"
+}
+anim gnmahe3_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/gnome/gnmahe3.png"
+}
+anim gnmahe3_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/gnome/gnmahe3.png"
+}
+anim gnmahe3_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/gnome/gnmahe3.png"
+}
+anim gnmahe3_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/gnome/gnmahe3.png"
+}

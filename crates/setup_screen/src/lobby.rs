@@ -17,6 +17,7 @@ pub use lobby_components::*;
 #[allow(unused_parens, )]
 pub fn plugin(app: &mut App) {
     app
+        .add_systems(Update, lobby_systems::toggle_lobby_visibility)
         .add_observer(host_setup)
         .add_systems(
             OnEnter(ServerState::Running),

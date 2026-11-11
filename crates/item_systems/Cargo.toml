@@ -13,6 +13,7 @@ common = { path = "../acommon" }
 game_common = { path = "../agame_common" }
 being_shared = { path = "../being_shared" }
 item_shared = { path = "../item_shared" }
+being = { path = "../being" }
 modifier_shared = { path = "../modifier_shared" }
 sprite_systems = { path = "../sprite" }
 sprite_shared = { path = "../sprite_shared" }

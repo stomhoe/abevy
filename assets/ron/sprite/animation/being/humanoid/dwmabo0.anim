@@ -1,0 +1,24 @@
+anim dwmabo0_s_idle extends std_body_s_idle {
+    img_path: "texture/being/body/dwarf/dwmabo.png"
+}
+anim dwmabo0_w_idle extends std_body_w_idle {
+    img_path: "texture/being/body/dwarf/dwmabo.png"
+}
+anim dwmabo0_e_idle extends std_body_e_idle {
+    img_path: "texture/being/body/dwarf/dwmabo.png"
+}
+anim dwmabo0_n_idle extends std_body_n_idle {
+    img_path: "texture/being/body/dwarf/dwmabo.png"
+}
+anim dwmabo0_s_move extends std_body_s_move {
+    img_path: "texture/being/body/dwarf/dwmabo.png"
+}
+anim dwmabo0_w_move extends std_body_w_move {
+    img_path: "texture/being/body/dwarf/dwmabo.png"
+}
+anim dwmabo0_e_move extends std_body_e_move {
+    img_path: "texture/being/body/dwarf/dwmabo.png"
+}
+anim dwmabo0_n_move extends std_body_n_move {
+    img_path: "texture/being/body/dwarf/dwmabo.png"
+}

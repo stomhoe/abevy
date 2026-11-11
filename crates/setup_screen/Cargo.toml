@@ -10,6 +10,11 @@ multiplayer_shared = { path = "../multiplayer_shared" }
 game_common = { path = "../agame_common" }
 #game = { path = "../game" }
 player_shared = { path = "../player_shared" }
+being_shared = { path = "../being_shared" }
+sprite_shared = { path = "../sprite_shared" }
+sprite_animation_shared = { path = "../sprite_animation_shared" }
+tilemap_shared = { path = "../tilemap_shared" }
+rand = { workspace = true }
 
 bevy = { workspace = true }
 bevy_replicon = { workspace = true }

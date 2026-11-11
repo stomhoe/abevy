@@ -1,0 +1,17 @@
+sprite humahe {
+name "Humanoid placeholder head"
+mapped_anims {
+    south idle g _ = humahe_s_idle
+    west idle g _ = humahe_w_idle
+    east idle g _ = humahe_e_idle
+    north idle g _ = humahe_n_idle
+}
+parent_cat body
+tags head
+children_sprites []
+shares_tag []
+directionable true
+movement_based false
+grounding_based false
+baseline_move_speed 250.0
+}

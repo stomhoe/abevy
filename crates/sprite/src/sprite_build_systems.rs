@@ -39,23 +39,23 @@ pub fn add_spritechildren_and_comps(
     >,
     sprite_map: Res<SpriteConfigEntityMap>,
     held_sprites_query: Query<&HeldSprites, common::AnyDisabling>,
-    sprite_config_hash_query: Query<&HashId, (With<SpriteConfig>, common::AnyDisabling)>,
+    sprite_config_ref_query: Query<(&TemplEntiRef, ), (Without<SpriteConfig>, common::AnyDisabling, )>,
     mut removed_disabled: RemovedComponents<Disabled>,
     mut removed_unloaded: RemovedComponents<being_shared::Unloaded>,
-    mut fathers_to_build: Local<Vec<Entity>>,
+    mut fathers_to_build: Local<EntityHashSet>,
 ) {
     fathers_to_build.clear();
     fathers_to_build.extend(removed_disabled.read());
     fathers_to_build.extend(removed_unloaded.read());
     fathers_to_build.extend(changed_fathers.iter());
 
-    fathers_to_build.iter().for_each(|&parent_of_sprite| {
+    fathers_to_build.drain().for_each(|parent_of_sprite| {
         let Ok((to_build, baseholder_ref)) = father_query.get(parent_of_sprite) else {
             return;
         };
         let baseholder_ref = baseholder_ref.cloned().unwrap_or(BaseHolderRef { base: parent_of_sprite });
         let is_reenabled_only = changed_fathers.get(parent_of_sprite).is_err();
-        if is_reenabled_only && !needs_sprite_build(to_build, &baseholder_ref, &held_sprites_query, &sprite_config_hash_query) {
+        if is_reenabled_only && !needs_sprite_build(to_build, &baseholder_ref, &held_sprites_query, &sprite_config_ref_query, &sprite_map) {
             return;
         }
         for cfg_hash_id in to_build.0.iter() {
@@ -72,10 +72,10 @@ pub fn add_spritechildren_and_comps(
             let mut already_built = false;
             if let Ok(held_sprites) = held_sprites_query.get(baseholder_ref.base) {
                 for sprite_ent in held_sprites.iter() {
-                    let Ok(sprite_cfg_ref) = sprite_config_hash_query.get(sprite_ent) else {
+                    let Ok((&TemplEntiRef(config), )) = sprite_config_ref_query.get(sprite_ent) else {
                         continue;
                     };
-                    if *sprite_cfg_ref == *cfg_hash_id {
+                    if config == spritecfg_ent {
                         debug!(target: "sprite_building", "SpriteConfig '{}' already present in HeldSprites of base holder {:?}, skipping.", str_id, baseholder_ref.base);
                         //cmd.entity(parent_of_sprite).insert(DoNotRetryBuildScRef);
                         already_built = true;
@@ -179,19 +179,42 @@ fn needs_sprite_build(
     to_build: &ScsToBuild,
     baseholder_ref: &BaseHolderRef,
     held_sprites_query: &Query<&HeldSprites, common::AnyDisabling>,
-    sprite_config_hash_query: &Query<&HashId, (With<SpriteConfig>, common::AnyDisabling)>,
+    sprite_config_ref_query: &Query<(&TemplEntiRef, ), (Without<SpriteConfig>, common::AnyDisabling, )>,
+    sprite_map: &SpriteConfigEntityMap,
 ) -> bool {
     let Ok(held_sprites) = held_sprites_query.get(baseholder_ref.base) else {
         return true;
     };
 
-    let mut built_cfgs = HashSet::with_capacity(held_sprites.iter().len());
+    let mut built_cfgs = EntityHashSet::with_capacity(held_sprites.iter().len());
     for sprite_ent in held_sprites.iter() {
-        let Ok(sprite_cfg_ref) = sprite_config_hash_query.get(sprite_ent) else {
+        let Ok((&TemplEntiRef(config), )) = sprite_config_ref_query.get(sprite_ent) else {
             continue;
         };
-        built_cfgs.insert(*sprite_cfg_ref);
+        built_cfgs.insert(config);
     }
 
-    to_build.0.iter().any(|cfg_ent| !built_cfgs.contains(cfg_ent))
+    to_build.0.iter().any(|id| sprite_map.0.get(*id).is_ok_and(|entity| !built_cfgs.contains(entity)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rebuilding_and_reenabling_do_not_duplicate_sprite_children() {
+        let mut app = App::new();
+        app.init_resource::<SpriteConfigEntityMap>().add_systems(Update, add_spritechildren_and_comps);
+        let id = HashId::new(1);
+        let config = app.world_mut().spawn((SpriteConfig, StrId::from("test_body"), id)).id();
+        app.world_mut().resource_mut::<SpriteConfigEntityMap>().0.insert(id, config).unwrap();
+        let being = app.world_mut().spawn((ScsToBuild([id].into_iter().collect()), Visibility::Visible)).id();
+        app.update();
+        assert_eq!(app.world().get::<HeldSprites>(being).unwrap().len(), 1);
+        app.world_mut().entity_mut(being).insert((Disabled, being_shared::Unloaded));
+        app.world_mut().entity_mut(being).remove::<(Disabled, being_shared::Unloaded)>();
+        app.world_mut().entity_mut(being).insert(Visibility::Inherited);
+        app.update();
+        assert_eq!(app.world().get::<HeldSprites>(being).unwrap().len(), 1);
+    }
 }

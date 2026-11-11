@@ -14,20 +14,17 @@ use crate::main_menu_components::{MainMenuButton, MainMenuIpLineEdit};
 
 #[allow(unused_parens, )]
 pub fn menu_button_interaction(
+    activation: On<bevy::ui_widgets::Activate>,
     mut cmd: Commands,
-    interaction_query: Query<(Has<bevy::ui::Pressed>, &MainMenuButton, ), (Changed<bevy::ui::Pressed>, )>,
+    interaction_query: Query<(&MainMenuButton, ), ()>,
 
     mut pregame_state: ResMut<NextState<PreGameState>>,
     mut ____________game_phase: ResMut<NextState<GamePhase>>,
 ) {
-    for (pressed, menu_button_action) in &interaction_query {
-        if pressed {
+    let Ok((menu_button_action, )) = interaction_query.get(activation.entity) else { return; };
             match menu_button_action {
                 MainMenuButton::QuickStart => {
-                    //assets_loading_state.set(AssetsLoadingState::LoadingReplicatedCollections);
-                    //game_phase.set(GamePhase::Setup);
-
-
+                    cmd.trigger(AttemptHostServer::default());
                 }
                 MainMenuButton::Host => {
                     cmd.trigger(AttemptHostServer::default());
@@ -40,8 +37,6 @@ pub fn menu_button_interaction(
                     pregame_state.set(PreGameState::Settings);
                 }
             }
-        }
-    }
 }
 
 pub fn handle_line_edits_interaction(

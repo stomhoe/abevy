@@ -103,4 +103,7 @@ pub fn plugin(app: &mut App) {
     .add_message::<SpriteChangedScaleOrOffsetOrParent>()
 
     ;
+    if let Some(render_app) = app.get_sub_app_mut(bevy::render::RenderApp) {
+        render_app.add_systems(bevy::render::ExtractSchedule, extract_changed_sprite_depths.in_set(bevy::render::camera::DirtySpecializationSystems::CheckForChanges));
+    }
 }

@@ -45,6 +45,7 @@ pub const SGC_INIT: &str = "sgc_init";
 pub const PORTAL_INIT: &str = "portal_init";
 pub const TERRPROBE_INIT: &str = "terrprobe_init";
 pub const BEING_TEMPLATE_INIT: &str = "being_template_init";
+pub const CLASS_INIT: &str = "class_init";
 pub const COLOR_SAMPLER_INIT: &str = "color_sampler_init";
 pub const CHILDRENSPRITE_INIT: &str = "childrensprite_init";
 pub const OCCLUDER_INIT: &str = "occluder_init";

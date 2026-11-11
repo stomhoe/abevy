@@ -1,0 +1,56 @@
+abstract anim std_body_s_idle {
+    rows_cols: 4 6
+    paused: true
+    clips {
+        row 0 partial 0 0
+    }
+}
+abstract anim std_body_w_idle {
+    rows_cols: 4 6
+    paused: true
+    clips {
+        row 2 partial 0 0
+    }
+}
+abstract anim std_body_e_idle {
+    rows_cols: 4 6
+    paused: true
+    clips {
+        row 3 partial 0 0
+    }
+}
+abstract anim std_body_n_idle {
+    rows_cols: 4 6
+    paused: true
+    clips {
+        row 1 partial 0 0
+    }
+}
+abstract anim std_body_s_move {
+    rows_cols: 4 6
+    alternating_start_frames: 1 4
+    clips {
+        row 0
+    }
+}
+abstract anim std_body_w_move {
+    rows_cols: 4 6
+    alternating_start_frames: 1 3
+    clips {
+        row 2 partial 0 4
+    }
+}
+abstract anim std_body_e_move {
+    rows_cols: 4 6
+    alternating_start_frames: 1 3
+    clips {
+        row 3 partial 0 4
+    }
+}
+abstract anim std_body_n_move {
+    rows_cols: 4 6
+    alternating_start_frames: 1 4
+    clips {
+        row 1
+    }
+}

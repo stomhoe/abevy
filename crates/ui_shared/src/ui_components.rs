@@ -1,6 +1,9 @@
 use bevy::prelude::*;
+
+#[derive(Component)]
+pub struct MenuBackground;
 use bevy::ui_widgets::TextInput;
-use bevy::text::EditableText;
+use bevy::text::{EditableText, TextCursorStyle};
 
 use crate::ui_styles::{BUTTON_BG_HOVERED, BUTTON_BG_NORMAL, BUTTON_BG_PRESSED};
 
@@ -9,7 +12,7 @@ use crate::ui_styles::{BUTTON_BG_HOVERED, BUTTON_BG_NORMAL, BUTTON_BG_PRESSED};
 pub struct ButtonStyle {}
 
 #[derive(Component, Clone)]
-#[require(Node, CurrentText, BackgroundColor(BUTTON_BG_NORMAL), TextInput, EditableText)]//Outline
+#[require(Node, CurrentText, BackgroundColor(BUTTON_BG_NORMAL), TextInput, EditableText, TextCursorStyle)]//Outline
 pub struct LineEdit;
 
 #[derive(Component, Debug, Default, Clone)]

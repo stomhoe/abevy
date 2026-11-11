@@ -1,115 +1,36 @@
-anim mahubo0_e_idle {
+anim humabo0_s_idle extends std_body_s_idle {
     img_path: "texture/being/body/human/humabo0.png"
-    rows_cols: 4 6
-    paused: true
-    speed: 1.0
-    clips {
-        row 3 partial 0 0
-    }
 }
-
-anim mahubo0_n_idle {
+anim humabo0_w_idle extends std_body_w_idle {
     img_path: "texture/being/body/human/humabo0.png"
-    rows_cols: 4 6
-    paused: true
-    speed: 1.0
-    clips {
-        row 1 partial 0 0
-    }
 }
-
-anim mahubo0_s_idle {
+anim humabo0_e_idle extends std_body_e_idle {
     img_path: "texture/being/body/human/humabo0.png"
-    rows_cols: 4 6
-    paused: true
-    speed: 1.0
-    clips {
-        row 0 partial 0 0
-    }
 }
-
-anim mahubo0_w_idle {
+anim humabo0_n_idle extends std_body_n_idle {
     img_path: "texture/being/body/human/humabo0.png"
-    rows_cols: 4 6
-    paused: true
-    speed: 1.0
-    clips {
-        row 2 partial 0 0
-    }
 }
-
-anim mahubo0_e_move {
+anim humabo0_s_move extends std_body_s_move {
     img_path: "texture/being/body/human/humabo0.png"
-    rows_cols: 4 6
-    alternating_start_frames: 1 3
-    clips {
-        row 3 partial 0 4
-    }
 }
-
-anim mahubo0_n_move {
+anim humabo0_w_move extends std_body_w_move {
     img_path: "texture/being/body/human/humabo0.png"
-    rows_cols: 4 6
-    alternating_start_frames: 1 4
-    clips {
-        row 1
-    }
 }
-
-anim mahubo0_s_move {
+anim humabo0_e_move extends std_body_e_move {
     img_path: "texture/being/body/human/humabo0.png"
-    rows_cols: 4 6
-    alternating_start_frames: 1 4
-    clips {
-        row 0
-    }
 }
-
-anim mahubo0_w_move {
+anim humabo0_n_move extends std_body_n_move {
     img_path: "texture/being/body/human/humabo0.png"
-    rows_cols: 4 6
-    alternating_start_frames: 1 3
-    clips {
-        row 2 partial 0 4
-    }
 }
-
-anim mahuhe0_e_idle {
-    img_path: "texture/being/head/human/0.png"
-    rows_cols: 1 4
-    paused: true
-    speed: 1.0
-    clips {
-        col 1
-    }
+anim mahuhe0_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe0.png"
 }
-
-anim mahuhe0_n_idle {
-    img_path: "texture/being/head/human/0.png"
-    rows_cols: 1 4
-    paused: true
-    speed: 1.0
-    clips {
-        col 3
-    }
+anim mahuhe0_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe0.png"
 }
-
-anim mahuhe0_s_idle {
-    img_path: "texture/being/head/human/0.png"
-    rows_cols: 1 4
-    paused: true
-    speed: 1.0
-    clips {
-        col 0
-    }
+anim mahuhe0_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe0.png"
 }
-
-anim mahuhe0_w_idle {
-    img_path: "texture/being/head/human/0.png"
-    rows_cols: 1 4
-    paused: true
-    speed: 1.0
-    clips {
-        col 2
-    }
+anim mahuhe0_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe0.png"
 }

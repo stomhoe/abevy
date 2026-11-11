@@ -16,6 +16,7 @@ bevy = { version = "0.20.1", features = [
     "track_location",
     "serialize",
     "jpeg",
+    "picking",
 ] }
 
 strum = "0.28.0"

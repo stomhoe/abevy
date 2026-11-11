@@ -85,7 +85,8 @@ fn build_filter() -> String {
         (log_targets::BODY_HP_SYSTEM, warn),
         (log_targets::BODY_ENERGY_SYSTEM, warn),
         (log_targets::GAME_COMMON_SYSTEM, info),
-        (log_targets::GAME_INIT, warn),
+        (log_targets::GAME_INIT, debug),
+        (log_targets::CLASS_INIT, warn),
         (log_targets::LIGHTING_INIT, warn),
 
         (log_targets::SPRITE_ANIMATION_INIT, warn),

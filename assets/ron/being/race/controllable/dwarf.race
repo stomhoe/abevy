@@ -1,0 +1,17 @@
+race dwarf {
+    name: "Dwarf"
+    icon_path: ""
+    description: "Dwarves are sturdy mountain folk, renowned for their endurance, craft, and fearless resolve."
+    stats_description: "High endurance and strength; slower and less agile."
+    demonym: "dwarven"
+    singular: "dwarf"
+    plural: "dwarves"
+    sentient: true
+    player_selectable: true
+    fallback_sprites_to_sample: [dwmabo0 dwmahe0]
+    sets_of_choosable_sprites: [
+        (Head [dwmahe0 "" "" dwmahe1 "" "" dwmahe2 "" "" dwmahe3 "" "" dwmahe4 "" "" dwmahe5 "" "" dwmahe6 "" "" dwmahe7 "" "" dwmahe8 "" "" dwmahe9 "" "" dwmahe10 "" "" dwmahe11 "" "" dwmahe12 "" "" dwmahe13 "" "" dwmahe14 "" ""])
+        (Body [dwmabo0 "" ""])
+    ]
+    body_or_sampler: dwarf
+}

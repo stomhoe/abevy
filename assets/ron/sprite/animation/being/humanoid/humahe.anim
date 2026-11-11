@@ -1,0 +1,12 @@
+anim humahe_s_idle extends static_head_s_idle {
+    img_path: "texture/being/head/human/humahe0.png"
+}
+anim humahe_w_idle extends static_head_w_idle {
+    img_path: "texture/being/head/human/humahe0.png"
+}
+anim humahe_e_idle extends static_head_e_idle {
+    img_path: "texture/being/head/human/humahe0.png"
+}
+anim humahe_n_idle extends static_head_n_idle {
+    img_path: "texture/being/head/human/humahe0.png"
+}

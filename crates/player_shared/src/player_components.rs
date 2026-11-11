@@ -20,6 +20,14 @@ pub struct TrustedForOtracosa;
 #[require(Player)]
 pub struct HostPlayer;
 
+#[derive(Component, Debug, Clone, Default)]
+pub struct CharacterSelection {
+    pub race: HashId,
+    pub class: HashId,
+    pub sprites: Vec<(HashId, HashId)>,
+    pub pets: Vec<HashId>,
+}
+
 pub type MyPlayer = (With<Player>, With<Mine>);
 
 //pub type MyFaction = (With<Faction>, With<Mine>);

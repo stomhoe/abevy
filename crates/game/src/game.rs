@@ -15,6 +15,7 @@ pub fn plugin(app: &mut App) {
     .init_resource::<WallPhaserOnSpawn>()
     .init_resource::<::being_shared::InvulnerableOnSpawn>()
     .add_observer(put_player_beings_on_map)
+    .add_systems(Update, receive_character_selection.run_if(on_message::<bevy_replicon::prelude::FromClient<multiplayer_shared::multiplayer_events::CharacterCreationRequest>>).in_set(HostSystems))
 
     .add_systems(
         OnEnter(AssetLoading::SpawnReplicatedEntities),
@@ -23,6 +24,7 @@ pub fn plugin(app: &mut App) {
     )
     .add_systems(Update, (
         host_on_player_added,
+        apply_character_selection.after(host_on_player_added),
 
         (find_common_player_spawn_origin, place_unpositioned_player_beings_with_cached_origin
         .after(host_on_player_added),

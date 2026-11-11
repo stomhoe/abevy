@@ -1,0 +1,14 @@
+class archer {
+    name: "Archer"
+    description: "A mobile ranged fighter who thrives at a distance."
+    stats_description: "High ranged damage and mobility, with lower close-combat durability."
+    player_selectable: true
+    pet_set: basic
+    tags: [martial, ranged]
+    allowed_race_tags: []
+    starting_abilities: [basic_attack]
+    starting_loadout: [(short_bow 1), (arrow 50)]
+    starting_followers: []
+    race_loadouts: {}
+    progression: [(2 [aimed_shot])]
+}

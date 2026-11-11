@@ -11,5 +11,4 @@ common::define_entity_map_systems!(
     entity_prefix: "",
     despawn_trigger: (Item, game_common::game_common_components::Templ),
     id_type: common::common_components::StrId,
-    assets: [(ItemSeri, "seri.item", "item.ron")],
 );

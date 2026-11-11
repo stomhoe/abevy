@@ -163,6 +163,9 @@ pub fn init_races(
             }
         };
         let mut entity_cmds = cmd.spawn((Race, Templ, str_id.clone(), AddHashIdFromStrId, TemplHashIdRef(HashId::from(str_id.as_str())), ingame_name, singular, plural));
+        if race_seri.player_selectable {
+            entity_cmds.insert(PlayerSelectableRace);
+        }
         let body_str_id = match StrId::new_with_result(race_seri.body_or_sampler.trim(), 0) {
             Ok(body_str_id) => body_str_id,
             Err(err) => {
@@ -195,6 +198,9 @@ pub fn init_races(
 
         if !description.is_empty() {
             entity_cmds.insert(Description(description.to_string()));
+        }
+        if !race_seri.stats_description.trim().is_empty() {
+            entity_cmds.insert(StatsDescription(race_seri.stats_description.trim().to_string()));
         }
         if !demonym.is_empty() {
             entity_cmds.insert(Demonym(demonym.to_string().into()));

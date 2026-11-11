@@ -1,10 +1,10 @@
 use bevy::prelude::*;
-use bevy::{color::palettes::css::LIGHT_GOLDENROD_YELLOW};
 use common::common_states::{AppState, GamePhase};
-use ui_shared::ui_components::LineEdit;
-use ui_shared::ui_functions::text_button;
+use ui_shared::ui_components::*;
+use ui_shared::ui_functions::*;
 
 use crate::lobby::lobby_components::*;
+use ui_shared::ui_styles::*;
 
 
 struct LobbyBaseLayout{
@@ -19,28 +19,38 @@ struct LobbyBaseLayout{
     pub leave_button: Entity,
 }
 
-const MIN_WIDTH: Val = Val::Px(120.);
-
-fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
+fn do_base_layout(commands: &mut Commands, assets: &AssetServer) -> LobbyBaseLayout {
     let vbox_container = commands.spawn((
+        LobbyRoot,
         Node {
             width: Val::Percent(100.),
             height: Val::Percent(100.),
+            padding: UiRect::all(Val::Px(28.)),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::FlexStart,
             flex_direction: FlexDirection::Column,
-            //row_gap: Val::Px(10.),
+            row_gap: Val::Px(16.),
             ..default()
         },
+        ImageNode { color: Color::srgb(0.76, 0.75, 0.72), image_mode: NodeImageMode::Stretch, visual_box: VisualBox::BorderBox, ..ImageNode::new(assets.load("apocalypse.jpg")) }, MenuBackground,
         DespawnOnExit(GamePhase::Setup),
         DespawnOnExit(AppState::StatefulGameSession),
     )).id();
+
+    carved_frame(commands, vbox_container, 20.);
+    commands.spawn((
+        ChildOf(vbox_container),
+        retro_caption(assets, "Lobby", 28.),
+        TextLayout::new(Justify::Center, LineBreak::WordBoundary),
+            Node { width: Val::Percent(100.), height: Val::Px(30.), justify_content: JustifyContent::FlexStart, align_items: AlignItems::Center, ..default() },
+    ));
 
     let top_hbox_container = commands.spawn((
         ChildOf(vbox_container),
         Node {
             width: Val::Percent(100.),
-            min_height: Val::Px(50.),
+            height: Val::Px(52.),
+            column_gap: Val::Px(10.),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
             flex_direction: FlexDirection::Row,
@@ -52,9 +62,12 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
         ChildOf(vbox_container),
         Node {
             width: Val::Percent(100.),
-            height: Val::Percent(100.),
+            height: Val::Px(0.),
+            flex_grow: 1.,
+            min_height: Val::Px(0.),
+            column_gap: Val::Px(12.),
             justify_content: JustifyContent::Center,
-            align_items: AlignItems::FlexStart,
+            align_items: AlignItems::Stretch,
             flex_direction: FlexDirection::Row,
             ..default()
         },
@@ -71,25 +84,33 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
     let lobby_name = commands.spawn((
         ChildOf(top_hbox_container),
         Node {
-            width: Val::Percent(100.),
+            flex_grow: 1.,
+            min_width: Val::Px(0.),
             height: Val::Percent(100.),
+            padding: UiRect::all(Val::Px(8.)),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
             flex_direction: FlexDirection::Column,
             ..default()
         },
         LineEdit,
+        bevy::input_focus::AutoFocus,
+        bevy::input_focus::tab_navigation::TabIndex(0),
+        bevy::text::EditableText::default(),
+        TextLayout::no_wrap(),
         LobbyLineEdit::LobbyName,
+        BackgroundColor(INSET), TextColor(TEXT),
         Outline {
-            color: LIGHT_GOLDENROD_YELLOW.into(),
-            width: Val::Px(2.),
+            color: Color::NONE,
+            width: Val::Px(1.),
             offset: Val::Px(0.),
         },
         TextFont {
-            font_size: FontSize::Px(25.),
+            font_size: FontSize::Px(20.),
             ..Default::default()
         },
     )).id();
+    carved_frame(commands, lobby_name, 6.);
 
     let leave_button = commands.spawn((
         ChildOf(top_hbox_container),
@@ -97,23 +118,32 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
     )).id();
 
 
-    let _leftsplit_settings_slider = commands.spawn((
+    let settings = commands.spawn((
         ChildOf(middlesplitter_hbox),
         Node {
-            width: Val::Percent(100.),
+            width: Val::Px(180.),
+            min_width: Val::Px(180.),
+            max_width: Val::Px(180.),
+            min_height: Val::Px(0.),
             height: Val::Percent(100.),
+            padding: UiRect::all(Val::Px(16.)),
             ..default()
         },
+        BackgroundColor(PANEL),
         // ScrollableContent {
         //     ..default()
         // },
     )).id();
+    carved_frame(commands, settings, 10.);
 
     let rightsplit_vbox = commands.spawn((
         ChildOf(middlesplitter_hbox),
         Node {
-            width: Val::Percent(100.),
+            width: Val::Px(0.),
             height: Val::Percent(100.),
+            flex_grow: 1.,
+            min_width: Val::Px(0.),
+            min_height: Val::Px(0.),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::FlexStart,
             flex_direction: FlexDirection::Column,
@@ -126,7 +156,11 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
         ChildOf(rightsplit_vbox),
         Node {
             width: Val::Percent(100.),
-            height: Val::Percent(100.),
+            height: Val::Px(0.),
+            flex_grow: 1.,
+            min_width: Val::Px(0.),
+            min_height: Val::Px(0.),
+            column_gap: Val::Px(8.),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::FlexStart,
             flex_direction: FlexDirection::Row,
@@ -134,32 +168,42 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
         },
     )).id();
 
-    let _chat_history_slider = commands.spawn((
+    let chat_history = commands.spawn((
         ChildOf(rightsplit_top_hbox),
         Node {
-            width: Val::Percent(100.),
+            flex_grow: 1.,
+            min_width: Val::Px(0.),
+            min_height: Val::Px(0.),
             height: Val::Percent(100.),
+            padding: UiRect::all(Val::Px(16.)),
             ..default()
         },
         // ScrollableContent {
         //     ..default()
         // },
-        BackgroundColor(LIGHT_GOLDENROD_YELLOW.into()),
+        BackgroundColor(INSET),
     )).id();
+    carved_frame(commands, chat_history, 10.);
 
-    let _player_listing = commands.spawn((
+    let player_listing = commands.spawn((
         ChildOf(rightsplit_top_hbox),
         LobbyPlayerListing,
         Node {
-            min_width: MIN_WIDTH,
+            width: Val::Px(180.),
+            min_width: Val::Px(180.),
+            max_width: Val::Px(180.),
+            min_height: Val::Px(0.),
             height: Val::Percent(100.),
+            padding: UiRect::all(Val::Px(16.)),
             justify_content: JustifyContent::FlexStart,
             align_items: AlignItems::FlexStart,
             flex_direction: FlexDirection::Column,
             //row_gap: Val::Px(10.),
             ..default()
         },
+        BackgroundColor(PANEL),
     )).id();
+    carved_frame(commands, player_listing, 10.);
 
 
 
@@ -167,7 +211,10 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
         ChildOf(rightsplit_vbox),
         Node {
             width: Val::Percent(100.),
-            min_height: Val::Px(100.),
+            flex_grow: 0.,
+            min_width: Val::Px(0.),
+            height: Val::Px(52.),
+            column_gap: Val::Px(10.),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::FlexStart,
             flex_direction: FlexDirection::Row,
@@ -177,28 +224,36 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
 
     let _create_character_button = commands.spawn((
         ChildOf(rightsplit_bottom_hbox),
-        lobby_button(LobbyButtonId::CreateCharacter, "Create character (no pulsar)"),
+        lobby_button(LobbyButtonId::CreateCharacter, "Character creation"),
     )).id();
 
-    let _chat_input = commands.spawn((
+    let chat_input = commands.spawn((
         ChildOf(rightsplit_bottom_hbox),
         Node {
-            width: Val::Percent(100.),
+            flex_grow: 1.,
+            min_width: Val::Px(0.),
             height: Val::Percent(100.),
+            padding: UiRect::all(Val::Px(7.)),
             ..default()
         },
         LineEdit,
+        bevy::text::EditableText::default(),
+        TextLayout::no_wrap(),
+        bevy::input_focus::AutoFocus,
+        bevy::input_focus::tab_navigation::TabIndex(1),
         LobbyLineEdit::Chat,
+        BackgroundColor(INSET), TextColor(TEXT),
         Outline {
-            color: LIGHT_GOLDENROD_YELLOW.into(),
-            width: Val::Px(2.),
+            color: Color::NONE,
+            width: Val::Px(1.),
             offset: Val::Px(0.),
         },
         TextFont {
-            font_size: FontSize::Px(25.),
+            font_size: FontSize::Px(20.),
             ..Default::default()
         },
     )).id();
+    carved_frame(commands, chat_input, 6.);
 
     LobbyBaseLayout {
         vbox_container,
@@ -214,9 +269,9 @@ fn do_base_layout(commands: &mut Commands) -> LobbyBaseLayout {
 }
 
 
-pub fn layout_for_host(mut commands: Commands) {
+pub fn layout_for_host(mut commands: Commands, assets: Res<AssetServer>) {
     // Spawn the lobby UI for the host
-    let shared_layout = do_base_layout(&mut commands);
+    let shared_layout = do_base_layout(&mut commands, &assets);
 
     let _vbox_container = shared_layout.vbox_container;
     let _top_hbox = shared_layout.top_hbox;
@@ -238,9 +293,9 @@ pub fn layout_for_host(mut commands: Commands) {
 
 }
 
-pub fn layout_for_client(mut commands: Commands) {
+pub fn layout_for_client(mut commands: Commands, assets: Res<AssetServer>) {
 
-    let shared_layout = do_base_layout(&mut commands);
+    let shared_layout = do_base_layout(&mut commands, &assets);
 
     let _vbox_container = shared_layout.vbox_container;
     let _top_hbox = shared_layout.top_hbox;
@@ -275,7 +330,11 @@ pub fn lobby_button<T: Into<String>> (
     let base = (
         Node{
             height: Val::Percent(100.),
-            min_width: MIN_WIDTH,
+            width: Val::Px(180.),
+            min_width: Val::Px(180.),
+            max_width: Val::Px(180.),
+            border: UiRect::all(Val::Px(2.)),
+            border_radius: panel_radius(),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
             ..default()
@@ -284,7 +343,7 @@ pub fn lobby_button<T: Into<String>> (
 
     let style = None;
     (
-        text_button(base, text, (), style),
+        text_button(base, text, (TextColor(Color::srgb(0.91, 0.8, 0.58)),), style),
         lobby_button,
     )
 }

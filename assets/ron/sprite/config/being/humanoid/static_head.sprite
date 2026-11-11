@@ -1,0 +1,10 @@
+abstract sprite static_head {
+z 0.0001
+parent_cat body
+tags head
+children_sprites []
+shares_tag []
+directionable true
+movement_based false
+grounding_based false
+}
